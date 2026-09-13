@@ -8,7 +8,8 @@ const allowedTopics = new Set([
   "Recovery Advice",
   "Goal Suggestions",
   "Performance Reports",
-  "Motivational Feedback"
+  "Motivational Feedback",
+  "Emotional Support"
 ]);
 
 const planLimits = {
@@ -20,8 +21,26 @@ const planLimits = {
 };
 
 const MAX_PROMPT_LENGTH = 4000;
+const MAX_EMOTIONAL_PROMPT_LENGTH = 12000;
 const MAX_TOPIC_LENGTH = 64;
 const OPENAI_TIMEOUT_MS = 20000;
+
+// AthleteOS is intentionally athlete-first, not a general coding/productivity assistant.
+// This gate runs on the server so clients cannot bypass a frontend-only restriction.
+const codingPatterns = [
+  /\b(write|generate|create|build|make|code|program|script|implement|debug|fix)\b.{0,80}\b(code|coding|program|script|software|app|website|api|database|sql|javascript|typescript|python|java|c\+\+|html|css|react|next\.js|node|github)\b/i,
+  /\b(code|coding|programming|software development|web development|app development|debugging)\b/i,
+  /\b(leetcode|stack overflow|pull request|repository|git commit|npm|pnpm|docker)\b/i
+];
+
+function isCodingRequest(text) {
+  return codingPatterns.some((pattern) => pattern.test(text));
+}
+
+function isEmotionalSupportRequest(topic, text) {
+  if (topic === "Emotional Support") return true;
+  return /\b(feel|feeling|sad|stress|stressed|anxious|anxiety|lonely|upset|angry|overwhelmed|worried|worry|confidence|motivation|pressure|burnout|frustrated|frustration|heartbroken|emotional|emotion|talk to me|listen)\b/i.test(text);
+}
 
 function json(error, status) {
   return Response.json({ error }, { status });
@@ -76,13 +95,25 @@ export default async function handler(request) {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
 
   if (!allowedTopics.has(topic) || !prompt) {
-    return json("Choose a topic and enter a prompt.", 400);
+    return json("Choose an AthleteOS topic and enter a prompt.", 400);
   }
   if (topic.length > MAX_TOPIC_LENGTH) {
     return json(`Topic is too long. Maximum length is ${MAX_TOPIC_LENGTH} characters.`, 400);
   }
-  if (prompt.length > MAX_PROMPT_LENGTH) {
+
+  // Block coding/productivity requests at the server boundary. Do this before
+  // authentication, quota reservation, or the OpenAI call so blocked requests
+  // cannot consume AI quota or reach the model.
+  if (isCodingRequest(`${topic}\n${prompt}`)) {
+    return json("AthleteOS AI focuses on athlete development, training, competition, wellbeing, and sports support. Coding and software-development requests are not available here.", 403);
+  }
+
+  const emotionalSupport = isEmotionalSupportRequest(topic, prompt);
+  if (!emotionalSupport && prompt.length > MAX_PROMPT_LENGTH) {
     return json(`Prompt is too long. Maximum length is ${MAX_PROMPT_LENGTH} characters.`, 413);
+  }
+  if (emotionalSupport && prompt.length > MAX_EMOTIONAL_PROMPT_LENGTH) {
+    return json(`This message is too large to process safely. Maximum length is ${MAX_EMOTIONAL_PROMPT_LENGTH} characters.`, 413);
   }
 
   const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
@@ -148,7 +179,7 @@ export default async function handler(request) {
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
         input: [
-          { role: "system", content: "You are AthleteOS, a careful Taekwondo performance assistant. Give practical, age-safe, non-medical guidance. Encourage professional medical help for injuries." },
+          { role: "system", content: "You are AthleteOS, a careful Taekwondo performance assistant. Focus on athlete development, training, competition, wellbeing, and sports-related support. Do not provide coding or software-development assistance. For emotional support, respond thoughtfully and at whatever length is useful rather than applying an arbitrary short reply limit. Give practical, age-safe, non-medical guidance. Encourage professional medical help for injuries or health concerns." },
           { role: "user", content: `Topic: ${topic}\nAthlete request: ${prompt}` }
         ]
       })
@@ -181,9 +212,6 @@ export default async function handler(request) {
     .eq("id", reservationId)
     .eq("user_id", userId);
 
-  // A generated answer is still useful even if metering has a transient database
-  // failure. The reservation already consumed the quota atomically, so returning
-  // the answer is safer than discarding successful upstream work.
   return Response.json({
     answer,
     usageRecorded: !meterError
