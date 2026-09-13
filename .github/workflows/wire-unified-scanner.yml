@@ -6,6 +6,7 @@ on:
     paths:
       - "src/components/instagram/InstagramOrganizerScanner.tsx"
       - "scripts/wire-instagram-organizer.mjs"
+      - ".github/workflows/wire-unified-scanner.yml"
   workflow_dispatch:
 
 permissions:
