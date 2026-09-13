@@ -411,23 +411,47 @@ function PlansPage({ profile, subscriptions }: { profile: Profile; subscriptions
   const activeSubscription = subscriptions.find((item) => ["active", "trialing"].includes(item.status));
   const entitlementPlanId = activeSubscription?.plan_id || profile.plan_id || "free";
   const currentPlan = getPlan(entitlementPlanId);
+
   return <FeaturePage title="Plans and billing">
     <section className="card panel billing-note">
       <CreditCard />
       <div>
-        <h3>Current entitlement: {currentPlan.name}</h3>
-        <p>Plan access is read from your Supabase profile/subscription records. Online checkout is not active yet, so upgrades must be provisioned by an authorized admin or future server-side billing workflow.</p>
+        <p className="eyebrow">Your membership</p>
+        <h3>Current plan: {currentPlan.name}</h3>
+        <p>Choose the plan that matches your training needs. Prices and AI allowances are shown directly from the AthleteOS plan configuration.</p>
       </div>
+      <span className="status-chip success">Active</span>
     </section>
-    <section className="plan-grid">
-      {plans.map((plan) => <article className={`card plan-card ${plan.id === currentPlan.id ? "active" : ""}`} key={plan.id}>
-        <span className="pill">{plan.audience}</span>
-        <h3>{plan.name}</h3>
-        <strong>{plan.price}</strong>
-        <p>{plan.aiLimit} AI coach messages/month</p>
-        <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
-        <button className="btn primary" disabled>{plan.id === currentPlan.id ? "Current plan" : "Upgrade unavailable"}</button>
-      </article>)}
+
+    <section className="plan-grid" aria-label="AthleteOS plans">
+      {plans.map((plan) => {
+        const isCurrent = plan.id === currentPlan.id;
+        return <article className={`card plan-card ${isCurrent ? "active" : ""}`} key={plan.id}>
+          <div className="plan-card-head">
+            <span className="pill">{plan.audience}</span>
+            {isCurrent && <span className="status-chip success">Current</span>}
+          </div>
+          <h3>{plan.name}</h3>
+          <div className="plan-price" aria-label={`${plan.name} price`}>
+            <strong>{plan.price}</strong>
+          </div>
+          <p className="plan-ai">{plan.aiLimit.toLocaleString()} AI coach messages/month</p>
+          <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
+          <button className={`btn ${isCurrent ? "" : "primary"}`} disabled>
+            {isCurrent ? "Current plan" : "Upgrade coming soon"}
+          </button>
+        </article>;
+      })}
+    </section>
+
+    <section className="card panel">
+      <div className="inline-actions">
+        <Shield size={18} />
+        <div>
+          <h3>Secure billing status</h3>
+          <p>Online checkout is not active yet. Upgrades are provisioned through authorized AthleteOS administration until server-side billing is enabled.</p>
+        </div>
+      </div>
     </section>
   </FeaturePage>;
 }
