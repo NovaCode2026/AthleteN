@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Bell, Calendar, CheckCircle2, ChevronDown, ChevronUp, FileText, RefreshCw, Target, Trophy, Weight } from "lucide-react";
-import type { CloudData } from "../../types";
+import { Activity, Bell, Calendar, CheckCircle2, ChevronDown, ChevronUp, FileText, RefreshCw, Sparkles, Target, Trophy, Weight } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import type { CloudData, UsageSummary } from "../../types";
 import { calculateReadiness } from "../../lib/readiness";
 import { supabase } from "../../lib/supabase";
 
-type Props = { data: CloudData; onRefresh?: () => Promise<void> };
+type Props = { data: CloudData; usage?: UsageSummary; onRefresh?: () => Promise<void> };
 type Factor = { label: string; score: number; weight: number };
 
 function clamp(value: number) { return Math.max(0, Math.min(100, Math.round(value))); }
@@ -27,11 +28,11 @@ function getFactors(data: CloudData): Factor[] {
     { label: "Goals", score: clamp(goals * 100), weight: 10 },
     { label: "Verification", score: clamp(verification * 100), weight: 10 },
     { label: "Documents", score: clamp(documents * 100), weight: 5 },
-    { label: "Activity", score: clamp(activity * 100), weight: 5 },
+    { label: "Activity", score: clamp(activity * 100), weight: 5 }
   ];
 }
 
-export default function AthleteCommandCenter({ data, onRefresh }: Props) {
+export default function AthleteCommandCenter({ data, usage, onRefresh }: Props) {
   const [updatedAt, setUpdatedAt] = useState(new Date());
   const [expanded, setExpanded] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,6 +41,10 @@ export default function AthleteCommandCenter({ data, onRefresh }: Props) {
   const unread = data.notifications.filter((n) => !n.read_at);
   const nextTournament = [...data.tournaments].filter((t) => t.starts_at && new Date(t.starts_at).getTime() >= Date.now()).sort((a, b) => new Date(a.starts_at!).getTime() - new Date(b.starts_at!).getTime())[0];
   const pending = data.checklist.filter((x) => !x.completed).slice(0, 3);
+  const latestWeight = data.weights.at(-1)?.weight_kg ?? data.profile.weight_kg ?? 0;
+  const aiLimit = usage?.limit ?? 0;
+  const aiUsed = usage?.used ?? data.aiUsage.length;
+  const aiPercent = aiLimit ? Math.min(100, Math.round((aiUsed / aiLimit) * 100)) : 0;
 
   useEffect(() => {
     if (!supabase || !data.profile.user_id) return;
@@ -62,18 +67,25 @@ export default function AthleteCommandCenter({ data, onRefresh }: Props) {
   const activities = [
     ...data.training.map((x) => ({ at: x.session_date, label: `Training: ${x.title}`, icon: Activity })),
     ...data.medals.map((x) => ({ at: x.awarded_at, label: `Medal: ${x.event_name}`, icon: Trophy })),
-    ...data.documents.map((x) => ({ at: x.issued_at, label: `Document: ${x.title}`, icon: FileText })),
+    ...data.documents.map((x) => ({ at: x.created_at, label: `Document: ${x.title}`, icon: FileText }))
   ].filter((x) => x.at).sort((a, b) => new Date(b.at!).getTime() - new Date(a.at!).getTime()).slice(0, 6);
 
   function toggle(label: string) { setExpanded((current) => current === label ? null : label); }
 
   return <div className="athlete-command-center">
+    <style>{`
+      .athlete-command-center ~ .hero,
+      .athlete-command-center ~ .metrics,
+      .athlete-command-center ~ .grid.two { display: none !important; }
+      .athlete-command-center .command-lower-grid { margin-top: 18px; }
+      .athlete-command-center .usage-summary { display:grid; gap:10px; }
+      .athlete-command-center .usage-summary .usage-track { height:10px; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden; }
+      .athlete-command-center .usage-summary .usage-track i { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#49d7ff,#52ddac); }
+    `}</style>
     <section className="grid two">
       <article className="card panel readiness-card">
         <div className="section-heading"><div><span className="eyebrow">Live readiness</span><h3>{readiness}% ready</h3></div><div className="command-controls"><button type="button" className="icon-btn" onClick={() => void refreshDashboard()} disabled={refreshing} aria-label="Refresh dashboard"><RefreshCw className={refreshing ? "spin" : ""} size={17} /></button><Target /></div></div>
-        <button type="button" className="readiness-ring readiness-ring-button" onClick={() => toggle("readiness")} aria-expanded={expanded === "readiness"}>
-          <strong>{readiness}%</strong><span>overall</span>{expanded === "readiness" ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-        </button>
+        <button type="button" className="readiness-ring readiness-ring-button" onClick={() => toggle("readiness")} aria-expanded={expanded === "readiness"}><strong>{readiness}%</strong><span>overall</span>{expanded === "readiness" ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</button>
         <div className="factor-list">{factors.map((factor) => <button type="button" className="factor factor-button" key={factor.label} onClick={() => toggle(factor.label)} aria-expanded={expanded === factor.label}><div><span>{factor.label}</span><b>{factor.score}%</b></div><i><em style={{ width: `${factor.score}%` }} /></i>{expanded === factor.label && <small>{factor.score >= 100 ? "This area is complete." : `There is room to improve this area. ${factor.weight}% of readiness is assigned here.`}</small>}</button>)}</div>
         <small>Updated {updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small>
       </article>
@@ -82,7 +94,7 @@ export default function AthleteCommandCenter({ data, onRefresh }: Props) {
         <div className="section-heading"><div><span className="eyebrow">Today</span><h3>Command center</h3></div><Calendar /></div>
         {nextTournament ? <button type="button" className="command-item command-button" onClick={() => toggle("tournament")}><Trophy /><div><strong>Next tournament</strong><span>{nextTournament.name} · {new Date(nextTournament.starts_at!).toLocaleDateString()}</span></div>{expanded === "tournament" ? <ChevronUp /> : <ChevronDown />}</button> : <div className="empty"><strong>No upcoming tournament</strong><span>Add your next competition to track preparation.</span></div>}
         <button type="button" className="command-item command-button" onClick={() => toggle("checklist")}><CheckCircle2 /><div><strong>{pending.length} checklist items pending</strong><span>{pending[0]?.item || "Everything currently marked complete."}</span>{expanded === "checklist" && pending.length > 1 && <small>{pending.slice(1).map((x) => x.item).join(" • ")}</small>}</div>{expanded === "checklist" ? <ChevronUp /> : <ChevronDown />}</button>
-        <button type="button" className="command-item command-button" onClick={() => toggle("weight")}><Weight /><div><strong>Latest weight</strong><span>{data.weights.at(-1)?.weight_kg ?? data.profile.weight_kg ?? "—"} kg</span>{expanded === "weight" && <small>{data.weights.length ? `Tracking ${data.weights.length} weight entries.` : "No weight entries yet."}</small>}</div>{expanded === "weight" ? <ChevronUp /> : <ChevronDown />}</button>
+        <button type="button" className="command-item command-button" onClick={() => toggle("weight")}><Weight /><div><strong>Latest weight</strong><span>{latestWeight || "—"} kg</span>{expanded === "weight" && <small>{data.weights.length ? `Tracking ${data.weights.length} weight entries.` : "No weight entries yet."}</small>}</div>{expanded === "weight" ? <ChevronUp /> : <ChevronDown />}</button>
         <button type="button" className="command-item command-button" onClick={() => toggle("notifications")}><Bell /><div><strong>{unread.length} unread notifications</strong><span>{unread[0]?.title || "You're all caught up."}</span>{expanded === "notifications" && unread.length > 1 && <small>{unread.slice(1, 4).map((x) => x.title).join(" • ")}</small>}</div>{expanded === "notifications" ? <ChevronUp /> : <ChevronDown />}</button>
       </article>
     </section>
@@ -90,6 +102,11 @@ export default function AthleteCommandCenter({ data, onRefresh }: Props) {
     <section className="grid two">
       <article className="card panel"><div className="section-heading"><div><span className="eyebrow">Timeline</span><h3>Recent activity</h3></div><Activity /></div>{activities.length ? <div className="timeline">{activities.map((item, index) => { const Icon = item.icon; return <button type="button" className="timeline-item timeline-button" key={`${item.label}-${index}`} onClick={() => toggle(`activity-${index}`)}><Icon size={16} /><div><strong>{item.label}</strong><span>{new Date(item.at!).toLocaleString()}</span>{expanded === `activity-${index}` && <small>Tap Refresh to check for the latest account activity.</small>}</div>{expanded === `activity-${index}` ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</button>; })}</div> : <div className="empty"><strong>No activity yet</strong><span>Log training, medals, weights, or documents to build your timeline.</span></div>}</article>
       <article className="card panel"><div className="section-heading"><div><span className="eyebrow">Next actions</span><h3>Close the gaps</h3></div><CheckCircle2 /></div><ul className="action-list">{factors.filter((x) => x.score < 100).sort((a, b) => a.score - b.score).slice(0, 5).map((factor) => <li key={factor.label}><button type="button" className="action-button" onClick={() => toggle(`action-${factor.label}`)}><span>{factor.label} is at {factor.score}%</span><b>+{Math.round((100 - factor.score) * factor.weight / 100)} pts potential</b></button>{expanded === `action-${factor.label}` && <small>Review this area in the matching AthleteOS section.</small>}</li>)}{!factors.some((x) => x.score < 100) && <li><span>All readiness areas are complete.</span><b>100%</b></li>}</ul></article>
+    </section>
+
+    <section className="grid two command-lower-grid">
+      <article className="card panel usage-summary"><div className="section-heading"><div><span className="eyebrow">AI usage</span><h3>{aiUsed}/{aiLimit || "—"}</h3></div><Sparkles /></div><span>{usage?.plan.name || "Current plan"} · {aiLimit ? `${Math.max(0, aiLimit - aiUsed)} remaining this month` : "AI unavailable on current plan"}</span><div className="usage-track"><i style={{ width: `${aiPercent}%` }} /></div></article>
+      <article className="card panel"><div className="section-heading"><div><span className="eyebrow">Weight trend</span><h3>{latestWeight ? `${latestWeight} kg latest` : "No weight logs"}</h3></div><Weight /></div><ResponsiveContainer width="100%" height={190}><LineChart data={data.weights}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="logged_at" /><YAxis domain={['auto', 'auto']} /><Tooltip /><Line type="monotone" dataKey="weight_kg" strokeWidth={3} /></LineChart></ResponsiveContainer></article>
     </section>
   </div>;
 }
