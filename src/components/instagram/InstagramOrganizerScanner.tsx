@@ -36,13 +36,15 @@ type InstagramResult = {
 
 function extractInstagramUsername(value: string) {
   const trimmed = value.trim().replace(/^@/, "");
+  if (!trimmed) return "";
   try {
     const url = new URL(trimmed.includes("://") ? trimmed : `https://instagram.com/${trimmed}`);
     const hostname = url.hostname.toLowerCase();
     if (hostname !== "instagram.com" && !hostname.endsWith(".instagram.com")) return "";
-    return url.pathname.split("/").filter(Boolean)[0] || "";
+    const username = url.pathname.split("/").filter(Boolean)[0] || "";
+    return username.replace(/^@/, "");
   } catch {
-    return trimmed.split(/[/?#]/)[0];
+    return trimmed.split(/[/?#]/)[0].replace(/^@/, "");
   }
 }
 
@@ -50,6 +52,11 @@ function formatDate(value?: string | null) {
   if (!value) return "—";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+async function readError(response: Response, fallback: string) {
+  const payload = await response.json().catch(() => ({}));
+  return typeof payload?.error === "string" && payload.error.trim() ? payload.error : fallback;
 }
 
 export default function InstagramOrganizerScanner({ accessToken, setToast }: Props) {
@@ -64,64 +71,51 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
     const { data: userData } = await supabase.auth.getUser(accessToken);
     const userId = userData.user?.id;
     if (!userId) return;
-
-    const { data } = await supabase
-      .from("tournament_scans")
+    const { data } = await supabase.from("tournament_scans")
       .select("id,source_url,tournament_name,tournament_date,venue,status,detected_changes,last_checked_at")
-      .eq("user_id", userId)
-      .order("last_checked_at", { ascending: false })
-      .limit(20);
-
+      .eq("user_id", userId).order("last_checked_at", { ascending: false }).limit(20);
     setScans((data || []) as ScanRow[]);
   }
 
-  useEffect(() => {
-    void loadScans();
-  }, [accessToken]);
+  useEffect(() => { void loadScans(); }, [accessToken]);
 
   async function scanWebsite(url: string) {
     const response = await fetch("/.netlify/functions/tournament-scan", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({ sourceUrl: url })
     });
-
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || "Website tournament scan failed.");
-    return payload;
+    if (!response.ok) throw new Error(await readError(response, "Website tournament scan failed."));
+    return response.json().catch(() => ({}));
   }
 
   async function scanInstagram(value: string) {
     const username = extractInstagramUsername(value);
-    if (!username) throw new Error("Enter a valid Instagram profile URL or username.");
+    if (!username) throw new Error("Enter an Instagram organizer profile URL or @username, for example @example_tkd.");
 
-    // Preferred route: Meta Business Discovery when an authorized professional account is available.
+    // Try Meta Business Discovery first when the user has an authorized professional account.
     const response = await fetch("/.netlify/functions/instagram-discovery-data", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({ username })
     });
-    const payload = await response.json().catch(() => ({})) as InstagramResult & { error?: string };
 
+    const payload = await response.json().catch(() => ({})) as InstagramResult & { error?: string };
     if (response.ok) {
       setInstagramResult(payload);
       return payload;
     }
 
-    // No connected professional account? Fall back to the same public-source scanner used for websites.
-    // Instagram may block server-side reads; in that case the scanner reports the source as blocked rather than faking a result.
-    if (response.status === 401 || response.status === 403 || /professional|connect|authorization/i.test(payload.error || "")) {
-      setInstagramResult(null);
-      return scanWebsite(`https://www.instagram.com/${username}/`);
+    // Discovery is optional. A consumer organizer account, missing Meta connection, expired
+    // authorization, or a temporary Meta/server failure should fall back to the public-source scanner.
+    setInstagramResult(null);
+    try {
+      return await scanWebsite(`https://www.instagram.com/${encodeURIComponent(username)}/`);
+    } catch (fallbackError) {
+      const discoveryError = payload.error || "Meta Business Discovery could not read this account.";
+      const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : "Public Instagram scan failed.";
+      throw new Error(`${discoveryError} Public Instagram scan also failed: ${fallbackMessage}`);
     }
-
-    throw new Error(payload.error || "Instagram organizer scan failed.");
   }
 
   async function scan(event: React.FormEvent) {
@@ -144,19 +138,12 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
       } else {
         const username = extractInstagramUsername(source);
         const result = await scanInstagram(source.trim());
-        if (result?.organizer?.username) {
-          setToast({ type: "success", message: `Instagram scan completed for @${username}.` });
-        } else {
-          setToast({ type: "success", message: `Instagram source scan completed for @${username}.` });
-        }
+        setToast({ type: "success", message: result?.organizer?.username ? `Instagram scan completed for @${username}.` : `Instagram source scan completed for @${username}.` });
       }
       setSource("");
       await loadScans();
     } catch (error) {
-      setToast({
-        type: "error",
-        message: error instanceof Error ? error.message : "Tournament scan failed."
-      });
+      setToast({ type: "error", message: error instanceof Error ? error.message : "Tournament scan failed." });
     } finally {
       setScanning(false);
     }
@@ -180,84 +167,20 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
         .unified-tournament-scanner .instagram-post { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
         @media (max-width: 700px) { .unified-tournament-scanner .scanner-source-picker { grid-template-columns: 1fr; } }
       `}</style>
-
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">Tournament intelligence</p>
-          <h2>Tournament Scanner</h2>
-          <p>Choose what the link is from, then scan it. AthleteOS keeps Website and Instagram scanning in one place.</p>
-        </div>
-      </div>
-
+      <div className="page-heading"><div><p className="eyebrow">Tournament intelligence</p><h2>Tournament Scanner</h2><p>Choose what the link is from, then scan it. AthleteOS keeps Website and Instagram scanning in one place.</p></div></div>
       <section className="card scan">
         <div className="scanner-source-picker" role="tablist" aria-label="Tournament source type">
-          <button type="button" className={`source-option ${sourceType === "website" ? "active" : ""}`} onClick={() => setSourceType("website")} aria-selected={sourceType === "website"}>
-            <Globe size={20} />
-            <span><strong>Website</strong><small>Tournament site, notice, schedule or PDF</small></span>
-          </button>
-          <button type="button" className={`source-option ${sourceType === "instagram" ? "active" : ""}`} onClick={() => setSourceType("instagram")} aria-selected={sourceType === "instagram"}>
-            <Instagram size={20} />
-            <span><strong>Instagram</strong><small>Organizer profile or @username</small></span>
-          </button>
+          <button type="button" className={`source-option ${sourceType === "website" ? "active" : ""}`} onClick={() => setSourceType("website")} aria-selected={sourceType === "website"}><Globe size={20} /><span><strong>Website</strong><small>Tournament site, notice, schedule or PDF</small></span></button>
+          <button type="button" className={`source-option ${sourceType === "instagram" ? "active" : ""}`} onClick={() => setSourceType("instagram")} aria-selected={sourceType === "instagram"}><Instagram size={20} /><span><strong>Instagram</strong><small>Organizer profile or @username</small></span></button>
         </div>
-
         <form className="inline-form" onSubmit={(event) => void scan(event)}>
-          <input
-            value={source}
-            onChange={(event) => setSource(event.target.value)}
-            placeholder={sourceType === "website" ? "https://example.com/tournament" : "@organizer or https://instagram.com/organizer"}
-            aria-label={sourceType === "website" ? "Tournament website URL" : "Instagram organizer profile"}
-            required
-          />
-          <button className="btn primary" type="submit" disabled={scanning}>
-            {scanning ? <Loader2 className="spin" size={16} /> : <RefreshCw size={16} />}
-            {scanning ? "Scanning..." : "Scan"}
-          </button>
+          <input value={source} onChange={(event) => setSource(event.target.value)} placeholder={sourceType === "website" ? "https://example.com/tournament" : "@organizer or https://instagram.com/organizer"} aria-label={sourceType === "website" ? "Tournament website URL" : "Instagram organizer profile"} required />
+          <button className="btn primary" type="submit" disabled={scanning}>{scanning ? <Loader2 className="spin" size={16} /> : <RefreshCw size={16} />}{scanning ? "Scanning..." : "Scan"}</button>
         </form>
-
-        {sourceType === "website" ? (
-          <p className="scanner-help"><Globe size={16} /> Website scanning follows relevant tournament pages, notices, schedules, results and linked PDFs.</p>
-        ) : (
-          <p className="scanner-help"><ShieldCheck size={16} /> Professional organizer accounts can use Meta Business Discovery. Public consumer profiles do not require the AthleteOS user to connect a Business account; access may still be limited by Instagram.</p>
-        )}
+        {sourceType === "website" ? <p className="scanner-help"><Globe size={16} /> Website scanning follows relevant tournament pages, notices, schedules, results and linked PDFs.</p> : <p className="scanner-help"><ShieldCheck size={16} /> Enter the organizer's profile URL or @username. Meta Business Discovery is preferred for professional accounts; other public profiles use the best-effort public-source scanner and may be blocked by Instagram.</p>}
       </section>
-
-      {instagramResult?.organizer && (
-        <section className="card panel">
-          <h3>@{instagramResult.organizer.username}</h3>
-          <p>{instagramResult.organizer.name || ""}</p>
-          {instagramResult.organizer.followers_count != null && <p>{instagramResult.organizer.followers_count.toLocaleString()} followers</p>}
-          <p>{instagramResult.organizer.biography || "No bio returned."}</p>
-          {relevantPosts.length > 0 && (
-            <div>
-              <h4>Tournament-relevant posts ({relevantPosts.length})</h4>
-              {relevantPosts.map((post) => <article key={post.id} className="instagram-post"><strong>{formatDate(post.timestamp)}</strong><p>{post.caption || "No caption returned."}</p>{post.permalink && <a href={post.permalink} target="_blank" rel="noreferrer">Open Instagram post</a>}</article>)}
-            </div>
-          )}
-        </section>
-      )}
-
-      <section className="card panel scan-results">
-        <h3>Saved scans</h3>
-        {!scans.length ? <p>No tournament scans yet. Choose a source above and run your first scan.</p> : (
-          <table>
-            <thead><tr><th>Source</th><th>Tournament</th><th>Date</th><th>Venue</th><th>Last checked</th><th>Changes</th><th>Status</th></tr></thead>
-            <tbody>
-              {scans.map((scanRow) => (
-                <tr key={scanRow.id}>
-                  <td>{scanRow.source_url}</td>
-                  <td>{scanRow.tournament_name || "—"}</td>
-                  <td>{scanRow.tournament_date || "—"}</td>
-                  <td>{scanRow.venue || "—"}</td>
-                  <td>{formatDate(scanRow.last_checked_at)}</td>
-                  <td>{scanRow.detected_changes || "—"}</td>
-                  <td>{scanRow.status || "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+      {instagramResult?.organizer && <section className="card panel"><h3>@{instagramResult.organizer.username}</h3><p>{instagramResult.organizer.name || ""}</p>{instagramResult.organizer.followers_count != null && <p>{instagramResult.organizer.followers_count.toLocaleString()} followers</p>}<p>{instagramResult.organizer.biography || "No bio returned."}</p>{relevantPosts.length > 0 && <div><h4>Tournament-relevant posts ({relevantPosts.length})</h4>{relevantPosts.map((post) => <article key={post.id} className="instagram-post"><strong>{formatDate(post.timestamp)}</strong><p>{post.caption || "No caption returned."}</p>{post.permalink && <a href={post.permalink} target="_blank" rel="noreferrer">Open Instagram post</a>}</article>)}</div>}</section>}
+      <section className="card panel scan-results"><h3>Saved scans</h3>{!scans.length ? <p>No tournament scans yet. Choose a source above and run your first scan.</p> : <table><thead><tr><th>Source</th><th>Tournament</th><th>Date</th><th>Venue</th><th>Last checked</th><th>Changes</th><th>Status</th></tr></thead><tbody>{scans.map((scanRow) => <tr key={scanRow.id}><td>{scanRow.source_url}</td><td>{scanRow.tournament_name || "—"}</td><td>{scanRow.tournament_date || "—"}</td><td>{scanRow.venue || "—"}</td><td>{formatDate(scanRow.last_checked_at)}</td><td>{scanRow.detected_changes || "—"}</td><td>{scanRow.status || "—"}</td></tr>)}</tbody></table>}</section>
     </div>
   );
 }
