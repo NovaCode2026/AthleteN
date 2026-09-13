@@ -22,6 +22,7 @@ import type {
 import AthleteCommandCenter from "./components/dashboard/AthleteCommandCenter";
 import AdminControlCenter from "./components/admin/AdminControlCenter";
 import MessagingPage from "./components/messaging/MessagingPage";
+import InstagramOrganizerScanner from "./components/instagram/InstagramOrganizerScanner";
 import "./styles/main.css";
 
 type PageId = "dashboard" | "profile" | "plans" | "verification" | "tournaments" | "training" | "medals" | "documents" | "weight" | "calendar" | "checklist" | "scanner" | "ai" | "feedback" | "roadmap" | "messages" | "admin";
@@ -63,8 +64,10 @@ function isAuthCallbackRoute() {
 }
 
 function pageFromPath(): PageId {
-  if (window.location.pathname === "/admin") return "admin";
-  if (window.location.pathname === "/messages") return "messages";
+  const path = window.location.pathname;
+  if (path === "/admin") return "admin";
+  if (path === "/messages") return "messages";
+  if (path === "/scanner") return "scanner";
   return "dashboard";
 }
 
@@ -555,73 +558,6 @@ function RoadmapPage({
   </FeaturePage>;
 }
 
-function TournamentScannerPage({ scans, planId, accessToken, refresh, setToast }: {
-  scans: TournamentScan[];
-  planId?: string;
-  accessToken?: string;
-  refresh: () => Promise<void>;
-  setToast: (toast: ToastState) => void;
-}) {
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [checking, setChecking] = useState(false);
-  const hours = scanIntervalHours(planId);
-  const nextScan = scans
-    .map((scan) => scan.next_check_at ? new Date(scan.next_check_at) : null)
-    .filter(Boolean)
-    .sort((a, b) => Number(a) - Number(b))[0];
-
-  async function checkNow(event: React.FormEvent) {
-    event.preventDefault();
-    if (!sourceUrl.trim()) {
-      setToast({ type: "warning", message: "Enter a tournament source URL first." });
-      return;
-    }
-    if (!accessToken) {
-      setToast({ type: "error", message: "Please sign in again before scanning." });
-      return;
-    }
-    setChecking(true);
-    try {
-      const response = await fetch("/.netlify/functions/tournament-scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ sourceUrl })
-      });
-      const payload = await response.json().catch(() => ({})) as { error?: string };
-      if (!response.ok) throw new Error(payload.error || "Tournament scan failed.");
-      setToast({ type: "success", message: "Tournament source checked without using AI." });
-      await refresh();
-    } catch (error) {
-      setToast({ type: "error", message: error instanceof Error ? error.message : "Tournament source could not be checked." });
-    } finally {
-      setChecking(false);
-    }
-  }
-
-  return <FeaturePage title="Tournament Scanner">
-    <section className="card scan">
-      <span className="scanner"><ScanLine className="icon" /></span>
-      <div>
-        <h3>Non-AI tournament monitoring</h3>
-        <p>Manual Check Now uses the browser/app connection and a secure server function. It does not consume AI usage. Automatic checks require a scheduled backend worker; a browser/PWA cannot reliably run jobs while closed.</p>
-        <p>Current plan interval: every {hours === 0.5 ? "30 minutes" : `${hours} hours`}. Next automatic check: {nextScan ? nextScan.toLocaleString() : "after your first scan"}.</p>
-        <form className="inline-form" onSubmit={checkNow}>
-          <input type="url" placeholder="https://example.com/tournament-notice" value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} required />
-          <button className="btn primary" disabled={checking}><RefreshCw size={16} /> {checking ? "Checking..." : "Check Now"}</button>
-        </form>
-      </div>
-    </section>
-    <DataTable rows={scans} empty="No tournament sources scanned yet" columns={[
-      { key: "source_url", label: "Source", render: (row) => <a href={row.source_url} target="_blank" rel="noreferrer"><ExternalLink size={14} /> {safeHost(row.source_url)}</a> },
-      { key: "tournament_name", label: "Tournament" },
-      { key: "tournament_date", label: "Date" },
-      { key: "venue", label: "Venue" },
-      { key: "last_checked_at", label: "Last checked" },
-      { key: "detected_changes", label: "Changes" },
-      { key: "status", label: "Status" }
-    ]} />
-  </FeaturePage>;
-}
 
 type InstagramOrganizerResult = {
   organizer: {
@@ -651,111 +587,6 @@ type InstagramOrganizerResult = {
   scanned_at: string;
 };
 
-function InstagramOrganizerScanner({ accessToken, setToast }: {
-  accessToken?: string;
-  setToast: (toast: ToastState) => void;
-}) {
-  const [input, setInput] = useState("");
-  const [connecting, setConnecting] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [result, setResult] = useState<InstagramOrganizerResult | null>(null);
-
-  async function connect() {
-    if (!accessToken) {
-      setToast({ type: "error", message: "Please sign in again before connecting Instagram." });
-      return;
-    }
-    setConnecting(true);
-    try {
-      const response = await fetch("/.netlify/functions/instagram-discovery-connect", {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      const payload = await response.json().catch(() => ({})) as { authorizeUrl?: string; error?: string };
-      if (!response.ok || !payload.authorizeUrl) throw new Error(payload.error || "Instagram connection could not be started.");
-      window.location.assign(payload.authorizeUrl);
-    } catch (error) {
-      setToast({ type: "error", message: error instanceof Error ? error.message : "Instagram connection could not be started." });
-      setConnecting(false);
-    }
-  }
-
-  async function scan(event: React.FormEvent) {
-    event.preventDefault();
-    if (!input.trim()) {
-      setToast({ type: "warning", message: "Enter an organizer's public Instagram username or profile URL." });
-      return;
-    }
-    if (!accessToken) {
-      setToast({ type: "error", message: "Please sign in again before scanning Instagram." });
-      return;
-    }
-    setScanning(true);
-    try {
-      const response = await fetch("/.netlify/functions/instagram-discovery-data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ url: input })
-      });
-      const payload = await response.json().catch(() => ({})) as InstagramOrganizerResult & { error?: string };
-      if (!response.ok) throw new Error(payload.error || "Instagram organizer scan failed.");
-      setResult(payload);
-      setToast({ type: "success", message: `Scanned @${payload.organizer.username} without using AI.` });
-    } catch (error) {
-      setToast({ type: "error", message: error instanceof Error ? error.message : "Instagram organizer scan failed." });
-    } finally {
-      setScanning(false);
-    }
-  }
-
-  return <FeaturePage title="Instagram Tournament Scanner">
-    <section className="card panel">
-      <div className="page-head">
-        <div>
-          <p className="eyebrow">Organizer discovery</p>
-          <h3>Scan public tournament announcements</h3>
-          <p>Connect a professional Instagram account, then paste an organizer's public Instagram username or profile URL. AthleteOS uses Meta Business Discovery and filters recent posts for tournament-related signals.</p>
-        </div>
-        <button className="btn" type="button" onClick={() => void connect()} disabled={connecting}>
-          {connecting ? "Connecting..." : "Connect Instagram"}
-        </button>
-      </div>
-      <form className="inline-form" onSubmit={(event) => { void scan(event); }}>
-        <input
-          type="text"
-          placeholder="@organizer or https://www.instagram.com/organizer/"
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          aria-label="Instagram organizer username or URL"
-        />
-        <button className="btn primary" disabled={scanning}>{scanning ? "Scanning..." : "Scan organizer"}</button>
-      </form>
-      <p className="notice" role="note">Only professional Instagram accounts that Meta exposes through Business Discovery can be scanned. Private or consumer accounts may not be available.</p>
-    </section>
-
-    {result && <section className="card panel">
-      <div className="page-head">
-        <div>
-          <p className="eyebrow">Scan result</p>
-          <h3>@{result.organizer.username}{result.organizer.name ? ` — ${result.organizer.name}` : ""}</h3>
-          {result.organizer.biography && <p>{result.organizer.biography}</p>}
-          {typeof result.organizer.followers_count === "number" && <small>{result.organizer.followers_count.toLocaleString()} followers</small>}
-        </div>
-        {result.organizer.profile_picture_url && <img src={result.organizer.profile_picture_url} alt="" width={64} height={64} style={{ borderRadius: "50%", objectFit: "cover" }} />}
-      </div>
-      <h4>Relevant tournament posts ({result.relevant_posts.length})</h4>
-      <DataTable
-        rows={result.relevant_posts}
-        empty="No tournament-related posts found in the recent media."
-        columns={[
-          { key: "timestamp", label: "Posted" },
-          { key: "caption", label: "Post" },
-          { key: "media_type", label: "Type" },
-          { key: "open", label: "", render: (post) => post.permalink ? <a href={post.permalink} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Open</a> : null }
-        ]}
-      />
-    </section>}
-  </FeaturePage>;
-}
 
 function AdminPage({ data }: { data: CloudData }) {
   return <AdminControlCenter userId={data.profile.user_id || "unknown"} role={data.profile.role || "athlete"} />;
@@ -998,7 +829,7 @@ function AppShell() {
   else if (page === "weight") content = <FeaturePage title="Weight Tracker" actions={<button className="btn primary" onClick={() => openForm("weights")}><Plus size={16} /> Log</button>}><section className="card panel"><ResponsiveContainer width="100%" height={320}><LineChart data={data.weights}><CartesianGrid strokeDasharray="3 3" stroke="#25405f" /><XAxis dataKey="logged_at" /><YAxis /><Tooltip /><Line type="monotone" dataKey="weight_kg" stroke="#52ddac" strokeWidth={3} /></LineChart></ResponsiveContainer></section></FeaturePage>;
   else if (page === "calendar") content = <FeaturePage title="Calendar"><DataTable rows={data.training.map((item) => ({ ...item, event_type: "training" })).concat(data.tournaments.map((item) => ({ id: item.id, title: item.name, session_date: item.starts_at || "", event_type: "competition", minutes: 0 })))} empty="No calendar events" columns={[{ key: "title", label: "Event" }, { key: "session_date", label: "Date" }, { key: "event_type", label: "Type" }]} /></FeaturePage>;
   else if (page === "checklist") content = <FeaturePage title="Competition Checklist" actions={<button className="btn primary" onClick={() => openForm("checklist")}><Plus size={16} /> Add</button>}><section className="card checklist">{data.checklist.map((item) => <label key={item.id || item.item}><input type="checkbox" checked={Boolean(item.completed)} readOnly /> {item.item}<span>{item.category}</span></label>)}</section></FeaturePage>;
-  else if (page === "scanner") content = <><TournamentScannerPage scans={data.tournamentScans} planId={plan.id} accessToken={auth.session?.access_token} refresh={refresh} setToast={setToast} /><InstagramOrganizerScanner accessToken={auth.session?.access_token} setToast={setToast} /></>;
+  else if (page === "scanner") content = <InstagramOrganizerScanner accessToken={auth.session?.access_token} setToast={setToast} />;
   else if (page === "ai") content = <AiCoach usage={usage} accessToken={auth.session?.access_token} setToast={setToast} />;
   else if (page === "feedback") content = <FeaturePage title="Feedback portal" actions={<button className="btn primary" onClick={() => openForm("feedback")}><Plus size={16} /> Submit feedback</button>}><DataTable rows={data.feedback} empty="No feedback yet" columns={[{ key: "title", label: "Title" }, { key: "status", label: "Status" }, { key: "priority", label: "Priority" }]} /></FeaturePage>;
   else if (page === "roadmap") content = <RoadmapPage rows={data.roadmap} vote={voteRoadmap} isAdmin={isAdmin} openForm={openForm} updateStatus={updateRoadmapStatus} removeItem={removeRoadmapItem} />;
