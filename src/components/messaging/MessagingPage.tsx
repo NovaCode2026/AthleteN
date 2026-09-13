@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { MessageCircle, Plus, Send, Users } from "lucide-react";
 import { requireSupabase } from "../../lib/supabase";
+import { useAuth } from "../../hooks/useAuth";
 
 type Conversation = { id: string; kind: "direct" | "group"; name?: string | null; created_by: string; created_at: string };
 type Message = { id: string; conversation_id: string; sender_id: string; body: string; message_type: string; created_at: string };
-type Props = { userId?: string; role?: string; setToast: (toast: { type: "success" | "error" | "warning"; message: string } | null) => void };
+type Props = { userId?: string; role?: string; setToast?: (toast: { type: "success" | "error" | "warning"; message: string } | null) => void };
 
 const messageTypes = [
   ["normal", "Normal message"], ["tournament_announcement", "Tournament announcement"], ["training_schedule", "Training schedule"],
@@ -12,7 +13,10 @@ const messageTypes = [
 ] as const;
 
 export default function MessagingPage({ userId, role, setToast }: Props) {
+  const auth = useAuth();
   const supabase = requireSupabase();
+  const effectiveUserId = userId || auth.user?.id;
+  const notify = setToast || (() => undefined);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -25,10 +29,10 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
   const [error, setError] = useState("");
   const selected = useMemo(() => conversations.find((item) => item.id === selectedId), [conversations, selectedId]);
   const canCreateGroup = ["coach", "academy_admin", "admin", "super_admin"].includes(role || "");
-  const selectedIsGroupCreator = Boolean(selected?.kind === "group" && selected.created_by === userId);
+  const selectedIsGroupCreator = Boolean(selected?.kind === "group" && selected.created_by === effectiveUserId);
 
   async function loadConversations() {
-    if (!userId) return;
+    if (!effectiveUserId) return;
     const { data, error: queryError } = await supabase.from("conversations").select("id, kind, name, created_by, created_at").order("created_at", { ascending: false });
     if (queryError) throw queryError;
     setConversations((data ?? []) as Conversation[]);
@@ -39,27 +43,27 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
     if (queryError) throw queryError;
     setMessages((data ?? []) as Message[]);
   }
-  useEffect(() => { void loadConversations().catch((e) => setError(e instanceof Error ? e.message : "Messages could not be loaded.")); }, [userId]);
+  useEffect(() => { void loadConversations().catch((e) => setError(e instanceof Error ? e.message : "Messages could not be loaded.")); }, [effectiveUserId]);
   useEffect(() => { if (!selectedId) { setMessages([]); return; } void loadMessages(selectedId).catch((e) => setError(e instanceof Error ? e.message : "Conversation could not be loaded.")); }, [selectedId]);
 
   async function startDirect(event: React.FormEvent) {
     event.preventDefault(); if (!recipientEmail.trim()) return; setBusy(true); setError("");
-    try { const { data, error: rpcError } = await supabase.rpc("create_direct_conversation", { p_recipient_email: recipientEmail.trim() }); if (rpcError) throw rpcError; setSelectedId(String(data)); setRecipientEmail(""); await loadConversations(); setToast({ type: "success", message: "Direct conversation created. Only its two members can read it." }); }
+    try { const { data, error: rpcError } = await supabase.rpc("create_direct_conversation", { p_recipient_email: recipientEmail.trim() }); if (rpcError) throw rpcError; setSelectedId(String(data)); setRecipientEmail(""); await loadConversations(); notify({ type: "success", message: "Direct conversation created. Only its two members can read it." }); }
     catch (e) { setError(e instanceof Error ? e.message : "Direct conversation could not be created."); } finally { setBusy(false); }
   }
   async function createGroup(event: React.FormEvent) {
     event.preventDefault(); if (!canCreateGroup || !groupName.trim()) return; setBusy(true); setError("");
-    try { const { data, error: rpcError } = await supabase.rpc("create_group_conversation", { p_name: groupName.trim() }); if (rpcError) throw rpcError; setSelectedId(String(data)); setGroupName(""); await loadConversations(); setToast({ type: "success", message: "Group created. Messages will be delivered only to its members." }); }
+    try { const { data, error: rpcError } = await supabase.rpc("create_group_conversation", { p_name: groupName.trim() }); if (rpcError) throw rpcError; setSelectedId(String(data)); setGroupName(""); await loadConversations(); notify({ type: "success", message: "Group created. Messages will be delivered only to its members." }); }
     catch (e) { setError(e instanceof Error ? e.message : "Group could not be created."); } finally { setBusy(false); }
   }
   async function addMember(event: React.FormEvent) {
     event.preventDefault(); if (!selectedId || !memberEmail.trim()) return; setBusy(true); setError("");
-    try { const { error: rpcError } = await supabase.rpc("add_group_member_by_email", { p_conversation_id: selectedId, p_email: memberEmail.trim() }); if (rpcError) throw rpcError; setMemberEmail(""); setToast({ type: "success", message: "Member added to this group." }); }
+    try { const { error: rpcError } = await supabase.rpc("add_group_member_by_email", { p_conversation_id: selectedId, p_email: memberEmail.trim() }); if (rpcError) throw rpcError; setMemberEmail(""); notify({ type: "success", message: "Member added to this group." }); }
     catch (e) { setError(e instanceof Error ? e.message : "Member could not be added."); } finally { setBusy(false); }
   }
   async function sendMessage(event: React.FormEvent) {
-    event.preventDefault(); if (!selectedId || !body.trim() || !userId) return; setBusy(true); setError("");
-    try { const { error: insertError } = await supabase.from("messages").insert({ conversation_id: selectedId, sender_id: userId, body: body.trim(), message_type: messageType }); if (insertError) throw insertError; setBody(""); await loadMessages(selectedId); }
+    event.preventDefault(); if (!selectedId || !body.trim() || !effectiveUserId) return; setBusy(true); setError("");
+    try { const { error: insertError } = await supabase.from("messages").insert({ conversation_id: selectedId, sender_id: effectiveUserId, body: body.trim(), message_type: messageType }); if (insertError) throw insertError; setBody(""); await loadMessages(selectedId); }
     catch (e) { setError(e instanceof Error ? e.message : "Message could not be sent."); } finally { setBusy(false); }
   }
 
@@ -76,7 +80,7 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
         {!selected && <div className="empty"><strong>Select or create a conversation</strong><p>Direct messages stay between the two members. Group messages stay inside the selected group.</p></div>}
         {selected && <>
           <div className="messaging-header"><div><p className="eyebrow">{selected.kind === "group" ? "Group" : "Private 1:1"}</p><h3>{selected.kind === "group" ? selected.name || "Unnamed group" : "Direct message"}</h3></div>{selectedIsGroupCreator && <form className="inline-form" onSubmit={addMember}><input type="email" placeholder="Member account email" value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} required /><button className="btn" disabled={busy}>Add member</button></form>}</div>
-          <div className="message-list">{messages.length === 0 && <p className="empty-copy">No messages yet. Send the first one.</p>}{messages.map((message) => <article key={message.id} className={`message-bubble ${message.sender_id === userId ? "mine" : "theirs"}`}><span>{message.message_type.replaceAll("_", " ")}</span><p>{message.body}</p><small>{new Date(message.created_at).toLocaleString()}</small></article>)}</div>
+          <div className="message-list">{messages.length === 0 && <p className="empty-copy">No messages yet. Send the first one.</p>}{messages.map((message) => <article key={message.id} className={`message-bubble ${message.sender_id === effectiveUserId ? "mine" : "theirs"}`}><span>{message.message_type.replaceAll("_", " ")}</span><p>{message.body}</p><small>{new Date(message.created_at).toLocaleString()}</small></article>)}</div>
           <form className="message-compose" onSubmit={sendMessage}><select value={messageType} onChange={(e) => setMessageType(e.target.value)} aria-label="Message type">{messageTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a secure sports message..." maxLength={4000} required /><button className="btn primary" disabled={busy || !body.trim()}><Send size={16} /> Send</button></form>
         </>}
       </section>
