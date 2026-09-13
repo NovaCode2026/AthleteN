@@ -10,6 +10,6 @@ test("package metadata is valid", () => {
 });
 
 test("required build and test scripts exist", () => {
-  assert.equal(packageJson.scripts.build, "vite build");
+  assert.equal(packageJson.scripts.build, "vite build && node scripts/write-netlify-redirects.mjs");
   assert.equal(packageJson.scripts.test, "node --test");
 });
