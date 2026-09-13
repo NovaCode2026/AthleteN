@@ -6,10 +6,12 @@ import path from 'node:path';
 const root = process.cwd();
 const readJson = (file) => JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
 
+const expectedBuild = 'vite build && node scripts/write-netlify-redirects.mjs';
+
 test('production package is configured for Node 22', () => {
   const pkg = readJson('package.json');
   assert.equal(pkg.engines?.node, '22.x');
-  assert.equal(pkg.scripts?.build, 'vite build');
+  assert.equal(pkg.scripts?.build, expectedBuild);
   assert.equal(pkg.scripts?.check, 'npm run build && npm test');
 });
 
