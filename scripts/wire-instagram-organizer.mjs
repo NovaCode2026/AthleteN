@@ -3,22 +3,22 @@ import fs from "node:fs";
 const path = "src/App.tsx";
 let source = fs.readFileSync(path, "utf8");
 
-if (!source.includes('import InstagramOrganizerScanner from "./components/instagram/InstagramOrganizerScanner";')) {
-  const anchor = 'import MessagingPage from "./components/messaging/MessagingPage";';
-  if (!source.includes(anchor)) throw new Error("MessagingPage import anchor not found");
-  source = source.replace(anchor, `${anchor}\nimport InstagramOrganizerScanner from "./components/instagram/InstagramOrganizerScanner";`);
+const importLine = 'import InstagramOrganizerScanner from "./components/instagram/InstagramOrganizerScanner";';
+if (!source.includes(importLine)) {
+  const anchor = source.includes('import MessagingPage from "./components/messaging/MessagingPage";')
+    ? 'import MessagingPage from "./components/messaging/MessagingPage";'
+    : 'import AdminControlCenter from "./components/admin/AdminControlCenter";';
+  if (!source.includes(anchor)) throw new Error("Safe import anchor not found");
+  source = source.replace(anchor, `${anchor}\n${importLine}`);
 }
 
-const oldLine = 'else if (page === "scanner") content = <TournamentScannerPage scans={data.tournamentScans} planId={plan.id} accessToken={auth.session?.access_token} refresh={refresh} setToast={setToast} />;';
-const duplicateLine = 'else if (page === "scanner") content = <><TournamentScannerPage scans={data.tournamentScans} planId={plan.id} accessToken={auth.session?.access_token} refresh={refresh} setToast={setToast} /><InstagramOrganizerScanner accessToken={auth.session?.access_token} setToast={setToast} /></>';
-const unifiedLine = 'else if (page === "scanner") content = <InstagramOrganizerScanner accessToken={auth.session?.access_token} setToast={setToast} />;';
+const unifiedLine = '  else if (page === "scanner") content = <InstagramOrganizerScanner accessToken={auth.session?.access_token} setToast={setToast} />;';
+const scannerRoutePattern = /  else if \(page === "scanner"\) content = .*?;(?=\n  else if \(page === "ai"\))/s;
 
-if (source.includes(duplicateLine)) {
-  source = source.replace(duplicateLine, unifiedLine);
-} else if (source.includes(oldLine)) {
-  source = source.replace(oldLine, unifiedLine);
+if (scannerRoutePattern.test(source)) {
+  source = source.replace(scannerRoutePattern, unifiedLine);
 } else if (!source.includes(unifiedLine)) {
-  throw new Error("Scanner page anchor not found; refusing unsafe rewrite");
+  throw new Error("Scanner route anchor not found; refusing unsafe rewrite");
 }
 
 fs.writeFileSync(path, source);
