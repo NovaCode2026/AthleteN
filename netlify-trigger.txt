@@ -1,0 +1,1 @@
+Trigger Netlify rebuild from the GitHub-connected main branch. This file is intentionally empty of secrets and can be removed after deployment verification.
