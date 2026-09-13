@@ -111,11 +111,18 @@ function CheckoutPage({ accessToken }: { accessToken?: string }) {
 }
 '''
               text = text[:start] + checkout + text[end:]
+
+          route_anchor = '  if (path === "/admin") return "admin";\n  if (path === "/messages") return "messages";'
+          route_new = '  if (path === "/admin") return "admin";\n  if (path === "/plans") return "plans";\n  if (path === "/verification") return "verification";\n  if (path.startsWith("/checkout/")) return "checkout";\n  if (path === "/messages") return "messages";'
+          if route_anchor in text:
+              text = text.replace(route_anchor, route_new, 1)
+
           old = '  else if (page === "checkout") content = <CheckoutPage />;'
           new = '  else if (page === "checkout") content = <CheckoutPage accessToken={auth.session?.access_token} />;'
-          if old not in text:
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif '  else if (page === "checkout") content = <CheckoutPage accessToken={auth.session?.access_token} />;' not in text:
               raise SystemExit('Checkout render line not found')
-          text = text.replace(old, new, 1)
           app.write_text(text, encoding='utf-8')
 
           css = Path('src/styles/main.css')
