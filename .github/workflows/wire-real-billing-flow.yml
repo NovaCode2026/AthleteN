@@ -1,0 +1,141 @@
+name: Wire real billing flow
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Patch checkout UI
+        shell: python
+        run: |
+          from pathlib import Path
+          app = Path('src/App.tsx')
+          text = app.read_text(encoding='utf-8')
+          marker = '/* ATHLETEOS_REAL_BILLING_FLOW_V1 */'
+          if marker not in text:
+              start = text.find('/* ATHLETEOS_FUTURE_BILLING_CHECKOUT_V1 */')
+              end = text.find('\nfunction VerificationPage({ rows, openForm }:', start)
+              if start < 0 or end < 0:
+                  raise SystemExit('Checkout boundaries not found; refusing unsafe rewrite')
+              checkout = r'''/* ATHLETEOS_REAL_BILLING_FLOW_V1 */
+function CheckoutPage({ accessToken }: { accessToken?: string }) {
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  const route = parts[1] || "";
+  const planId = route === "success" || route === "cancel" ? "" : route;
+  const plan = planId ? getPlan(planId) : null;
+  const [status, setStatus] = useState<any>(null);
+  const [provider, setProvider] = useState("razorpay");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function loadStatus() {
+    if (!accessToken) return;
+    const response = await fetch("/.netlify/functions/payment-status", { headers: { Authorization: `Bearer ${accessToken}` } });
+    const data = await response.json().catch(() => ({}));
+    setStatus(data);
+  }
+
+  useEffect(() => { void loadStatus(); }, [accessToken]);
+
+  async function startPayment() {
+    if (!plan || !accessToken) return;
+    setBusy(true); setMessage("");
+    try {
+      const response = await fetch("/.netlify/functions/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ planId: plan.id, provider })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Unable to start payment.");
+      if (data.checkoutUrl) { window.location.assign(data.checkoutUrl); return; }
+      if (data.provider === "cashfree" && data.paymentSessionId) {
+        const script = document.createElement("script");
+        script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+        script.onload = () => {
+          const cashfree = (window as any).Cashfree({ mode: "production" });
+          cashfree.checkout({ paymentSessionId: data.paymentSessionId, redirectTarget: "_self" });
+        };
+        document.body.appendChild(script);
+        return;
+      }
+      throw new Error("Payment checkout did not return a valid session.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to start payment.");
+    } finally { setBusy(false); }
+  }
+
+  function go(path: string) { window.history.pushState(null, "", path); window.dispatchEvent(new PopStateEvent("popstate")); }
+
+  if (route === "cancel") return <FeaturePage title="Payment cancelled"><section className="card panel"><p className="eyebrow">Billing</p><h3>No payment was completed</h3><p>Your account was not upgraded.</p><button className="btn primary" onClick={() => go("/plans")}>Back to plans</button></section></FeaturePage>;
+
+  if (route === "success") return <FeaturePage title="Payment received"><section className="card panel"><p className="eyebrow">Server verification</p><h3>{status?.subscription?.status === "active" ? "Access activated" : "Payment is being confirmed"}</h3><p>{status?.subscription?.status === "active" ? `Your ${getPlan(status.subscription.plan_id).name} access is active.` : "The payment provider has returned you to AthleteOS. The server will grant access only after a verified payment webhook is processed."}</p><div className="inline-actions"><span className={`status-chip ${status?.subscription?.status === "active" ? "success" : "warning"}`}>{status?.subscription?.status === "active" ? "Active" : "Pending verification"}</span><button className="btn" onClick={() => { void loadStatus(); }}>Refresh status</button><button className="btn primary" onClick={() => go("/plans")}>Plans</button></div></section></FeaturePage>;
+
+  if (!plan || plan.id === "free") return <FeaturePage title="Checkout"><section className="card panel"><h3>Select a paid plan</h3><p>Choose a paid plan from the Plans page to continue.</p><button className="btn primary" onClick={() => go("/plans")}>Back to plans</button></section></FeaturePage>;
+
+  const verificationStatus = status?.verification?.status || "pending";
+  const approved = verificationStatus === "approved";
+  return <FeaturePage title="Secure checkout">
+    <section className="card panel checkout-shell">
+      <div className="checkout-summary">
+        <p className="eyebrow">AthleteOS billing</p>
+        <h3>{plan.name}</h3>
+        <div className="checkout-price">{plan.price}</div>
+        <p>{plan.aiLimit.toLocaleString()} AI coach messages/month</p>
+        <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
+      </div>
+      <div className="checkout-provider-slot">
+        <span className={`status-chip ${approved ? "success" : "warning"}`}>{approved ? "Student ID approved" : "Student ID approval required"}</span>
+        <h4>{approved ? "Ready for payment" : "Verification comes first"}</h4>
+        <p>{approved ? "The server has confirmed your approved student verification. Choose a payment provider and continue." : "AthleteOS will not create a paid checkout until an authorized reviewer approves your student ID proof."}</p>
+        {!approved ? <button className="btn primary" onClick={() => go("/verification")}>Submit / view student ID</button> : <>
+          <label className="field-label">Payment provider<select value={provider} onChange={(event) => setProvider(event.target.value)}><option value="razorpay">Razorpay</option><option value="stripe">Stripe</option><option value="cashfree">Cashfree</option></select></label>
+          <button className="btn primary" disabled={busy} onClick={() => void startPayment()}>{busy ? "Starting secure checkout…" : `Pay ${plan.price}`}</button>
+          {message && <p className="error-text">{message}</p>}
+        </>}
+        <button className="btn" onClick={() => go("/plans")}>Back to plans</button>
+      </div>
+    </section>
+  </FeaturePage>;
+}
+'''
+              text = text[:start] + checkout + text[end:]
+
+          old = '  else if (page === "checkout") content = <CheckoutPage />;'
+          new = '  else if (page === "checkout") content = <CheckoutPage accessToken={auth.session?.access_token} />;'
+          if old not in text:
+              raise SystemExit('Checkout render line not found')
+          text = text.replace(old, new, 1)
+          app.write_text(text, encoding='utf-8')
+
+          css = Path('src/styles/main.css')
+          styles = css.read_text(encoding='utf-8')
+          css_marker = '/* ATHLETEOS_REAL_BILLING_FLOW_STYLES_V1 */'
+          if css_marker not in styles:
+              styles += '''\n\n/* ATHLETEOS_REAL_BILLING_FLOW_STYLES_V1 */\n.checkout-provider-slot { display: grid; gap: 12px; align-content: start; }\n.checkout-provider-slot select { width: 100%; margin-top: 6px; }\n.field-label { display: grid; gap: 4px; font-weight: 600; }\n.error-text { color: #ff7b7b; }\n'''
+          css.write_text(styles, encoding='utf-8')
+      - name: Validate production build
+        run: npm ci && npm run build
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx src/styles/main.css
+          git commit -m "feat: enforce verification before payment and activate access from webhooks"
+          git push
+          git rm .github/workflows/wire-real-billing-flow.yml
+          git commit -m "chore: remove one-time billing flow workflow"
+          git push
