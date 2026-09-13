@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - 'src/App.tsx'
+      - '.github/workflows/repair-verification-modal.yml'
 
 permissions:
   contents: write
@@ -31,7 +32,7 @@ jobs:
           old = '''    verifications: [["document_type", "Proof type", "select", ["school_id", "fee_receipt", "bonafide"]], ["file_path", "Storage file path"], ["status", "Status", "select", ["pending", "approved", "rejected"]]]'''
           new = '''    verifications: [["document_type", "Proof type", "select", ["school_id", "fee_receipt", "bonafide"]]]'''
           if old not in s:
-              raise SystemExit('verification fields pattern not found')
+              raise SystemExit('verification fields pattern not found after restore')
           s = s.replace(old, new, 1)
           old_submit = '''      if (form.resource === "documents" && file) {
         if (!userId) throw new Error("Please sign in again before uploading.");
@@ -52,12 +53,12 @@ jobs:
       }
       await save(form.resource, payload);'''
           if old_submit not in s:
-              raise SystemExit('upload submit pattern not found')
+              raise SystemExit('upload submit pattern not found after restore')
           s = s.replace(old_submit, new_submit, 1)
           old_render = '''{form.resource === "documents" && <label className="field"><span>Upload file</span><input type="file" onChange={(event) => setFile(event.target.files?.[0] || null)} /></label>}'''
           new_render = '''{(form.resource === "documents" || form.resource === "verifications") && <label className="field"><span>{form.resource === "verifications" ? "Proof file" : "Upload file"}</span><input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" required onChange={(event) => setFile(event.target.files?.[0] || null)} /></label>}'''
           if old_render not in s:
-              raise SystemExit('file picker pattern not found')
+              raise SystemExit('file picker pattern not found after restore')
           s = s.replace(old_render, new_render, 1)
           p.write_text(s, encoding='utf-8')
 
