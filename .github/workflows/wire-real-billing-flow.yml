@@ -16,7 +16,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - name: Patch checkout UI
         shell: python
         run: |
@@ -112,7 +111,6 @@ function CheckoutPage({ accessToken }: { accessToken?: string }) {
 }
 '''
               text = text[:start] + checkout + text[end:]
-
           old = '  else if (page === "checkout") content = <CheckoutPage />;'
           new = '  else if (page === "checkout") content = <CheckoutPage accessToken={auth.session?.access_token} />;'
           if old not in text:
@@ -127,8 +125,8 @@ function CheckoutPage({ accessToken }: { accessToken?: string }) {
               styles += '''\n\n/* ATHLETEOS_REAL_BILLING_FLOW_STYLES_V1 */\n.checkout-provider-slot { display: grid; gap: 12px; align-content: start; }\n.checkout-provider-slot select { width: 100%; margin-top: 6px; }\n.field-label { display: grid; gap: 4px; font-weight: 600; }\n.error-text { color: #ff7b7b; }\n'''
           css.write_text(styles, encoding='utf-8')
       - name: Validate production build
-        run: npm ci && npm run build
-      - name: Commit patch
+        run: npm install && npm run build
+      - name: Commit patch and remove workflow
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
