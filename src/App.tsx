@@ -74,214 +74,40 @@ function pageFromPath(): PageId {
 
 function sanitizeProfileValues(values: Partial<Profile>) {
   const safeValues: Partial<Profile> = {};
-  const allowedKeys: Array<keyof Profile> = [
-    "full_name",
-    "date_of_birth",
-    "profile_image_path",
-    "weight_kg",
-    "height_cm",
-    "belt",
-    "academy",
-    "coach",
-    "emergency_contact",
-    "achievements"
-  ];
-
-  for (const key of allowedKeys) {
-    if (values[key] !== undefined) {
-      safeValues[key] = values[key] as never;
-    }
-  }
-
-  if (!safeValues.full_name?.trim()) {
-    throw new Error("Full name is required to complete onboarding.");
-  }
-
+  const allowedKeys: Array<keyof Profile> = ["full_name", "date_of_birth", "profile_image_path", "weight_kg", "height_cm", "belt", "academy", "coach", "emergency_contact", "achievements"];
+  for (const key of allowedKeys) if (values[key] !== undefined) safeValues[key] = values[key] as never;
+  if (!safeValues.full_name?.trim()) throw new Error("Full name is required to complete onboarding.");
   safeValues.full_name = safeValues.full_name.trim();
   return safeValues;
 }
 
-function Field({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
-  return <label className="field"><span>{label}</span><input {...props} /></label>;
-}
-
-function SelectField({ label, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { label: string }) {
-  return <label className="field"><span>{label}</span><select {...props}>{children}</select></label>;
-}
-
-function Toast({ toast }: { toast: ToastState }) {
-  return toast ? <div className={`toast ${toast.type}`} role="status">{toast.message}</div> : null;
-}
+function Field({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) { return <label className="field"><span>{label}</span><input {...props} /></label>; }
+function SelectField({ label, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { label: string }) { return <label className="field"><span>{label}</span><select {...props}>{children}</select></label>; }
+function Toast({ toast }: { toast: ToastState }) { return toast ? <div className={`toast ${toast.type}`} role="status">{toast.message}</div> : null; }
 
 function VerificationCallback() {
-  const auth = useAuth();
-  const params = new URLSearchParams(window.location.search);
-  const errorDescription = params.get("error_description") || params.get("error");
-
-  useEffect(() => {
-    if (auth.user) {
-      const target = auth.emailVerified ? "/" : "/onboarding";
-      window.history.replaceState(null, "", target);
-    }
-  }, [auth.user, auth.emailVerified]);
-
-  if (errorDescription) {
-    return <main className="auth-page"><section className="auth-card">
-      <span className="eyebrow">AthleteOS verification</span>
-      <h1>Verification link could not be used</h1>
-      <p>The link may be expired, already used, or malformed. Return to login and request a new verification email if needed.</p>
-      <p className="notice" role="alert">{errorDescription.includes("expired") ? "This verification link has expired." : "Email verification could not be completed."}</p>
-    </section></main>;
-  }
-
-  return <main className="auth-page"><section className="auth-card">
-    <span className="eyebrow">AthleteOS verification</span>
-    <h1>{auth.emailVerified ? "Email verified" : "Finishing verification..."}</h1>
-    <p>{auth.emailVerified ? "Your email is verified. Redirecting you back to AthleteOS." : "Please wait while AthleteOS confirms your email session."}</p>
-  </section></main>;
+  const auth = useAuth(); const params = new URLSearchParams(window.location.search); const errorDescription = params.get("error_description") || params.get("error");
+  useEffect(() => { if (auth.user) window.history.replaceState(null, "", auth.emailVerified ? "/" : "/onboarding"); }, [auth.user, auth.emailVerified]);
+  if (errorDescription) return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteOS verification</span><h1>Verification link could not be used</h1><p>The link may be expired, already used, or malformed. Return to login and request a new verification email if needed.</p><p className="notice" role="alert">{errorDescription.includes("expired") ? "This verification link has expired." : "Email verification could not be completed."}</p></section></main>;
+  return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteOS verification</span><h1>{auth.emailVerified ? "Email verified" : "Finishing verification..."}</h1><p>{auth.emailVerified ? "Your email is verified. Redirecting you back to AthleteOS." : "Please wait while AthleteOS confirms your email session."}</p></section></main>;
 }
 
 function AuthScreen({ initialMode }: { initialMode?: AuthMode }) {
-  const auth = useAuth();
-  const [mode, setMode] = useState<AuthMode>(initialMode || (isPasswordResetRoute() ? "reset" : "login"));
-  const [form, setForm] = useState({ email: "", password: "", name: "" });
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    setMessage("");
-    setBusy(true);
-    try {
-      if (mode === "register") {
-        await auth.signUp({ email: form.email, password: form.password, metadata: { full_name: form.name } });
-        setMessage("Check your email for the AthleteOS verification link. After verifying, you will return here automatically.");
-      } else if (mode === "forgot") {
-        await auth.resetPassword(form.email);
-        setMessage("Password reset email sent.");
-      } else if (mode === "reset") {
-        await auth.updatePassword(form.password);
-        setMessage("Password updated. You can continue to AthleteOS.");
-        window.history.replaceState(null, "", "/");
-        setMode("login");
-      } else {
-        await auth.signIn({ email: form.email, password: form.password });
-      }
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Authentication failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function resendVerification() {
-    if (!form.email.trim()) {
-      setMessage("Enter your email address first.");
-      return;
-    }
-    setBusy(true);
-    try {
-      await auth.resendVerification(form.email);
-      setMessage("A new AthleteOS verification email has been sent.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Verification email could not be resent.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function signInWithGoogle() {
-    setMessage("");
-    setBusy(true);
-    try {
-      await auth.signInWithGoogle();
-      setMessage("Redirecting to Google sign-in...");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Google sign-in could not be started.");
-      setBusy(false);
-    }
-  }
-
-  if (!auth.configured) {
-    const configurationIssues = supabaseConfig.missing.concat(supabaseConfig.invalid);
-    return <main className="auth-page"><section className="auth-card">
-      <h1>AthleteOS</h1>
-      <p>Supabase is not configured. Add the required public Vite variables to run the cloud app.</p>
-      {configurationIssues.length > 0 && <p className="notice" role="status">Missing or invalid: {configurationIssues.join(", ")}</p>}
-    </section></main>;
-  }
-
-  return <main className="auth-page">
-    <section className="auth-card">
-      <span className="eyebrow">Nova Code</span>
-      <h1>AthleteOS - Taekwondo Edition</h1>
-      <p>Secure cloud command center for training, tournaments, documents, medals, goals, verification, plans, and AI coaching.</p>
-      <button type="button" className="btn oauth-btn" onClick={() => void signInWithGoogle()} disabled={busy}>Continue with Google</button>
-      <div className="oauth-divider"><span>or use email</span></div>
-      <form onSubmit={submit}>
-        {mode === "register" && <Field label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />}
-        {mode !== "reset" && <Field label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />}
-        {mode !== "forgot" && <Field label="Password" type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />}
-        <label className="remember"><input type="checkbox" defaultChecked /> Remember me on this device</label>
-        <button className="btn primary" disabled={busy}>{busy ? "Please wait..." : mode === "register" ? "Create account" : mode === "forgot" ? "Send reset email" : mode === "reset" ? "Update password" : "Log in"}</button>
-      </form>
-      {message && <p className="notice" role="status">{message}</p>}
-      <div className="auth-links">
-        <button onClick={() => setMode("login")}>Login</button>
-        <button onClick={() => setMode("register")}>Register</button>
-        <button onClick={() => setMode("forgot")}>Forgot password</button>
-        {mode === "register" && <button onClick={resendVerification} disabled={busy}>Resend verification</button>}
-        {mode === "reset" && <button onClick={() => setMode("reset")}>Reset password</button>}
-      </div>
-    </section>
-  </main>;
+  const auth = useAuth(); const [mode, setMode] = useState<AuthMode>(initialMode || (isPasswordResetRoute() ? "reset" : "login")); const [form, setForm] = useState({ email: "", password: "", name: "" }); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
+  async function submit(event: React.FormEvent) { event.preventDefault(); setMessage(""); setBusy(true); try { if (mode === "register") { await auth.signUp({ email: form.email, password: form.password, metadata: { full_name: form.name } }); setMessage("Check your email for the AthleteOS verification link. After verifying, you will return here automatically."); } else if (mode === "forgot") { await auth.resetPassword(form.email); setMessage("Password reset email sent."); } else if (mode === "reset") { await auth.updatePassword(form.password); setMessage("Password updated. You can continue to AthleteOS."); window.history.replaceState(null, "", "/"); setMode("login"); } else await auth.signIn({ email: form.email, password: form.password }); } catch (error) { setMessage(error instanceof Error ? error.message : "Authentication failed."); } finally { setBusy(false); } }
+  async function resendVerification() { if (!form.email.trim()) return setMessage("Enter your email address first."); setBusy(true); try { await auth.resendVerification(form.email); setMessage("A new AthleteOS verification email has been sent."); } catch (error) { setMessage(error instanceof Error ? error.message : "Verification email could not be resent."); } finally { setBusy(false); } }
+  async function signInWithGoogle() { setMessage(""); setBusy(true); try { await auth.signInWithGoogle(); setMessage("Redirecting to Google sign-in..."); } catch (error) { setMessage(error instanceof Error ? error.message : "Google sign-in could not be started."); setBusy(false); } }
+  if (!auth.configured) { const configurationIssues = supabaseConfig.missing.concat(supabaseConfig.invalid); return <main className="auth-page"><section className="auth-card"><h1>AthleteOS</h1><p>Supabase is not configured. Add the required public Vite variables to run the cloud app.</p>{configurationIssues.length > 0 && <p className="notice" role="status">Missing or invalid: {configurationIssues.join(", ")}</p>}</section></main>; }
+  return <main className="auth-page"><section className="auth-card"><span className="eyebrow">Nova Code</span><h1>AthleteOS - Taekwondo Edition</h1><p>Secure cloud command center for training, tournaments, documents, medals, goals, verification, plans, and AI coaching.</p><button type="button" className="btn oauth-btn" onClick={() => void signInWithGoogle()} disabled={busy}>Continue with Google</button><div className="oauth-divider"><span>or use email</span></div><form onSubmit={submit}>{mode === "register" && <Field label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />}{mode !== "reset" && <Field label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />}{mode !== "forgot" && <Field label="Password" type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />}<label className="remember"><input type="checkbox" defaultChecked /> Remember me on this device</label><button className="btn primary" disabled={busy}>{busy ? "Please wait..." : mode === "register" ? "Create account" : mode === "forgot" ? "Send reset email" : mode === "reset" ? "Update password" : "Log in"}</button></form>{message && <p className="notice" role="status">{message}</p>}<div className="auth-links"><button onClick={() => setMode("login")}>Login</button><button onClick={() => setMode("register")}>Register</button><button onClick={() => setMode("forgot")}>Forgot password</button>{mode === "register" && <button onClick={resendVerification} disabled={busy}>Resend verification</button>}{mode === "reset" && <button onClick={() => setMode("reset")}>Reset password</button>}</div></section></main>;
 }
 
-function Stat({ icon: Icon, label, value, note }: { icon: typeof Activity; label: string; value: string | number; note: string }) {
-  return <article className="metric card"><div className="metric-icon"><Icon size={18} /></div><div><p>{label}</p><strong>{value}</strong><small>{note}</small></div></article>;
-}
-
-function DataTable<T extends { id?: string }>({ rows, columns, empty }: {
-  rows: T[];
-  empty: string;
-  columns: Array<{ key: string; label: string; render?: (row: T) => React.ReactNode }>;
-}) {
-  if (!rows.length) return <div className="empty"><strong>{empty}</strong><p>Add a record with the action above.</p></div>;
-  return <div className="table-wrap"><table><thead><tr>{columns.map((col) => <th key={col.key}>{col.label}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={row.id ?? index}>{columns.map((col) => <td key={col.key}>{col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? "")}</td>)}</tr>)}</tbody></table></div>;
-}
+function Stat({ icon: Icon, label, value, note }: { icon: typeof Activity; label: string; value: string | number; note: string }) { return <article className="metric card"><div className="metric-icon"><Icon size={18} /></div><div><p>{label}</p><strong>{value}</strong><small>{note}</small></div></article>; }
+function DataTable<T extends { id?: string }>({ rows, columns, empty }: { rows: T[]; empty: string; columns: Array<{ key: string; label: string; render?: (row: T) => React.ReactNode }> }) { if (!rows.length) return <div className="empty"><strong>{empty}</strong><p>Add a record with the action above.</p></div>; return <div className="table-wrap"><table><thead><tr>{columns.map((col) => <th key={col.key}>{col.label}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={row.id ?? index}>{columns.map((col) => <td key={col.key}>{col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? "")}</td>)}</tr>)}</tbody></table></div>; }
 
 function useCloudData(userId: string | undefined, setToast: (toast: ToastState) => void) {
-  const [data, setData] = useState<CloudData>({
-    profile: {}, tournaments: [], training: [], medals: [], weights: [], goals: [], checklist: [], documents: [], notifications: [], feedback: [], verifications: [], roadmap: [], roadmapVotes: [], tournamentScans: [], aiUsage: [], subscriptions: [], subscriptionUsage: []
-  });
-  const [hasProfile, setHasProfile] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  async function refresh() {
-    if (!userId || !isSupabaseConfigured) return;
-    setLoading(true);
-    const dataErrors: string[] = [];
-    async function loadUserRows<T>(resource: Resource, options: { order?: string; ascending?: boolean } = {}) {
-      try { return await listRows<T>(resource, userId, options); }
-      catch (error) { dataErrors.push(error instanceof Error ? error.message : `Unable to load ${resource}.`); return [] as T[]; }
-    }
-    try {
-      const profiles = await listRows<Profile>("profile", userId);
-      const savedProfile = profiles[0];
-      const profileComplete = Boolean(savedProfile?.full_name?.trim());
-      const profile = savedProfile || { user_id: userId, plan_id: "free", role: "athlete" };
-      const [tournaments, training, medals, weights, goals, checklist, documents, notifications, feedback, verifications, roadmapRows, roadmapVotes, tournamentScans, aiUsage, subscriptions, subscriptionUsage] = await Promise.all([
-        loadUserRows<Tournament>("tournaments", { order: "starts_at", ascending: true }), loadUserRows<TrainingSession>("training", { order: "session_date", ascending: false }), loadUserRows<MedalRecord>("medals", { order: "awarded_at", ascending: false }), loadUserRows<WeightLog>("weights", { order: "logged_at", ascending: true }), loadUserRows<Goal>("goals", { order: "target_date", ascending: true }), loadUserRows<ChecklistItem>("checklist"), loadUserRows<DocumentRecord>("documents", { order: "created_at" }), loadUserRows<{ id?: string; title: string; body?: string; read_at?: string }>("notifications", { order: "created_at" }), loadUserRows<FeedbackItem>("feedback", { order: "created_at" }), loadUserRows<VerificationRequest>("verifications", { order: "created_at" }),
-        listRows<RoadmapItem>("roadmap", undefined, { order: "votes", publicRows: true }).catch((error) => { dataErrors.push(error instanceof Error ? error.message : "Unable to load roadmap."); return [] as RoadmapItem[]; }), loadUserRows<RoadmapVote>("roadmapVotes", { order: "created_at" }), loadUserRows<TournamentScan>("tournamentScans", { order: "last_checked_at" }), loadUserRows<AiUsageEvent>("aiUsage", { order: "created_at" }), loadUserRows<Subscription>("subscriptions", { order: "created_at" }), loadUserRows<SubscriptionUsage>("subscriptionUsage", { order: "usage_month" })
-      ]);
-      setHasProfile(profileComplete);
-      setData({ profile, tournaments, training, medals, weights, goals, checklist, documents, notifications, feedback, verifications, roadmap: roadmapRows.map((item) => ({ ...item, user_has_voted: roadmapVotes.some((vote) => vote.roadmap_item_id === item.id) })), roadmapVotes, tournamentScans, aiUsage, subscriptions, subscriptionUsage });
-      if (dataErrors.length > 0) setToast({ type: "warning", message: dataErrors.slice(0, 2).join(" ") });
-    } catch (error) { setHasProfile(false); setToast({ type: "error", message: error instanceof Error ? error.message : "Unable to load profile." }); }
-    finally { setLoading(false); }
-  }
-  useEffect(() => { void refresh(); }, [userId]);
-  return { data, loading, refresh, hasProfile };
+  const [data, setData] = useState<CloudData>({ profile: {}, tournaments: [], training: [], medals: [], weights: [], goals: [], checklist: [], documents: [], notifications: [], feedback: [], verifications: [], roadmap: [], roadmapVotes: [], tournamentScans: [], aiUsage: [], subscriptions: [], subscriptionUsage: [] }); const [hasProfile, setHasProfile] = useState(false); const [loading, setLoading] = useState(true);
+  async function refresh() { if (!userId || !isSupabaseConfigured) return; setLoading(true); const dataErrors: string[] = []; async function loadUserRows<T>(resource: Resource, options: { order?: string; ascending?: boolean } = {}) { try { return await listRows<T>(resource, userId, options); } catch (error) { dataErrors.push(error instanceof Error ? error.message : `Unable to load ${resource}.`); return [] as T[]; } } try { const profiles = await listRows<Profile>("profile", userId); const savedProfile = profiles[0]; const profileComplete = Boolean(savedProfile?.full_name?.trim()); const profile = savedProfile || { user_id: userId, plan_id: "free", role: "athlete" }; const [tournaments, training, medals, weights, goals, checklist, documents, notifications, feedback, verifications, roadmapRows, roadmapVotes, tournamentScans, aiUsage, subscriptions, subscriptionUsage] = await Promise.all([loadUserRows<Tournament>("tournaments", { order: "starts_at", ascending: true }), loadUserRows<TrainingSession>("training", { order: "session_date", ascending: false }), loadUserRows<MedalRecord>("medals", { order: "awarded_at", ascending: false }), loadUserRows<WeightLog>("weights", { order: "logged_at", ascending: true }), loadUserRows<Goal>("goals", { order: "target_date", ascending: true }), loadUserRows<ChecklistItem>("checklist"), loadUserRows<DocumentRecord>("documents", { order: "created_at" }), loadUserRows<{ id?: string; title: string; body?: string; read_at?: string }>("notifications", { order: "created_at" }), loadUserRows<FeedbackItem>("feedback", { order: "created_at" }), loadUserRows<VerificationRequest>("verifications", { order: "created_at" }), listRows<RoadmapItem>("roadmap", undefined, { order: "votes", publicRows: true }).catch((error) => { dataErrors.push(error instanceof Error ? error.message : "Unable to load roadmap."); return [] as RoadmapItem[]; }), loadUserRows<RoadmapVote>("roadmapVotes", { order: "created_at" }), loadUserRows<TournamentScan>("tournamentScans", { order: "last_checked_at" }), loadUserRows<AiUsageEvent>("aiUsage", { order: "created_at" }), loadUserRows<Subscription>("subscriptions", { order: "created_at" }), loadUserRows<SubscriptionUsage>("subscriptionUsage", { order: "usage_month" })]); setHasProfile(profileComplete); setData({ profile, tournaments, training, medals, weights, goals, checklist, documents, notifications, feedback, verifications, roadmap: roadmapRows.map((item) => ({ ...item, user_has_voted: roadmapVotes.some((vote) => vote.roadmap_item_id === item.id) })), roadmapVotes, tournamentScans, aiUsage, subscriptions, subscriptionUsage }); if (dataErrors.length > 0) setToast({ type: "warning", message: dataErrors.slice(0, 2).join(" ") }); } catch (error) { setHasProfile(false); setToast({ type: "error", message: error instanceof Error ? error.message : "Unable to load profile." }); } finally { setLoading(false); } }
+  useEffect(() => { void refresh(); }, [userId]); return { data, loading, refresh, hasProfile };
 }
 
 function FeaturePage({ title, actions, children }: { title: string; actions?: React.ReactNode; children: React.ReactNode }) { return <><div className="page-head"><div><p className="eyebrow">AthleteOS V2</p><h2>{title}</h2></div>{actions}</div>{children}</>; }
@@ -289,10 +115,7 @@ function documentStatus(expiresAt?: string) { if (!expiresAt) return { label: "V
 function scanIntervalHours(planId?: string) { return ({ free: 12, student: 6, pro: 3, champion: 1, academy: 0.5 } as Record<string, number>)[planId || "free"] ?? 12; }
 function safeHost(url: string) { try { return new URL(url).host; } catch { return url; } }
 
-function Dashboard({ data, usage, openForm }: { data: CloudData; usage: UsageSummary; openForm: (resource: Resource) => void }) {
-  const latestWeight = data.weights.at(-1)?.weight_kg || data.profile.weight_kg || 0; const readiness = calculateReadiness(data);
-  return <><AthleteCommandCenter data={data} /><section className="hero card"><div><span className="pill">Taekwondo Edition V2</span><h2>Train, compete, verify, and grow.</h2><p>Cloud-backed athlete operating system with protected routes, Supabase RLS, plan limits, student verification, and server-side AI.</p><div className="hero-actions"><button className="btn primary" onClick={() => openForm("training")}>Log training</button><button className="btn" onClick={() => openForm("tournaments")}>Add tournament</button></div></div><div className="readiness"><strong>{readiness}%</strong><span>Readiness</span></div></section><section className="metrics"><Stat icon={Trophy} label="Tournaments" value={data.tournaments.length} note="Tracked events" /><Stat icon={Calendar} label="Training" value={data.training.length} note="Sessions logged" /><Stat icon={Weight} label="Weight" value={`${latestWeight} kg`} note="Latest log" /><Stat icon={Sparkles} label="AI usage" value={`${usage.used}/${usage.limit}`} note={usage.plan.name} /></section><section className="grid two"><article className="card panel"><h3>Weight trend</h3><ResponsiveContainer width="100%" height={220}><LineChart data={data.weights}><CartesianGrid strokeDasharray="3 3" stroke="#25405f" /><XAxis dataKey="logged_at" /><YAxis /><Tooltip /><Line type="monotone" dataKey="weight_kg" stroke="#49d7ff" strokeWidth={3} /></LineChart></ResponsiveContainer></article><article className="card panel"><h3>Goals</h3>{data.goals.map((goal) => <div className="goal" key={goal.id || goal.title}><span>{goal.title}</span><b>{goal.progress || 0}%</b><i style={{ width: `${goal.progress || 0}%` }} /></div>)}</article></section></>;
-}
+function Dashboard({ data, usage, openForm }: { data: CloudData; usage: UsageSummary; openForm: (resource: Resource) => void }) { const latestWeight = data.weights.at(-1)?.weight_kg || data.profile.weight_kg || 0; const readiness = calculateReadiness(data); return <><AthleteCommandCenter data={data} /><section className="hero card"><div><span className="pill">Taekwondo Edition V2</span><h2>Train, compete, verify, and grow.</h2><p>Cloud-backed athlete operating system with protected routes, Supabase RLS, plan limits, student verification, and server-side AI.</p><div className="hero-actions"><button className="btn primary" onClick={() => openForm("training")}>Log training</button><button className="btn" onClick={() => openForm("tournaments")}>Add tournament</button></div></div><div className="readiness"><strong>{readiness}%</strong><span>Readiness</span></div></section><section className="metrics"><Stat icon={Trophy} label="Tournaments" value={data.tournaments.length} note="Tracked events" /><Stat icon={Calendar} label="Training" value={data.training.length} note="Sessions logged" /><Stat icon={Weight} label="Weight" value={`${latestWeight} kg`} note="Latest log" /><Stat icon={Sparkles} label="AI usage" value={`${usage.used}/${usage.limit}`} note={usage.plan.name} /></section><section className="grid two"><article className="card panel"><h3>Weight trend</h3><ResponsiveContainer width="100%" height={220}><LineChart data={data.weights}><CartesianGrid strokeDasharray="3 3" stroke="#25405f" /><XAxis dataKey="logged_at" /><YAxis /><Tooltip /><Line type="monotone" dataKey="weight_kg" stroke="#49d7ff" strokeWidth={3} /></LineChart></ResponsiveContainer></article><article className="card panel"><h3>Goals</h3>{data.goals.map((goal) => <div className="goal" key={goal.id || goal.title}><span>{goal.title}</span><b>{goal.progress || 0}%</b><i style={{ width: `${goal.progress || 0}%` }} /></div>)}</article></section></>; }
 
 function PlansPage({ profile, subscriptions }: { profile: Profile; subscriptions: Subscription[] }) { const activeSubscription = subscriptions.find((item) => ["active", "trialing"].includes(item.status)); const entitlementPlanId = activeSubscription?.plan_id || profile.plan_id || "free"; const currentPlan = getPlan(entitlementPlanId); return <FeaturePage title="Plans and billing"><section className="card panel billing-note"><CreditCard /><div><h3>Current entitlement: {currentPlan.name}</h3><p>Plan access is read from your Supabase profile/subscription records. Online checkout is not active yet, so upgrades must be provisioned by an authorized admin or future server-side billing workflow.</p></div></section><section className="plan-grid">{plans.map((plan) => <article className={`card plan-card ${plan.id === currentPlan.id ? "active" : ""}`} key={plan.id}><span className="pill">{plan.audience}</span><h3>{plan.name}</h3><strong>{plan.price}</strong><p>{plan.aiLimit} AI coach messages/month</p><ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul><button className="btn primary" disabled>{plan.id === currentPlan.id ? "Current plan" : "Upgrade unavailable"}</button></article>)}</section></FeaturePage>; }
 function VerificationPage({ rows, openForm }: { rows: VerificationRequest[]; openForm: (resource: Resource) => void }) { return <FeaturePage title="Student verification" actions={<button className="btn primary" onClick={() => openForm("verifications")}><Plus size={16} /> Submit proof</button>}><section className="card panel"><h3>Accepted proof</h3><p>Upload a school ID, fee receipt, or bonafide certificate. Admins review submissions and approve verified athlete access.</p><DataTable rows={rows} empty="No verification requests submitted" columns={[{ key: "document_type", label: "Proof type" }, { key: "status", label: "Status" }, { key: "reviewer_notes", label: "Reviewer notes" }]} /></section></FeaturePage>; }
