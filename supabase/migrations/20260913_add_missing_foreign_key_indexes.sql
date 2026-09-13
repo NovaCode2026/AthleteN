@@ -1,0 +1,24 @@
+-- Add covering indexes for foreign keys flagged by Supabase performance advisors.
+create index if not exists idx_announcements_created_by on public.announcements(created_by);
+create index if not exists idx_attendance_records_academy_id on public.attendance_records(academy_id);
+create index if not exists idx_attendance_records_training_session_id on public.attendance_records(training_session_id);
+create index if not exists idx_certificates_user_id on public.certificates(user_id);
+create index if not exists idx_competition_checklists_user_id on public.competition_checklists(user_id);
+create index if not exists idx_conversations_created_by on public.conversations(created_by);
+create index if not exists idx_documents_user_id on public.documents(user_id);
+create index if not exists idx_goals_user_id on public.goals(user_id);
+create index if not exists idx_injuries_user_id on public.injuries(user_id);
+create index if not exists idx_instagram_discovery_oauth_states_user_id on public.instagram_discovery_oauth_states(user_id);
+create index if not exists idx_instagram_oauth_states_user_id on public.instagram_oauth_states(user_id);
+create index if not exists idx_matches_tournament_id on public.matches(tournament_id);
+create index if not exists idx_matches_user_id on public.matches(user_id);
+create index if not exists idx_medals_user_id on public.medals(user_id);
+create index if not exists idx_messages_sender_id on public.messages(sender_id);
+create index if not exists idx_referrals_referred_user_id on public.referrals(referred_user_id);
+create index if not exists idx_referrals_user_id on public.referrals(user_id);
+create index if not exists idx_roadmap_votes_user_id on public.roadmap_votes(user_id);
+create index if not exists idx_student_verifications_reviewed_by on public.student_verifications(reviewed_by);
+create index if not exists idx_subscription_usage_subscription_id on public.subscription_usage(subscription_id);
+create index if not exists idx_support_tickets_assigned_to on public.support_tickets(assigned_to);
+create index if not exists idx_training_plans_academy_id on public.training_plans(academy_id);
+create index if not exists idx_training_plans_coach_user_id on public.training_plans(coach_user_id);
