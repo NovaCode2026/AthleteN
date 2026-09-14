@@ -1,6 +1,6 @@
-# AthleteOS - Taekwondo Edition V2
+# AthleteN - Taekwondo Edition V2
 
-**AthleteOS** is a production-ready cloud operating system for Taekwondo athletes, built by **Nova Code** with React, TypeScript, Vite, Supabase, Netlify, and secure server-side OpenAI coaching.
+**AthleteN** is a production-ready cloud operating system for Taekwondo athletes, built with React, TypeScript, Vite, Supabase, Netlify, and secure server-side OpenAI coaching.
 
 ## Features
 
@@ -13,7 +13,7 @@
 - AI Coach through Netlify Functions so `OPENAI_API_KEY` never ships to the browser
 - Payment-provider scaffold for Razorpay, Stripe, and Cashfree
 - Admin command-center foundation for users, plans, verifications, feedback, roadmap, badges, support tickets, announcements, feature flags, audit logs, AI usage, academy operations, and analytics
-- Responsive Nova Code branded UI for desktop, tablet, and mobile
+- Responsive AthleteN branded UI for desktop, tablet, and mobile
 
 ## Architecture
 
@@ -91,7 +91,7 @@ Then enable email auth and configure redirect URLs for local development and the
 
 ## Netlify deployment
 
-1. Connect GitHub repo `NovaCode2026/AthleteOS`.
+1. Connect GitHub repo `NovaCode2026/AthleteN`.
 2. Set build command: `npm run build`.
 3. Set publish directory: `dist`.
 4. Set functions directory: `netlify/functions`.
@@ -141,6 +141,6 @@ docs/
 
 ## License
 
-AthleteOS is proprietary software owned by **Nova Code**. It is **not released under the MIT License** or another open-source licence unless a specific component is expressly identified as being separately licensed.
+AthleteN is proprietary software owned by **Nova Code**. It is **not released under the MIT License** or another open-source licence unless a specific component is expressly identified as being separately licensed.
 
-See [`LICENSE`](./LICENSE) for the complete **AthleteOS Proprietary Software Licence**, including the Indian statutory provisions referenced by the licence.
+See [`LICENSE`](./LICENSE) for the complete **AthleteN Proprietary Software Licence**, including the Indian statutory provisions referenced by the licence.
