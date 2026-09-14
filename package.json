@@ -1,19 +1,19 @@
 {
-  "name": "athleteos-taekwondo",
+  "name": "athleten-taekwondo",
   "version": "2.0.0",
-  "description": "Production-ready AthleteOS V2 Taekwondo Edition with React, TypeScript, Supabase, Netlify, and secure OpenAI coaching.",
+  "description": "Production-ready AthleteN V2 Taekwondo Edition with React, TypeScript, Supabase, Netlify, and secure OpenAI coaching.",
   "private": false,
   "type": "module",
-  "keywords": ["athleteos", "taekwondo", "react", "typescript", "vite", "supabase", "netlify", "openai", "sports-tech"],
+  "keywords": ["athleten", "taekwondo", "react", "typescript", "vite", "supabase", "netlify", "openai", "sports-tech"],
   "author": "Nova Code",
   "license": "UNLICENSED",
-  "homepage": "https://github.com/NovaCode2026/AthleteOS#readme",
+  "homepage": "https://github.com/NovaCode2026/AthleteN#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NovaCode2026/AthleteOS.git"
+    "url": "git+https://github.com/NovaCode2026/AthleteN.git"
   },
   "bugs": {
-    "url": "https://github.com/NovaCode2026/AthleteOS/issues"
+    "url": "https://github.com/NovaCode2026/AthleteN/issues"
   },
   "scripts": {
     "dev": "vite",
