@@ -23,6 +23,53 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+      - name: Migrate legacy AthleteN branding
+        if: ${{ !contains(github.event.head_commit.message, 'chore: rename product branding to AthleteN') }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          replacements = {
+              'AthleteOS': 'AthleteN',
+              'Athlete OS': 'AthleteN',
+              'athlete-os': 'athlete-n',
+              'athlete_os': 'athlete_n',
+              'athleteos': 'athleten',
+          }
+          skip_dirs = {'.git', 'node_modules', 'dist', 'build', '.next', '.netlify'}
+          binary_exts = {'.png','.jpg','.jpeg','.gif','.webp','.ico','.pdf','.zip','.woff','.woff2','.ttf','.otf','.mp4','.mov','.mp3','.wav'}
+          changed = []
+          for p in Path('.').rglob('*'):
+              if not p.is_file() or p.suffix.lower() in binary_exts or any(x in skip_dirs for x in p.parts) or p.name == 'LICENSE':
+                  continue
+              try:
+                  s = p.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              t = s
+              for old, new in replacements.items():
+                  t = t.replace(old, new)
+              if t != s:
+                  p.write_text(t, encoding='utf-8')
+                  changed.append(str(p))
+          print('Branding files changed:', *changed, sep='\n')
+          PY
+          if git diff --quiet; then
+            echo 'No legacy branding changes required.'
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -A
+            git commit -m 'chore: rename product branding to AthleteN'
+            git push origin HEAD:main
+          fi
+      - name: Verify no legacy branding
+        shell: bash
+        run: |
+          if grep -RInE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=build --exclude-dir=.next --exclude-dir=.netlify --exclude=LICENSE 'AthleteOS|Athlete OS|athlete-os|athlete_os|athleteos' .; then
+            echo 'Legacy branding remains.'
+            exit 1
+          fi
       - name: Restore damaged App shell
         if: github.sha == '4b6fc6b159030e55428be029528e0427e54707b4'
         shell: bash
