@@ -41,7 +41,6 @@ update public.profiles p
 set username = lower(regexp_replace(left(coalesce(nullif(btrim(p.username), ''), p.full_name), 20), '[^a-zA-Z0-9]+', '', 'g'))
 where p.username is null or btrim(p.username) = '';
 
--- Resolve any generated collisions deterministically.
 with ranked as (
   select user_id, username, row_number() over (partition by lower(username) order by created_at, user_id) as rn
   from public.profiles
@@ -53,7 +52,8 @@ where p.user_id = r.user_id and r.rn > 1;
 
 create unique index if not exists profiles_username_lower_unique on public.profiles (lower(username));
 
-create or replace function public.search_messaging_users(p_query text)
+drop function if exists public.search_messaging_users(text);
+create function public.search_messaging_users(p_query text)
 returns table (user_id uuid, username text, full_name text, academy text, role text)
 language sql
 security definer
