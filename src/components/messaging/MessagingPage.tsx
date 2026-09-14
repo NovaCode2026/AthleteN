@@ -9,6 +9,7 @@ type MessagingUser = { user_id: string; username: string; full_name: string; aca
 type Props = { userId?: string; role?: string; setToast?: (toast: { type: "success" | "error" | "warning"; message: string }) => void };
 
 const messageTypes = [["normal", "Normal message"], ["tournament_announcement", "Tournament announcement"], ["training_schedule", "Training schedule"], ["training_plan", "Training plan"], ["document", "Document"], ["team_announcement", "Team announcement"]] as const;
+const usernamePattern = /^[a-z0-9][a-z0-9_.-]{2,29}$/;
 
 export default function MessagingPage({ userId, role, setToast }: Props) {
   const auth = useAuth();
@@ -23,11 +24,40 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
   const [groupName, setGroupName] = useState("");
   const [body, setBody] = useState("");
   const [messageType, setMessageType] = useState("normal");
+  const [username, setUsername] = useState("");
+  const [usernameInput, setUsernameInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const selected = useMemo(() => conversations.find((item) => item.id === selectedId), [conversations, selectedId]);
   const canCreateGroup = ["coach", "academy_admin", "admin", "super_admin"].includes(role || "");
   const selectedIsGroupCreator = Boolean(selected?.kind === "group" && selected.created_by === effectiveUserId);
+
+  async function loadProfileUsername() {
+    if (!effectiveUserId) return;
+    const { data, error: queryError } = await supabase.from("profiles").select("username").eq("user_id", effectiveUserId).maybeSingle();
+    if (queryError) throw queryError;
+    const value = data?.username || "";
+    setUsername(value);
+    setUsernameInput(value);
+  }
+
+  async function saveUsername() {
+    const value = usernameInput.trim().toLowerCase();
+    if (!effectiveUserId) return;
+    if (!usernamePattern.test(value)) {
+      setError("Username must be 3–30 characters and use only lowercase letters, numbers, dots, underscores, or hyphens.");
+      return;
+    }
+    setBusy(true); setError("");
+    try {
+      const { error: updateError } = await supabase.from("profiles").update({ username: value }).eq("user_id", effectiveUserId);
+      if (updateError) throw updateError;
+      setUsername(value); setUsernameInput(value);
+      notify({ type: "success", message: `Your username is @${value}.` });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Username could not be saved. It may already be taken.");
+    } finally { setBusy(false); }
+  }
 
   async function loadConversations() {
     if (!effectiveUserId) return;
@@ -48,6 +78,7 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
     if (queryError) { setError("Username search is temporarily unavailable."); return; }
     setUsers((data ?? []) as MessagingUser[]);
   }
+  useEffect(() => { void loadProfileUsername().catch((e) => setError(e instanceof Error ? e.message : "Your username could not be loaded.")); }, [effectiveUserId]);
   useEffect(() => { void loadConversations().catch((e) => setError(e instanceof Error ? e.message : "Messages could not be loaded.")); }, [effectiveUserId]);
   useEffect(() => { if (!selectedId) { setMessages([]); return; } void loadMessages(selectedId).catch((e) => setError(e instanceof Error ? e.message : "Conversation could not be loaded.")); }, [selectedId]);
 
@@ -82,6 +113,11 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
         <div className="section-heading"><h3><MessageCircle size={18} /> Conversations</h3></div>
         {conversations.length === 0 && <p className="empty-copy">No conversations yet.</p>}
         <div className="conversation-list">{conversations.map((conversation) => <button type="button" key={conversation.id} className={`conversation-item ${conversation.id === selectedId ? "active" : ""}`} onClick={() => setSelectedId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.name || "Unnamed group" : "Private conversation"}</strong><small>{conversation.kind === "group" ? "Group" : "1:1"}</small></button>)}</div>
+        <div className="messaging-create">
+          <strong>Your username</strong>
+          {username ? <p className="messaging-help">You can be found by other athletes as <strong>@{username}</strong>.</p> : <p className="messaging-help">Choose a unique username so athletes can find you.</p>}
+          <div className="username-search"><span>@</span><input aria-label="Your username" placeholder="your_username" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} maxLength={30} /><button type="button" className="btn" onClick={() => void saveUsername()} disabled={busy}>{username ? "Update" : "Set"}</button></div>
+        </div>
         <div className="messaging-create">
           <strong><Search size={15} /> Message a user</strong>
           <p className="messaging-help">Search the person's unique username. One username can belong to only one account.</p>
