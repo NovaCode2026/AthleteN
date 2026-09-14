@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { MessageCircle, Plus, Send, Users, Search } from "lucide-react";
+import { MessageCircle, Plus, Search, Send, Users } from "lucide-react";
 import { requireSupabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
 
 type Conversation = { id: string; kind: "direct" | "group"; name?: string | null; created_by: string; created_at: string };
 type Message = { id: string; conversation_id: string; sender_id: string; body: string; message_type: string; created_at: string };
-type MessagingUser = { user_id: string; full_name: string; academy?: string | null; role: string };
-type Props = { userId?: string; role?: string; setToast?: (toast: { type: "success" | "error" | "warning"; message: string } | null) => void };
+type MessagingUser = { user_id: string; username: string; full_name: string; academy?: string | null; role: string };
+type Props = { userId?: string; role?: string; setToast?: (toast: { type: "success" | "error" | "warning"; message: string }) => void };
 
 const messageTypes = [["normal", "Normal message"], ["tournament_announcement", "Tournament announcement"], ["training_schedule", "Training schedule"], ["training_plan", "Training plan"], ["document", "Document"], ["team_announcement", "Team announcement"]] as const;
 
@@ -45,7 +45,7 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
     setSearch(value);
     if (value.trim().length < 2) { setUsers([]); return; }
     const { data, error: queryError } = await supabase.rpc("search_messaging_users", { p_query: value.trim() });
-    if (queryError) { setError("User search is temporarily unavailable."); return; }
+    if (queryError) { setError("Username search is temporarily unavailable."); return; }
     setUsers((data ?? []) as MessagingUser[]);
   }
   useEffect(() => { void loadConversations().catch((e) => setError(e instanceof Error ? e.message : "Messages could not be loaded.")); }, [effectiveUserId]);
@@ -57,17 +57,17 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
       const { data, error: rpcError } = await supabase.rpc("create_direct_conversation_by_user", { p_recipient_id: user.user_id });
       if (rpcError) throw rpcError;
       setSelectedId(String(data)); setSearch(""); setUsers([]); await loadConversations();
-      notify({ type: "success", message: `Conversation started with ${user.full_name}.` });
+      notify({ type: "success", message: `Conversation started with @${user.username}.` });
     } catch (e) { setError(e instanceof Error ? e.message : "Direct conversation could not be created."); } finally { setBusy(false); }
   }
   async function createGroup(event: React.FormEvent) {
     event.preventDefault(); if (!canCreateGroup || !groupName.trim()) return; setBusy(true); setError("");
-    try { const { data, error: rpcError } = await supabase.rpc("create_group_conversation", { p_name: groupName.trim() }); if (rpcError) throw rpcError; setSelectedId(String(data)); setGroupName(""); await loadConversations(); notify({ type: "success", message: "Group created. Search for athletes or coaches below to add members." }); }
+    try { const { data, error: rpcError } = await supabase.rpc("create_group_conversation", { p_name: groupName.trim() }); if (rpcError) throw rpcError; setSelectedId(String(data)); setGroupName(""); await loadConversations(); notify({ type: "success", message: "Group created. Search usernames below to add members." }); }
     catch (e) { setError(e instanceof Error ? e.message : "Group could not be created."); } finally { setBusy(false); }
   }
   async function addMember(user: MessagingUser) {
     if (!selectedId || !selectedIsGroupCreator) return; setBusy(true); setError("");
-    try { const { error: rpcError } = await supabase.rpc("add_group_member_by_user", { p_conversation_id: selectedId, p_user_id: user.user_id }); if (rpcError) throw rpcError; setSearch(""); setUsers([]); notify({ type: "success", message: `${user.full_name} added to the group.` }); }
+    try { const { error: rpcError } = await supabase.rpc("add_group_member_by_user", { p_conversation_id: selectedId, p_user_id: user.user_id }); if (rpcError) throw rpcError; setSearch(""); setUsers([]); notify({ type: "success", message: `@${user.username} added to the group.` }); }
     catch (e) { setError(e instanceof Error ? e.message : "Member could not be added."); } finally { setBusy(false); }
   }
   async function sendMessage(event: React.FormEvent) {
@@ -81,19 +81,20 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
       <aside className="card panel messaging-sidebar">
         <div className="section-heading"><h3><MessageCircle size={18} /> Conversations</h3></div>
         {conversations.length === 0 && <p className="empty-copy">No conversations yet.</p>}
-        <div className="conversation-list">{conversations.map((conversation) => <button type="button" key={conversation.id} className={`conversation-item ${conversation.id === selectedId ? "active" : ""}`} onClick={() => setSelectedId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.name || "Unnamed group" : "Direct message"}</strong><small>{conversation.kind === "group" ? "Group" : "Private 1:1"}</small></button>)}</div>
+        <div className="conversation-list">{conversations.map((conversation) => <button type="button" key={conversation.id} className={`conversation-item ${conversation.id === selectedId ? "active" : ""}`} onClick={() => setSelectedId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.name || "Unnamed group" : "Private conversation"}</strong><small>{conversation.kind === "group" ? "Group" : "1:1"}</small></button>)}</div>
         <div className="messaging-create">
-          <strong><Search size={15} /> Find a user</strong>
-          <input placeholder="Search by name or academy" value={search} onChange={(e) => void searchUsers(e.target.value)} />
-          {users.length > 0 && <div className="conversation-list">{users.map((user) => <div key={user.user_id} className="conversation-item"><div><strong>{user.full_name}</strong><small>{user.academy || user.role}</small></div><button type="button" className="btn" disabled={busy} onClick={() => selectedIsGroupCreator ? void addMember(user) : void startDirect(user)}>{selectedIsGroupCreator ? "Add" : "Message"}</button></div>)}</div>}
-          {search.trim().length >= 2 && users.length === 0 && <p className="empty-copy">No matching users.</p>}
+          <strong><Search size={15} /> Message a user</strong>
+          <p className="messaging-help">Search the person's unique username. One username can belong to only one account.</p>
+          <div className="username-search"><span>@</span><input aria-label="Search username" placeholder="username" value={search} onChange={(e) => void searchUsers(e.target.value)} /></div>
+          {users.length > 0 && <div className="conversation-list user-results">{users.map((user) => <div key={user.user_id} className="conversation-item user-result"><div><strong>@{user.username}</strong><small>{user.full_name}{user.academy ? ` · ${user.academy}` : ""}</small></div><button type="button" className="btn" disabled={busy} onClick={() => selectedIsGroupCreator ? void addMember(user) : void startDirect(user)}>{selectedIsGroupCreator ? "Add" : "Message"}</button></div>)}</div>}
+          {search.trim().length >= 2 && users.length === 0 && <p className="empty-copy">No user found for that username.</p>}
         </div>
-        {canCreateGroup && <form className="messaging-create" onSubmit={createGroup}><strong><Users size={15} /> New group</strong><input placeholder="Group name" value={groupName} onChange={(e) => setGroupName(e.target.value)} required /><button className="btn" disabled={busy}><Plus size={15} /> Create group</button></form>}
+        {canCreateGroup && <form className="messaging-create" onSubmit={createGroup}><strong><Users size={15} /> Create a group</strong><input placeholder="Team / group name" value={groupName} onChange={(e) => setGroupName(e.target.value)} required /><button className="btn" disabled={busy}><Plus size={15} /> Create group</button></form>}
       </aside>
       <section className="card panel messaging-chat">
-        {!selected && <div className="empty"><strong>Select or create a conversation</strong><p>Search for a user to start a private conversation, or create a coach group.</p></div>}
+        {!selected && <div className="empty"><strong>Select or create a conversation</strong><p>Search a unique username for private 1:1 messaging, or create a group if you are a coach/admin.</p></div>}
         {selected && <>
-          <div className="messaging-header"><div><p className="eyebrow">{selected.kind === "group" ? "Group" : "Private 1:1"}</p><h3>{selected.kind === "group" ? selected.name || "Unnamed group" : "Direct message"}</h3></div>{selectedIsGroupCreator && <div className="inline-form"><span className="empty-copy">Search users on the left to add members</span></div>}</div>
+          <div className="messaging-header"><div><p className="eyebrow">{selected.kind === "group" ? "Group conversation" : "Private 1:1"}</p><h3>{selected.kind === "group" ? selected.name || "Unnamed group" : "Secure conversation"}</h3></div>{selectedIsGroupCreator && <span className="messaging-status">Owner · add members by username</span>}</div>
           <div className="message-list">{messages.length === 0 && <p className="empty-copy">No messages yet. Send the first one.</p>}{messages.map((message) => <article key={message.id} className={`message-bubble ${message.sender_id === effectiveUserId ? "mine" : "theirs"}`}><span>{message.message_type.replaceAll("_", " ")}</span><p>{message.body}</p><small>{new Date(message.created_at).toLocaleString()}</small></article>)}</div>
           <form className="message-compose" onSubmit={sendMessage}><select value={messageType} onChange={(e) => setMessageType(e.target.value)} aria-label="Message type">{messageTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a secure sports message..." maxLength={4000} required /><button className="btn primary" disabled={busy || !body.trim()}><Send size={16} /> Send</button></form>
         </>}
@@ -104,5 +105,5 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
 }
 
 function FeaturePageLike({ title, children }: { title: string; children: React.ReactNode }) {
-  return <><div className="page-head"><div><p className="eyebrow">AthleteOS V2</p><h2>{title}</h2></div></div>{children}</>;
+  return <><div className="page-head"><div><p className="eyebrow">Athleten</p><h2>{title}</h2></div></div>{children}</>;
 }
