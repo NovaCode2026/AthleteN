@@ -10,6 +10,7 @@ type Props = { userId?: string; role?: string; setToast?: (toast: { type: "succe
 
 const messageTypes = [["normal", "Normal message"], ["tournament_announcement", "Tournament announcement"], ["training_schedule", "Training schedule"], ["training_plan", "Training plan"], ["document", "Document"], ["team_announcement", "Team announcement"]] as const;
 const usernamePattern = /^[a-z0-9][a-z0-9_.-]{2,29}$/;
+const NOVACODE_USERNAME = "novacode.admin";
 
 export default function MessagingPage({ userId, role, setToast }: Props) {
   const auth = useAuth();
@@ -91,6 +92,18 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
       notify({ type: "success", message: `Conversation started with @${user.username}.` });
     } catch (e) { setError(e instanceof Error ? e.message : "Direct conversation could not be created."); } finally { setBusy(false); }
   }
+  async function contactNovaCode() {
+    setBusy(true); setError("");
+    try {
+      const { data, error: rpcError } = await supabase.rpc("create_direct_conversation_by_username", { p_username: NOVACODE_USERNAME });
+      if (rpcError) throw rpcError;
+      setSelectedId(String(data));
+      await loadConversations();
+      notify({ type: "success", message: "Opened your secure conversation with @novacode.admin." });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "@novacode.admin could not be reached. Make sure the official account exists with that username.");
+    } finally { setBusy(false); }
+  }
   async function createGroup(event: React.FormEvent) {
     event.preventDefault(); if (!canCreateGroup || !groupName.trim()) return; setBusy(true); setError("");
     try { const { data, error: rpcError } = await supabase.rpc("create_group_conversation", { p_name: groupName.trim() }); if (rpcError) throw rpcError; setSelectedId(String(data)); setGroupName(""); await loadConversations(); notify({ type: "success", message: "Group created. Search usernames below to add members." }); }
@@ -115,8 +128,13 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
         <div className="conversation-list">{conversations.map((conversation) => <button type="button" key={conversation.id} className={`conversation-item ${conversation.id === selectedId ? "active" : ""}`} onClick={() => setSelectedId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.name || "Unnamed group" : "Private conversation"}</strong><small>{conversation.kind === "group" ? "Group" : "1:1"}</small></button>)}</div>
         <div className="messaging-create">
           <strong>Your username</strong>
-          {username ? <p className="messaging-help">You can be found by other athletes as <strong>@{username}</strong>.</p> : <p className="messaging-help">Choose a unique username so athletes can find you.</p>}
+          {username ? <p className="messaging-help">You can be found by other athletes as <strong>@{username}</strong>.</p> : <p className="messaging-help">Choose your own unique username so athletes can find you.</p>}
           <div className="username-search"><span>@</span><input aria-label="Your username" placeholder="your_username" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} maxLength={30} /><button type="button" className="btn" onClick={() => void saveUsername()} disabled={busy}>{username ? "Update" : "Set"}</button></div>
+        </div>
+        <div className="messaging-create">
+          <strong>Contact NovaCode</strong>
+          <p className="messaging-help">Need help or want to contact the official AthleteN team?</p>
+          <button type="button" className="btn primary" onClick={() => void contactNovaCode()} disabled={busy}>Message @novacode.admin</button>
         </div>
         <div className="messaging-create">
           <strong><Search size={15} /> Message a user</strong>
@@ -128,7 +146,7 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
         {canCreateGroup && <form className="messaging-create" onSubmit={createGroup}><strong><Users size={15} /> Create a group</strong><input placeholder="Team / group name" value={groupName} onChange={(e) => setGroupName(e.target.value)} required /><button className="btn" disabled={busy}><Plus size={15} /> Create group</button></form>}
       </aside>
       <section className="card panel messaging-chat">
-        {!selected && <div className="empty"><strong>Select or create a conversation</strong><p>Search a unique username for private 1:1 messaging, or create a group if you are a coach/admin.</p></div>}
+        {!selected && <div className="empty"><strong>Select or create a conversation</strong><p>Search a unique username for private 1:1 messaging, contact @novacode.admin, or create a group if you are a coach/admin.</p></div>}
         {selected && <>
           <div className="messaging-header"><div><p className="eyebrow">{selected.kind === "group" ? "Group conversation" : "Private 1:1"}</p><h3>{selected.kind === "group" ? selected.name || "Unnamed group" : "Secure conversation"}</h3></div>{selectedIsGroupCreator && <span className="messaging-status">Owner · add members by username</span>}</div>
           <div className="message-list">{messages.length === 0 && <p className="empty-copy">No messages yet. Send the first one.</p>}{messages.map((message) => <article key={message.id} className={`message-bubble ${message.sender_id === effectiveUserId ? "mine" : "theirs"}`}><span>{message.message_type.replaceAll("_", " ")}</span><p>{message.body}</p><small>{new Date(message.created_at).toLocaleString()}</small></article>)}</div>
@@ -141,5 +159,5 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
 }
 
 function FeaturePageLike({ title, children }: { title: string; children: React.ReactNode }) {
-  return <><div className="page-head"><div><p className="eyebrow">Athleten</p><h2>{title}</h2></div></div>{children}</>;
+  return <><div className="page-head"><div><p className="eyebrow">AthleteN</p><h2>{title}</h2></div></div>{children}</>;
 }
