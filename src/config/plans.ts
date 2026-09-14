@@ -15,7 +15,7 @@ export const plans: Plan[] = [
     price: "₹49/month · ₹459/year",
     aiLimit: 50,
     audience: "Verified students",
-    features: ["Student verification", "50 AI coach messages", "Resume PDF readiness", "Priority roadmap voting", "3-day paid trial: ₹9"]
+    features: ["Student verification", "50 AI coach messages", "Resume PDF readiness", "Priority roadmap voting"]
   },
   {
     id: "pro",
