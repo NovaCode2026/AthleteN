@@ -10,14 +10,16 @@ permissions:
 
 jobs:
   migrate:
-    if: ${{ !contains(github.event.head_commit.message, 'chore: rename product branding to AthleteN') }}
+    if: "${{ !contains(github.event.head_commit.message, 'chore: rename product branding to AthleteN') }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Replace legacy branding
+        shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -32,7 +34,7 @@ jobs:
           binary = {'.png','.jpg','.jpeg','.gif','.webp','.ico','.pdf','.zip','.woff','.woff2','.ttf','.otf','.mp4','.mov','.mp3','.wav'}
           changed = []
           for p in Path('.').rglob('*'):
-              if not p.is_file() or p.suffix.lower() in binary or any(x in skip for x in p.parts):
+              if not p.is_file() or p.name == 'LICENSE' or p.suffix.lower() in binary or any(x in skip for x in p.parts):
                   continue
               try:
                   s = p.read_text(encoding='utf-8')
@@ -48,8 +50,9 @@ jobs:
           PY
 
       - name: Verify and commit
+        shell: bash
         run: |
-          if grep -RInE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=build --exclude-dir=.next --exclude-dir=.netlify --exclude=LICENSE -E 'AthleteOS|Athlete OS|athlete-os|athlete_os|athleteos' .; then
+          if grep -RInE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=build --exclude-dir=.next --exclude-dir=.netlify --exclude=LICENSE 'AthleteOS|Athlete OS|athlete-os|athlete_os|athleteos' .; then
             echo 'Legacy branding remains.'
             exit 1
           fi
@@ -61,4 +64,4 @@ jobs:
             exit 0
           fi
           git commit -m 'chore: rename product branding to AthleteN'
-          git push
+          git push origin HEAD:main
