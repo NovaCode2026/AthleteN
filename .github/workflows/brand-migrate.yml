@@ -1,0 +1,64 @@
+name: AthleteN branding migration
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: ${{ !contains(github.event.head_commit.message, 'chore: rename product branding to AthleteN') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Replace legacy branding
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          replacements = {
+              'AthleteOS': 'AthleteN',
+              'Athlete OS': 'AthleteN',
+              'athlete-os': 'athlete-n',
+              'athlete_os': 'athlete_n',
+              'athleteos': 'athleten',
+          }
+          skip = {'.git', 'node_modules', 'dist', 'build', '.next', '.netlify'}
+          binary = {'.png','.jpg','.jpeg','.gif','.webp','.ico','.pdf','.zip','.woff','.woff2','.ttf','.otf','.mp4','.mov','.mp3','.wav'}
+          changed = []
+          for p in Path('.').rglob('*'):
+              if not p.is_file() or p.suffix.lower() in binary or any(x in skip for x in p.parts):
+                  continue
+              try:
+                  s = p.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              t = s
+              for old, new in replacements.items():
+                  t = t.replace(old, new)
+              if t != s:
+                  p.write_text(t, encoding='utf-8')
+                  changed.append(str(p))
+          print('Changed files:', *changed, sep='\n')
+          PY
+
+      - name: Verify and commit
+        run: |
+          if grep -RInE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=build --exclude-dir=.next --exclude-dir=.netlify --exclude=LICENSE -E 'AthleteOS|Athlete OS|athlete-os|athlete_os|athleteos' .; then
+            echo 'Legacy branding remains.'
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No changes needed.'
+            exit 0
+          fi
+          git commit -m 'chore: rename product branding to AthleteN'
+          git push
