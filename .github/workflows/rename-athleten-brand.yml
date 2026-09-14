@@ -74,3 +74,5 @@ jobs:
           git add -A
           git commit -m 'chore: rename product branding to AthleteN'
           git push
+
+# Triggered to perform the repository-wide AthleteN migration.
