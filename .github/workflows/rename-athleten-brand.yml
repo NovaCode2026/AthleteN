@@ -1,0 +1,76 @@
+name: Rename product branding to AthleteN
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  rename-brand:
+    if: ${{ !contains(github.event.head_commit.message, 'chore: rename product branding to AthleteN') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Replace legacy product branding
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              'AthleteOS': 'AthleteN',
+              'Athlete OS': 'AthleteN',
+              'athlete-os': 'athlete-n',
+              'athlete_os': 'athlete_n',
+              'athleteos': 'athleten',
+          }
+
+          skip_dirs = {'.git', 'node_modules', 'dist', '.next', '.netlify'}
+          skip_files = {'LICENSE'}
+          binary_exts = {
+              '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.pdf', '.zip',
+              '.woff', '.woff2', '.ttf', '.otf', '.mp4', '.mov', '.mp3', '.wav'
+          }
+
+          changed = []
+          for path in Path('.').rglob('*'):
+              if not path.is_file() or path.name in skip_files or path.suffix.lower() in binary_exts:
+                  continue
+              if any(part in skip_dirs for part in path.parts):
+                  continue
+              try:
+                  text = path.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              updated = text
+              for old, new in replacements.items():
+                  updated = updated.replace(old, new)
+              if updated != text:
+                  path.write_text(updated, encoding='utf-8')
+                  changed.append(str(path))
+
+          print(f'Updated {len(changed)} files')
+          for item in changed:
+              print(item)
+          PY
+
+      - name: Commit branding changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'No legacy product branding remains to replace.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'chore: rename product branding to AthleteN'
+          git push
