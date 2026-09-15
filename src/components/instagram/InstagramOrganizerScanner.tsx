@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
-import { Globe, Instagram, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CalendarDays, ExternalLink, FileText, Globe, Instagram, Loader2, MapPin, RefreshCw, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import "../../styles/tournament-scanner.css";
 
 type SourceType = "website" | "instagram";
 type Props = { accessToken?: string; setToast: (toast: { type: "success" | "error" | "warning"; message: string } | null) => void };
-type ScanRow = { id: string; source_url: string; tournament_name?: string | null; tournament_date?: string | null; venue?: string | null; status?: string | null; detected_changes?: string | null; last_checked_at?: string | null };
+type DetailSection = { title: string; content: string; source_url?: string };
+type ScanDetails = { description?: string | null; fields?: Record<string, string>; headings?: string[]; sections?: DetailSection[]; key_highlights?: string[]; pages_scanned?: number; source_pages?: string[]; pdfs?: Array<{ href: string; label: string }> };
+type ScanRow = { id: string; source_url: string; tournament_name?: string | null; tournament_date?: string | null; venue?: string | null; registration_deadline?: string | null; weigh_in_information?: string | null; categories?: string | null; notices?: string | null; schedules_results?: string | null; pdfs?: Array<{ href: string; label: string }> | null; details?: ScanDetails | null; status?: string | null; detected_changes?: string | null; last_checked_at?: string | null; next_check_at?: string | null };
 type InstagramResult = { organizer?: { username?: string; name?: string | null; biography?: string | null; followers_count?: number | null }; relevant_posts?: Array<{ id: string; caption?: string; timestamp?: string | null; permalink?: string | null }> };
 type InstagramInput = { kind: "profile" | "post" | "reel"; username?: string; url: string };
 
@@ -28,7 +31,13 @@ function parseInstagramInput(value: string): InstagramInput | null {
   }
 }
 
-function formatDate(value?: string | null) { if (!value) return "—"; const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleString(); }
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+function labelize(value: string) { return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
+function valueText(value: unknown) { return Array.isArray(value) ? value.join(" • ") : String(value ?? ""); }
 async function readError(response: Response, fallback: string) { const payload = await response.json().catch(() => ({})); return typeof payload?.error === "string" && payload.error.trim() ? payload.error : fallback; }
 
 export default function InstagramOrganizerScanner({ accessToken, setToast }: Props) {
@@ -36,6 +45,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
   const [source, setSource] = useState("");
   const [scanning, setScanning] = useState(false);
   const [scans, setScans] = useState<ScanRow[]>([]);
+  const [selectedScan, setSelectedScan] = useState<ScanRow | null>(null);
   const [instagramResult, setInstagramResult] = useState<InstagramResult | null>(null);
 
   async function loadScans() {
@@ -43,31 +53,28 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
     const { data: userData } = await supabase.auth.getUser(accessToken);
     const userId = userData.user?.id;
     if (!userId) return;
-    const { data } = await supabase.from("tournament_scans").select("id,source_url,tournament_name,tournament_date,venue,status,detected_changes,last_checked_at").eq("user_id", userId).order("last_checked_at", { ascending: false }).limit(20);
-    setScans((data || []) as ScanRow[]);
+    const { data, error } = await supabase.from("tournament_scans").select("id,source_url,tournament_name,tournament_date,venue,registration_deadline,weigh_in_information,categories,notices,schedules_results,pdfs,details,status,detected_changes,last_checked_at,next_check_at").eq("user_id", userId).order("last_checked_at", { ascending: false }).limit(20);
+    if (!error) {
+      const rows = (data || []) as ScanRow[];
+      setScans(rows);
+      setSelectedScan((current) => current ? rows.find((row) => row.id === current.id) || current : rows[0] || null);
+    }
   }
   useEffect(() => { void loadScans(); }, [accessToken]);
 
   async function scanWebsite(url: string) {
     const response = await fetch("/.netlify/functions/tournament-scan", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ sourceUrl: url }) });
     if (!response.ok) throw new Error(await readError(response, "Website tournament scan failed."));
-    return response.json().catch(() => ({}));
+    return response.json();
   }
 
   async function scanInstagram(value: string) {
     const input = parseInstagramInput(value);
     if (!input) throw new Error("Enter an Instagram profile, post, or reel URL.");
-
-    if (input.kind !== "profile") {
-      // A post/reel URL is an exact source. Never reinterpret /p/... or /reel/... as a username.
-      setInstagramResult(null);
-      return await scanWebsite(input.url);
-    }
-
+    if (input.kind !== "profile") { setInstagramResult(null); return await scanWebsite(input.url); }
     const response = await fetch("/.netlify/functions/instagram-discovery-data", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ username: input.username }) });
     const payload = await response.json().catch(() => ({})) as InstagramResult & { error?: string };
     if (response.ok) { setInstagramResult(payload); return payload; }
-
     setInstagramResult(null);
     try { return await scanWebsite(input.url); }
     catch (fallbackError) {
@@ -83,28 +90,79 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
     if (!source.trim()) { setToast({ type: "warning", message: "Enter a source link first." }); return; }
     setScanning(true);
     try {
-      if (sourceType === "website") { await scanWebsite(source.trim()); setInstagramResult(null); setToast({ type: "success", message: "Website tournament scan completed." }); }
-      else {
+      if (sourceType === "website") {
+        const payload = await scanWebsite(source.trim());
+        setInstagramResult(null);
+        if (payload?.scan) setSelectedScan(payload.scan as ScanRow);
+        setToast({ type: "success", message: "Tournament scan completed. Full available tournament intelligence was extracted." });
+      } else {
         const input = parseInstagramInput(source);
         const result = await scanInstagram(source.trim());
         setToast({ type: "success", message: input?.kind === "profile" && result?.organizer?.username ? `Instagram scan completed for @${result.organizer.username}.` : `Instagram source scan completed for the ${input?.kind || "source"}.` });
       }
-      setSource(""); await loadScans();
+      setSource("");
+      await loadScans();
     } catch (error) { setToast({ type: "error", message: error instanceof Error ? error.message : "Tournament scan failed." }); }
     finally { setScanning(false); }
   }
 
+  const details = selectedScan?.details;
+  const fields = details?.fields || {};
+  const primaryFields = useMemo(() => Object.entries(fields).filter(([key]) => !["description"].includes(key)), [fields]);
+  const pdfs = selectedScan?.pdfs?.length ? selectedScan.pdfs : details?.pdfs || [];
+  const sections = details?.sections || [];
+  const sourcePages = details?.source_pages || [];
   const relevantPosts = instagramResult?.relevant_posts || [];
-  return <div className="feature-page unified-tournament-scanner">
-    <style>{`.feature-page:has(+ .unified-tournament-scanner){display:none!important}.unified-tournament-scanner .scanner-source-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}.unified-tournament-scanner .source-option{appearance:none;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:rgba(255,255,255,.035);color:inherit;padding:15px;display:flex;align-items:center;gap:12px;text-align:left;cursor:pointer}.unified-tournament-scanner .source-option.active{border-color:rgba(0,174,255,.8);background:rgba(0,174,255,.1)}.unified-tournament-scanner .source-option span{display:grid;gap:3px}.unified-tournament-scanner .source-option small{opacity:.68}.unified-tournament-scanner .scanner-help{display:flex;align-items:flex-start;gap:8px;opacity:.72;margin-top:10px}.unified-tournament-scanner .scan-results{margin-top:18px;overflow-x:auto}.unified-tournament-scanner table{width:100%;border-collapse:collapse}.unified-tournament-scanner th,.unified-tournament-scanner td{padding:10px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;white-space:nowrap}.unified-tournament-scanner .instagram-post{padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)}@media(max-width:700px){.unified-tournament-scanner .scanner-source-picker{grid-template-columns:1fr}}`}</style>
-    <div className="page-heading"><div><p className="eyebrow">Tournament intelligence</p><h2>Tournament Scanner</h2><p>Scan a tournament website or an Instagram organizer profile, post, or reel.</p></div></div>
-    <section className="card scan"><div className="scanner-source-picker" role="tablist" aria-label="Tournament source type">
-      <button type="button" className={`source-option ${sourceType === "website" ? "active" : ""}`} onClick={() => setSourceType("website")} aria-selected={sourceType === "website"}><Globe size={20}/><span><strong>Website</strong><small>Tournament site, notice, schedule or PDF</small></span></button>
-      <button type="button" className={`source-option ${sourceType === "instagram" ? "active" : ""}`} onClick={() => setSourceType("instagram")} aria-selected={sourceType === "instagram"}><Instagram size={20}/><span><strong>Instagram</strong><small>Profile, post, reel or @username</small></span></button>
-    </div><form className="inline-form" onSubmit={(event) => void scan(event)}><input value={source} onChange={(event) => setSource(event.target.value)} placeholder={sourceType === "website" ? "https://example.com/tournament" : "https://instagram.com/organizer or /p/... or /reel/..."} aria-label="Tournament scan source" required/><button className="btn primary" type="submit" disabled={scanning}>{scanning?<Loader2 className="spin" size={16}/>:<RefreshCw size={16}/>} {scanning?"Scanning...":"Scan"}</button></form>
-      {sourceType === "website" ? <p className="scanner-help"><Globe size={16}/> Website scanning follows relevant tournament pages, notices, schedules, results and linked PDFs.</p> : <p className="scanner-help"><ShieldCheck size={16}/> Profile URLs use Meta Business Discovery when authorized; post/reel URLs are treated as exact public sources.</p>}
+
+  return <div className="feature-page tournament-scanner">
+    <div className="page-heading">
+      <div><p className="eyebrow">Tournament intelligence</p><h2>Tournament Scanner</h2><p>Scan tournament websites, notices, schedules, results and linked documents, or inspect an Instagram organizer source.</p></div>
+    </div>
+
+    <section className="card panel">
+      <div className="scanner-source-picker" role="tablist" aria-label="Tournament source type">
+        <button type="button" className={`source-option ${sourceType === "website" ? "active" : ""}`} onClick={() => setSourceType("website")} aria-selected={sourceType === "website"}><Globe size={20}/><span><strong>Website</strong><small>Tournament site, notice, schedule or PDF</small></span></button>
+        <button type="button" className={`source-option ${sourceType === "instagram" ? "active" : ""}`} onClick={() => setSourceType("instagram")} aria-selected={sourceType === "instagram"}><Instagram size={20}/><span><strong>Instagram</strong><small>Profile, post, reel or @username</small></span></button>
+      </div>
+      <form className="scan-form" onSubmit={(event) => void scan(event)}><input value={source} onChange={(event) => setSource(event.target.value)} placeholder={sourceType === "website" ? "https://example.com/tournament" : "https://instagram.com/organizer or /p/... or /reel/..."} aria-label="Tournament scan source" required/><button className="btn primary" type="submit" disabled={scanning}>{scanning ? <Loader2 className="spin" size={16}/> : <RefreshCw size={16}/>} {scanning ? "Scanning..." : "Scan"}</button></form>
+      {sourceType === "website" ? <p className="scanner-help"><Globe size={16}/> The scanner follows relevant same-site pages, notices, schedules, results, rules, equipment, registration pages and linked PDFs.</p> : <p className="scanner-help"><ShieldCheck size={16}/> Profile URLs use Meta Business Discovery when authorized; post/reel URLs remain exact sources and are never silently converted into usernames.</p>}
     </section>
-    {instagramResult?.organizer && <section className="card panel"><h3>@{instagramResult.organizer.username}</h3><p>{instagramResult.organizer.name || ""}</p>{instagramResult.organizer.followers_count != null && <p>{instagramResult.organizer.followers_count.toLocaleString()} followers</p>}<p>{instagramResult.organizer.biography || "No bio returned."}</p>{relevantPosts.length > 0 && <div><h4>Tournament-relevant posts ({relevantPosts.length})</h4>{relevantPosts.map((post)=><article key={post.id} className="instagram-post"><strong>{formatDate(post.timestamp)}</strong><p>{post.caption || "No caption returned."}</p>{post.permalink && <a href={post.permalink} target="_blank" rel="noreferrer">Open Instagram post</a>}</article>)}</div>}</section>}
-    <section className="card panel scan-results"><h3>Saved scans</h3>{!scans.length?<p>No tournament scans yet. Choose a source above and run your first scan.</p>:<table><thead><tr><th>Source</th><th>Tournament</th><th>Date</th><th>Venue</th><th>Last checked</th><th>Changes</th><th>Status</th></tr></thead><tbody>{scans.map((scanRow)=><tr key={scanRow.id}><td>{scanRow.source_url}</td><td>{scanRow.tournament_name||"—"}</td><td>{scanRow.tournament_date||"—"}</td><td>{scanRow.venue||"—"}</td><td>{formatDate(scanRow.last_checked_at)}</td><td>{scanRow.detected_changes||"—"}</td><td>{scanRow.status||"—"}</td></tr>)}</tbody></table>}</section>
+
+    {instagramResult?.organizer && <section className="card panel"><h3>@{instagramResult.organizer.username}</h3><p>{instagramResult.organizer.name || ""}</p>{instagramResult.organizer.followers_count != null && <p>{instagramResult.organizer.followers_count.toLocaleString()} followers</p>}<p>{instagramResult.organizer.biography || "No bio returned."}</p>{relevantPosts.length > 0 && <div className="post-list"><h4>Tournament-relevant posts ({relevantPosts.length})</h4>{relevantPosts.map((post) => <article key={post.id} className="instagram-post"><small>{formatDate(post.timestamp)}</small><p>{post.caption || "No caption returned."}</p>{post.permalink && <a href={post.permalink} target="_blank" rel="noreferrer">Open Instagram post <ExternalLink size={12}/></a>}</article>)}</div>}</section>}
+
+    {selectedScan && <>
+      <section className="card panel">
+        <div className="panel-head"><div><p className="eyebrow">Latest intelligence</p><h3>{selectedScan.tournament_name || "Tournament source"}</h3><p>{details?.description || "Information extracted from the source and relevant pages."}</p></div><span className={`status ${selectedScan.status === "blocked" ? "blocked" : ""}`}>{selectedScan.status || "checked"}</span></div>
+        <div className="scan-summary">
+          <div className="summary-item"><CalendarDays size={16}/><span>Date</span><strong>{selectedScan.tournament_date || "Not found"}</strong></div>
+          <div className="summary-item"><MapPin size={16}/><span>Venue</span><strong>{selectedScan.venue || "Not found"}</strong></div>
+          <div className="summary-item"><CalendarDays size={16}/><span>Registration</span><strong>{selectedScan.registration_deadline || "Not found"}</strong></div>
+          <div className="summary-item"><Globe size={16}/><span>Pages scanned</span><strong>{details?.pages_scanned ?? 0}</strong></div>
+        </div>
+      </section>
+
+      <section className="card panel"><div className="panel-head"><div><h3>All available tournament information</h3><p>The scanner keeps structured facts plus the relevant headings and sections it found, so important updates such as scoring/competition systems are not reduced to only date and venue.</p></div></div>
+        {primaryFields.length > 0 ? <div className="details-list">{primaryFields.map(([key, value]) => <div className="detail-row" key={key}><b>{labelize(key)}</b><span>{value}</span></div>)}</div> : <div className="empty-state"><strong>No labeled fields were detected.</strong><p>Open the source pages below to inspect what the scanner could access.</p></div>}
+      </section>
+
+      {(selectedScan.weigh_in_information || selectedScan.categories || selectedScan.notices || selectedScan.schedules_results) && <section className="info-grid">
+        {selectedScan.weigh_in_information && <article className="info-card"><h4>Weigh-in / weight check</h4><p>{selectedScan.weigh_in_information}</p></article>}
+        {selectedScan.categories && <article className="info-card"><h4>Categories / divisions</h4><p>{selectedScan.categories}</p></article>}
+        {selectedScan.schedules_results && <article className="info-card"><h4>Schedule / results</h4><p>{selectedScan.schedules_results}</p></article>}
+        {selectedScan.notices && <article className="info-card"><h4>Notices</h4><p>{selectedScan.notices}</p></article>}
+      </section>}
+
+      {sections.length > 0 && <section className="card panel"><h3>Source sections discovered</h3><div className="details-list">{sections.map((section, index) => <div className="detail-row" key={`${section.title}-${index}`}><b>{section.title}</b><span>{section.content}{section.source_url ? `\n${section.source_url}` : ""}</span></div>)}</div></section>}
+
+      {details?.key_highlights?.length ? <section className="card panel"><h3>Key source highlights</h3><div className="details-list">{details.key_highlights.map((highlight, index) => <div className="detail-row" key={`${highlight}-${index}`}><b>Detected</b><span>{highlight}</span></div>)}</div></section> : null}
+
+      {pdfs.length > 0 && <section className="card panel"><h3>Official documents / PDFs found</h3><div className="source-list">{pdfs.map((pdf) => <a className="source-link" key={pdf.href} href={pdf.href} target="_blank" rel="noreferrer"><FileText size={15}/><span>{pdf.label || pdf.href}</span><ExternalLink size={13}/></a>)}</div><p>PDF links are preserved as source documents. If a PDF requires a protected viewer or blocks server retrieval, AthleteN keeps the official document link rather than inventing extracted content.</p></section>}
+
+      {sourcePages.length > 0 && <section className="card panel"><h3>Pages actually scanned</h3><div className="source-list">{sourcePages.map((url) => <a className="source-link" key={url} href={url} target="_blank" rel="noreferrer"><Globe size={15}/><span>{url}</span><ExternalLink size={13}/></a>)}</div></section>}
+
+      <section className="card panel"><h3>Scan status</h3><p><strong>Last checked:</strong> {formatDate(selectedScan.last_checked_at)}</p><p><strong>Next check:</strong> {formatDate(selectedScan.next_check_at)}</p><p><strong>Change detection:</strong> {selectedScan.detected_changes || "No change information returned."}</p><p><strong>Source:</strong> {selectedScan.source_url}</p></section>
+    </>}
+
+    <section className="card panel scan-results"><div className="panel-head"><div><h3>Saved scans</h3><p>Select a previous scan to reopen its full extracted intelligence.</p></div></div>{!scans.length ? <div className="empty-state"><strong>No tournament scans yet.</strong><p>Choose a source above and run your first scan.</p></div> : <div className="scan-table-wrap"><table><thead><tr><th>Source</th><th>Tournament</th><th>Date</th><th>Venue</th><th>Last checked</th><th>Status</th><th>Details</th></tr></thead><tbody>{scans.map((scanRow) => <tr key={scanRow.id}><td className="source-cell">{scanRow.source_url}</td><td>{scanRow.tournament_name || "—"}</td><td>{scanRow.tournament_date || "—"}</td><td>{scanRow.venue || "—"}</td><td>{formatDate(scanRow.last_checked_at)}</td><td><span className={`status ${scanRow.status === "blocked" ? "blocked" : ""}`}>{scanRow.status || "—"}</span></td><td><button className="plain" type="button" onClick={() => setSelectedScan(scanRow)}>Open intelligence</button></td></tr>)}</tbody></table></div>}</section>
   </div>;
 }
