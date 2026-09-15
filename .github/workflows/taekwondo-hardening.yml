@@ -1,0 +1,28 @@
+name: Apply Taekwondo hardening
+on:
+  push:
+    branches: [taekwondo-hardening]
+    paths:
+      - 'scripts/implement-taekwondo.mjs'
+      - 'src/**'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: "!contains(github.event.head_commit.message, '[skip-taekwondo]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply patch
+        run: node scripts/implement-taekwondo.mjs
+      - name: Commit generated changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx src/types.ts src/services/database.ts src/styles/main.css
+          git diff --cached --quiet || git commit -m "feat: wire Taekwondo Kyorugi and Poomsae flows [skip-taekwondo]"
+          git push
