@@ -39,7 +39,7 @@ create table if not exists public.taekwondo_poomsae_performances (
   poomsae_name text,
   category text,
   score numeric(6,3),
-  placing integer,
+  "placing" integer,
   result text check (result in ('gold','silver','bronze','placed','not_placed')),
   notes text,
   is_official boolean not null default true,
