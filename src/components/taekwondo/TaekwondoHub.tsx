@@ -3,7 +3,7 @@ import { Activity, Award, Plus, Shield, Target, Trophy } from "lucide-react";
 import { insertRow, listRows, upsertRow } from "../../services/database";
 import type { KyorugiBout, PoomsaePerformance, Profile, TaekwondoDiscipline, TaekwondoTrainingLog } from "../../types";
 
-type Toast = { type: "success" | "error" | "warning" } | null;
+type Toast = { type: "success" | "error" | "warning"; message: string } | null;
 type Props = { profile: Profile; kyorugiBouts: KyorugiBout[]; poomsaePerformances: PoomsaePerformance[]; taekwondoTraining: TaekwondoTrainingLog[]; setToast: (toast: Toast) => void; refresh: () => Promise<void> };
 const modeCopy = { kyorugi: { title: "Kyorugi", subtitle: "Sparring and match-performance workspace", uses: ["Match and bout history", "Opponent and round notes", "Score tracking", "Competition results", "Fight-focused training logs"] }, poomsae: { title: "Poomsae", subtitle: "Forms and performance workspace", uses: ["Poomsae performed", "Competition scores and placing", "Category and event history", "Technique-focused training logs", "Performance notes"] } } as const;
 
@@ -12,57 +12,14 @@ export default function TaekwondoHub({ profile, kyorugiBouts: initialKyorugi, po
   const [kyorugiBouts, setKyorugiBouts] = useState<KyorugiBout[]>(initialKyorugi);
   const [poomsaePerformances, setPoomsaePerformances] = useState<PoomsaePerformance[]>(initialPoomsae);
   const [taekwondoTraining, setTaekwondoTraining] = useState<TaekwondoTrainingLog[]>(initialTraining);
-  const [busy, setBusy] = useState(false);
-  const [formMode, setFormMode] = useState<"training" | "competition" | null>(null);
-  const [form, setForm] = useState<Record<string, string>>({});
-  const [message, setMessage] = useState("");
-  const copy = modeCopy[discipline];
-
-  async function loadDisciplineData() {
-    if (!profile.user_id) return;
-    try {
-      const [bouts, performances, training] = await Promise.all([
-        listRows<KyorugiBout>("kyorugiBouts", profile.user_id, { order: "event_date", ascending: false }),
-        listRows<PoomsaePerformance>("poomsaePerformances", profile.user_id, { order: "event_date", ascending: false }),
-        listRows<TaekwondoTrainingLog>("taekwondoTraining", profile.user_id, { order: "session_date", ascending: false }),
-      ]);
-      setKyorugiBouts(bouts); setPoomsaePerformances(performances); setTaekwondoTraining(training);
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Taekwondo records could not be loaded. Apply the Taekwondo Supabase migration first."); }
-  }
+  const [busy, setBusy] = useState(false); const [formMode, setFormMode] = useState<"training" | "competition" | null>(null); const [form, setForm] = useState<Record<string, string>>({}); const [message, setMessage] = useState(""); const copy = modeCopy[discipline];
+  async function loadDisciplineData() { if (!profile.user_id) return; try { const [bouts, performances, training] = await Promise.all([listRows<KyorugiBout>("kyorugiBouts", profile.user_id, { order: "event_date", ascending: false }), listRows<PoomsaePerformance>("poomsaePerformances", profile.user_id, { order: "event_date", ascending: false }), listRows<TaekwondoTrainingLog>("taekwondoTraining", profile.user_id, { order: "session_date", ascending: false })]); setKyorugiBouts(bouts); setPoomsaePerformances(performances); setTaekwondoTraining(training); } catch (error) { setMessage(error instanceof Error ? error.message : "Taekwondo records could not be loaded. Apply the Taekwondo Supabase migration first."); } }
   useEffect(() => { void loadDisciplineData(); }, [profile.user_id]);
   useEffect(() => { setKyorugiBouts(initialKyorugi); setPoomsaePerformances(initialPoomsae); setTaekwondoTraining(initialTraining); }, [initialKyorugi, initialPoomsae, initialTraining]);
-
-  async function changeDiscipline(next: TaekwondoDiscipline) {
-    if (!profile.user_id || next === discipline) return;
-    setBusy(true);
-    try { await upsertRow("profile", { user_id: profile.user_id, sport: "taekwondo", discipline: next }, { onConflict: "user_id" }); setDiscipline(next); setToast({ type: "success", message: `${modeCopy[next].title} selected.` }); await refresh(); }
-    catch (error) { setMessage(error instanceof Error ? error.message : "Discipline could not be saved."); }
-    finally { setBusy(false); }
-  }
-
-  async function saveTraining() {
-    if (!profile.user_id || !form.session_date || !form.title) { setMessage("Add a training title and date first."); return; }
-    setBusy(true);
-    try { await insertRow("taekwondoTraining", { user_id: profile.user_id, discipline, session_date: form.session_date, title: form.title, focus: form.focus || null, rounds: form.rounds ? Number(form.rounds) : null, notes: form.notes || null, is_official: false }); setToast({ type: "success", message: `${copy.title} training saved.` }); setForm({}); setFormMode(null); await loadDisciplineData(); await refresh(); }
-    catch (error) { setMessage(error instanceof Error ? error.message : "Training could not be saved."); }
-    finally { setBusy(false); }
-  }
-
-  async function saveCompetition() {
-    if (!profile.user_id || !form.event_name || !form.event_date) { setMessage("Event name and date are required."); return; }
-    setBusy(true);
-    try {
-      if (discipline === "kyorugi") await insertRow("kyorugiBouts", { user_id: profile.user_id, event_name: form.event_name, event_date: form.event_date, opponent_name: form.opponent_name || null, round_name: form.round_name || null, result: form.result || null, athlete_score: form.athlete_score ? Number(form.athlete_score) : null, opponent_score: form.opponent_score ? Number(form.opponent_score) : null, decision: form.decision || null, notes: form.notes || null, is_official: true });
-      else await insertRow("poomsaePerformances", { user_id: profile.user_id, event_name: form.event_name, event_date: form.event_date, poomsae_name: form.poomsae_name || null, category: form.category || null, score: form.score ? Number(form.score) : null, placing: form.placing ? Number(form.placing) : null, result: form.result || null, notes: form.notes || null, is_official: true });
-      setToast({ type: "success", message: `${copy.title} competition result saved.` }); setForm({}); setFormMode(null); await loadDisciplineData(); await refresh();
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Competition result could not be saved."); }
-    finally { setBusy(false); }
-  }
-
-  const relevantTraining = useMemo(() => taekwondoTraining.filter((row) => row.discipline === discipline), [taekwondoTraining, discipline]);
-  const officialResults = discipline === "kyorugi" ? kyorugiBouts.filter((row) => row.is_official) : poomsaePerformances.filter((row) => row.is_official);
-  const wins = discipline === "kyorugi" ? kyorugiBouts.filter((row) => row.result === "win").length : poomsaePerformances.filter((row) => ["gold", "silver", "bronze", "placed"].includes(row.result || "")).length;
-
+  async function changeDiscipline(next: TaekwondoDiscipline) { if (!profile.user_id || next === discipline) return; setBusy(true); try { await upsertRow("profile", { user_id: profile.user_id, sport: "taekwondo", discipline: next }, { onConflict: "user_id" }); setDiscipline(next); setToast({ type: "success", message: `${modeCopy[next].title} selected.` }); await refresh(); } catch (error) { setMessage(error instanceof Error ? error.message : "Discipline could not be saved."); } finally { setBusy(false); } }
+  async function saveTraining() { if (!profile.user_id || !form.session_date || !form.title) { setMessage("Add a training title and date first."); return; } setBusy(true); try { await insertRow("taekwondoTraining", { user_id: profile.user_id, discipline, session_date: form.session_date, title: form.title, focus: form.focus || null, rounds: form.rounds ? Number(form.rounds) : null, notes: form.notes || null, is_official: false }); setToast({ type: "success", message: `${copy.title} training saved.` }); setForm({}); setFormMode(null); await loadDisciplineData(); await refresh(); } catch (error) { setMessage(error instanceof Error ? error.message : "Training could not be saved."); } finally { setBusy(false); } }
+  async function saveCompetition() { if (!profile.user_id || !form.event_name || !form.event_date) { setMessage("Event name and date are required."); return; } setBusy(true); try { if (discipline === "kyorugi") await insertRow("kyorugiBouts", { user_id: profile.user_id, event_name: form.event_name, event_date: form.event_date, opponent_name: form.opponent_name || null, round_name: form.round_name || null, result: form.result || null, athlete_score: form.athlete_score ? Number(form.athlete_score) : null, opponent_score: form.opponent_score ? Number(form.opponent_score) : null, decision: form.decision || null, notes: form.notes || null, is_official: true }); else await insertRow("poomsaePerformances", { user_id: profile.user_id, event_name: form.event_name, event_date: form.event_date, poomsae_name: form.poomsae_name || null, category: form.category || null, score: form.score ? Number(form.score) : null, placing: form.placing ? Number(form.placing) : null, result: form.result || null, notes: form.notes || null, is_official: true }); setToast({ type: "success", message: `${copy.title} competition result saved.` }); setForm({}); setFormMode(null); await loadDisciplineData(); await refresh(); } catch (error) { setMessage(error instanceof Error ? error.message : "Competition result could not be saved."); } finally { setBusy(false); } }
+  const relevantTraining = useMemo(() => taekwondoTraining.filter((row) => row.discipline === discipline), [taekwondoTraining, discipline]); const officialResults = discipline === "kyorugi" ? kyorugiBouts.filter((row) => row.is_official) : poomsaePerformances.filter((row) => row.is_official); const wins = discipline === "kyorugi" ? kyorugiBouts.filter((row) => row.result === "win").length : poomsaePerformances.filter((row) => ["gold", "silver", "bronze", "placed"].includes(row.result || "")).length;
   return <FeatureShell title={`Taekwondo · ${copy.title}`} subtitle={copy.subtitle}>
     <section className="card panel"><div className="page-head"><div><span className="eyebrow">Discipline</span><h3>Choose your Taekwondo path</h3><p>You can switch between Kyorugi and Poomsae later. Shared AthleteN features remain available in either mode.</p></div><div className="inline-actions"><button className={`btn ${discipline === "kyorugi" ? "primary" : ""}`} disabled={busy} onClick={() => void changeDiscipline("kyorugi")}>Kyorugi</button><button className={`btn ${discipline === "poomsae" ? "primary" : ""}`} disabled={busy} onClick={() => void changeDiscipline("poomsae")}>Poomsae</button></div></div></section>
     <section className="metrics"><Metric icon={Activity} label="Training" value={relevantTraining.length} note="discipline sessions"/><Metric icon={Trophy} label="Official results" value={officialResults.length} note="competition records"/><Metric icon={Award} label={discipline === "kyorugi" ? "Wins" : "Placings"} value={wins} note="recorded results"/><Metric icon={Target} label="Mode" value={copy.title} note="selected discipline"/></section>
