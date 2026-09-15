@@ -1,55 +1,80 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, Award, Plus, Shield, Target, Trophy } from "lucide-react";
-import { insertRow, upsertRow } from "../../services/database";
+import { insertRow, listRows, upsertRow } from "../../services/database";
 import type { KyorugiBout, PoomsaePerformance, Profile, TaekwondoDiscipline, TaekwondoTrainingLog } from "../../types";
 
-type Toast = { type: "success" | "error" | "warning"; message: string } | null;
+type Toast = { type: "success" | "error" | "warning" } | null;
 type Props = { profile: Profile; kyorugiBouts: KyorugiBout[]; poomsaePerformances: PoomsaePerformance[]; taekwondoTraining: TaekwondoTrainingLog[]; setToast: (toast: Toast) => void; refresh: () => Promise<void> };
+const modeCopy = { kyorugi: { title: "Kyorugi", subtitle: "Sparring and match-performance workspace", uses: ["Match and bout history", "Opponent and round notes", "Score tracking", "Competition results", "Fight-focused training logs"] }, poomsae: { title: "Poomsae", subtitle: "Forms and performance workspace", uses: ["Poomsae performed", "Competition scores and placing", "Category and event history", "Technique-focused training logs", "Performance notes"] } } as const;
 
-const modeCopy = {
-  kyorugi: { title: "Kyorugi", subtitle: "Sparring and match-performance workspace", uses: ["Match and bout history", "Opponent and round notes", "Score tracking", "Competition results", "Fight-focused training logs"] },
-  poomsae: { title: "Poomsae", subtitle: "Forms and performance workspace", uses: ["Poomsae performed", "Competition scores and placing", "Category and event history", "Technique-focused training logs", "Performance notes"] },
-} as const;
-
-export default function TaekwondoHub({ profile, kyorugiBouts, poomsaePerformances, taekwondoTraining, setToast, refresh }: Props) {
+export default function TaekwondoHub({ profile, kyorugiBouts: initialKyorugi, poomsaePerformances: initialPoomsae, taekwondoTraining: initialTraining, setToast, refresh }: Props) {
   const [discipline, setDiscipline] = useState<TaekwondoDiscipline>(profile.discipline || "kyorugi");
+  const [kyorugiBouts, setKyorugiBouts] = useState<KyorugiBout[]>(initialKyorugi);
+  const [poomsaePerformances, setPoomsaePerformances] = useState<PoomsaePerformance[]>(initialPoomsae);
+  const [taekwondoTraining, setTaekwondoTraining] = useState<TaekwondoTrainingLog[]>(initialTraining);
   const [busy, setBusy] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const [formMode, setFormMode] = useState<"training" | "competition" | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
+  const [message, setMessage] = useState("");
   const copy = modeCopy[discipline];
-  const relevantTraining = useMemo(() => taekwondoTraining.filter((row) => row.discipline === discipline), [taekwondoTraining, discipline]);
-  const officialResults = discipline === "kyorugi" ? kyorugiBouts.filter((row) => row.is_official) : poomsaePerformances.filter((row) => row.is_official);
-  const wins = discipline === "kyorugi" ? kyorugiBouts.filter((row) => row.result === "win").length : poomsaePerformances.filter((row) => ["gold", "silver", "bronze", "placed"].includes(row.result || "")).length;
+
+  async function loadDisciplineData() {
+    if (!profile.user_id) return;
+    try {
+      const [bouts, performances, training] = await Promise.all([
+        listRows<KyorugiBout>("kyorugiBouts", profile.user_id, { order: "event_date", ascending: false }),
+        listRows<PoomsaePerformance>("poomsaePerformances", profile.user_id, { order: "event_date", ascending: false }),
+        listRows<TaekwondoTrainingLog>("taekwondoTraining", profile.user_id, { order: "session_date", ascending: false }),
+      ]);
+      setKyorugiBouts(bouts); setPoomsaePerformances(performances); setTaekwondoTraining(training);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Taekwondo records could not be loaded. Apply the Taekwondo Supabase migration first."); }
+  }
+  useEffect(() => { void loadDisciplineData(); }, [profile.user_id]);
+  useEffect(() => { setKyorugiBouts(initialKyorugi); setPoomsaePerformances(initialPoomsae); setTaekwondoTraining(initialTraining); }, [initialKyorugi, initialPoomsae, initialTraining]);
 
   async function changeDiscipline(next: TaekwondoDiscipline) {
     if (!profile.user_id || next === discipline) return;
     setBusy(true);
-    try {
-      await upsertRow("profile", { user_id: profile.user_id, sport: "taekwondo", discipline: next }, { onConflict: "user_id" });
-      setDiscipline(next);
-      setToast({ type: "success", message: `${modeCopy[next].title} selected.` });
-      await refresh();
-    } catch (error) { setToast({ type: "error", message: error instanceof Error ? error.message : "Discipline could not be saved." }); }
+    try { await upsertRow("profile", { user_id: profile.user_id, sport: "taekwondo", discipline: next }, { onConflict: "user_id" }); setDiscipline(next); setToast({ type: "success", message: `${modeCopy[next].title} selected.` }); await refresh(); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "Discipline could not be saved."); }
     finally { setBusy(false); }
   }
 
   async function saveTraining() {
-    if (!profile.user_id || !form.session_date || !form.title) return setToast({ type: "warning", message: "Add a training title and date first." });
+    if (!profile.user_id || !form.session_date || !form.title) { setMessage("Add a training title and date first."); return; }
     setBusy(true);
-    try {
-      await insertRow("taekwondoTraining", { user_id: profile.user_id, discipline, session_date: form.session_date, title: form.title, focus: form.focus || null, rounds: form.rounds ? Number(form.rounds) : null, notes: form.notes || null, is_official: false });
-      setToast({ type: "success", message: `${copy.title} training saved.` }); setForm({}); setShowForm(false); await refresh();
-    } catch (error) { setToast({ type: "error", message: error instanceof Error ? error.message : "Training could not be saved." }); }
+    try { await insertRow("taekwondoTraining", { user_id: profile.user_id, discipline, session_date: form.session_date, title: form.title, focus: form.focus || null, rounds: form.rounds ? Number(form.rounds) : null, notes: form.notes || null, is_official: false }); setToast({ type: "success", message: `${copy.title} training saved.` }); setForm({}); setFormMode(null); await loadDisciplineData(); await refresh(); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "Training could not be saved."); }
     finally { setBusy(false); }
   }
 
+  async function saveCompetition() {
+    if (!profile.user_id || !form.event_name || !form.event_date) { setMessage("Event name and date are required."); return; }
+    setBusy(true);
+    try {
+      if (discipline === "kyorugi") await insertRow("kyorugiBouts", { user_id: profile.user_id, event_name: form.event_name, event_date: form.event_date, opponent_name: form.opponent_name || null, round_name: form.round_name || null, result: form.result || null, athlete_score: form.athlete_score ? Number(form.athlete_score) : null, opponent_score: form.opponent_score ? Number(form.opponent_score) : null, decision: form.decision || null, notes: form.notes || null, is_official: true });
+      else await insertRow("poomsaePerformances", { user_id: profile.user_id, event_name: form.event_name, event_date: form.event_date, poomsae_name: form.poomsae_name || null, category: form.category || null, score: form.score ? Number(form.score) : null, placing: form.placing ? Number(form.placing) : null, result: form.result || null, notes: form.notes || null, is_official: true });
+      setToast({ type: "success", message: `${copy.title} competition result saved.` }); setForm({}); setFormMode(null); await loadDisciplineData(); await refresh();
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Competition result could not be saved."); }
+    finally { setBusy(false); }
+  }
+
+  const relevantTraining = useMemo(() => taekwondoTraining.filter((row) => row.discipline === discipline), [taekwondoTraining, discipline]);
+  const officialResults = discipline === "kyorugi" ? kyorugiBouts.filter((row) => row.is_official) : poomsaePerformances.filter((row) => row.is_official);
+  const wins = discipline === "kyorugi" ? kyorugiBouts.filter((row) => row.result === "win").length : poomsaePerformances.filter((row) => ["gold", "silver", "bronze", "placed"].includes(row.result || "")).length;
+
   return <FeatureShell title={`Taekwondo · ${copy.title}`} subtitle={copy.subtitle}>
     <section className="card panel"><div className="page-head"><div><span className="eyebrow">Discipline</span><h3>Choose your Taekwondo path</h3><p>You can switch between Kyorugi and Poomsae later. Shared AthleteN features remain available in either mode.</p></div><div className="inline-actions"><button className={`btn ${discipline === "kyorugi" ? "primary" : ""}`} disabled={busy} onClick={() => void changeDiscipline("kyorugi")}>Kyorugi</button><button className={`btn ${discipline === "poomsae" ? "primary" : ""}`} disabled={busy} onClick={() => void changeDiscipline("poomsae")}>Poomsae</button></div></div></section>
-    <section className="metrics"><Metric icon={Activity} label="Training" value={relevantTraining.length} note="discipline sessions" /><Metric icon={Trophy} label="Official results" value={officialResults.length} note="competition records" /><Metric icon={Award} label={discipline === "kyorugi" ? "Wins" : "Placings"} value={wins} note="recorded results" /><Metric icon={Target} label="Mode" value={copy.title} note="selected discipline" /></section>
-    <section className="grid two"><article className="card panel"><div className="inline-actions"><Shield size={18}/><div><h3>What {copy.title} is for</h3><p>{copy.subtitle}. Shared AthleteN features such as profile, plans, verification, documents, messaging, calendar, AI Coach and medals remain available.</p></div></div><ul>{copy.uses.map((item) => <li key={item}>{item}</li>)}</ul></article><article className="card panel"><h3>Training and competition stay separate</h3><p>Training logs are practice records. Official results are competition records. Both can exist for the same athlete without mixing the two.</p><div className="hero-actions"><button className="btn primary" onClick={() => setShowForm(true)}><Plus size={16}/> Log {copy.title} training</button></div></article></section>
-    {showForm && <div className="modal-backdrop"><form className="modal" onSubmit={(event) => { event.preventDefault(); void saveTraining(); }}><button type="button" className="close" onClick={() => setShowForm(false)} aria-label="Close">x</button><h2>Log {copy.title} training</h2><label className="field"><span>Session title</span><input required value={form.title || ""} onChange={(e) => setForm({ ...form, title: e.target.value })}/></label><label className="field"><span>Date</span><input required type="date" value={form.session_date || ""} onChange={(e) => setForm({ ...form, session_date: e.target.value })}/></label><label className="field"><span>Focus</span><input placeholder={discipline === "kyorugi" ? "Footwork, sparring, countering..." : "Balance, accuracy, presentation..."} value={form.focus || ""} onChange={(e) => setForm({ ...form, focus: e.target.value })}/></label><label className="field"><span>{discipline === "kyorugi" ? "Rounds" : "Repetitions"}</span><input type="number" min="0" max="999" value={form.rounds || ""} onChange={(e) => setForm({ ...form, rounds: e.target.value })}/></label><label className="field"><span>Notes</span><textarea value={form.notes || ""} onChange={(e) => setForm({ ...form, notes: e.target.value })}/></label><button className="btn primary" disabled={busy}>{busy ? "Saving..." : "Save training"}</button></form></div>}
+    <section className="metrics"><Metric icon={Activity} label="Training" value={relevantTraining.length} note="discipline sessions"/><Metric icon={Trophy} label="Official results" value={officialResults.length} note="competition records"/><Metric icon={Award} label={discipline === "kyorugi" ? "Wins" : "Placings"} value={wins} note="recorded results"/><Metric icon={Target} label="Mode" value={copy.title} note="selected discipline"/></section>
+    <section className="grid two"><article className="card panel"><div className="inline-actions"><Shield size={18}/><div><h3>What {copy.title} is for</h3><p>{copy.subtitle}. Shared AthleteN features such as profile, plans, verification, documents, messaging, calendar, AI Coach and medals stay available.</p></div></div><ul>{copy.uses.map((item) => <li key={item}>{item}</li>)}</ul></article><article className="card panel"><h3>Training and official competition</h3><p>Practice logs and official results are stored separately. That keeps everyday training from being mistaken for an official result.</p><div className="hero-actions"><button className="btn primary" onClick={() => { setForm({}); setFormMode("training"); }}><Plus size={16}/> Log {copy.title} training</button><button className="btn" onClick={() => { setForm({}); setFormMode("competition"); }}><Trophy size={16}/> Add official result</button></div></article></section>
+    {message && <p className="notice" role="alert">{message}</p>}
+    {formMode && <div className="modal-backdrop"><form className="modal" onSubmit={(event) => { event.preventDefault(); void (formMode === "training" ? saveTraining() : saveCompetition()); }}><button type="button" className="close" onClick={() => setFormMode(null)} aria-label="Close">x</button><h2>{formMode === "training" ? `Log ${copy.title} training` : `Add ${copy.title} competition result`}</h2>
+      {formMode === "training" ? <><label className="field"><span>Session title</span><input required value={form.title || ""} onChange={(e) => setForm({ ...form, title: e.target.value })}/></label><label className="field"><span>Date</span><input required type="date" value={form.session_date || ""} onChange={(e) => setForm({ ...form, session_date: e.target.value })}/></label><label className="field"><span>Focus</span><input placeholder={discipline === "kyorugi" ? "Footwork, sparring, countering..." : "Balance, accuracy, presentation..."} value={form.focus || ""} onChange={(e) => setForm({ ...form, focus: e.target.value })}/></label><label className="field"><span>{discipline === "kyorugi" ? "Rounds" : "Repetitions"}</span><input type="number" min="0" max="999" value={form.rounds || ""} onChange={(e) => setForm({ ...form, rounds: e.target.value })}/></label></> : discipline === "kyorugi" ? <><label className="field"><span>Event</span><input required value={form.event_name || ""} onChange={(e) => setForm({ ...form, event_name: e.target.value })}/></label><label className="field"><span>Date</span><input required type="date" value={form.event_date || ""} onChange={(e) => setForm({ ...form, event_date: e.target.value })}/></label><label className="field"><span>Opponent</span><input value={form.opponent_name || ""} onChange={(e) => setForm({ ...form, opponent_name: e.target.value })}/></label><label className="field"><span>Round</span><input value={form.round_name || ""} onChange={(e) => setForm({ ...form, round_name: e.target.value })}/></label><Select label="Result" value={form.result || ""} onChange={(e) => setForm({ ...form, result: e.target.value })} options={[["win","Win"],["loss","Loss"],["draw","Draw"],["no_contest","No contest"]]}/><label className="field"><span>Your score</span><input type="number" min="0" value={form.athlete_score || ""} onChange={(e) => setForm({ ...form, athlete_score: e.target.value })}/></label><label className="field"><span>Opponent score</span><input type="number" min="0" value={form.opponent_score || ""} onChange={(e) => setForm({ ...form, opponent_score: e.target.value })}/></label><label className="field"><span>Decision</span><input value={form.decision || ""} onChange={(e) => setForm({ ...form, decision: e.target.value })}/></label></> : <><label className="field"><span>Event</span><input required value={form.event_name || ""} onChange={(e) => setForm({ ...form, event_name: e.target.value })}/></label><label className="field"><span>Date</span><input required type="date" value={form.event_date || ""} onChange={(e) => setForm({ ...form, event_date: e.target.value })}/></label><label className="field"><span>Poomsae</span><input value={form.poomsae_name || ""} onChange={(e) => setForm({ ...form, poomsae_name: e.target.value })}/></label><label className="field"><span>Category</span><input value={form.category || ""} onChange={(e) => setForm({ ...form, category: e.target.value })}/></label><label className="field"><span>Score</span><input type="number" step="0.001" min="0" value={form.score || ""} onChange={(e) => setForm({ ...form, score: e.target.value })}/></label><label className="field"><span>Placing</span><input type="number" min="1" value={form.placing || ""} onChange={(e) => setForm({ ...form, placing: e.target.value })}/></label><Select label="Result" value={form.result || ""} onChange={(e) => setForm({ ...form, result: e.target.value })} options={[["gold","Gold"],["silver","Silver"],["bronze","Bronze"],["placed","Placed"],["not_placed","Not placed"]}/></>}
+      <label className="field"><span>Notes</span><textarea value={form.notes || ""} onChange={(e) => setForm({ ...form, notes: e.target.value })}/></label><button className="btn primary" disabled={busy}>{busy ? "Saving..." : "Save record"}</button></form></div>}
     <section className="card panel"><h3>Recent {copy.title} training</h3>{relevantTraining.length === 0 ? <div className="empty"><strong>No {copy.title} training logged yet.</strong><p>Use the button above to add the first practice record.</p></div> : <div className="table-wrap"><table><thead><tr><th>Date</th><th>Session</th><th>Focus</th><th>{discipline === "kyorugi" ? "Rounds" : "Reps"}</th></tr></thead><tbody>{relevantTraining.slice(0, 10).map((row) => <tr key={row.id}><td>{row.session_date}</td><td>{row.title}</td><td>{row.focus || "—"}</td><td>{row.rounds ?? "—"}</td></tr>)}</tbody></table></div>}</section>
+    <section className="card panel"><h3>Official {copy.title} results</h3>{officialResults.length === 0 ? <div className="empty"><strong>No official {copy.title} results yet.</strong><p>Add a competition result separately from training.</p></div> : discipline === "kyorugi" ? <div className="table-wrap"><table><thead><tr><th>Date</th><th>Event</th><th>Opponent</th><th>Round</th><th>Result</th><th>Score</th></tr></thead><tbody>{kyorugiBouts.filter(x=>x.is_official).slice(0,10).map(row=><tr key={row.id}><td>{row.event_date || "—"}</td><td>{row.event_name}</td><td>{row.opponent_name || "—"}</td><td>{row.round_name || "—"}</td><td>{row.result || "—"}</td><td>{row.athlete_score ?? "—"}–{row.opponent_score ?? "—"}</td></tr>)}</tbody></table></div> : <div className="table-wrap"><table><thead><tr><th>Date</th><th>Event</th><th>Poomsae</th><th>Score</th><th>Place</th><th>Result</th></tr></thead><tbody>{poomsaePerformances.filter(x=>x.is_official).slice(0,10).map(row=><tr key={row.id}><td>{row.event_date || "—"}</td><td>{row.event_name}</td><td>{row.poomsae_name || "—"}</td><td>{row.score ?? "—"}</td><td>{row.placing ?? "—"}</td><td>{row.result || "—"}</td></tr>)}</tbody></table></div>}</section>
   </FeatureShell>;
 }
+function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void; options: string[][] }) { return <label className="field"><span>{label}</span><select value={value} onChange={onChange}><option value="">Select</option>{options.map(([value,text])=><option key={value} value={value}>{text}</option>)}</select></label>; }
 function FeatureShell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) { return <><div className="page-head"><div><p className="eyebrow">AthleteN · Taekwondo</p><h2>{title}</h2><p>{subtitle}</p></div></div>{children}</>; }
 function Metric({ icon: Icon, label, value, note }: { icon: typeof Activity; label: string; value: string | number; note: string }) { return <article className="metric card"><div className="metric-icon"><Icon size={18}/></div><div><p>{label}</p><strong>{value}</strong><small>{note}</small></div></article>; }
