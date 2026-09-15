@@ -5,6 +5,11 @@ export interface Profile {
   id?: string;
   user_id?: string;
   full_name?: string;
+  gender?: string;
+  sport?: "taekwondo";
+  discipline?: "kyorugi" | "poomsae";
+  academy_id?: string;
+  coach_user_id?: string;
   username?: string;
   date_of_birth?: string;
   profile_image_path?: string;
@@ -20,6 +25,10 @@ export interface Profile {
   founder_badge?: boolean;
   role?: "athlete" | "coach" | "academy_admin" | "support_admin" | "admin" | "super_admin";
 }
+export interface KyorugiBout { id?: string; user_id?: string; tournament_id?: string; bout_date: string; opponent_name?: string; opponent_club?: string; category?: string; round_name?: string; result?: "win" | "loss" | "draw" | "walkover" | "other"; points_scored?: number; points_conceded?: number; penalties?: number; rounds_completed?: number; coach_notes?: string; attack_notes?: string; defence_notes?: string; techniques?: string[]; preparation_notes?: string; }
+export interface KyorugiTrainingMetric { id?: string; user_id?: string; training_session_id?: string; metric_date: string; attack_score?: number; defence_score?: number; footwork_score?: number; reaction_score?: number; conditioning_score?: number; technique_notes?: string; coach_notes?: string; }
+export interface PoomsaePerformance { id?: string; user_id?: string; tournament_id?: string; performance_date: string; category?: string; format?: "individual" | "pair" | "team"; poomsae_name: string; technical_score?: number; presentation_score?: number; total_score?: number; judge_scores?: unknown[]; coach_feedback?: string; preparation_notes?: string; result?: string; }
+export interface PoomsaeTrainingMetric { id?: string; user_id?: string; training_session_id?: string; metric_date: string; technical_execution_score?: number; presentation_score?: number; balance_score?: number; power_score?: number; precision_score?: number; poomsae_name?: string; coach_notes?: string; preparation_notes?: string; }
 export interface TrainingSession { id?: string; user_id?: string; title: string; session_date: string; minutes: number; intensity?: string; notes?: string; }
 export interface Tournament { id?: string; user_id?: string; name: string; starts_at?: string; location?: string; status?: string; result?: string; opponent_notes?: string; match_notes?: string; }
 export interface Medal { id?: string; user_id?: string; event_name: string; medal_type: string; category?: string; awarded_at?: string; }
@@ -36,4 +45,4 @@ export interface UsageSummary { used: number; limit: number; plan: Plan; }
 export interface AiUsageEvent { id?: string; user_id?: string; plan_id?: PlanId; topic: string; tokens_used?: number; created_at?: string; }
 export interface Subscription { id?: string; user_id?: string; plan_id: PlanId; provider?: "manual" | "razorpay" | "stripe" | "cashfree"; status: "active" | "trialing" | "past_due" | "canceled"; current_period_end?: string; }
 export interface SubscriptionUsage { id?: string; user_id?: string; usage_month: string; ai_requests_used: number; ai_requests_limit: number; storage_mb_used?: number; }
-export interface CloudData { profile: Profile; tournaments: Tournament[]; training: TrainingSession[]; medals: Medal[]; weights: WeightLog[]; goals: Goal[]; checklist: ChecklistItem[]; documents: DocumentRecord[]; notifications: Array<{ id?: string; title: string; body?: string; read_at?: string }>; feedback: FeedbackItem[]; verifications: VerificationRequest[]; roadmap: RoadmapItem[]; roadmapVotes: RoadmapVote[]; tournamentScans: TournamentScan[]; aiUsage: AiUsageEvent[]; subscriptions: Subscription[]; subscriptionUsage: SubscriptionUsage[]; }
+export interface CloudData { profile: Profile; tournaments: Tournament[]; training: TrainingSession[]; kyorugiBouts: KyorugiBout[]; kyorugiTrainingMetrics: KyorugiTrainingMetric[]; poomsaePerformances: PoomsaePerformance[]; poomsaeTrainingMetrics: PoomsaeTrainingMetric[]; medals: Medal[]; weights: WeightLog[]; goals: Goal[]; checklist: ChecklistItem[]; documents: DocumentRecord[]; notifications: Array<{ id?: string; title: string; body?: string; read_at?: string }>; feedback: FeedbackItem[]; verifications: VerificationRequest[]; roadmap: RoadmapItem[]; roadmapVotes: RoadmapVote[]; tournamentScans: TournamentScan[]; aiUsage: AiUsageEvent[]; subscriptions: Subscription[]; subscriptionUsage: SubscriptionUsage[]; }
