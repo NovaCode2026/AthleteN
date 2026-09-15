@@ -1,4 +1,5 @@
 export type PlanId = "free" | "student" | "pro" | "champion" | "academy";
+export type TaekwondoDiscipline = "kyorugi" | "poomsae";
 
 export interface Plan { id: PlanId; name: string; price: string; aiLimit: number; audience: string; features: string[]; }
 export interface Profile {
@@ -15,6 +16,8 @@ export interface Profile {
   coach?: string;
   emergency_contact?: string;
   achievements?: string;
+  sport?: "taekwondo";
+  discipline?: TaekwondoDiscipline;
   plan_id?: PlanId;
   verified_athlete?: boolean;
   founder_badge?: boolean;
@@ -32,8 +35,11 @@ export interface VerificationRequest { id?: string; user_id?: string; document_t
 export interface RoadmapItem { id?: string; title: string; description?: string; status?: string; votes?: number; user_has_voted?: boolean; }
 export interface RoadmapVote { id?: string; roadmap_item_id: string; user_id?: string; }
 export interface TournamentScan { id?: string; user_id?: string; source_url: string; tournament_name?: string; tournament_date?: string; venue?: string; registration_deadline?: string; weigh_in_information?: string; categories?: string; notices?: string; pdfs?: Array<{ href: string; label: string }>; schedules_results?: string; detected_changes?: string; status?: "pending" | "checked" | "blocked" | "failed"; last_checked_at?: string; next_check_at?: string; }
+export interface KyorugiBout { id?: string; user_id?: string; event_name: string; event_date?: string; opponent_name?: string; round_name?: string; result?: "win" | "loss" | "draw" | "no_contest"; athlete_score?: number; opponent_score?: number; decision?: string; notes?: string; is_official?: boolean; }
+export interface PoomsaePerformance { id?: string; user_id?: string; event_name: string; event_date?: string; poomsae_name?: string; category?: string; score?: number; placing?: number; result?: "gold" | "silver" | "bronze" | "placed" | "not_placed"; notes?: string; is_official?: boolean; }
+export interface TaekwondoTrainingLog { id?: string; user_id?: string; discipline: TaekwondoDiscipline; title: string; session_date: string; focus?: string; rounds?: number; notes?: string; is_official?: boolean; }
 export interface UsageSummary { used: number; limit: number; plan: Plan; }
 export interface AiUsageEvent { id?: string; user_id?: string; plan_id?: PlanId; topic: string; tokens_used?: number; created_at?: string; }
 export interface Subscription { id?: string; user_id?: string; plan_id: PlanId; provider?: "manual" | "razorpay" | "stripe" | "cashfree"; status: "active" | "trialing" | "past_due" | "canceled"; current_period_end?: string; }
 export interface SubscriptionUsage { id?: string; user_id?: string; usage_month: string; ai_requests_used: number; ai_requests_limit: number; storage_mb_used?: number; }
-export interface CloudData { profile: Profile; tournaments: Tournament[]; training: TrainingSession[]; medals: Medal[]; weights: WeightLog[]; goals: Goal[]; checklist: ChecklistItem[]; documents: DocumentRecord[]; notifications: Array<{ id?: string; title: string; body?: string; read_at?: string }>; feedback: FeedbackItem[]; verifications: VerificationRequest[]; roadmap: RoadmapItem[]; roadmapVotes: RoadmapVote[]; tournamentScans: TournamentScan[]; aiUsage: AiUsageEvent[]; subscriptions: Subscription[]; subscriptionUsage: SubscriptionUsage[]; }
+export interface CloudData { profile: Profile; tournaments: Tournament[]; training: TrainingSession[]; medals: Medal[]; weights: WeightLog[]; goals: Goal[]; checklist: ChecklistItem[]; documents: DocumentRecord[]; notifications: Array<{ id?: string; title: string; body?: string; read_at?: string }>; feedback: FeedbackItem[]; verifications: VerificationRequest[]; roadmap: RoadmapItem[]; roadmapVotes: RoadmapVote[]; tournamentScans: TournamentScan[]; aiUsage: AiUsageEvent[]; subscriptions: Subscription[]; subscriptionUsage: SubscriptionUsage[]; kyorugiBouts: KyorugiBout[]; poomsaePerformances: PoomsaePerformance[]; taekwondoTraining: TaekwondoTrainingLog[]; }
