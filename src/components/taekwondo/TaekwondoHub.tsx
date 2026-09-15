@@ -31,4 +31,3 @@ export default function TaekwondoHub({ profile, userId, kyorugiBouts, kyorugiTra
   </>;
 }
 function Metric({icon:Icon,label,value,note}:{icon:typeof Activity;label:string;value:string|number;note:string}){return <article className="metric card"><div className="metric-icon"><Icon size={18}/></div><div><p>{label}</p><strong>{value}</strong><small>{note}</small></div></article>}
-EOF
