@@ -33,18 +33,42 @@ function tournamentText(post) {
 }
 function parsePosts(media) {
   const posts = Array.isArray(media) ? media : [];
-  const keywords = /(taekwondo|tournament|championship|open|cup|games|kyorugi|registration|weigh|weigh-in|draw|fixture|entry|medal|state|national)/i;
+  const keywords = /(taekwondo|tournament|championship|open|cup|games|kyorugi|poomsae|registration|weigh|weigh-in|draw|fixture|entry|medal|state|national|cadet|junior|senior|rules|scoring|PSS|protector|venue|schedule|fee|accommodation|transport)/i;
   return posts.filter((post) => keywords.test(tournamentText(post))).map((post) => ({
     id: post.id,
     caption: post.caption || "",
     timestamp: post.timestamp || null,
     permalink: post.permalink || null,
     media_type: post.media_type || null,
+    media_product_type: post.media_product_type || null,
     media_url: post.media_url || null
   }));
 }
+function normalizePost(post) {
+  return {
+    id: post?.id || null,
+    caption: post?.caption || "",
+    timestamp: post?.timestamp || null,
+    permalink: post?.permalink || null,
+    media_type: post?.media_type || null,
+    media_product_type: post?.media_product_type || null,
+    media_url: post?.media_url || null
+  };
+}
 async function graph(path, accessToken) {
   const url = new URL(`https://graph.facebook.com${path}`);
+  url.searchParams.set("access_token", accessToken);
+  const response = await fetch(url);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload?.error?.message || `GRAPH_API_${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+  return payload;
+}
+async function graphNext(nextUrl, accessToken) {
+  const url = new URL(nextUrl);
   url.searchParams.set("access_token", accessToken);
   const response = await fetch(url);
   const payload = await response.json().catch(() => ({}));
@@ -75,14 +99,33 @@ export default async function handler(request) {
     if (connection.status && connection.status !== "active") return json({ error: "Your Instagram organizer-scanning connection is inactive. Reconnect it." }, 401);
     if (connection.token_expires_at && new Date(connection.token_expires_at).getTime() <= Date.now()) return json({ error: "Your Instagram authorization has expired. Reconnect it." }, 401);
 
-    const fields = "username,name,biography,profile_picture_url,followers_count,media.limit(25){id,caption,media_type,media_product_type,media_url,permalink,timestamp}";
+    const fields = "username,name,biography,profile_picture_url,followers_count,media.limit(50){id,caption,media_type,media_product_type,media_url,permalink,timestamp}";
     const encodedUsername = encodeURIComponent(username.replace(/[^a-zA-Z0-9._-]/g, ""));
     const result = await graph(`/${encodeURIComponent(connection.instagram_user_id)}?fields=business_discovery.username(${encodedUsername}){${fields}}`, connection.access_token);
     const target = result?.business_discovery;
     if (!target?.username) return json({ error: "Instagram could not find a matching professional account. Consumer/private accounts cannot be read through Business Discovery." }, 404);
 
-    const media = Array.isArray(target.media?.data) ? target.media.data : [];
+    let media = Array.isArray(target.media?.data) ? [...target.media.data] : [];
+    let paging = target.media?.paging?.next || null;
+    const maxPosts = 100;
+    while (paging && media.length < maxPosts) {
+      try {
+        const page = await graphNext(paging, connection.access_token);
+        const nextPosts = Array.isArray(page?.data) ? page.data : [];
+        if (!nextPosts.length) break;
+        media.push(...nextPosts);
+        paging = page?.paging?.next || null;
+      } catch (error) {
+        console.warn("instagram-discovery-pagination", error?.message || error);
+        break;
+      }
+    }
+    media = media.slice(0, maxPosts);
+    const normalizedPosts = media.map(normalizePost);
     const relevantPosts = parsePosts(media);
+    const relevantIds = new Set(relevantPosts.map((post) => post.id));
+    const otherPosts = normalizedPosts.filter((post) => post.id && !relevantIds.has(post.id));
+
     return json({
       organizer: {
         id: target.id || null,
@@ -92,8 +135,12 @@ export default async function handler(request) {
         profile_picture_url: target.profile_picture_url || null,
         followers_count: target.followers_count ?? null
       },
-      posts: media,
+      posts: normalizedPosts,
       relevant_posts: relevantPosts,
+      other_posts: otherPosts,
+      posts_scanned: normalizedPosts.length,
+      scan_limit: maxPosts,
+      more_posts_available: Boolean(paging),
       scanned_at: new Date().toISOString()
     });
   } catch (error) {
