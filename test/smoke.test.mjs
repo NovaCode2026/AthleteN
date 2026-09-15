@@ -5,7 +5,7 @@ import fs from "node:fs";
 const packageJson = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
 test("package metadata is valid", () => {
-  assert.equal(packageJson.name, "athleteos-taekwondo");
+  assert.equal(packageJson.name, "athleten-taekwondo");
   assert.ok(packageJson.version);
 });
 
