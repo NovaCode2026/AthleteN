@@ -6,8 +6,8 @@ export const plans: Plan[] = [
     name: "Free",
     price: "₹0",
     aiLimit: 0,
-    audience: "New athletes",
-    features: ["Core dashboard", "Training and medals", "Secure documents", "No AI Coach access"]
+    audience: "Athletes",
+    features: ["Core athlete dashboard", "Training and medals", "Secure documents", "Taekwondo Kyorugi and Poomsae support"]
   },
   {
     id: "student",
@@ -28,18 +28,18 @@ export const plans: Plan[] = [
   {
     id: "champion",
     name: "Coach",
-    price: "₹159/month · ₹1,499/year",
+    price: "₹149/month · ₹1,499/year",
     aiLimit: 500,
-    audience: "Coaches and trainers",
-    features: ["500 AI coach messages", "Performance reports", "Athlete management", "Coach workflows"]
+    audience: "Independent coaches",
+    features: ["Coach dashboard", "Athlete roster and management", "Training assignments and feedback", "Competition, belt and weight workflows"]
   },
   {
     id: "academy",
-    name: "Organization",
+    name: "Academy",
     price: "₹550/month · ₹5,699/year",
     aiLimit: 2000,
     audience: "Clubs and academies",
-    features: ["2,000 AI coach messages", "Organization dashboard", "Team analytics", "Bulk verification"]
+    features: ["Academy dashboard", "2 coach seats included", "Athlete and coach management", "Academy-wide analytics and workflows", "Additional coach seats: ₹349 activation + ₹100/month"]
   }
 ];
 
