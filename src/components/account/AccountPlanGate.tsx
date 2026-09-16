@@ -80,7 +80,32 @@ export default function AccountPlanGate({ user }: { user: User | null }) {
         </div>
         {needsInitialChoice ? <p>Choose Free or start the <strong>₹9 / 7-day trial</strong>. The trial is a normal AthleteN experience with selected trial limits, not full premium access, and it can only be claimed once for this account.</p> : <p>Changing plans requires your current account password. Your one-time ₹9 trial cannot be reset or reused.</p>}
         <div className="plan-grid" style={{ marginTop: 18 }}>
-          {plans.map((plan) => <article key={plan.id} className={`card plan-card ${selected === plan.id ? "active" : ""}`} onClick={() => setSelected(plan.id)} style={{ cursor: "pointer" }}>
+          {plans.map((plan) => <article
+            key={plan.id}
+            className={`card plan-card ${selected === plan.id ? "active" : ""}`}
+            onClick={() => {
+              if (busy) return;
+              if (needsInitialChoice && plan.id === "free") {
+                void choose("free", false);
+                return;
+              }
+              setSelected(plan.id);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              if (busy) return;
+              if (needsInitialChoice && plan.id === "free") {
+                void choose("free", false);
+                return;
+              }
+              setSelected(plan.id);
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label={needsInitialChoice && plan.id === "free" ? "Continue with Free Athlete" : `Select ${plan.name}`}
+            style={{ cursor: busy ? "wait" : "pointer" }}
+          >
             <div className="plan-card-head"><span className="pill">{plan.audience}</span>{selected === plan.id && <span className="status-chip success">Selected</span>}</div>
             <h3>{plan.name}</h3><div className="plan-price"><strong>{plan.price}</strong></div><p className="plan-ai">{plan.aiLimit.toLocaleString()} AI coach messages/month</p>
             <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
