@@ -3,7 +3,7 @@ import type { Plan } from "../types";
 export const plans: Plan[] = [
   {
     id: "free",
-    name: "Free",
+    name: "Free Athlete",
     price: "₹0",
     aiLimit: 0,
     audience: "Athletes",
@@ -27,7 +27,7 @@ export const plans: Plan[] = [
   },
   {
     id: "champion",
-    name: "Coach",
+    name: "Individual Coach",
     price: "₹149/month · ₹1,499/year",
     aiLimit: 500,
     audience: "Independent coaches",
@@ -43,6 +43,4 @@ export const plans: Plan[] = [
   }
 ];
 
-export function getPlan(id?: string): Plan {
-  return plans.find((plan) => plan.id === id) ?? plans[0];
-}
+export function getPlan(id?: string): Plan { return plans.find((plan) => plan.id === id) ?? plans[0]; }
