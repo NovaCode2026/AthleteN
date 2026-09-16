@@ -1,0 +1,28 @@
+name: Apply Day 2 implementation
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/day2-implementation.mjs'
+      - 'scripts/day2-trigger.txt'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: "!contains(github.event.head_commit.message, '[skip-day2]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply Day 2 implementation
+        run: node scripts/day2-implementation.mjs
+      - name: Commit implementation changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx src/types.ts
+          git diff --cached --quiet || git commit -m "feat: complete Day 2 Taekwondo implementation [skip-day2]"
+          git push
