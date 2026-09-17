@@ -1,11 +1,11 @@
-# AthleteN - Taekwondo Edition V2
+# AthleteN - Taekwondo Edition
 
 **AthleteN** is a production-ready cloud operating system for Taekwondo athletes, built with React, TypeScript, Vite, Supabase, Netlify, and secure server-side OpenAI coaching.
 
 ## Features
 
 - Secure Supabase authentication: registration, login, logout, email verification, password reset, remembered sessions, and protected routes
-- TypeScript V2 app shell with typed plans, athlete data, verification, feedback, roadmap, and usage models
+- TypeScript app shell with typed plans, athlete data, verification, feedback, roadmap, and usage models
 - Supabase-backed athlete profile, academies, academy memberships, training plans, attendance, tournaments, matches, medals, certificates, documents, weight logs, calendar, notifications, checklists, injuries, goals, feedback, verifications, subscriptions, referrals, badges, support tickets, announcements, feature flags, audit logs, and AI usage events
 - Row Level Security so athlete-owned records stay private by default
 - Student verification workflow for school ID, fee receipt, and bonafide proof
@@ -123,7 +123,7 @@ docs/
   UI.md
 ```
 
-## Current V2 modules
+## Current modules
 
 - Dashboard
 - Athlete profile
