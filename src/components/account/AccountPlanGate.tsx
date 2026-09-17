@@ -65,7 +65,9 @@ export default function AccountPlanGate({ user }: { user: User | null }) {
 
   const trialActive = Boolean(entitlement?.trial_ends_at && new Date(entitlement.trial_ends_at).getTime() > Date.now());
   const trialUsed = Boolean(entitlement?.trial_claimed_at);
+  const trialExpired = Boolean(entitlement?.trial_claimed_at && !trialActive);
   const currentPlan = useMemo(() => plans.find((plan) => plan.id === (entitlement?.selected_plan_id || "free")) || plans[0], [entitlement?.selected_plan_id]);
+  const canStartTrial = Boolean(!trialUsed && !trialActive && !trialExpired && selected !== "free" && entitlement?.selected_plan_id === "free");
 
   if (!user || loading || !supabase) return null;
 
@@ -94,8 +96,7 @@ export default function AccountPlanGate({ user }: { user: User | null }) {
   }
 
   async function startTrialCheckout() {
-    if (selected === "free") return;
-    if (trialActive || trialUsed) return;
+    if (selected === "free" || trialActive || trialUsed) return;
     setBusy(true); setMessage("");
     try {
       const { data: sessionData } = await supabase!.auth.getSession();
@@ -130,7 +131,6 @@ export default function AccountPlanGate({ user }: { user: User | null }) {
           order_id: checkout.providerOrderId,
           prefill: { name: user.user_metadata?.full_name || "", email: user.email || "" },
           notes: { purpose: "trial", plan_id: selected },
-          theme: { color: "#111827" },
           handler: () => { void waitForTrialActivation().then((active) => {
             setBusy(false);
             if (active) { setMessage("Trial activated successfully."); setOpen(false); }
@@ -158,6 +158,7 @@ export default function AccountPlanGate({ user }: { user: User | null }) {
 
   async function changePlan() {
     if (trialActive) { setMessage("Your trial plan is locked for seven days. It cannot be changed during the trial."); return; }
+    if (canStartTrial) { setMessage("Use the ₹9 trial checkout to activate this paid plan."); return; }
     if (!password) { setMessage("Enter your account password to change the plan."); return; }
     if (!user.email) { setMessage("This account does not have an email password available for re-authentication."); return; }
     setBusy(true); setMessage("");
@@ -174,7 +175,6 @@ export default function AccountPlanGate({ user }: { user: User | null }) {
 
   const needsInitialChoice = !entitlement;
   const showChange = !needsInitialChoice;
-  const trialExpired = Boolean(entitlement?.trial_claimed_at && !trialActive);
 
   return <>
     {showChange && <button type="button" className="btn" onClick={() => { setOpen(true); setSelected(entitlement?.selected_plan_id || "free"); setMessage(""); }} style={{ position: "fixed", right: 22, bottom: 22, zIndex: 1200, boxShadow: "0 12px 32px rgba(0,0,0,.35)" }}>Account plan</button>}
@@ -195,13 +195,13 @@ export default function AccountPlanGate({ user }: { user: User | null }) {
         <div className="plan-grid" style={{ marginTop: 18 }}>
           {plans.map((plan) => {
             const lockedTrial = trialActive && plan.id !== entitlement?.selected_plan_id;
-            const trialEligible = !trialUsed && !trialActive && !trialExpired && plan.id !== "free";
+            const trialEligible = !trialUsed && !trialActive && !trialExpired && plan.id !== "free" && entitlement?.selected_plan_id === "free";
             return <article
               key={plan.id}
               className={`card plan-card ${selected === plan.id ? "active" : ""}`}
               onClick={() => {
                 if (busy || lockedTrial || trialActive) return;
-                if (needsInitialChoice && plan.id === "free") { void chooseFree(); return; }
+                if ((needsInitialChoice || entitlement?.selected_plan_id === "free") && plan.id === "free") { void chooseFree(); return; }
                 setSelected(plan.id);
               }}
               role="button"
@@ -219,7 +219,7 @@ export default function AccountPlanGate({ user }: { user: User | null }) {
           })}
         </div>
 
-        {needsInitialChoice && selected !== "free" && <div className="card" style={{ marginTop: 16 }}>
+        {((needsInitialChoice || entitlement?.selected_plan_id === "free") && selected !== "free" && !trialUsed && !trialExpired) && <div className="card" style={{ marginTop: 16 }}>
           <div className="plan-card-head"><div><strong>Pay first, then trial</strong><div className="muted">₹9 one-time payment · 7 days</div></div><span className={`status-chip ${entitlement?.trial_payment_status === "paid" ? "success" : ""}`}>{entitlement?.trial_payment_status === "paid" ? "Payment confirmed" : entitlement?.trial_payment_status === "pending" ? "Payment pending" : "Payment required"}</span></div>
           <p style={{ marginBottom: 12 }}>The trial is activated only from a verified payment webhook. The selected plan is locked for seven days, then the account returns to Free and the one-time trial is permanently consumed.</p>
           <button type="button" className="btn primary" disabled={busy || entitlement?.trial_payment_status === "pending" || entitlement?.trial_payment_status === "paid"} onClick={() => void startTrialCheckout()}>{busy ? "Opening checkout..." : entitlement?.trial_payment_status === "paid" ? "Payment confirmed" : entitlement?.trial_payment_status === "pending" ? "Payment processing..." : "Pay ₹9 — start 7-day trial"}</button>
@@ -229,12 +229,12 @@ export default function AccountPlanGate({ user }: { user: User | null }) {
         {trialExpired && <p className="notice" role="status">Trial ended. Free Athlete is active again. No second trial is available.</p>}
         {entitlement?.trial_payment_status === "pending" && <p className="notice" role="status">Trial payment is pending. AthleteN will not grant access until the payment provider confirms the payment.</p>}
         {entitlement?.trial_payment_status === "failed" && <p className="notice" role="alert">The trial payment failed. No trial access was granted.</p>}
-        {showChange && !trialActive && !trialExpired && <label className="field" style={{ marginTop: 14 }}><span>Account password</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" placeholder="Enter your current password" /></label>}
+        {showChange && !trialActive && !trialExpired && !canStartTrial && <label className="field" style={{ marginTop: 14 }}><span>Account password</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" placeholder="Enter your current password" /></label>}
         {message && <p className="notice" role="alert">{message}</p>}
         <div className="inline-actions" style={{ justifyContent: "flex-end", marginTop: 18 }}>
           {showChange && <button type="button" className="btn" onClick={() => setOpen(false)} disabled={busy}>Close</button>}
           {needsInitialChoice && selected === "free" && <button type="button" className="btn primary" disabled={busy} onClick={() => void chooseFree()}>{busy ? "Saving..." : "Continue with Free"}</button>}
-          {showChange && !trialActive && !trialExpired && <button type="button" className="btn primary" disabled={busy} onClick={() => void changePlan()}>{busy ? "Verifying..." : "Confirm plan change"}</button>}
+          {showChange && !trialActive && !trialExpired && !canStartTrial && <button type="button" className="btn primary" disabled={busy} onClick={() => void changePlan()}>{busy ? "Verifying..." : "Confirm plan change"}</button>}
         </div>
       </section>
     </div>}
