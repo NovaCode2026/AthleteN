@@ -31,7 +31,24 @@ export async function listRows<T>(resource: Resource, userId?: string, options: 
   if(error)throw toDatabaseError(resource,"load",error);
   return (data??[]) as T[];
 }
-export async function upsertRow<T extends Record<string,unknown>>(resource: Resource, values: T, options:{onConflict?:string}={}) { const table=TABLES[resource]; const payload=normalizeInsertValues(resource,values); const query=options.onConflict?requireSupabase().from(table).upsert(payload,{onConflict:options.onConflict}):requireSupabase().from(table).upsert(payload); const {data,error}=await query.select().single(); if(error)throw toDatabaseError(resource,"save",error); return data; }
+export async function upsertRow<T extends Record<string,unknown>>(resource: Resource, values: T, options:{onConflict?:string}={}) {
+  const table=TABLES[resource];
+  const payload=normalizeInsertValues(resource,values);
+
+  // Profile rows already exist after onboarding. A partial discipline update
+  // must update that row rather than making PostgREST attempt a new profile
+  // insert that is missing required columns such as full_name.
+  if (resource === "profile" && options.onConflict === "user_id" && typeof payload.user_id === "string" && !payload.full_name) {
+    const {data,error}=await requireSupabase().from(table).update(payload).eq("user_id",payload.user_id).select().single();
+    if(error)throw toDatabaseError(resource,"save",error);
+    return data;
+  }
+
+  const query=options.onConflict?requireSupabase().from(table).upsert(payload,{onConflict:options.onConflict}):requireSupabase().from(table).upsert(payload);
+  const {data,error}=await query.select().single();
+  if(error)throw toDatabaseError(resource,"save",error);
+  return data;
+}
 export async function insertRow<T extends Record<string,unknown>>(resource: Resource, values:T) { const table=TABLES[resource]; const payload=normalizeInsertValues(resource,values); const {data,error}=await requireSupabase().from(table).insert(payload).select().single(); if(error)throw toDatabaseError(resource,"save",error); return data; }
 export async function updateRow<T extends Record<string,unknown>>(resource: Resource,id:string,values:T,userId?:string) { const table=TABLES[resource]; let query=requireSupabase().from(table).update(values).eq("id",id); if(userId)query=query.eq("user_id",userId); const {data,error}=await query.select().single(); if(error)throw toDatabaseError(resource,"save",error); return data; }
 export async function deleteRow(resource: Resource,id:string,userId?:string) { const table=TABLES[resource]; let query=requireSupabase().from(table).delete().eq("id",id); if(userId)query=query.eq("user_id",userId); const {error}=await query; if(error)throw toDatabaseError(resource,"delete",error); }
