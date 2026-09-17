@@ -63,8 +63,17 @@ async function ensureProfileForUser(user: User) {
   if (!supabase) return;
   const metadata = user.user_metadata || {};
   const name = String(metadata.full_name || metadata.name || "").trim() || String(user.email || "").split("@")[0].trim() || "Athlete";
-  const { error } = await supabase.from("profiles").upsert({ user_id: user.id, full_name: name, plan_id: "free", role: "user", verified_athlete: false, founder_badge: false }, { onConflict: "user_id", ignoreDuplicates: true });
-  if (error && !String(error.message || "").toLowerCase().includes("duplicate")) throw error;
+  const { data: existing, error: selectError } = await supabase.from("profiles").select("user_id,role,plan_id").eq("user_id", user.id).maybeSingle();
+  if (selectError) throw selectError;
+  if (!existing) {
+    const { error } = await supabase.from("profiles").insert({ user_id: user.id, full_name: name, plan_id: "free", role: "athlete", verified_athlete: false, founder_badge: false });
+    if (error && !String(error.message || "").toLowerCase().includes("duplicate")) throw error;
+    return;
+  }
+  if (existing.role === "user") {
+    const { error } = await supabase.from("profiles").update({ role: "athlete" }).eq("user_id", user.id);
+    if (error) throw error;
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -74,11 +83,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) { setLoading(false); return undefined; }
     let mounted = true;
     supabase.auth.getSession().then(async ({ data }) => {
-      if (data.session?.user) { try { await ensureProfileForUser(data.session.user); } catch { /* the database trigger is the fallback */ } }
+      if (data.session?.user) {
+        try { await ensureProfileForUser(data.session.user); }
+        catch (error) { console.error("AthleteN profile bootstrap failed:", error); }
+      }
       if (mounted) { setSession(data.session); setLoading(false); }
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (nextSession?.user) void ensureProfileForUser(nextSession.user).catch(() => undefined);
+      if (nextSession?.user) void ensureProfileForUser(nextSession.user).catch((error) => console.error("AthleteN profile bootstrap failed:", error));
       setSession(nextSession); setLoading(false);
     });
     return () => { mounted = false; listener.subscription.unsubscribe(); };
