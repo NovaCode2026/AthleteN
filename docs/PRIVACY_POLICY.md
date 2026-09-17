@@ -2,7 +2,9 @@
 
 **Effective date:** 17 September 2026  
 **Provider / Data Controller:** Nova Code  
-**Product:** AthleteN
+**Product:** AthleteN  
+**Official privacy contact:** novacode.create@gmail.com  
+**Official grievance contact:** novacode.create@gmail.com
 
 > This Privacy Policy is a product-specific draft based on the current AthleteN architecture described in the repository. It must be reconciled with actual production data flows, vendors, retention periods, security controls, consent/notice flows, and the final legal identity and contact details before launch.
 
@@ -129,8 +131,8 @@ This Policy may be updated when services, processing activities, law, or securit
 
 **Provider / Data Controller:** Nova Code  
 **Product:** AthleteN  
-**Privacy contact:** [INSERT OFFICIAL PRIVACY EMAIL]  
-**Grievance contact:** [INSERT OFFICIAL GRIEVANCE CONTACT]
+**Privacy contact:** novacode.create@gmail.com  
+**Grievance contact:** novacode.create@gmail.com
 
 The final production policy should identify the legal entity, address, contact details, applicable grievance mechanism, and any required Data Protection Officer or equivalent contact before launch.
 
