@@ -13,6 +13,7 @@ interface AuthContextValue {
   loading: boolean;
   configured: boolean;
   emailVerified: boolean;
+  profileBootstrapError: string | null;
   signUp: (credentials: SignUpCredentials) => Promise<void>;
   signIn: (credentials: Credentials) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -79,18 +80,23 @@ async function ensureProfileForUser(user: User) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileBootstrapError, setProfileBootstrapError] = useState<string | null>(null);
   useEffect(() => {
     if (!supabase) { setLoading(false); return undefined; }
     let mounted = true;
     supabase.auth.getSession().then(async ({ data }) => {
       if (data.session?.user) {
-        try { await ensureProfileForUser(data.session.user); }
-        catch (error) { console.error("AthleteN profile bootstrap failed:", error); }
+        try { await ensureProfileForUser(data.session.user); setProfileBootstrapError(null); }
+        catch (error) { const message = error instanceof Error ? error.message : "Your AthleteN profile could not be initialized."; console.error("AthleteN profile bootstrap failed:", error); if (mounted) setProfileBootstrapError(message); }
       }
       if (mounted) { setSession(data.session); setLoading(false); }
+    }).catch((error) => {
+      console.error("AthleteN session initialization failed:", error);
+      if (mounted) { setProfileBootstrapError("Your secure session could not be initialized. Please refresh and try again."); setLoading(false); }
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (nextSession?.user) void ensureProfileForUser(nextSession.user).catch((error) => console.error("AthleteN profile bootstrap failed:", error));
+      setProfileBootstrapError(null);
+      if (nextSession?.user) void ensureProfileForUser(nextSession.user).catch((error) => { const message = error instanceof Error ? error.message : "Your AthleteN profile could not be initialized."; console.error("AthleteN profile bootstrap failed:", error); setProfileBootstrapError(message); });
       setSession(nextSession); setLoading(false);
     });
     return () => { mounted = false; listener.subscription.unsubscribe(); };
@@ -102,34 +108,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     configured: Boolean(supabase),
     emailVerified: Boolean(session?.user.email_confirmed_at),
-    async signUp({ email, password, metadata }) {
-      try {
-        const { error } = await requireSupabase().auth.signUp({ email, password, options: { data: metadata, emailRedirectTo: `${window.location.origin}/auth/callback` } });
-        if (error) throw error;
-      } catch (error) { throw toSafeAuthError(error, "Registration could not be completed. Please try again."); }
+    profileBootstrapError,
+    signUp: async ({ email, password, metadata }) => {
+      try { const { error } = await requireSupabase().auth.signUp({ email, password, options: { data: metadata, emailRedirectTo: `${window.location.origin}/auth/callback` } }); if (error) throw error; }
+      catch (error) { throw toSafeAuthError(error, "Registration could not be completed. Please try again."); }
     },
-    async signIn({ email, password }) {
+    signIn: async ({ email, password }) => {
       try { const { error } = await requireSupabase().auth.signInWithPassword({ email, password }); if (error) throw error; }
       catch (error) { throw toSafeAuthError(error, "Login could not be completed. Please try again."); }
     },
-    async signInWithGoogle() {
+    signInWithGoogle: async () => {
       try { const { error } = await requireSupabase().auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth/callback` } }); if (error) throw error; }
       catch (error) { throw toSafeAuthError(error, "Google sign-in could not be started. Please try again."); }
     },
-    async resetPassword(email) {
+    resetPassword: async (email) => {
       try { const { error } = await requireSupabase().auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` }); if (error) throw error; }
       catch (error) { throw toSafeAuthError(error, "Password reset could not be started. Please try again."); }
     },
-    async resendVerification(email) {
+    resendVerification: async (email) => {
       try { const { error } = await requireSupabase().auth.resend({ type: "signup", email, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } }); if (error) throw error; }
       catch (error) { throw toSafeAuthError(error, "Verification email could not be resent. Please try again."); }
     },
-    async updatePassword(password) {
+    updatePassword: async (password) => {
       try { const { error } = await requireSupabase().auth.updateUser({ password }); if (error) throw error; }
       catch (error) { throw toSafeAuthError(error, "Password could not be updated. Please try again."); }
     },
-    async signOut() { const { error } = await requireSupabase().auth.signOut(); if (error) throw error; }
-  }), [session, loading]);
+    signOut: async () => { const { error } = await requireSupabase().auth.signOut(); if (error) throw error; }
+  }), [session, loading, profileBootstrapError]);
 
   return <AuthContext.Provider value={value}>{children}<GoogleAuthButton /><AccountPlanGate user={session?.user ?? null} /></AuthContext.Provider>;
 }
