@@ -11,6 +11,7 @@ type ScanRow = { id: string; source_url: string; tournament_name?: string | null
 type InstagramPost = { id: string; caption?: string; timestamp?: string | null; permalink?: string | null; media_type?: string | null; media_product_type?: string | null };
 type InstagramResult = { organizer?: { username?: string; name?: string | null; biography?: string | null; followers_count?: number | null }; relevant_posts?: InstagramPost[]; other_posts?: InstagramPost[]; posts_scanned?: number; scan_limit?: number; more_posts_available?: boolean };
 type InstagramInput = { kind: "profile" | "post" | "reel"; username?: string; url: string };
+type InstagramConnection = { connected: boolean; username?: string | null };
 
 function parseInstagramInput(value: string): InstagramInput | null {
   const trimmed = value.trim();
@@ -44,9 +45,51 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
   const [sourceType, setSourceType] = useState<SourceType>("website");
   const [source, setSource] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [connectingInstagram, setConnectingInstagram] = useState(false);
+  const [instagramConnection, setInstagramConnection] = useState<InstagramConnection>({ connected: false });
   const [scans, setScans] = useState<ScanRow[]>([]);
   const [selectedScan, setSelectedScan] = useState<ScanRow | null>(null);
   const [instagramResult, setInstagramResult] = useState<InstagramResult | null>(null);
+
+  async function loadInstagramConnection() {
+    if (!accessToken) return;
+    try {
+      const response = await fetch("/.netlify/functions/instagram-discovery-status", { headers: { Authorization: `Bearer ${accessToken}` } });
+      const payload = await response.json().catch(() => ({})) as InstagramConnection & { error?: string };
+      if (response.ok) setInstagramConnection({ connected: Boolean(payload.connected), username: payload.username || null });
+    } catch {
+      // Keep the scanner usable; the actual scan endpoint still returns an actionable error.
+    }
+  }
+
+  async function connectInstagram() {
+    if (!accessToken) { setToast({ type: "error", message: "Please sign in again before connecting Instagram." }); return; }
+    setConnectingInstagram(true);
+    try {
+      const response = await fetch("/.netlify/functions/instagram-discovery-connect", { headers: { Authorization: `Bearer ${accessToken}` } });
+      const payload = await response.json().catch(() => ({})) as { authorizeUrl?: string; error?: string };
+      if (!response.ok || !payload.authorizeUrl) throw new Error(payload.error || "Instagram connection could not be started.");
+      window.location.assign(payload.authorizeUrl);
+    } catch (error) {
+      setConnectingInstagram(false);
+      setToast({ type: "error", message: error instanceof Error ? error.message : "Instagram connection could not be started." });
+    }
+  }
+
+  useEffect(() => {
+    void loadInstagramConnection();
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get("instagram");
+    const reason = params.get("reason");
+    if (result === "discovery-connected") {
+      setToast({ type: "success", message: "Instagram organizer connection is active. You can scan professional organizer accounts now." });
+      void loadInstagramConnection();
+      window.history.replaceState(null, "", "/scanner");
+    } else if (result === "discovery-error") {
+      setToast({ type: "error", message: reason ? `Instagram connection failed: ${reason.replaceAll("_", " ")}.` : "Instagram connection failed. Please try again." });
+      window.history.replaceState(null, "", "/scanner");
+    }
+  }, [accessToken]);
 
   async function loadScans() {
     if (!accessToken) return;
@@ -124,6 +167,10 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
       <div className="scanner-source-picker" role="tablist" aria-label="Tournament source type">
         <button type="button" className={`source-option ${sourceType === "website" ? "active" : ""}`} onClick={() => setSourceType("website")} aria-selected={sourceType === "website"}><Globe size={20}/><span><strong>Website</strong><small>Tournament site, notice, schedule or PDF</small></span></button>
         <button type="button" className={`source-option ${sourceType === "instagram" ? "active" : ""}`} onClick={() => setSourceType("instagram")} aria-selected={sourceType === "instagram"}><Instagram size={20}/><span><strong>Instagram</strong><small>Profile, post, reel or @username</small></span></button>
+      </div>
+      <div className="scanner-help" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><ShieldCheck size={16}/>{instagramConnection.connected ? <>Instagram organizer scanning connected{instagramConnection.username ? ` as @${instagramConnection.username}` : ""}.</> : "Connect a professional Instagram account through Meta to enable organizer profile scanning."}</span>
+        <button type="button" className="btn" onClick={() => void connectInstagram()} disabled={connectingInstagram}>{connectingInstagram ? <Loader2 className="spin" size={16}/> : <Instagram size={16}/>} {connectingInstagram ? "Connecting..." : instagramConnection.connected ? "Reconnect Instagram" : "Connect Instagram"}</button>
       </div>
       <form className="scan-form" onSubmit={(event) => void scan(event)}><input value={source} onChange={(event) => setSource(event.target.value)} placeholder={sourceType === "website" ? "https://example.com/tournament" : "https://instagram.com/organizer or /p/... or /reel/..."} aria-label="Tournament scan source" required/><button className="btn primary" type="submit" disabled={scanning}>{scanning ? <Loader2 className="spin" size={16}/> : <RefreshCw size={16}/>} {scanning ? "Scanning..." : "Scan"}</button></form>
       {sourceType === "website" ? <p className="scanner-help"><Globe size={16}/> The scanner follows relevant same-site pages, notices, schedules, results, rules, equipment, registration pages and linked PDFs.</p> : <p className="scanner-help"><ShieldCheck size={16}/> Profile scans inspect the organizer's accessible recent media, including tournament-relevant posts and other posts from the same account. Post/reel URLs remain exact sources.</p>}
