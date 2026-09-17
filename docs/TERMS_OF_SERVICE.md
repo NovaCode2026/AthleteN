@@ -2,7 +2,8 @@
 
 **Effective date:** 17 September 2026  
 **Provider:** Nova Code  
-**Product:** AthleteN
+**Product:** AthleteN  
+**Official contact:** novacode.create@gmail.com
 
 > This document is a product terms template for AthleteN. It should be reviewed and adapted by qualified Indian counsel before commercial launch, particularly for pricing, consumer rights, minors, payments, dispute resolution, and the exact legal identity and address of the provider.
 
@@ -143,7 +144,7 @@ Failure to enforce a provision immediately does not waive the right to enforce i
 
 **Provider:** Nova Code  
 **Product:** AthleteN  
-**Official contact channel:** [INSERT OFFICIAL SUPPORT / LEGAL EMAIL]
+**Official contact:** novacode.create@gmail.com
 
 The provider's legal name, registered/business address, support contact, and applicable grievance contact should be inserted before public launch where required by law.
 
