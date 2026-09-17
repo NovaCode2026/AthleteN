@@ -28,9 +28,7 @@ function usernameFromInput(value) {
     return first ? first.replace(/^@/, "").slice(0, 80) : null;
   } catch { return raw.replace(/^@/, "").split(/[/?#]/)[0].slice(0, 80) || null; }
 }
-function tournamentText(post) {
-  return `${post?.caption || ""} ${post?.username || ""}`.toLowerCase();
-}
+function tournamentText(post) { return `${post?.caption || ""} ${post?.username || ""}`.toLowerCase(); }
 function parsePosts(media) {
   const posts = Array.isArray(media) ? media : [];
   const keywords = /(taekwondo|tournament|championship|open|cup|games|kyorugi|poomsae|registration|weigh|weigh-in|draw|fixture|entry|medal|state|national|cadet|junior|senior|rules|scoring|PSS|protector|venue|schedule|fee|accommodation|transport)/i;
@@ -55,25 +53,13 @@ function normalizePost(post) {
     media_url: post?.media_url || null
   };
 }
-async function graph(path, accessToken) {
-  const url = new URL(`https://graph.facebook.com${path}`);
+async function instagramGet(path, accessToken) {
+  const url = new URL(`https://graph.instagram.com${path}`);
   url.searchParams.set("access_token", accessToken);
   const response = await fetch(url);
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(payload?.error?.message || `GRAPH_API_${response.status}`);
-    error.status = response.status;
-    throw error;
-  }
-  return payload;
-}
-async function graphNext(nextUrl, accessToken) {
-  const url = new URL(nextUrl);
-  url.searchParams.set("access_token", accessToken);
-  const response = await fetch(url);
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(payload?.error?.message || `GRAPH_API_${response.status}`);
+    const error = new Error(payload?.error?.message || `INSTAGRAM_API_${response.status}`);
     error.status = response.status;
     throw error;
   }
@@ -87,49 +73,35 @@ export default async function handler(request) {
 
   try {
     const body = await request.json().catch(() => ({}));
-    const username = usernameFromInput(body.username || body.url);
-    if (!username) return json({ error: "Enter a valid public Instagram profile URL or username." }, 400);
+    const requestedUsername = usernameFromInput(body.username || body.url);
+    if (!requestedUsername) return json({ error: "Enter a valid public Instagram profile URL or username." }, 400);
 
     const supabase = serverSupabase();
     const { data: connection, error: connectionError } = await supabase.from("instagram_discovery_connections")
-      .select("instagram_user_id,access_token,token_expires_at,instagram_username,status")
+      .select("instagram_user_id,access_token,token_expires_at,instagram_username")
       .eq("user_id", user.id).maybeSingle();
     if (connectionError) return json({ error: "Unable to load Instagram organizer-scanning connection." }, 503);
-    if (!connection?.access_token) return json({ error: "Connect an Instagram professional account before scanning organizers." }, 403);
-    if (connection.status && connection.status !== "active") return json({ error: "Your Instagram organizer-scanning connection is inactive. Reconnect it." }, 401);
-    if (connection.token_expires_at && new Date(connection.token_expires_at).getTime() <= Date.now()) return json({ error: "Your Instagram authorization has expired. Reconnect it." }, 401);
+    if (!connection?.access_token) return json({ error: "Connect the organizer's professional Instagram account before scanning its profile." }, 403);
+    if (connection.token_expires_at && new Date(connection.token_expires_at).getTime() <= Date.now()) return json({ error: "Your Instagram authorization has expired. Reconnect the organizer's Instagram account." }, 401);
 
-    const fields = "username,name,biography,profile_picture_url,followers_count,media.limit(50){id,caption,media_type,media_product_type,media_url,permalink,timestamp}";
-    const encodedUsername = encodeURIComponent(username.replace(/[^a-zA-Z0-9._-]/g, ""));
-    const result = await graph(`/${encodeURIComponent(connection.instagram_user_id)}?fields=business_discovery.username(${encodedUsername}){${fields}}`, connection.access_token);
-    const target = result?.business_discovery;
-    if (!target?.username) return json({ error: "Instagram could not find a matching professional account. Consumer/private accounts cannot be read through Business Discovery." }, 404);
-
-    let media = Array.isArray(target.media?.data) ? [...target.media.data] : [];
-    let paging = target.media?.paging?.next || null;
-    const maxPosts = 100;
-    while (paging && media.length < maxPosts) {
-      try {
-        const page = await graphNext(paging, connection.access_token);
-        const nextPosts = Array.isArray(page?.data) ? page.data : [];
-        if (!nextPosts.length) break;
-        media.push(...nextPosts);
-        paging = page?.paging?.next || null;
-      } catch (error) {
-        console.warn("instagram-discovery-pagination", error?.message || error);
-        break;
-      }
+    const connectedUsername = String(connection.instagram_username || "").toLowerCase();
+    if (connectedUsername && connectedUsername !== requestedUsername.toLowerCase()) {
+      return json({ error: `The connected Instagram account is @${connection.instagram_username}. Connect @${requestedUsername} to scan that organizer profile.` }, 409);
     }
-    media = media.slice(0, maxPosts);
-    const normalizedPosts = media.map(normalizePost);
+
+    const fields = "user_id,username,name,biography,profile_picture_url,followers_count";
+    const target = await instagramGet(`/me?fields=${fields}`, connection.access_token);
+    const mediaResult = await instagramGet(`/${encodeURIComponent(connection.instagram_user_id)}/media?fields=id,caption,media_type,media_product_type,media_url,permalink,timestamp&limit=50`, connection.access_token);
+    const media = Array.isArray(mediaResult?.data) ? mediaResult.data : [];
     const relevantPosts = parsePosts(media);
     const relevantIds = new Set(relevantPosts.map((post) => post.id));
+    const normalizedPosts = media.map(normalizePost);
     const otherPosts = normalizedPosts.filter((post) => post.id && !relevantIds.has(post.id));
 
     return json({
       organizer: {
-        id: target.id || null,
-        username: target.username,
+        id: target.user_id || connection.instagram_user_id,
+        username: target.username || connection.instagram_username,
         name: target.name || null,
         biography: target.biography || null,
         profile_picture_url: target.profile_picture_url || null,
@@ -139,13 +111,13 @@ export default async function handler(request) {
       relevant_posts: relevantPosts,
       other_posts: otherPosts,
       posts_scanned: normalizedPosts.length,
-      scan_limit: maxPosts,
-      more_posts_available: Boolean(paging),
+      scan_limit: 50,
+      more_posts_available: Boolean(mediaResult?.paging?.next),
       scanned_at: new Date().toISOString()
     });
   } catch (error) {
     console.error("instagram-discovery-data", error?.status || "", error?.message || error);
-    if (error?.status === 190 || error?.status === 401) return json({ error: "Instagram authorization is no longer valid. Reconnect your organizer-scanning account." }, 401);
+    if (error?.status === 401 || error?.status === 403) return json({ error: "Instagram denied this data request. Reconnect the professional Instagram account and verify its eligibility for the selected permissions." }, error.status);
     return json({ error: error?.message || "Instagram organizer scan failed." }, 502);
   }
 }
