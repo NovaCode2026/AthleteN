@@ -23,18 +23,40 @@ async function authenticate(request) {
 export default async function handler(request) {
   if (request.method !== "GET") return json({ error: "Method not allowed." }, 405);
   const user = await authenticate(request);
-  if (!user) return json({ error: "Please sign in before enabling organizer scanning." }, 401);
+  if (!user) return json({ error: "Please sign in before connecting Instagram." }, 401);
+
   const appId = env("INSTAGRAM_APP_ID");
   const redirectUri = env("INSTAGRAM_DISCOVERY_REDIRECT_URI") || "https://athleten.netlify.app/.netlify/functions/instagram-discovery-callback";
   if (!appId || !redirectUri) return json({ error: "Instagram organizer scanning is not configured on the server." }, 503);
+
   try {
     const supabase = serverSupabase();
     await supabase.from("instagram_discovery_oauth_states").delete().eq("user_id", user.id);
     const state = randomBytes(32).toString("hex");
-    const { error } = await supabase.from("instagram_discovery_oauth_states").insert({ state, user_id: user.id, expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString() });
-    if (error) return json({ error: "Unable to start organizer Instagram authorization." }, 503);
-    const url = new URL("https://www.facebook.com/dialog/oauth");
-    url.searchParams.set("client_id", appId); url.searchParams.set("redirect_uri", redirectUri); url.searchParams.set("response_type", "code"); url.searchParams.set("state", state); url.searchParams.set("scope", ["pages_show_list", "instagram_basic", "pages_read_engagement", "instagram_manage_insights"].join(","));
-    return json({ authorizeUrl: url.toString() });
-  } catch (error) { console.error("instagram-discovery-connect", error); return json({ error: "Unable to start organizer Instagram authorization." }, 503); }
+    const { error } = await supabase.from("instagram_discovery_oauth_states").insert({
+      state,
+      user_id: user.id,
+      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
+    });
+    if (error) return json({ error: "Unable to start Instagram authorization." }, 503);
+
+    // Use the same current Instagram Login flow as the regular Instagram connection.
+    // Do not send the legacy Facebook/Page/Business Discovery scopes that caused the
+    // Invalid Scopes error in the previous implementation.
+    const scopes = [
+      "instagram_business_basic",
+      "instagram_business_manage_comments",
+      "instagram_business_manage_messages"
+    ].join(",");
+    const authorizeUrl = new URL("https://www.instagram.com/oauth/authorize");
+    authorizeUrl.searchParams.set("client_id", appId);
+    authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+    authorizeUrl.searchParams.set("response_type", "code");
+    authorizeUrl.searchParams.set("scope", scopes);
+    authorizeUrl.searchParams.set("state", state);
+    return json({ authorizeUrl: authorizeUrl.toString() });
+  } catch (error) {
+    console.error("instagram-discovery-connect", error);
+    return json({ error: "Unable to start Instagram authorization." }, 503);
+  }
 }
