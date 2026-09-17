@@ -2,7 +2,8 @@
 
 **Effective date:** 17 September 2026  
 **Project:** AthleteN  
-**Rights holder:** Nova Code
+**Rights holder:** Nova Code  
+**Official contributor/legal contact:** novacode.create@gmail.com
 
 > This agreement is a template for voluntary contributors. It should be reviewed by qualified counsel and, where appropriate, replaced or supplemented by employment or contractor agreements.
 
@@ -101,7 +102,7 @@ This Agreement governs Contributions only to the extent it applies. A separate e
 
 **Project:** AthleteN  
 **Rights holder:** Nova Code  
-**Contributor contact:** [INSERT OFFICIAL CONTRIBUTOR / LEGAL EMAIL]
+**Official contributor/legal contact:** novacode.create@gmail.com
 
 ---
 
