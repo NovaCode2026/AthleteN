@@ -12,36 +12,79 @@ function redirect(params) {
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
   return Response.redirect(url.toString(), 302);
 }
-
+async function exchangeCode(code, redirectUri) {
+  const appId = env("INSTAGRAM_APP_ID");
+  const appSecret = env("INSTAGRAM_APP_SECRET");
+  if (!appId || !appSecret) throw new Error("INSTAGRAM_SERVER_CONFIG_MISSING");
+  const body = new URLSearchParams({ client_id: appId, client_secret: appSecret, grant_type: "authorization_code", redirect_uri: redirectUri, code });
+  const response = await fetch("https://api.instagram.com/oauth/access_token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.access_token || !payload.user_id) {
+    console.error("Instagram discovery token exchange failed", response.status, payload);
+    throw new Error("INSTAGRAM_TOKEN_EXCHANGE_FAILED");
+  }
+  return payload;
+}
+async function exchangeForLongLivedToken(shortLivedToken) {
+  const appSecret = env("INSTAGRAM_APP_SECRET");
+  if (!appSecret) throw new Error("INSTAGRAM_SERVER_CONFIG_MISSING");
+  const url = new URL("https://graph.instagram.com/access_token");
+  url.searchParams.set("grant_type", "ig_exchange_token");
+  url.searchParams.set("client_secret", appSecret);
+  url.searchParams.set("access_token", shortLivedToken);
+  const response = await fetch(url);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.access_token) {
+    console.error("Instagram discovery long-lived token exchange failed", response.status, payload);
+    throw new Error("INSTAGRAM_LONG_LIVED_TOKEN_EXCHANGE_FAILED");
+  }
+  return payload;
+}
+async function getInstagramProfile(accessToken) {
+  const url = new URL("https://graph.instagram.com/me");
+  url.searchParams.set("fields", "user_id,username,name,biography,profile_picture_url,followers_count");
+  url.searchParams.set("access_token", accessToken);
+  const response = await fetch(url);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.user_id) {
+    console.error("Instagram discovery profile lookup failed", response.status, payload);
+    throw new Error("INSTAGRAM_PROFILE_LOOKUP_FAILED");
+  }
+  return payload;
+}
 export default async function handler(request) {
   if (request.method !== "GET") return new Response("Method not allowed.", { status: 405 });
   const query = new URL(request.url).searchParams;
   const code = query.get("code");
   const state = query.get("state");
+  const oauthError = query.get("error");
+  if (oauthError) return redirect({ instagram: "discovery-error", reason: "authorization_denied" });
   if (!code || !state) return redirect({ instagram: "discovery-error", reason: "missing_oauth_parameters" });
   try {
     const supabase = serverSupabase();
     const { data: oauthState, error: stateError } = await supabase.from("instagram_discovery_oauth_states").select("state,user_id,expires_at").eq("state", state).maybeSingle();
     if (stateError || !oauthState || new Date(oauthState.expires_at).getTime() < Date.now()) return redirect({ instagram: "discovery-error", reason: "invalid_or_expired_state" });
     await supabase.from("instagram_discovery_oauth_states").delete().eq("state", state);
-    const appId = env("INSTAGRAM_APP_ID");
-    const appSecret = env("INSTAGRAM_APP_SECRET");
     const redirectUri = env("INSTAGRAM_DISCOVERY_REDIRECT_URI") || "https://athleten.netlify.app/.netlify/functions/instagram-discovery-callback";
-    if (!appId || !appSecret) return redirect({ instagram: "discovery-error", reason: "server_not_configured" });
-    const tokenUrl = new URL("https://graph.facebook.com/oauth/access_token");
-    tokenUrl.searchParams.set("client_id", appId); tokenUrl.searchParams.set("client_secret", appSecret); tokenUrl.searchParams.set("redirect_uri", redirectUri); tokenUrl.searchParams.set("code", code);
-    const tokenResponse = await fetch(tokenUrl); const tokenPayload = await tokenResponse.json().catch(() => ({}));
-    if (!tokenResponse.ok || !tokenPayload.access_token) throw new Error(`FACEBOOK_TOKEN_EXCHANGE_${tokenResponse.status}`);
-    const accessToken = tokenPayload.access_token;
-    const meResponse = await fetch(`https://graph.facebook.com/me?fields=id&access_token=${encodeURIComponent(accessToken)}`); const mePayload = await meResponse.json().catch(() => ({}));
-    if (!meResponse.ok || !mePayload.id) throw new Error("FACEBOOK_USER_LOOKUP_FAILED");
-    const pagesResponse = await fetch(`https://graph.facebook.com/me/accounts?fields=id,name,instagram_business_account{id,username}&access_token=${encodeURIComponent(accessToken)}`); const pagesPayload = await pagesResponse.json().catch(() => ({}));
-    if (!pagesResponse.ok) throw new Error("FACEBOOK_PAGES_LOOKUP_FAILED");
-    const page = (pagesPayload.data || []).find((item) => item?.instagram_business_account?.id);
-    if (!page) throw new Error("NO_LINKED_INSTAGRAM_PROFESSIONAL_ACCOUNT");
-    const expiresIn = Number(tokenPayload.expires_in) || 60 * 24 * 60 * 60;
-    const { error: saveError } = await supabase.from("instagram_discovery_connections").upsert({ user_id: oauthState.user_id, facebook_user_id: mePayload.id, instagram_user_id: page.instagram_business_account.id, instagram_username: page.instagram_business_account.username || null, access_token: accessToken, token_expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(), connected_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+    const shortToken = await exchangeCode(code, redirectUri);
+    const longToken = await exchangeForLongLivedToken(shortToken.access_token);
+    const profile = await getInstagramProfile(longToken.access_token);
+    const expiresIn = Number(longToken.expires_in) || 60 * 24 * 60 * 60;
+    const now = new Date();
+    const { error: saveError } = await supabase.from("instagram_discovery_connections").upsert({
+      user_id: oauthState.user_id,
+      facebook_user_id: null,
+      instagram_user_id: String(profile.user_id || shortToken.user_id),
+      instagram_username: profile.username || null,
+      access_token: longToken.access_token,
+      token_expires_at: new Date(now.getTime() + expiresIn * 1000).toISOString(),
+      connected_at: now.toISOString(),
+      updated_at: now.toISOString()
+    }, { onConflict: "user_id" });
     if (saveError) throw saveError;
     return redirect({ instagram: "discovery-connected" });
-  } catch (error) { console.error("instagram-discovery-callback", error); return redirect({ instagram: "discovery-error", reason: error?.message || "callback_failed" }); }
+  } catch (error) {
+    console.error("instagram-discovery-callback", error);
+    return redirect({ instagram: "discovery-error", reason: error?.message || "callback_failed" });
+  }
 }
