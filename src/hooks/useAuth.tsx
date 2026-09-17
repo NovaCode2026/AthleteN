@@ -29,7 +29,7 @@ function toSafeAuthError(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : "";
   const lower = message.toLowerCase();
   if (error instanceof TypeError && lower.includes("failed to fetch")) return new Error("Unable to connect to AthleteN services. Please check your connection and try again.");
-  if (lower.includes("fetch") || lower.includes("network")) return new Error("Registration service is temporarily unavailable. Please try again.");
+  if (lower.includes("fetch") || lower.includes("network")) return new Error("Authentication service is temporarily unavailable. Please try again.");
   if (lower.includes("invalid login credentials")) return new Error("The email or password is incorrect.");
   if (lower.includes("already registered") || lower.includes("already exists")) return new Error("An account with this email may already exist. Try logging in or resetting your password.");
   if (lower.includes("expired") || lower.includes("one-time token")) return new Error("This verification link has expired. Request a new verification email.");
@@ -81,23 +81,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileBootstrapError, setProfileBootstrapError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!supabase) { setLoading(false); return undefined; }
     let mounted = true;
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (data.session?.user) {
-        try { await ensureProfileForUser(data.session.user); setProfileBootstrapError(null); }
-        catch (error) { const message = error instanceof Error ? error.message : "Your AthleteN profile could not be initialized."; console.error("AthleteN profile bootstrap failed:", error); if (mounted) setProfileBootstrapError(message); }
+    let bootstrapVersion = 0;
+
+    async function bootstrap(nextSession: Session | null) {
+      const version = ++bootstrapVersion;
+      if (mounted) {
+        setLoading(true);
+        setProfileBootstrapError(null);
       }
-      if (mounted) { setSession(data.session); setLoading(false); }
-    }).catch((error) => {
+      try {
+        if (nextSession?.user) await ensureProfileForUser(nextSession.user);
+        if (!mounted || version !== bootstrapVersion) return;
+        setSession(nextSession);
+        setProfileBootstrapError(null);
+      } catch (error) {
+        if (!mounted || version !== bootstrapVersion) return;
+        const message = error instanceof Error ? error.message : "Your AthleteN profile could not be initialized.";
+        console.error("AthleteN profile bootstrap failed:", error);
+        setSession(nextSession);
+        setProfileBootstrapError(message);
+      } finally {
+        if (mounted && version === bootstrapVersion) setLoading(false);
+      }
+    }
+
+    void supabase.auth.getSession().then(({ data }) => bootstrap(data.session)).catch((error) => {
       console.error("AthleteN session initialization failed:", error);
-      if (mounted) { setProfileBootstrapError("Your secure session could not be initialized. Please refresh and try again."); setLoading(false); }
+      if (mounted) {
+        setSession(null);
+        setProfileBootstrapError("Your secure session could not be initialized. Please refresh and try again.");
+        setLoading(false);
+      }
     });
+
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setProfileBootstrapError(null);
-      if (nextSession?.user) void ensureProfileForUser(nextSession.user).catch((error) => { const message = error instanceof Error ? error.message : "Your AthleteN profile could not be initialized."; console.error("AthleteN profile bootstrap failed:", error); setProfileBootstrapError(message); });
-      setSession(nextSession); setLoading(false);
+      void bootstrap(nextSession);
     });
     return () => { mounted = false; listener.subscription.unsubscribe(); };
   }, []);
