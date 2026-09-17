@@ -1,0 +1,61 @@
+/* AthleteN brand layer — keeps the new A/N identity consistent without touching feature styling. */
+:root { --athleten-brand-blue: #238eff; --athleten-brand-cyan: #39d7ff; }
+
+/* Global sidebar identity */
+.sidebar .brand { position: relative; gap: 10px; min-height: 44px; }
+.sidebar .brand > svg { display: none; }
+.sidebar .brand::before {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 10px;
+  background: url('/athleten-mark.svg') center / cover no-repeat;
+  box-shadow: 0 0 20px rgba(35, 142, 255, .18);
+}
+.sidebar .brand > span { letter-spacing: -.35px; }
+
+/* Auth, verification and onboarding screens */
+.auth-page .auth-card,
+.onboarding-page .auth-card {
+  position: relative;
+}
+.auth-page .auth-card::before,
+.onboarding-page .auth-card::before {
+  content: "";
+  display: block;
+  width: min(250px, 72vw);
+  height: 118px;
+  margin: 0 auto 22px;
+  background: url('/athleten-logo.svg') center / contain no-repeat;
+  filter: drop-shadow(0 8px 24px rgba(35, 142, 255, .16));
+}
+.auth-page .auth-card > h1:first-of-type { margin-top: 0; }
+
+/* Lightweight mark in the application header */
+.app-shell main > header { position: relative; }
+.app-shell main > header::before {
+  content: "";
+  display: block;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 9px;
+  margin-right: 2px;
+  background: url('/athleten-mark.svg') center / cover no-repeat;
+  box-shadow: 0 0 18px rgba(35, 142, 255, .14);
+}
+.app-shell main > header { display: grid; grid-template-columns: auto 1fr auto; }
+
+/* Small-screen header stays compact. */
+@media (max-width: 720px) {
+  .app-shell main > header::before { width: 30px; height: 30px; flex-basis: 30px; }
+  .app-shell main > header { grid-template-columns: auto 1fr auto; }
+}
+
+/* Print / reduced-motion friendliness */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar .brand::before,
+  .app-shell main > header::before { box-shadow: none; }
+}
