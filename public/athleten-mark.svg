@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="AthleteN logo mark">
+  <defs>
+    <linearGradient id="n" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#39d7ff"/>
+      <stop offset="1" stop-color="#1764e8"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="48" fill="#050b14"/>
+  <path d="M43 190 92 66h31l49 124h-34l-10-29H87l-10 29H43Zm54-57h21l-10-31-11 31Z" fill="#fff"/>
+  <path d="M126 66h33l48 61V66h34v124h-31l-50-63v63h-34V66Z" fill="url(#n)"/>
+</svg>
