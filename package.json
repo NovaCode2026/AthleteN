@@ -12,6 +12,7 @@
     "vite",
     "supabase",
     "netlify",
+    "openai",
     "sports-tech"
   ],
   "author": "Nova Code",
@@ -25,7 +26,7 @@
     "url": "https://github.com/NovaCode2026/AthleteN/issues"
   },
   "scripts": {
-    "dev": "npx --yes netlify-cli dev",
+    "dev": "vite",
     "build": "vite build && node scripts/write-netlify-redirects.mjs",
     "preview": "vite preview",
     "check": "npm run build && npm test",
