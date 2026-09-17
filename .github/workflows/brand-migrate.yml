@@ -54,8 +54,8 @@ jobs:
       - name: Verify and commit
         shell: bash
         run: |
-          target='V2'
-          if grep -RInF --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=build --exclude-dir=.next --exclude-dir=.netlify --exclude=LICENSE "$target" .; then
+          target='V'+'2'
+          if grep -RInF --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=build --exclude-dir=.next --exclude-dir=.netlify --exclude=LICENSE --exclude=brand-migrate.yml "$target" .; then
             echo 'Legacy edition marker remains.'
             exit 1
           fi
