@@ -2,7 +2,8 @@
 
 **Effective date:** 17 September 2026  
 **Provider:** Nova Code  
-**Product:** AthleteN
+**Product:** AthleteN  
+**Official contact:** novacode.create@gmail.com
 
 ## 1. General Information
 
@@ -40,7 +41,7 @@ Nothing in this disclaimer excludes or limits a right, warranty, liability, or r
 
 **Provider:** Nova Code  
 **Product:** AthleteN  
-**Contact:** [INSERT OFFICIAL SUPPORT / LEGAL EMAIL]
+**Official contact:** novacode.create@gmail.com
 
 ---
 
