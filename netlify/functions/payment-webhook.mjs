@@ -58,6 +58,45 @@ async function activateFromOrder(supabase, order, providerPaymentId, providerCus
   });
 }
 
+async function activateTrialFromOrder(supabase, order, providerPaymentId, eventType, metadata = {}) {
+  if (!order) return;
+  if (order.status === "paid") return;
+  if (Number(order.amount_minor) !== 900) throw new Error("INVALID_TRIAL_AMOUNT");
+  if (order.metadata?.purpose !== "trial") return;
+
+  const paymentReference = String(providerPaymentId || order.provider_order_id || "");
+  if (!paymentReference) throw new Error("TRIAL_PAYMENT_REFERENCE_MISSING");
+
+  const { error: trialError } = await supabase.rpc("activate_trial_after_payment", {
+    p_user_id: order.user_id,
+    p_plan_id: order.plan_id,
+    p_provider: order.provider,
+    p_payment_reference: paymentReference,
+    p_amount_paise: 900
+  });
+  if (trialError) throw trialError;
+
+  const { error: updateError } = await supabase.from("payment_orders").update({
+    status: "paid",
+    provider_payment_id: providerPaymentId || order.provider_payment_id,
+    paid_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    metadata: { ...order.metadata, ...metadata, purpose: "trial" }
+  }).eq("id", order.id).eq("status", "pending");
+  if (updateError) throw updateError;
+
+  await logPaymentEvent(supabase, {
+    user_id: order.user_id,
+    provider: order.provider,
+    event_type: eventType,
+    provider_event_id: metadata.provider_event_id || null,
+    amount_minor: order.amount_minor,
+    currency: order.currency,
+    status: "paid",
+    metadata: { payment_order_id: order.id, plan_id: order.plan_id, purpose: "trial", ...metadata }
+  });
+}
+
 export default async function handler(request) {
   if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
   const provider = String(request.headers.get("x-athleteos-provider") || env("PAYMENT_PROVIDER") || "").toLowerCase();
@@ -84,6 +123,15 @@ export default async function handler(request) {
       const entity = payload.payload?.subscription?.entity || payload.payload?.payment?.entity;
       const providerOrderId = entity?.id || entity?.order_id;
       if (!providerOrderId) return json({ received: true });
+
+      if (event === "payment.captured" && entity?.order_id) {
+        const { data: trialOrder } = await supabase.from("payment_orders").select("*").eq("provider", "razorpay").eq("provider_order_id", entity.order_id).maybeSingle();
+        if (trialOrder?.metadata?.purpose === "trial") {
+          await activateTrialFromOrder(supabase, trialOrder, String(entity.id || ""), event, { provider_event_id: String(entity.id || "") });
+          return json({ received: true });
+        }
+      }
+
       const { data: order } = await supabase.from("payment_orders").select("*").eq("provider", "razorpay").eq("provider_subscription_id", providerOrderId).maybeSingle();
       if (!order && entity?.order_id) {
         const { data: byOrder } = await supabase.from("payment_orders").select("*").eq("provider_order_id", entity.order_id).maybeSingle();
@@ -97,14 +145,23 @@ export default async function handler(request) {
       const session = payload.data?.object;
       if (session?.payment_status !== "paid") return json({ received: true });
       const { data: order } = await supabase.from("payment_orders").select("*").eq("provider", "stripe").eq("provider_order_id", session.id).maybeSingle();
-      if (order) await activateFromOrder(supabase, order, session.payment_intent, session.customer, session.subscription, null, event, { provider_event_id: payload.id });
+      if (!order) return json({ received: true });
+      if (order.metadata?.purpose === "trial" || session.metadata?.purpose === "trial") {
+        await activateTrialFromOrder(supabase, order, session.payment_intent || session.id, event, { provider_event_id: payload.id, stripe_session_id: session.id });
+      } else {
+        await activateFromOrder(supabase, order, session.payment_intent, session.customer, session.subscription, null, event, { provider_event_id: payload.id });
+      }
     } else {
       const event = payload.type || payload.event;
       if (!String(event).toLowerCase().includes("success") && !String(event).toLowerCase().includes("paid") && event !== "PAYMENT_SUCCESS_WEBHOOK") return json({ received: true });
       const providerOrderId = payload.data?.order?.order_id || payload.data?.order_id || payload.order_id;
       const providerPaymentId = payload.data?.payment?.cf_payment_id || payload.data?.cf_payment_id || payload.cf_payment_id;
       const { data: order } = await supabase.from("payment_orders").select("*").eq("provider", "cashfree").eq("provider_order_id", providerOrderId).maybeSingle();
-      if (order) await activateFromOrder(supabase, order, String(providerPaymentId || ""), null, null, null, String(event || "payment.success"), {});
+      if (order?.metadata?.purpose === "trial") {
+        await activateTrialFromOrder(supabase, order, String(providerPaymentId || providerOrderId || ""), String(event || "payment.success"), {});
+      } else if (order) {
+        await activateFromOrder(supabase, order, String(providerPaymentId || ""), null, null, null, String(event || "payment.success"), {});
+      }
     }
     return json({ received: true });
   } catch (error) {
