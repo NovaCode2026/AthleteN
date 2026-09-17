@@ -34,6 +34,7 @@ export default function AccountPlanGate({ user }: { user: User | null }) {
     setLoading(true);
     const { data, error } = await supabase.from("account_entitlements").select("user_id,selected_plan_id,trial_claimed_at,trial_plan_id,trial_started_at,trial_ends_at,trial_fee_paise,trial_payment_status").eq("user_id", user.id).maybeSingle();
     if (!error) setEntitlement(data as Entitlement | null);
+    else setMessage(import.meta.env.DEV ? error.message : "Your account plan could not be loaded. Please refresh and try again.");
     setLoading(false);
   }
 
