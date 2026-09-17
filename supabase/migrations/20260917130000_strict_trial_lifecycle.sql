@@ -4,6 +4,27 @@
 -- 3. A used trial can never be started again.
 -- 4. Once the seven-day trial expires, the authoritative plan returns to Free.
 
+alter table public.account_entitlements
+  add column if not exists trial_fee_paise integer,
+  add column if not exists trial_payment_status text,
+  add column if not exists trial_payment_provider text,
+  add column if not exists trial_payment_reference text;
+
+update public.account_entitlements
+set trial_fee_paise = coalesce(trial_fee_paise, 900),
+    trial_payment_status = coalesce(trial_payment_status, 'not_required')
+where trial_fee_paise is null or trial_payment_status is null;
+
+alter table public.account_entitlements
+  alter column trial_fee_paise set default 900,
+  alter column trial_payment_status set default 'not_required';
+
+alter table public.account_entitlements
+  drop constraint if exists account_entitlements_trial_payment_status_check;
+alter table public.account_entitlements
+  add constraint account_entitlements_trial_payment_status_check
+  check (trial_payment_status in ('not_required','pending','paid','failed','refunded'));
+
 create or replace function public.normalize_account_trial(p_user_id uuid default auth.uid())
 returns public.account_entitlements
 language plpgsql
