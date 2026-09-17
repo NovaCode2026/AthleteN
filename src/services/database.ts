@@ -20,7 +20,17 @@ function normalizeInsertValues(resource: Resource, values: Record<string, unknow
   const allowed = ["user_id", "title", "document_type", "file_path", "expires_at"];
   return Object.fromEntries(Object.entries(values).filter(([key]) => allowed.includes(key)));
 }
-export async function listRows<T>(resource: Resource, userId?: string, options: { order?: string; ascending?: boolean; publicRows?: boolean } = {}) { const table=TABLES[resource]; let query=requireSupabase().from(table).select("*"); if(!options.publicRows&&userId)query=query.eq("user_id",userId); if(options.order)query=query.order(options.order,{ascending:options.ascending??false}); const {data,error}=await query; if(error)throw toDatabaseError(resource,"load",error); return (data??[]) as T[]; }
+
+export async function listRows<T>(resource: Resource, userId?: string, options: { order?: string; ascending?: boolean; publicRows?: boolean; limit?: number } = {}) {
+  const table=TABLES[resource];
+  let query=requireSupabase().from(table).select("*");
+  if(!options.publicRows&&userId)query=query.eq("user_id",userId);
+  if(options.order)query=query.order(options.order,{ascending:options.ascending??false});
+  query=query.limit(Math.max(1, Math.min(options.limit ?? 100, 500)));
+  const {data,error}=await query;
+  if(error)throw toDatabaseError(resource,"load",error);
+  return (data??[]) as T[];
+}
 export async function upsertRow<T extends Record<string,unknown>>(resource: Resource, values: T, options:{onConflict?:string}={}) { const table=TABLES[resource]; const payload=normalizeInsertValues(resource,values); const query=options.onConflict?requireSupabase().from(table).upsert(payload,{onConflict:options.onConflict}):requireSupabase().from(table).upsert(payload); const {data,error}=await query.select().single(); if(error)throw toDatabaseError(resource,"save",error); return data; }
 export async function insertRow<T extends Record<string,unknown>>(resource: Resource, values:T) { const table=TABLES[resource]; const payload=normalizeInsertValues(resource,values); const {data,error}=await requireSupabase().from(table).insert(payload).select().single(); if(error)throw toDatabaseError(resource,"save",error); return data; }
 export async function updateRow<T extends Record<string,unknown>>(resource: Resource,id:string,values:T,userId?:string) { const table=TABLES[resource]; let query=requireSupabase().from(table).update(values).eq("id",id); if(userId)query=query.eq("user_id",userId); const {data,error}=await query.select().single(); if(error)throw toDatabaseError(resource,"save",error); return data; }
