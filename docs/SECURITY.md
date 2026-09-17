@@ -1,12 +1,14 @@
 # ATHLETEN SECURITY POLICY
 
+**Official security contact:** novacode.create@gmail.com
+
 ## Reporting a Vulnerability
 
 Nova Code welcomes responsible reports of security vulnerabilities affecting AthleteN.
 
 Please report suspected vulnerabilities privately through:
 
-**Security contact:** [INSERT OFFICIAL SECURITY EMAIL]
+**Security contact:** novacode.create@gmail.com
 
 Do not publicly disclose credentials, private keys, personal data, exploit details, or other sensitive information before Nova Code has had a reasonable opportunity to assess and address the issue.
 
