@@ -25,7 +25,7 @@
     "url": "https://github.com/NovaCode2026/AthleteN/issues"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "npx --yes netlify-cli dev",
     "build": "vite build && node scripts/write-netlify-redirects.mjs",
     "preview": "vite preview",
     "check": "npm run build && npm test",
