@@ -11,8 +11,6 @@ type Entitlement = {
   trial_plan_id?: PlanId | null;
   trial_started_at?: string | null;
   trial_ends_at?: string | null;
-  trial_fee_paise?: number | null;
-  trial_payment_status?: string | null;
 };
 
 export default function AccountPlanGate({ user }: { user: User | null }) {
@@ -24,21 +22,25 @@ export default function AccountPlanGate({ user }: { user: User | null }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
-  const trialActive = Boolean(entitlement?.trial_ends_at && new Date(entitlement.trial_ends_at).getTime() > Date.now());
-  const trialUsed = Boolean(entitlement?.trial_claimed_at);
-  const currentPlan = useMemo(() => plans.find((plan) => plan.id === (entitlement?.selected_plan_id || "free")) || plans[0], [entitlement?.selected_plan_id]);
-  const isDevelopment = import.meta.env.DEV;
-
   async function load() {
     if (!user || !supabase) { setLoading(false); return; }
     setLoading(true);
-    const { data, error } = await supabase.from("account_entitlements").select("user_id,selected_plan_id,trial_claimed_at,trial_plan_id,trial_started_at,trial_ends_at,trial_fee_paise,trial_payment_status").eq("user_id", user.id).maybeSingle();
+    const { data, error } = await supabase
+      .from("account_entitlements")
+      .select("user_id,selected_plan_id,trial_claimed_at,trial_plan_id,trial_started_at,trial_ends_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
     if (!error) setEntitlement(data as Entitlement | null);
     else setMessage(import.meta.env.DEV ? error.message : "Your account plan could not be loaded. Please refresh and try again.");
     setLoading(false);
   }
 
   useEffect(() => { void load(); }, [user?.id]);
+
+  const trialActive = Boolean(entitlement?.trial_ends_at && new Date(entitlement.trial_ends_at).getTime() > Date.now());
+  const trialUsed = Boolean(entitlement?.trial_claimed_at);
+  const currentPlan = useMemo(() => plans.find((plan) => plan.id === (entitlement?.selected_plan_id || "free")) || plans[0], [entitlement?.selected_plan_id]);
+  const isDevelopment = import.meta.env.DEV;
 
   if (!user || loading || !supabase) return null;
 
