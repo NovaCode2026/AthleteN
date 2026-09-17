@@ -54,10 +54,13 @@ create table if not exists public.taekwondo_training_logs (
   session_date date not null,
   focus text,
   rounds integer,
+  repetitions integer,
   notes text,
   is_official boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+alter table public.taekwondo_training_logs add column if not exists repetitions integer;
 
 create index if not exists idx_tkd_kyorugi_user_date on public.taekwondo_kyorugi_bouts(user_id, event_date desc);
 create index if not exists idx_tkd_poomsae_user_date on public.taekwondo_poomsae_performances(user_id, event_date desc);
