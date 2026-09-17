@@ -3,267 +3,223 @@ Copyright (c) 2026 Nova Code
 All Rights Reserved.
 
 PROJECT: AthleteN
-OWNER: Nova Code
-STATUS: PROPRIETARY SOFTWARE
-JURISDICTION: INDIA
+OWNER / RIGHTS HOLDER: Nova Code
+STATUS: PROPRIETARY — ALL RIGHTS RESERVED
 
-IMPORTANT: This licence governs original AthleteN material owned or controlled by Nova Code. It does not remove or limit rights that Indian law does not permit a contract or licence to remove or limit. Third-party materials remain governed by their own licences.
+NOTICE
+
+AthleteN is proprietary software and is not released under an open-source licence. This licence applies only to intellectual-property rights in AthleteN that are owned or lawfully controlled by Nova Code. Third-party software, libraries, packages, fonts, icons, content, APIs, services, and other materials remain subject to their own terms and licences.
+
+Nothing in this licence is intended to exclude, restrict, or waive any right, remedy, exception, or protection that cannot lawfully be excluded, restricted, or waived under applicable law.
 
 1. DEFINITIONS
 
-1.1 “AthleteN” means the AthleteN software and original project materials made available by or on behalf of Nova Code, including source code, object code, software architecture, application structure, user interface, visual designs, graphics, logos, icons, documentation, database schema and structure, original content, original implementation, configuration, scripts, and other original materials, except Third-Party Materials.
+1.1 “AthleteN” means the software and original project materials identified or distributed by Nova Code as AthleteN, including, where owned or controlled by Nova Code, source code, object code, architecture, application structure, user-interface elements, visual designs, graphics, logos, icons, documentation, original content, original implementations, configuration, scripts, and other original materials, excluding Third-Party Materials.
 
-1.2 “Nova Code” means the owner or rights-holder identified in this licence as Nova Code.
+1.2 “Nova Code” means Nova Code and any successor or assignee that lawfully owns or controls the relevant rights in AthleteN.
 
-1.3 “Third-Party Materials” means libraries, frameworks, packages, fonts, icons, APIs, services, code, content, or other material owned or licensed by a person other than Nova Code.
+1.3 “Third-Party Materials” means any software, library, framework, package, font, icon, image, content, API, service, code, data, or other material that is owned by, supplied by, or licensed from a party other than Nova Code.
 
-1.4 “Authorised User” means a person or organisation that has received an express written licence or other permission from Nova Code to use specified AthleteN material.
+1.4 “Authorised User” means a person or organisation that has received a valid express licence or permission from Nova Code to use specified AthleteN material.
 
-2. OWNERSHIP AND RESERVATION OF RIGHTS
+1.5 “Applicable Law” means the laws and regulations applicable to the relevant person, conduct, transaction, or rights at issue.
 
-2.1 Subject to third-party rights and rights of contributors or other persons that have not been assigned to Nova Code, Nova Code claims and reserves all intellectual-property rights that it owns in original AthleteN material.
+2. OWNERSHIP
 
-2.2 For computer-programme components, section 14(b) of the Copyright Act, 1957 sets out exclusive rights of a copyright owner in a computer programme, subject to that Act.
+2.1 Nova Code reserves all rights, title, and interest that it owns or lawfully controls in the original protected portions of AthleteN, including applicable copyright and other intellectual-property rights.
 
-2.3 Accessing, downloading, viewing, testing, or using AthleteN does not by itself transfer copyright, trademark rights, patent rights, design rights, trade-secret rights, database rights, or other intellectual-property rights.
+2.2 No ownership interest is transferred by this licence merely because a person accesses, views, downloads, tests, evaluates, uses, forks, discusses, contributes to, or otherwise interacts with AthleteN, except to the extent a transfer is expressly made in a separate legally valid written agreement.
 
-2.4 All rights not expressly granted by Nova Code are reserved, subject to rights expressly preserved by Indian law.
+2.3 Nothing in this licence is a representation that Nova Code owns rights in material that is actually owned by a third party. Third-party rights are excluded from Nova Code’s ownership claim and remain governed by their applicable terms.
 
-3. PROPRIETARY AND NON-OPEN-SOURCE STATUS
+2.4 No patent, trademark, copyright, design, trade-secret, database, or other intellectual-property licence is implied merely from access to AthleteN or from the absence of an express restriction in a particular location.
 
-3.1 AthleteN is proprietary software. It is not released under the MIT License, GNU General Public License, Apache License, or another open-source licence unless Nova Code expressly publishes a separate licence for a specific component.
+3. PROPRIETARY STATUS
 
-3.2 Public availability of AthleteN or source code on GitHub, a website, development environment, demonstration, preview, package registry, or other location does not by itself grant a copyright licence beyond rights expressly granted by Nova Code or rights arising independently under law.
+3.1 AthleteN is proprietary software and is not licensed under the MIT License, Apache License, GNU General Public License, or another open-source licence unless Nova Code expressly publishes a separate licence for a specifically identified component.
 
-3.3 Repository visibility, source-file visibility, an issue, pull request, documentation page, demo, or other public project material does not constitute permission to reproduce, modify, distribute, commercialise, or create derivative works from Nova Code’s protected material.
+3.2 The fact that a repository, source file, documentation page, demonstration, preview, issue tracker, pull request, package, website, or other project material is publicly visible does not by itself grant permission to reproduce, modify, distribute, publish, commercialise, sublicense, or create derivative works from Nova Code’s protected material.
 
-4. LIMITED LICENCE; NO GENERAL PUBLIC LICENCE
+3.3 Any permissions required for the ordinary operation of a third-party platform, hosting service, repository service, or other infrastructure remain governed by that platform’s applicable terms and do not constitute a general licence from Nova Code.
 
-4.1 Unless Nova Code expressly grants a written licence, no general licence is granted to copy, distribute, publish, modify, adapt, translate, sell, rent, lease, sublicense, commercialise, or create derivative works from original protected portions of AthleteN.
+4. LIMITED LICENCE
 
-4.2 A specific licence granted by Nova Code is limited to the scope, purpose, duration, territory, and other conditions expressly stated in the relevant written grant.
+4.1 Unless Nova Code expressly grants permission in writing, no licence is granted to reproduce, distribute, publish, modify, adapt, translate, create derivative works from, sell, rent, lease, sublicense, commercialise, or otherwise exploit Nova Code’s protected portions of AthleteN.
 
-4.3 A licence to use AthleteN does not automatically include a licence to use Nova Code trademarks, private infrastructure, credentials, confidential information, or unrelated Nova Code projects.
+4.2 Where Nova Code grants a written licence, that licence is limited to the rights, purpose, duration, territory, users, and conditions expressly stated in the applicable written grant.
 
-5. PROHIBITED UNAUTHORISED USE
+4.3 A licence to use the AthleteN software does not automatically grant any right to use Nova Code’s trademarks, branding, private infrastructure, credentials, confidential information, unreleased material, or unrelated projects.
 
-Except to the extent expressly permitted by Nova Code or by a mandatory provision of Indian law, a person must not:
+5. UNAUTHORISED USE
 
-- reproduce or distribute protected AthleteN source code or substantial protected portions of it;
-- publish or republish protected source code or substantial protected portions of it;
-- modify, adapt, translate, or create derivative works from protected AthleteN material;
-- sell, rent, lease, sublicense, or commercially redistribute protected AthleteN material;
-- package or repackage substantial protected portions of AthleteN as another product;
-- upload protected source code to another repository, marketplace, package registry, website, or code-sharing service without permission;
-- remove or intentionally obscure copyright, proprietary, or attribution notices;
-- falsely claim authorship or ownership of Nova Code’s original protected material; or
-- use AthleteN branding in a manner that falsely suggests affiliation, sponsorship, endorsement, partnership, or ownership.
+Except where expressly permitted by Nova Code or by Applicable Law, a person must not:
 
-5.2 This section does not prohibit acts expressly permitted under section 52 or another applicable provision of the Copyright Act, 1957, or another mandatory law.
+(a) copy or reproduce protected portions of AthleteN;
+(b) distribute, publish, republish, sell, rent, lease, sublicense, or commercially redistribute protected portions of AthleteN;
+(c) modify, adapt, translate, or create derivative works from protected portions of AthleteN;
+(d) repackage substantial protected portions of AthleteN as another product or service;
+(e) upload or redistribute protected source code through another repository, marketplace, package registry, website, code-sharing service, or similar channel without permission;
+(f) remove or intentionally obscure copyright, proprietary, attribution, or ownership notices;
+(g) falsely represent authorship or ownership of Nova Code’s original protected material; or
+(h) use AthleteN or Nova Code branding in a manner that falsely suggests sponsorship, endorsement, affiliation, partnership, or ownership.
 
-6. SOURCE CODE AND COMPUTER SYSTEMS
+5.1 This section does not prohibit conduct that Applicable Law expressly permits or protects, including any mandatory statutory exception that applies to the particular circumstances.
 
-6.1 AthleteN source code is proprietary except for portions expressly identified as Third-Party Materials or separately licensed by Nova Code.
+6. SOURCE CODE AND SECURITY
 
-6.2 Access to source code does not transfer ownership of the source code.
+6.1 Source code owned or controlled by Nova Code is proprietary unless a specific portion is expressly identified as Third-Party Materials or separately licensed material.
 
-6.3 Depending on the facts and statutory requirements, unauthorised access to, alteration of, deletion of, or interference with computer resources may engage sections 43 and 66 of the Information Technology Act, 2000.
+6.2 No permission is granted by this licence to bypass authentication, defeat security controls, access restricted systems, obtain credentials, interfere with infrastructure, extract protected data, alter or delete protected resources, or otherwise access or interfere with systems without authorisation.
 
-6.4 Section 65 of the Information Technology Act, 2000 addresses tampering with computer source documents required to be kept or maintained by law. This licence does not itself create a criminal offence; the statutory requirements determine whether particular conduct is unlawful.
+6.3 Passwords, API keys, access tokens, private keys, secrets, database credentials, and other authentication information must not be copied, disclosed, published, transferred, or used without authorisation.
 
-7. COPYRIGHT AND STATUTORY RIGHTS
+6.4 Nothing in this licence independently creates criminal or civil liability. Whether particular conduct is unlawful depends on Applicable Law and the facts and statutory requirements applicable to that conduct.
 
-7.1 The Copyright Act, 1957 applies to AthleteN to the extent the relevant material is protected by copyright and owned or controlled by Nova Code.
+7. COPYRIGHT AND OTHER INTELLECTUAL PROPERTY
 
-7.2 Section 14 of the Copyright Act, 1957 sets out the exclusive rights of a copyright owner, including specific rights concerning computer programmes.
+7.1 Copyright and other intellectual-property protection applies only to the extent recognised by Applicable Law and only to material in which the relevant rights are owned or lawfully controlled by the applicable rights holder.
 
-7.3 Section 17 addresses first ownership of copyright, subject to its statutory provisions and applicable agreements or exceptions.
+7.2 Nothing in this licence claims exclusive ownership over general ideas, concepts, principles, abstract algorithms, methods, techniques, functional requirements, facts, or independently created material merely because they are similar to material in AthleteN, except to the extent a separate legal right validly protects the relevant material.
 
-7.4 Sections 18 and 19 govern assignments of copyright and impose statutory requirements on assignments. A contribution or submission does not transfer copyright to Nova Code merely because it was submitted unless a valid assignment or other legal basis for transfer exists.
-
-7.5 Section 30 permits licensing by a copyright owner or duly authorised person. Any licence granted by Nova Code is limited to rights actually owned or controlled by Nova Code.
-
-7.6 Section 51 identifies circumstances in which copyright is infringed, while section 55 provides civil remedies for infringement. Nova Code reserves remedies available under those provisions and other applicable law.
-
-7.7 Section 58 provides rights concerning infringing copies and plates in specified circumstances.
-
-7.8 Section 63 provides criminal consequences for certain copyright infringement, and section 63B specifically addresses knowingly using an infringing copy of a computer programme in specified circumstances. Whether a criminal provision applies depends on the conduct and statutory requirements; this licence does not independently create criminal liability.
-
-7.9 Nothing in this licence waives or restricts statutory exceptions under section 52 of the Copyright Act, 1957, including provisions concerning lawful possession of a computer programme, interoperability, observation/study/testing, and specified personal use where their statutory conditions are satisfied.
+7.3 Independent development does not by itself authorise copying of protected expression, source code, confidential information, proprietary assets, or other protected material.
 
 8. CONTRIBUTIONS AND SUBMISSIONS
 
-8.1 AthleteN may accept code, suggestions, ideas, feature requests, bug reports, designs, documentation, improvements, feedback, or other project-related materials.
+8.1 AthleteN may receive issues, suggestions, feature requests, bug reports, code, designs, documentation, feedback, or other submissions.
 
-8.2 Submission alone does not transfer copyright or other intellectual-property rights to Nova Code.
+8.2 Unless a separate written agreement provides otherwise, submitting material does not by itself transfer ownership of that material to Nova Code.
 
-8.3 No submission is accepted merely because it is received, viewed, reviewed, discussed, tested, displayed, stored, referenced, or acknowledged.
+8.3 A contribution is not accepted merely because it is received, viewed, discussed, reviewed, tested, stored, displayed, or referenced.
 
-8.4 A contribution may be incorporated only after review and approval by an authorised representative of Nova Code.
+8.4 Nova Code may accept, reject, modify, request changes to, or decline to incorporate a contribution.
 
-8.5 Where Nova Code and a contributor execute a separate contributor, assignment, employment, contractor, or licence agreement, that agreement governs ownership and licensing to the extent legally valid.
+8.5 Ownership and licensing of an accepted contribution will be governed by the applicable employment, contractor, contributor, assignment, licence, or other written agreement, where one exists.
 
-8.6 Any copyright assignment intended to transfer rights to Nova Code should comply with sections 18 and 19 of the Copyright Act, 1957.
-
-8.7 Nova Code may reject or request changes to a proposed contribution for technical, security, quality, compatibility, legal, licensing, privacy, or product reasons.
+8.6 A person submitting a contribution represents, to the extent legally applicable, that they have the rights and authority necessary to submit that material for the stated purpose and that the submission does not knowingly violate another party’s rights.
 
 9. THIRD-PARTY MATERIALS
 
-9.1 AthleteN may contain Third-Party Materials.
+9.1 AthleteN may include or depend upon Third-Party Materials.
 
-9.2 Third-Party Materials remain subject to their respective licences and ownership rights.
+9.2 Third-Party Materials are not made proprietary by this licence merely because they are included in, distributed with, or used by AthleteN.
 
-9.3 This licence does not revoke, restrict, or replace a valid third-party licence.
+9.3 The applicable third-party licence or terms govern Third-Party Materials. Nothing in this licence overrides a third-party licence or grants Nova Code rights that it does not possess.
 
-9.4 Rights granted by a third-party licence that cannot lawfully be restricted by this licence remain available to the extent of that licence.
-
-9.5 Third-party dependencies may be identified in package manifests, notices, documentation, or separate licence files.
+9.4 Relevant third-party notices and licences may be provided in package manifests, dependency metadata, NOTICE files, documentation, source directories, or other project materials.
 
 10. TRADEMARKS AND BRANDING
 
-10.1 “AthleteN”, “Nova Code”, and associated logos, names, slogans, visual identities, icons, and other branding may be protected by trademark or other intellectual-property law.
+10.1 “AthleteN”, “Nova Code”, and associated names, logos, icons, slogans, designs, and branding are not licensed for commercial or branding use merely by this licence or by access to the software.
 
-10.2 This licence does not grant a trademark licence unless Nova Code expressly grants one in writing.
+10.2 No trademark licence is granted unless Nova Code expressly grants one in writing.
 
-10.3 The Trade Marks Act, 1999 governs registered trademarks and related rights. Section 28 addresses rights conferred by registration, section 29 addresses infringement of registered trademarks, and section 30 sets out limits on the effect of registered trademark rights.
-
-10.4 Section 27 of the Trade Marks Act, 1999 addresses actions concerning unregistered trademarks and passing off. Nothing in this licence removes rights or remedies available under that provision.
-
-10.5 Nothing in this section prohibits lawful descriptive, nominative, comparative, or other use permitted by the Trade Marks Act, 1999.
+10.3 Lawful uses that cannot legally be restricted by agreement remain unaffected.
 
 11. CONFIDENTIAL INFORMATION
 
-11.1 Non-public source code, credentials, API keys, access tokens, database credentials, security information, internal documentation, unreleased features, non-public business information, private project discussions, and other information reasonably understood to be confidential must not be disclosed or used for an unauthorised purpose.
+11.1 Non-public source code, credentials, security information, private infrastructure information, unreleased features, internal documentation, non-public business information, private project communications, and other information that is reasonably understood to be confidential must not be disclosed or used for an unauthorised purpose.
 
-11.2 This section does not prohibit disclosure required by law, lawful reporting to a competent authority, or conduct that cannot legally be restricted.
+11.2 This section does not prohibit disclosure required by law, lawful reporting to a competent authority, or conduct that Applicable Law protects from restriction.
 
-11.3 Sections 72 and 72A of the Information Technology Act, 2000 may apply to unauthorised disclosure of information or personal information in circumstances covered by those provisions. Their statutory requirements determine whether an offence or liability exists.
+11.3 Public information is not confidential solely because it appears in this licence or in another public project location.
 
-12. SECURITY, ACCESS, AND CREDENTIALS
+12. USER DATA AND PRIVACY
 
-12.1 No permission is granted by this licence to access, test, modify, interfere with, bypass, disable, or circumvent security controls, authentication systems, databases, infrastructure, APIs, accounts, or other systems belonging to Nova Code or AthleteN.
+12.1 This software licence does not grant permission to access, collect, copy, disclose, sell, export, scrape, or otherwise process personal data belonging to AthleteN users or other individuals.
 
-12.2 Passwords, API keys, access tokens, private keys, secrets, and other authentication credentials must not be copied, disclosed, published, or used without authorisation.
+12.2 Processing of personal data by Nova Code or AthleteN is governed by the applicable privacy notice, service terms, consent or other lawful basis, and Applicable Law, as applicable.
 
-12.3 Conduct involving unauthorised access, copying, extraction, alteration, disruption, or damage to a computer resource may engage section 43 of the Information Technology Act, 2000 and, where its statutory conditions are met, section 66 of that Act.
+12.3 This licence is not a privacy policy, data-processing agreement, terms of service, consent notice, or substitute for any legally required privacy documentation.
 
-13. USER DATA AND PRIVACY
+12.4 Nothing in this licence removes or limits statutory privacy or data-protection rights that cannot lawfully be removed or limited.
 
-13.1 This software licence does not grant permission to access, copy, disclose, sell, export, scrape, or otherwise process personal data belonging to AthleteN users or other individuals.
+13. NO WARRANTY
 
-13.2 AthleteN may process athlete, coach, academy, administrator, or other user information as described in the applicable privacy notice and service terms.
+13.1 TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, ATHLETEN IS PROVIDED “AS IS” AND “AS AVAILABLE”.
 
-13.3 To the extent the Digital Personal Data Protection Act, 2023 and its rules are in force and apply to the relevant processing, processing must comply with the Act, including sections 4 to 10 concerning grounds and obligations for processing, notice, consent, legitimate uses, general obligations, children's personal data, and significant data fiduciary obligations, as applicable.
+13.2 TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, NOVA CODE DOES NOT WARRANT THAT ATHLETEN WILL BE ERROR-FREE, UNINTERRUPTED, SECURE, AVAILABLE AT ALL TIMES, COMPATIBLE WITH EVERY DEVICE OR ENVIRONMENT, OR SUITABLE FOR A PARTICULAR PURPOSE.
 
-13.4 Sections 11 to 15 of the Digital Personal Data Protection Act, 2023 address rights and duties of Data Principals, including access information, correction and erasure, grievance redressal, nomination, and duties. Nothing in this licence removes those statutory rights when the Act applies.
+13.3 NOTHING IN THIS SECTION EXCLUDES OR LIMITS A WARRANTY, CONDITION, RIGHT, OR REMEDY THAT CANNOT LAWFULLY BE EXCLUDED OR LIMITED.
 
-13.5 Section 9 of the Digital Personal Data Protection Act, 2023 contains additional requirements concerning processing personal data of children. Where that provision is in force and applies, AthleteN processing must be operated consistently with those requirements.
+14. LIMITATION OF LIABILITY
 
-13.6 The Digital Personal Data Protection Act, 2023 was brought into force in phases by Government notification. The 13 November 2025 commencement notification schedules sections 3 to 17, among other provisions, for commencement eighteen months after that notification. References in this licence to those provisions are therefore subject to their actual commencement and applicability at the relevant time.
+14.1 TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, NOVA CODE WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE LOSS OR DAMAGE ARISING FROM OR RELATING TO ATHLETEN OR ITS USE, EXCEPT TO THE EXTENT SUCH LIABILITY CANNOT LAWFULLY BE EXCLUDED OR LIMITED.
 
-13.7 The Digital Personal Data Protection Rules, 2025 are also subject to their notified commencement schedule. Where the Rules apply, AthleteN must comply with the applicable provisions.
+14.2 NOTHING IN THIS LICENCE EXCLUDES OR LIMITS LIABILITY, RIGHTS, OR REMEDIES that Applicable Law does not permit the parties to exclude or limit.
 
-14. NO UNAUTHORISED COPYING OR MISAPPROPRIATION
+15. TERMINATION OF EXPRESS PERMISSIONS
 
-14.1 Nova Code does not claim ownership of general programming ideas, abstract algorithms, methods, techniques, functional requirements, or independently created software merely because they are similar to AthleteN.
+15.1 Any express permission granted by Nova Code may terminate according to the terms of the relevant written agreement or permission.
 
-14.2 Copying protected source code, protected expression, original protected content, confidential implementation material, or other protected Nova Code material without permission may constitute infringement or another unlawful act.
+15.2 If an Authorised User exceeds the scope of an express permission, that use is unauthorised to the extent of the excess, subject to Applicable Law.
 
-14.3 This section is not intended to impose a general restraint on lawful competition or independent development and must be interpreted consistently with section 27 of the Indian Contract Act, 1872 and other mandatory law.
+15.3 Termination does not affect rights, obligations, or remedies that accrued before termination or that by their nature survive termination, including ownership, confidentiality, intellectual-property protection, and applicable limitations and exclusions.
 
-15. NO AUTOMATIC TRANSFER OF RIGHTS
+16. ENFORCEMENT AND REMEDIES
 
-Downloading, viewing, accessing, contributing to, testing, or using AthleteN does not transfer ownership of any copyright, trademark, patent, design, trade-secret, database, or other intellectual-property right.
+16.1 Nova Code reserves all remedies available under Applicable Law for infringement, breach, unauthorised use, misuse of confidential information, misuse of branding, or other unlawful conduct relating to rights in AthleteN.
 
-Any transfer of ownership must be supported by a legally valid written instrument where applicable law requires one.
+16.2 Where legally available, remedies may include injunctive relief, damages, accounts, delivery-up or destruction of infringing material, recovery of costs, or other statutory or equitable remedies.
 
-16. NO WARRANTY
+16.3 The availability and scope of any remedy are determined by the applicable law, facts, and jurisdiction. This licence does not independently create a remedy that does not otherwise exist.
 
-TO THE MAXIMUM EXTENT PERMITTED BY INDIAN LAW, ATHLETEN IS PROVIDED “AS IS” AND “AS AVAILABLE”, WITHOUT WARRANTIES OTHER THAN THOSE THAT CANNOT LAWFULLY BE EXCLUDED.
+17. NO WAIVER
 
-TO THE EXTENT PERMITTED BY LAW, NOVA CODE DOES NOT WARRANT THAT ATHLETEN WILL BE ERROR-FREE, SECURE, COMPATIBLE WITH EVERY ENVIRONMENT, AVAILABLE AT ALL TIMES, OR UNINTERRUPTED.
+17.1 A failure or delay by Nova Code in enforcing a provision does not constitute a waiver of that provision or any other right.
 
-NOTHING IN THIS SECTION EXCLUDES A WARRANTY, CONDITION, RIGHT, OR REMEDY THAT CANNOT LAWFULLY BE EXCLUDED OR LIMITED.
+17.2 A waiver is effective only to the extent expressly given by an authorised representative of Nova Code and only for the specific matter for which it is given, unless Applicable Law requires otherwise.
 
-17. LIMITATION OF LIABILITY
+18. SEVERABILITY
 
-TO THE MAXIMUM EXTENT PERMITTED BY INDIAN LAW, NOVA CODE SHALL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE LOSS ARISING FROM USE OR INABILITY TO USE ATHLETEN, EXCEPT TO THE EXTENT SUCH LIABILITY CANNOT LAWFULLY BE EXCLUDED OR LIMITED.
+18.1 If any provision of this licence is held invalid, unlawful, or unenforceable, it shall be interpreted or enforced to the maximum extent lawfully permitted where possible.
 
-NOTHING IN THIS LICENCE EXCLUDES OR LIMITS LIABILITY, STATUTORY RIGHTS, OR REMEDIES THAT CANNOT LAWFULLY BE EXCLUDED OR LIMITED, INCLUDING mandatory rights under applicable consumer, data-protection, intellectual-property, or other legislation.
+18.2 If the provision cannot lawfully be enforced, it shall be severed to the minimum extent necessary, and the remaining provisions shall continue to the extent permitted by Applicable Law.
 
-18. TERMINATION OF EXPRESS PERMISSIONS
+19. ENTIRE AGREEMENT; ORDER OF PRECEDENCE
 
-18.1 An express permission granted by Nova Code may terminate according to the terms of the relevant written permission or agreement.
+19.1 This licence constitutes the complete proprietary-software licence notice issued by Nova Code for AthleteN, except for separate written agreements, third-party licences, privacy notices, terms of service, contributor agreements, employment or contractor agreements, and other documents expressly stated to govern a different subject.
 
-18.2 If a person exceeds the scope of an express permission, the person must cease the unauthorised activity, subject to rights and remedies available under applicable law.
+19.2 If a separate written agreement expressly grants rights in AthleteN and conflicts with this licence, that agreement controls only to the extent of the conflict and only for the parties and subject matter covered by that agreement, unless it states otherwise.
 
-18.3 Termination does not affect obligations that by their nature survive termination, including ownership, confidentiality, intellectual-property rights, and accrued remedies.
+19.3 Third-Party Materials remain governed by their applicable third-party terms regardless of this licence.
 
-19. ENFORCEMENT AND REMEDIES
+20. GOVERNING LAW AND JURISDICTION
 
-19.1 Nova Code reserves civil remedies available under the Copyright Act, 1957, including section 55 where applicable, and other Indian laws.
+20.1 To the extent legally applicable, this licence shall be governed by the laws of the Republic of India, without prejudice to any mandatory law that applies to a particular person, transaction, or claim.
 
-19.2 Depending on the conduct and statutory requirements, unauthorised computer access, damage, extraction, alteration, or source-code tampering may also engage provisions of the Information Technology Act, 2000, including sections 43, 65 and 66.
+20.2 Subject to mandatory jurisdictional rules, disputes concerning this licence may be brought before a court of competent jurisdiction in India.
 
-19.3 A particular act does not automatically constitute an offence merely because this licence mentions a statute. The relevant statute and its required elements determine liability.
+20.3 Nothing in this section excludes a mandatory statutory forum, jurisdiction, remedy, or legal right that cannot lawfully be excluded by agreement.
 
-19.4 Nova Code may seek injunctions, damages, accounts, delivery-up, or other remedies where legally available.
+21. NO UNLAWFUL RESTRAINT
 
-20. CONTRACTUAL VALIDITY AND MANDATORY LAW
+Nothing in this licence is intended to create an unlawful restraint of trade, unlawful restriction on lawful competition, unlawful restriction on legal proceedings, or other restriction prohibited by Applicable Law.
 
-20.1 To the extent this licence forms a contract, its enforceability is subject to the Indian Contract Act, 1872 and other applicable law.
+22. AGE, CAPACITY, AND AUTHORITY
 
-20.2 Section 10 of the Indian Contract Act, 1872 addresses when agreements become contracts, including free consent, competency, lawful consideration, and lawful object.
+Nothing in this licence overrides Applicable Law concerning contractual capacity, minors, guardians, representatives, authorised agents, or authority to enter into agreements. Where a separate contractual licence or agreement requires acceptance by a person with legal capacity or authority, that requirement remains applicable.
 
-20.3 Section 11 addresses competency to contract. Where an individual is not competent to enter a binding contract under applicable law, this licence does not remove that legal requirement.
+23. CHANGES TO THIS LICENCE
 
-20.4 Section 23 addresses agreements with unlawful consideration or objects. No provision of this licence authorises an unlawful act.
+23.1 Nova Code may publish an updated version of this licence for future distributions or future permissions.
 
-20.5 Section 27 addresses agreements in restraint of trade. This licence is not intended to create an unlawful general restraint on trade or lawful competition.
-
-20.6 Section 28 addresses agreements restricting legal proceedings. Nothing in this licence is intended to unlawfully restrict a party’s statutory right to pursue legal remedies.
-
-21. GOVERNING LAW AND JURISDICTION
-
-21.1 This licence shall be governed by and interpreted in accordance with the laws of the Republic of India.
-
-21.2 Subject to mandatory jurisdictional rules, courts having lawful jurisdiction in India may determine disputes arising from this licence.
-
-21.3 Nothing in this clause excludes a mandatory statutory forum, jurisdiction, remedy, or right that cannot legally be excluded by agreement.
-
-22. SEVERABILITY
-
-If any provision of this licence is held invalid, unlawful, or unenforceable by a competent authority or court, that provision shall be enforced to the maximum lawful extent where possible, and the remaining provisions shall continue to the extent permitted by law.
-
-23. NO WAIVER
-
-Failure by Nova Code to enforce a provision immediately does not constitute a permanent waiver unless a valid written waiver is expressly given by an authorised representative of Nova Code.
+23.2 An updated version does not automatically alter the terms of a separate written agreement already in force unless that agreement permits such modification.
 
 24. PERMISSION REQUESTS
 
-Requests for permission to copy, modify, distribute, publish, commercialise, integrate, reproduce, or otherwise use proprietary portions of AthleteN should be directed to Nova Code through its officially designated contact channel.
+Requests for permission to copy, modify, distribute, publish, commercialise, integrate, reproduce, or otherwise use protected portions of AthleteN should be directed to Nova Code through the official contact channel designated by Nova Code.
 
-Where this licence requires written permission, permission must be expressly granted by an authorised representative of Nova Code.
-
-25. RESERVED RIGHTS AND FINAL NOTICE
-
-All rights not expressly granted by Nova Code are reserved, subject to rights that Indian law expressly grants or preserves.
+25. FINAL NOTICE
 
 ATHLETEN IS PROPRIETARY SOFTWARE.
 
-THIS LICENCE DOES NOT GRANT THE GENERAL PUBLIC A LICENCE TO COPY, MODIFY, DISTRIBUTE, SELL, REPUBLISH, REPACKAGE, OR CREATE DERIVATIVE WORKS FROM NOVA CODE’S PROTECTED ATHLETEN MATERIAL.
+ALL RIGHTS IN ATHLETEN THAT ARE OWNED OR LAWFULLY CONTROLLED BY NOVA CODE ARE RESERVED.
 
-THIRD-PARTY MATERIALS REMAIN SUBJECT TO THEIR OWN LICENCES.
+NO GENERAL PUBLIC LICENCE IS GRANTED BY THIS FILE.
 
-MANDATORY RIGHTS AND STATUTORY EXCEPTIONS UNDER INDIAN LAW REMAIN IN EFFECT.
+THIRD-PARTY MATERIALS REMAIN SUBJECT TO THEIR OWN LICENCES AND RIGHTS.
 
-RELEVANT INDIAN LEGISLATION REFERENCED IN THIS LICENCE
-
-- The Copyright Act, 1957 — sections 14, 17, 18, 19, 30, 51, 52, 55, 58, 63 and 63B, as relevant to the circumstances.
-- The Information Technology Act, 2000 — sections 43, 65, 66, 72 and 72A, as relevant to the circumstances.
-- The Trade Marks Act, 1999 — sections 27, 28, 29 and 30, as relevant to the circumstances.
-- The Indian Contract Act, 1872 — sections 10, 11, 23, 27 and 28, as relevant to contractual validity and enforceability.
-- The Digital Personal Data Protection Act, 2023 — sections 4 to 17, when and to the extent those provisions are in force and applicable, together with the Digital Personal Data Protection Rules, 2025 where applicable.
+NOTHING IN THIS LICENCE REMOVES OR LIMITS RIGHTS THAT APPLICABLE LAW DOES NOT PERMIT THE PARTIES TO REMOVE OR LIMIT.
 
 Copyright (c) 2026 Nova Code
 All Rights Reserved.
