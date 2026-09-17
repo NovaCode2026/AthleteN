@@ -35,11 +35,20 @@ export async function upsertRow<T extends Record<string,unknown>>(resource: Reso
   const table=TABLES[resource];
   const payload=normalizeInsertValues(resource,values);
 
-  // Profile rows already exist after onboarding. A partial discipline update
-  // must update that row rather than making PostgREST attempt a new profile
-  // insert that is missing required columns such as full_name.
-  if (resource === "profile" && options.onConflict === "user_id" && typeof payload.user_id === "string" && !payload.full_name) {
-    const {data,error}=await requireSupabase().from(table).update(payload).eq("user_id",payload.user_id).select().single();
+  // profiles.user_id is the application identity key, but the database does
+  // not require a unique constraint on it. Using PostgREST upsert(onConflict)
+  // can therefore fall through to INSERT and trigger profile check/not-null
+  // constraints. Existing profile edits must always update by user_id.
+  if (resource === "profile" && typeof payload.user_id === "string") {
+    const {data:existing,error:lookupError}=await requireSupabase().from(table).select("id").eq("user_id",payload.user_id).maybeSingle();
+    if(lookupError)throw toDatabaseError(resource,"save",lookupError);
+    if(existing?.id){
+      const {data,error}=await requireSupabase().from(table).update(payload).eq("id",existing.id).select().single();
+      if(error)throw toDatabaseError(resource,"save",error);
+      return data;
+    }
+    const insertPayload={...payload,full_name:typeof payload.full_name === "string" && payload.full_name.trim()?payload.full_name.trim():"Athlete"};
+    const {data,error}=await requireSupabase().from(table).insert(insertPayload).select().single();
     if(error)throw toDatabaseError(resource,"save",error);
     return data;
   }
