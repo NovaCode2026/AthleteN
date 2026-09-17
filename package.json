@@ -26,12 +26,13 @@
     "url": "https://github.com/NovaCode2026/AthleteN/issues"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "npx --yes netlify-cli dev",
     "build": "vite build && node scripts/write-netlify-redirects.mjs",
     "preview": "vite preview",
     "check": "npm run build && npm test",
     "test": "node --test",
-    "dev:netlify": "npx netlify-cli dev"
+    "dev:netlify": "npx --yes netlify-cli dev",
+    "dev:vite": "vite"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
