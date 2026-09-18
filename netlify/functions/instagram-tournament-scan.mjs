@@ -77,10 +77,10 @@ function extractCaption(html) {
   const rawCandidates = [
     meta(html, "og:description"),
     meta(html, "description"),
-    first(html, [/"edge_media_to_caption"\\s*:\\s*\\{\\s*"edges"\\s*:\\s*\\[\\s*\\{\\s*"node"\\s*:\\s*\\{\\s*"text"\\s*:\\s*"((?:\\\\.|[^"])*)"/i]),
-    first(html, [/"caption"\\s*:\\s*\\{\\s*"text"\\s*:\\s*"((?:\\\\.|[^"])*)"/i]),
-    first(html, [/"caption"\\s*:\\s*"((?:\\\\.|[^"])*)"/i]),
-    first(html, [/"text"\\s*:\\s*"((?:\\\\.|[^"])*)"/i])
+    first(html, [/"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"((?:\\\\.|[^"])*)"/i]),
+    first(html, [/"caption"\s*:\s*\{\s*"text"\s*:\s*"((?:\\\\.|[^"])*)"/i]),
+    first(html, [/"caption"\s*:\s*"((?:\\\\.|[^"])*)"/i]),
+    first(html, [/"text"\s*:\s*"((?:\\\\.|[^"])*)"/i])
   ];
   const useful = rawCandidates.map(captionFromInstagramShell).filter(Boolean);
   const tournamentCandidates = useful.filter((v) => TOURNAMENT_WORDS.test(v));
@@ -88,7 +88,7 @@ function extractCaption(html) {
 }
 
 function extractTitle(html, caption) {
-  const rawTitle = meta(html, "og:title") || first(html, [/<title[^>]*>([\\s\\S]*?)<\\/title>/i]);
+  const rawTitle = meta(html, "og:title") || first(html, [/<title[^>]*>([\s\\S]*?)<\\/title>/i]);
   const cleanedTitle = captionFromInstagramShell(rawTitle);
   const combined = clean(`${cleanedTitle} ${caption}`);
   const named = combined.match(/\b([A-Z][A-Za-z0-9&' -]{2,100}\b(?:Cup|Championships?|Open|Games|Tournament))\b/);
