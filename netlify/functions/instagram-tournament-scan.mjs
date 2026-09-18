@@ -149,7 +149,7 @@ async function fetchInstagram(url) {
   const candidates = [{ url, kind: "html" }];
   try {
     const parsed = new URL(url);
-    const match = parsed.pathname.match(/^\\/(p|reel)\\/([A-Za-z0-9_-]+)/i);
+    const match = parsed.pathname.match(/^\/(p|reel)\/([A-Za-z0-9_-]+)/i);
     if (match) {
       const permalink = `https://www.instagram.com/${match[1].toLowerCase()}/${match[2]}/`;
       const encoded = encodeURIComponent(permalink);
