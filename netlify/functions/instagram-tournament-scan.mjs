@@ -88,12 +88,11 @@ function extractCaption(html) {
 }
 
 function extractTitle(html, caption) {
-  const title = meta(html, "og:title") || first(html, [/<title[^>]*>([\s\S]*?)<\/title>/i]);
-  const fromInstagram = title.replace(/\s+on Instagram:?.*$/i, "").trim();
-  if (fromInstagram && !/^(Instagram|Log in|Sign up)/i.test(fromInstagram)) return fromInstagram.slice(0, 180);
-  const named = caption.match(/\b([A-Z][A-Za-z0-9&' -]{2,100}\b(?:Cup|Championships?|Open|Games|Tournament))\b/);
-  if (named?.[1]) return named[1].trim().slice(0, 180);
-  return "";
+  const rawTitle = meta(html, "og:title") || first(html, [/<title[^>]*>([\\s\\S]*?)<\\/title>/i]);
+  const cleanedTitle = captionFromInstagramShell(rawTitle);
+  const combined = clean(`${cleanedTitle} ${caption}`);
+  const named = combined.match(/\\b([A-Z][A-Za-z0-9&' -]{2,100}\\b(?:Cup|Championships?|Open|Games|Tournament))\\b/);
+  return named?.[1] ? named[1].trim().slice(0, 180) : "";
 }
 
 function extractDate(text, html) {
@@ -101,7 +100,9 @@ function extractDate(text, html) {
   if (iso && /^\d{9,12}$/.test(iso)) return new Date(Number(iso) * 1000).toISOString().slice(0, 10);
   const patterns = [
     /(?:date|dates?|event|held|on)\s*[:\-]?\s*([A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*[-–]\s*[A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?)?\s*,?\s*\d{4})/i,
-    /\b(\d{1,2}\s+[A-Za-z]{3,12}\s+\d{4})\b/i,
+    /\b(\d{1,2}(?:st|nd|rd|th)?\\s*(?:&|and|[-–])\\s*\d{1,2}(?:st|nd|rd|th)?\\s+[A-Za-z]{3,12}(?:\\s+\\d{4})?)\b/i,
+    /\b(\d{1,2}(?:st|nd|rd|th)?\\s+[A-Za-z]{3,12}(?:\\s+\\d{4})?)\b/i,
+    /\b([A-Za-z]{3,12}\\s+\d{1,2}(?:st|nd|rd|th)?(?:\\s*(?:&|and|[-–])\\s*\d{1,2}(?:st|nd|rd|th)?)?(?:\\s+\\d{4})?)\b/i,
     /\b(\d{1,2}[/-]\d{1,2}[/-]\d{4})\b/
   ];
   return first(text, patterns);
