@@ -9,7 +9,7 @@ type DetailSection = { title: string; content: string; source_url?: string };
 type ScanDetails = { description?: string | null; fields?: Record<string, string>; headings?: string[]; sections?: DetailSection[]; key_highlights?: string[]; pages_scanned?: number; source_pages?: string[]; pdfs?: Array<{ href: string; label: string }> };
 type ScanRow = { id: string; source_url: string; tournament_name?: string | null; tournament_date?: string | null; venue?: string | null; registration_deadline?: string | null; weigh_in_information?: string | null; categories?: string | null; notices?: string | null; schedules_results?: string | null; pdfs?: Array<{ href: string; label: string }> | null; details?: ScanDetails | null; status?: string | null; detected_changes?: string | null; last_checked_at?: string | null; next_check_at?: string | null };
 type InstagramPost = { id: string; caption?: string; timestamp?: string | null; permalink?: string | null; media_type?: string | null; media_product_type?: string | null };
-type InstagramResult = { organizer?: { username?: string; name?: string | null; biography?: string | null; followers_count?: number | null }; relevant_posts?: InstagramPost[]; other_posts?: InstagramPost[]; posts_scanned?: number; scan_limit?: number; more_posts_available?: boolean };
+type InstagramResult = { organizer?: { username?: string; name?: string | null; biography?: string | null; followers_count?: number | null }; relevant_posts?: InstagramPost[]; other_posts?: InstagramPost[]; related_accounts?: Array<{ username: string; url: string; relevant?: boolean; title?: string | null; posts?: InstagramPost[] }>; posts_scanned?: number; scan_limit?: number; more_posts_available?: boolean; scan?: ScanRow };
 type InstagramInput = { kind: "profile" | "post" | "reel"; username?: string; url: string };
 
 function parseInstagramInput(value: string): InstagramInput | null {
@@ -71,17 +71,15 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
   async function scanInstagram(value: string) {
     const input = parseInstagramInput(value);
     if (!input) throw new Error("Enter an Instagram profile, post, or reel URL.");
-    if (input.kind !== "profile") { setInstagramResult(null); return await scanWebsite(input.url); }
-    const response = await fetch("/.netlify/functions/instagram-discovery-data", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ username: input.username }) });
+    const response = await fetch("/.netlify/functions/instagram-tournament-scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ sourceUrl: input.url })
+    });
     const payload = await response.json().catch(() => ({})) as InstagramResult & { error?: string };
-    if (response.ok) { setInstagramResult(payload); return payload; }
-    setInstagramResult(null);
-    try { return await scanWebsite(input.url); }
-    catch (fallbackError) {
-      const discoveryError = payload.error || "Meta Business Discovery could not read this account.";
-      const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : "Public Instagram scan failed.";
-      throw new Error(`${discoveryError} Public Instagram scan also failed: ${fallbackMessage}`);
-    }
+    if (!response.ok) throw new Error(payload.error || "Instagram tournament scan failed.");
+    setInstagramResult(payload);
+    return payload;
   }
 
   async function scan(event: React.FormEvent) {
@@ -98,7 +96,8 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
       } else {
         const input = parseInstagramInput(source);
         const result = await scanInstagram(source.trim());
-        setToast({ type: "success", message: input?.kind === "profile" && result?.organizer?.username ? `Instagram scan completed for @${result.organizer.username}.` : `Instagram source scan completed for the ${input?.kind || "source"}.` });
+        if (result?.scan) setSelectedScan(result.scan as ScanRow);
+        setToast({ type: "success", message: "Instagram tournament scan completed. Only tournament-related information was retained." });
       }
       setSource("");
       await loadScans();
@@ -126,13 +125,12 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
         <button type="button" className={`source-option ${sourceType === "instagram" ? "active" : ""}`} onClick={() => setSourceType("instagram")} aria-selected={sourceType === "instagram"}><Instagram size={20}/><span><strong>Instagram</strong><small>Profile, post, reel or @username</small></span></button>
       </div>
       <form className="scan-form" onSubmit={(event) => void scan(event)}><input value={source} onChange={(event) => setSource(event.target.value)} placeholder={sourceType === "website" ? "https://example.com/tournament" : "https://instagram.com/organizer or /p/... or /reel/..."} aria-label="Tournament scan source" required/><button className="btn primary" type="submit" disabled={scanning}>{scanning ? <Loader2 className="spin" size={16}/> : <RefreshCw size={16}/>} {scanning ? "Scanning..." : "Scan"}</button></form>
-      {sourceType === "website" ? <p className="scanner-help"><Globe size={16}/> The scanner follows relevant same-site pages, notices, schedules, results, rules, equipment, registration pages and linked PDFs.</p> : <p className="scanner-help"><ShieldCheck size={16}/> Profile scans inspect the organizer's accessible recent media, including tournament-relevant posts and other posts from the same account. Post/reel URLs remain exact sources.</p>}
+      {sourceType === "website" ? <p className="scanner-help"><Globe size={16}/> The scanner follows relevant same-site pages, notices, schedules, results, rules, equipment, registration pages and linked PDFs.</p> : <p className="scanner-help"><ShieldCheck size={16}/> The scanner automatically follows accessible tournament-related accounts and posts/reels it can discover from the source. Unrelated Instagram content is filtered out.</p>}
     </section>
 
-    {instagramResult?.organizer && <section className="card panel"><h3>@{instagramResult.organizer.username}</h3><p>{instagramResult.organizer.name || ""}</p>{instagramResult.organizer.followers_count != null && <p>{instagramResult.organizer.followers_count.toLocaleString()} followers</p>}<p>{instagramResult.organizer.biography || "No bio returned."}</p>
-      <p><strong>{instagramResult.posts_scanned || 0}</strong> posts inspected{instagramResult.more_posts_available ? ` (showing the first ${instagramResult.scan_limit || instagramResult.posts_scanned || 0} accessible posts)` : ""}.</p>
-      {relevantPosts.length > 0 && <div className="post-list"><h4>Tournament-relevant posts ({relevantPosts.length})</h4>{relevantPosts.map((post) => <article key={post.id} className="instagram-post"><small>{formatDate(post.timestamp)}{post.media_product_type ? ` • ${post.media_product_type}` : ""}</small><p>{post.caption || "No caption returned."}</p>{post.permalink && <a href={post.permalink} target="_blank" rel="noreferrer">Open Instagram post <ExternalLink size={12}/></a>}</article>)}</div>}
-      {otherPosts.length > 0 && <div className="post-list"><h4>Other posts from the same account ({otherPosts.length})</h4>{otherPosts.slice(0, 20).map((post) => <article key={post.id} className="instagram-post"><small>{formatDate(post.timestamp)}{post.media_product_type ? ` • ${post.media_product_type}` : ""}</small><p>{post.caption || "No caption returned."}</p>{post.permalink && <a href={post.permalink} target="_blank" rel="noreferrer">Open Instagram post <ExternalLink size={12}/></a>}</article>)}</div>}
+    {instagramResult?.related_accounts && <section className="card panel">
+      <div className="panel-head"><div><p className="eyebrow">Automatic discovery</p><h3>Related tournament sources</h3><p>AthleteN followed accessible accounts and tournament-related posts/reels discovered from the scanned source.</p></div></div>
+      <div className="details-list">{instagramResult.related_accounts.map((account) => <div className="detail-row" key={account.username}><b>@{account.username}</b><span>{account.title || "Relevant tournament content discovered."} {account.url && <a href={account.url} target="_blank" rel="noreferrer">Open source <ExternalLink size={12}/></a>}</span></div>)}</div>
     </section>}
 
     {selectedScan && <>
