@@ -147,7 +147,7 @@ async function fetchInstagram(url) {
   const candidates = [url];
   try {
     const parsed = new URL(url);
-    const match = parsed.pathname.match(/^\\/(p|reel)\\/([A-Za-z0-9_-]+)/i);
+    const match = parsed.pathname.match(/^\/(p|reel)\/([A-Za-z0-9_-]+)/i);
     if (match) {
       candidates.push(`https://www.instagram.com/${match[1].toLowerCase()}/${match[2]}/embed/captioned/`);
       candidates.push(`https://www.instagram.com/${match[1].toLowerCase()}/${match[2]}/embed/`);
