@@ -58,7 +58,7 @@ function instagramAccounts(html, sourceUrl, caption) {
     found.push(username);
   };
   for (const m of caption.matchAll(/@([a-zA-Z0-9._]{1,30})/g)) add(m[1]);
-  for (const m of html.matchAll(/(?:https?:\\/\\/)?(?:www\\.)?instagram\\.com\\/([a-zA-Z0-9._]{1,30})(?:[/?\"'\\s]|$)/gi)) add(m[1]);
+  for (const m of html.matchAll(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/([a-zA-Z0-9._]{1,30})(?:[/?"'\s]|$)/gi)) add(m[1]);
   try { add(new URL(sourceUrl).pathname.split("/").filter(Boolean)[0]); } catch {}
   return unique(found).slice(0, MAX_RELATED_ACCOUNTS);
 }
