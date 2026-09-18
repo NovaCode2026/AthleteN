@@ -67,15 +67,15 @@ function extractCaption(html) {
   const candidates = [
     meta(html, "og:description"),
     meta(html, "description"),
-    first(html, [/"edge_media_to_caption"\\s*:\\s*\\{\\s*"edges"\\s*:\\s*\\[\\s*\\{\\s*"node"\\s*:\\s*\\{\\s*"text"\\s*:\\s*"((?:\\\\.|[^"])*)"/i]),
-    first(html, [/"caption"\\s*:\\s*\\{\\s*"text"\\s*:\\s*"((?:\\\\.|[^"])*)"/i]),
+    first(html, [/"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
+    first(html, [/"caption"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
     first(html, [/"caption"\\s*:\\s*"((?:\\\\.|[^"])*)"/i])
   ];
   return candidates.find((v) => v && TOURNAMENT_WORDS.test(v)) || candidates.find(Boolean) || "";
 }
 
 function extractTitle(html, caption) {
-  const title = meta(html, "og:title") || first(html, [/<title[^>]*>([\\s\\S]*?)<\\/title>/i]);
+  const title = meta(html, "og:title") || first(html, [/<title[^>]*>([\s\S]*?)<\/title>/i]);
   const fromInstagram = title.replace(/\\s+on Instagram:?.*$/i, "").trim();
   if (fromInstagram && !/^(Instagram|Log in|Sign up)/i.test(fromInstagram)) return fromInstagram.slice(0, 180);
   const line = caption.split(/\\n|\\r|[.!?]/).map((x) => x.trim()).find((x) => TOURNAMENT_WORDS.test(x));
@@ -83,11 +83,11 @@ function extractTitle(html, caption) {
 }
 
 function extractDate(text, html) {
-  const iso = first(html, [/"taken_at_timestamp"\\s*:\\s*(\\d{9,12})/i, /"timestamp"\\s*:\\s*"([^"]+)"/i]);
+  const iso = first(html, [/"taken_at_timestamp"\s*:\s*(\d{9,12})/i, /"timestamp"\s*:\s*"([^"]+)"/i]);
   if (iso && /^\\d{9,12}$/.test(iso)) return new Date(Number(iso) * 1000).toISOString().slice(0, 10);
   const patterns = [
-    /(?:date|dates?|event|held|on)\\s*[:\-]?\\s*([A-Za-z]{3,12}\\s+\\d{1,2}(?:st|nd|rd|th)?(?:\\s*[-–]\\s*[A-Za-z]{3,12}\\s+\\d{1,2}(?:st|nd|rd|th)?)?\\s*,?\\s*\\d{4})/i,
-    /\\b(\\d{1,2}\\s+[A-Za-z]{3,12}\\s+\\d{4})\\b/i,
+    /(?:date|dates?|event|held|on)\s*[:\-]?\s*([A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*[-–]\s*[A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?)?\s*,?\s*\d{4})/i,
+    /\b(\d{1,2}\s+[A-Za-z]{3,12}\s+\d{4})\b/i,
     /\\b(\\d{1,2}[/-]\\d{1,2}[/-]\\d{4})\\b/
   ];
   return first(text, patterns);
@@ -98,12 +98,12 @@ function field(text, patterns) { return first(text, patterns).slice(0, 500); }
 function extractFacts(caption, title, sourceUrl) {
   const text = clean(`${title} ${caption}`);
   const date = extractDate(text, "");
-  const organizer = field(text, [/(?:organizer|organiser|organized by|organised by|hosted by|promoted by)\\s*[:\-]?\\s*([^.;|\\n]{3,180})/i]);
-  const venue = field(text, [/(?:venue|location|host venue|held at|at)\\s*[:\-]?\\s*([^.;|\\n]{3,180})/i]);
-  const registration = field(text, [/(?:registration|entry)\\s+(?:deadline|closes?|closing|last date)\\s*[:\-]?\\s*([^.;|\\n]{3,180})/i, /(?:deadline|last date)\\s*[:\-]?\\s*([^.;|\\n]{3,180})/i]);
-  const fees = field(text, [/(?:registration|entry|participation)\\s+fee[s]?\\s*[:\-]?\\s*([^.;|\\n]{2,120})/i, /(?:fee|fees)\\s*[:\-]?\\s*([^.;|\\n]{2,120})/i]);
-  const categories = field(text, [/(?:age|weight|category|categories|division|divisions|cadet|junior|senior)[^.;|\\n]{0,360}/i]);
-  const contact = field(text, [/(?:contact|helpline|phone|email|e-?mail)\\s*[:\-]?\\s*([^.;|\\n]{4,220})/i]);
+  const organizer = field(text, [/(?:organizer|organiser|organized by|organised by|hosted by|promoted by)\s*[:\-]?\s*([^.;|\n]{3,180})/i]);
+  const venue = field(text, [/(?:venue|location|host venue|held at|at)\s*[:\-]?\s*([^.;|\n]{3,180})/i]);
+  const registration = field(text, [/(?:registration|entry)\s+(?:deadline|closes?|closing|last date)\s*[:\-]?\s*([^.;|\n]{3,180})/i, /(?:deadline|last date)\s*[:\-]?\s*([^.;|\n]{3,180})/i]);
+  const fees = field(text, [/(?:registration|entry|participation)\s+fee[s]?\s*[:\-]?\s*([^.;|\n]{2,120})/i, /(?:fee|fees)\s*[:\-]?\s*([^.;|\n]{2,120})/i]);
+  const categories = field(text, [/(?:age|weight|category|categories|division|divisions|cadet|junior|senior)[^.;|\n]{0,360}/i]);
+  const contact = field(text, [/(?:contact|helpline|phone|email|e-?mail)\s*[:\-]?\s*([^.;|\n]{4,220})/i]);
   const registrationLink = (text.match(/https?:\\/\\/[^\\s)]+/i) || [])[0] || "";
   return {
     tournament_name: title || "",
@@ -130,8 +130,8 @@ function mediaFromHtml(html, fallbackUrl) {
     seen.add(key);
     posts.push({ id: createHash("sha1").update(key).digest("hex"), caption: c.slice(0, 2000), permalink: permalink || fallbackUrl, timestamp: timestamp || null, media_product_type: /reel/i.test(permalink) ? "REELS" : "FEED" });
   };
-  for (const m of html.matchAll(/"caption"\\s*:\\s*"((?:\\\\.|[^"])*)"/gi)) add(m[1]);
-  for (const m of html.matchAll(/"text"\\s*:\\s*"((?:\\\\.|[^"])*)"/gi)) add(m[1]);
+  for (const m of html.matchAll(/"caption"\s*:\s*"((?:\\.|[^"])*)"/gi)) add(m[1]);
+  for (const m of html.matchAll(/"text"\s*:\s*"((?:\\.|[^"])*)"/gi)) add(m[1]);
   for (const m of html.matchAll(/https?:\\/\\/www\\.instagram\\.com\\/(?:p|reel)\\/([a-zA-Z0-9_-]+)[^"\\s]*/gi)) add(extractCaption(html), m[0]);
   return posts.slice(0, MAX_RELATED_POSTS);
 }
