@@ -27,6 +27,8 @@ function decode(value = "") {
     .replace(/\\u0026/g, "&").replace(/\\u003d/g, "=").replace(/\\u0025/g, "%")
     .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'").replace(/&#x27;/gi, "'")
+    .replace(/&#(\\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
     .replace(/\\n/g, " ").replace(/\\r/g, " ");
 }
 
@@ -63,25 +65,35 @@ function instagramAccounts(html, sourceUrl, caption) {
   return unique(found).slice(0, MAX_RELATED_ACCOUNTS);
 }
 
+function captionFromInstagramShell(value) {
+  let text = clean(value);
+  text = text.replace(/^[^:]{0,180}\\s+on\\s+Instagram:\\s*/i, "");
+  const quoted = text.match(/[“"]([^“”"]{8,500})[”"]/);
+  if (quoted?.[1]) text = quoted[1];
+  return text.replace(/(?:\\s+on\\s+Instagram).*$/i, "").trim().slice(0, 4000);
+}
+
 function extractCaption(html) {
-  const candidates = [
+  const rawCandidates = [
     meta(html, "og:description"),
     meta(html, "description"),
-    first(html, [/"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"((?:\\\\.|[^"])*)"/i]),
-    first(html, [/"caption"\s*:\s*\{\s*"text"\s*:\s*"((?:\\\\.|[^"])*)"/i]),
-    first(html, [/"caption"\s*:\s*"((?:\\\\.|[^"])*)"/i]),
-    first(html, [/"text"\s*:\s*"((?:\\\\.|[^"])*)"/i])
+    first(html, [/"edge_media_to_caption"\\s*:\\s*\\{\\s*"edges"\\s*:\\s*\\[\\s*\\{\\s*"node"\\s*:\\s*\\{\\s*"text"\\s*:\\s*"((?:\\\\.|[^"])*)"/i]),
+    first(html, [/"caption"\\s*:\\s*\\{\\s*"text"\\s*:\\s*"((?:\\\\.|[^"])*)"/i]),
+    first(html, [/"caption"\\s*:\\s*"((?:\\\\.|[^"])*)"/i]),
+    first(html, [/"text"\\s*:\\s*"((?:\\\\.|[^"])*)"/i])
   ];
-  const useful = candidates.map(clean).filter(Boolean);
-  return useful.find((v) => TOURNAMENT_WORDS.test(v)) || useful.sort((p, q) => q.length - p.length)[0] || "";
+  const useful = rawCandidates.map(captionFromInstagramShell).filter(Boolean);
+  const tournamentCandidates = useful.filter((v) => TOURNAMENT_WORDS.test(v));
+  return tournamentCandidates.sort((a,b) => b.length-a.length)[0] || useful.sort((a,b) => b.length-a.length)[0] || "";
 }
 
 function extractTitle(html, caption) {
   const title = meta(html, "og:title") || first(html, [/<title[^>]*>([\s\S]*?)<\/title>/i]);
   const fromInstagram = title.replace(/\s+on Instagram:?.*$/i, "").trim();
   if (fromInstagram && !/^(Instagram|Log in|Sign up)/i.test(fromInstagram)) return fromInstagram.slice(0, 180);
-  const line = caption.split(/\n|\r|[.!?]/).map((x) => x.trim()).find((x) => TOURNAMENT_WORDS.test(x));
-  return (line || "").slice(0, 180);
+  const named = caption.match(/\b([A-Z][A-Za-z0-9&' -]{2,100}\b(?:Cup|Championships?|Open|Games|Tournament))\b/);
+  if (named?.[1]) return named[1].trim().slice(0, 180);
+  return "";
 }
 
 function extractDate(text, html) {
@@ -101,7 +113,8 @@ function extractFacts(caption, title, sourceUrl) {
   const text = clean(`${title} ${caption}`);
   const date = extractDate(text, "");
   const organizer = field(text, [/(?:organizer|organiser|organized by|organised by|hosted by|promoted by)\s*[:\-]?\s*([^.;|\n]{3,180})/i]);
-  const venue = field(text, [/(?:venue|location|host venue|held at|at)\s*[:\-]?\s*([^.;|\n]{3,180})/i]);
+  const venue = field(text, [/(?:venue|location|host venue|held at|taking place at|conducted at)\s*[:\-]?\s*([^.;|\n]{3,180})/i]);
+  const locationHint = field(text, [/(?:in|at)\s+([A-Z][A-Za-z .'-]{2,80})\s+is\s+(?:ready|set)/i]);
   const registration = field(text, [/(?:registration|entry)\s+(?:deadline|closes?|closing|last date)\s*[:\-]?\s*([^.;|\n]{3,180})/i, /(?:deadline|last date)\s*[:\-]?\s*([^.;|\n]{3,180})/i]);
   const fees = field(text, [/(?:registration|entry|participation)\s+fee[s]?\s*[:\-]?\s*([^.;|\n]{2,120})/i, /(?:fee|fees)\s*[:\-]?\s*([^.;|\n]{2,120})/i]);
   const categories = field(text, [/(?:age|weight|category|categories|division|divisions|cadet|junior|senior)[^.;|\n]{0,360}/i]);
@@ -111,6 +124,7 @@ function extractFacts(caption, title, sourceUrl) {
     tournament_name: title || "",
     tournament_date: date || "",
     venue: venue || "",
+    location_hint: locationHint || "",
     registration_deadline: registration || "",
     categories: categories || "",
     fees: fees || "",
@@ -231,6 +245,7 @@ async function scanPublicSource(sourceUrl) {
   const uniquePosts = [...new Map(relatedPosts.map((p) => [p.id, p])).values()].filter((p) => TOURNAMENT_WORDS.test(p.caption)).slice(0, MAX_RELATED_POSTS);
   const allText = [title, caption, ...uniquePosts.map((p) => p.caption)].join("\n");
   const allFacts = extractFacts(caption, title, root.finalUrl);
+  if (!allFacts.organizer && accounts[0]) allFacts.organizer = `@${accounts[0]}`;
   if (!allFacts.tournament_name || !TOURNAMENT_WORDS.test(allText)) throw new Error("NO_TOURNAMENT_CONTENT");
   const hash = createHash("sha256").update(allText).digest("hex");
   return {
@@ -249,6 +264,7 @@ async function scanPublicSource(sourceUrl) {
         description: caption || null,
         fields: {
           organizer: allFacts.organizer,
+          location_hint: allFacts.location_hint,
           fees: allFacts.fees,
           contact: allFacts.contact,
           registration_link: allFacts.registration_link,
