@@ -73,18 +73,25 @@ function captionFromInstagramShell(value) {
   return text.replace(/(?:\s+on\s+Instagram).*$/i, "").trim().slice(0, 4000);
 }
 
+function extractVisibleInstagramText(html) {
+  const body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || html;
+  return clean(body).replace(/^(?:Instagram|Log in|Sign up|Create new account)\s*/i, "").slice(0, 8000);
+}
+
 function extractCaption(html) {
   const rawCandidates = [
     meta(html, "og:description"),
     meta(html, "description"),
     first(html, [/"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
-    first(html, [/"caption"\s*:\s*\{\s*"text"\s*:\s*"((?:\\\\.|[^"])*)"/i]),
-    first(html, [/"caption"\s*:\s*"((?:\\\\.|[^"])*)"/i]),
-    first(html, [/"text"\s*:\s*"((?:\\\\.|[^"])*)"/i])
+    first(html, [/"caption"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
+    first(html, [/"caption"\s*:\s*"((?:\\.|[^"])*)"/i]),
+    first(html, [/"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
+    extractVisibleInstagramText(html)
   ];
-  const useful = rawCandidates.map(captionFromInstagramShell).filter(Boolean);
-  const tournamentCandidates = useful.filter((v) => TOURNAMENT_WORDS.test(v));
-  return tournamentCandidates.sort((a,b) => b.length-a.length)[0] || useful.sort((a,b) => b.length-a.length)[0] || "";
+  const useful = rawCandidates.map(captionFromInstagramShell)
+    .filter((value) => value && !/^(Instagram|Log in|Sign up|Create new account)$/i.test(value));
+  const tournamentCandidates = useful.filter((value) => TOURNAMENT_WORDS.test(value));
+  return tournamentCandidates.sort((a,b) => b.length-a.length)[0] || "";
 }
 
 function extractTitle(html, caption) {
@@ -354,10 +361,13 @@ export default async function handler(request) {
   } catch (error) {
     console.error("instagram-tournament-scan", error?.message || error);
     const isNoContent = error?.message === "NO_TOURNAMENT_CONTENT";
-    const code = isNoContent ? "IG-SCAN-204" : "IG-SCAN-502";
+    const isBlocked = /^INSTAGRAM_HTTP_/.test(error?.message || "");
+    const code = isNoContent ? "IG-SCAN-204" : isBlocked ? "IG-SCAN-502" : "IG-SCAN-500";
     const message = isNoContent
       ? "No tournament-related content was accessible in this Instagram source."
-      : "Instagram content could not be read from this source. Instagram may require login or block automated access.";
+      : isBlocked
+        ? "Instagram did not provide readable public content for this source. Try a public post/reel that is viewable without login."
+        : "The scanner encountered an internal error while processing this Instagram source.";
     return json({
       error: `${message} Error code: ${code}. Contact NovaCode at novacode.create@gmail.com, send a message in AthleteN, or use Problem/Feedback.`
     }, 502);
