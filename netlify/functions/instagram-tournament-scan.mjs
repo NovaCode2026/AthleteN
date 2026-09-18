@@ -67,11 +67,13 @@ function extractCaption(html) {
   const candidates = [
     meta(html, "og:description"),
     meta(html, "description"),
-    first(html, [/"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
-    first(html, [/"caption"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
-    first(html, [/"caption"\s*:\s*"((?:\\.|[^"])*)"/i])
+    first(html, [/"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"((?:\\\\.|[^"])*)"/i]),
+    first(html, [/"caption"\s*:\s*\{\s*"text"\s*:\s*"((?:\\\\.|[^"])*)"/i]),
+    first(html, [/"caption"\s*:\s*"((?:\\\\.|[^"])*)"/i]),
+    first(html, [/"text"\s*:\s*"((?:\\\\.|[^"])*)"/i])
   ];
-  return candidates.find((v) => v && TOURNAMENT_WORDS.test(v)) || candidates.find(Boolean) || "";
+  const useful = candidates.map(clean).filter(Boolean);
+  return useful.find((v) => TOURNAMENT_WORDS.test(v)) || useful.sort((p, q) => q.length - p.length)[0] || "";
 }
 
 function extractTitle(html, caption) {
@@ -137,15 +139,29 @@ function mediaFromHtml(html, fallbackUrl) {
 }
 
 async function fetchInstagram(url) {
-  const response = await fetch(url, {
-    redirect: "follow",
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
-      Accept: "text/html,application/xhtml+xml"
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
+    Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9"
+  };
+  const candidates = [url];
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(/^\\/(p|reel)\\/([A-Za-z0-9_-]+)/i);
+    if (match) {
+      candidates.push(`https://www.instagram.com/${match[1].toLowerCase()}/${match[2]}/embed/captioned/`);
+      candidates.push(`https://www.instagram.com/${match[1].toLowerCase()}/${match[2]}/embed/`);
     }
-  });
-  if (!response.ok) throw new Error(`INSTAGRAM_HTTP_${response.status}`);
-  return { html: await response.text(), finalUrl: response.url || url };
+  } catch {}
+  let lastStatus = 0;
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(candidate, { redirect: "follow", headers });
+      lastStatus = response.status;
+      if (response.ok) return { html: await response.text(), finalUrl: response.url || candidate };
+    } catch {}
+  }
+  throw new Error(`INSTAGRAM_HTTP_${lastStatus || 502}`);
 }
 
 async function scanPublicSource(sourceUrl) {
