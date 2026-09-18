@@ -67,10 +67,10 @@ function instagramAccounts(html, sourceUrl, caption) {
 
 function captionFromInstagramShell(value) {
   let text = clean(value);
-  text = text.replace(/^[^:]{0,180}\\s+on\\s+Instagram:\\s*/i, "");
+  text = text.replace(/^[^:]{0,180}\s+on\s+Instagram:\s*/i, "");
   const quoted = text.match(/[“"]([^“”"]{8,500})[”"]/);
   if (quoted?.[1]) text = quoted[1];
-  return text.replace(/(?:\\s+on\\s+Instagram).*$/i, "").trim().slice(0, 4000);
+  return text.replace(/(?:\s+on\s+Instagram).*$/i, "").trim().slice(0, 4000);
 }
 
 function extractCaption(html) {
@@ -91,7 +91,7 @@ function extractTitle(html, caption) {
   const rawTitle = meta(html, "og:title") || first(html, [/<title[^>]*>([\\s\\S]*?)<\\/title>/i]);
   const cleanedTitle = captionFromInstagramShell(rawTitle);
   const combined = clean(`${cleanedTitle} ${caption}`);
-  const named = combined.match(/\\b([A-Z][A-Za-z0-9&' -]{2,100}\\b(?:Cup|Championships?|Open|Games|Tournament))\\b/);
+  const named = combined.match(/\b([A-Z][A-Za-z0-9&' -]{2,100}\b(?:Cup|Championships?|Open|Games|Tournament))\b/);
   return named?.[1] ? named[1].trim().slice(0, 180) : "";
 }
 
