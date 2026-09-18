@@ -7,7 +7,7 @@ import { isSupabaseConfigured, supabase, supabaseConfig } from "./lib/supabase";
 import { createSignedFileUrl, deletePrivateFile, deleteRow, insertRow, listRows, updateRow, uploadPrivateFile, upsertRow, type Resource } from "./services/database";
 import { plans, getPlan } from "./config/plans";
 import { calculateReadiness } from "./utils/readiness";
-import type { ChecklistItem, CloudData, DocumentRecord, FeedbackItem, Goal, Medal as MedalRecord, AiUsageEvent, Profile, RoadmapItem, RoadmapVote, Subscription, SubscriptionUsage, TournamentScan, TrainingSession, Tournament, UsageSummary, VerificationRequest, WeightLog, KyorugiBout, PoomsaePerformance, TaekwondoTrainingLog } from "./types";
+import type { PlanId, ChecklistItem, CloudData, DocumentRecord, FeedbackItem, Goal, Medal as MedalRecord, AiUsageEvent, Profile, RoadmapItem, RoadmapVote, Subscription, SubscriptionUsage, TournamentScan, TrainingSession, Tournament, UsageSummary, VerificationRequest, WeightLog, KyorugiBout, PoomsaePerformance, TaekwondoTrainingLog } from "./types";
 import AthleteCommandCenter from "./components/dashboard/AthleteCommandCenter";
 import AdminControlCenter from "./components/admin/AdminControlCenter";
 import MessageReportsPanel from "./components/admin/MessageReportsPanel";
