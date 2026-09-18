@@ -192,17 +192,14 @@ async function fetchInstagram(url) {
       }
 
       const html = await response.text();
-      const visible = clean(
-        meta(html, "og:description") ||
-        meta(html, "description") ||
-        meta(html, "og:title") ||
-        ""
-      );
+      const candidateCaption = extractCaption(html);
+      const candidateTitle = extractTitle(html, candidateCaption);
+      const visible = clean(`${candidateTitle} ${candidateCaption}`);
 
       // Instagram can return a successful HTTP response containing only a
       // login/challenge shell. Do not stop there; continue to the embed/oEmbed
       // fallbacks so a public tournament caption can still be recovered.
-      if (TOURNAMENT_WORDS.test(visible) || TOURNAMENT_WORDS.test(html)) {
+      if (TOURNAMENT_WORDS.test(visible)) {
         return { html, finalUrl: response.url || candidate.url };
       }
     } catch {}
