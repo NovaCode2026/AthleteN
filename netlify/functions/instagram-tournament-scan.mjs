@@ -142,25 +142,72 @@ async function fetchInstagram(url) {
   const headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
     Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9"
+    "Accept-Language": "en-US,en;q=0.9",
+    Referer: "https://www.instagram.com/"
   };
-  const candidates = [url];
+
+  const candidates = [{ url, kind: "html" }];
   try {
     const parsed = new URL(url);
-    const match = parsed.pathname.match(/^\/(p|reel)\/([A-Za-z0-9_-]+)/i);
+    const match = parsed.pathname.match(/^\\/(p|reel)\\/([A-Za-z0-9_-]+)/i);
     if (match) {
-      candidates.push(`https://www.instagram.com/${match[1].toLowerCase()}/${match[2]}/embed/captioned/`);
-      candidates.push(`https://www.instagram.com/${match[1].toLowerCase()}/${match[2]}/embed/`);
+      const permalink = `https://www.instagram.com/${match[1].toLowerCase()}/${match[2]}/`;
+      const encoded = encodeURIComponent(permalink);
+      candidates.push({ url: `${permalink}embed/captioned/`, kind: "html" });
+      candidates.push({ url: `${permalink}embed/`, kind: "html" });
+      candidates.push({ url: `https://api.instagram.com/oembed/?url=${encoded}`, kind: "oembed" });
+      candidates.push({ url: `https://www.instagram.com/api/v1/oembed/?url=${encoded}`, kind: "oembed" });
     }
   } catch {}
+
   let lastStatus = 0;
   for (const candidate of candidates) {
     try {
-      const response = await fetch(candidate, { redirect: "follow", headers });
+      const response = await fetch(candidate.url, { redirect: "follow", headers });
       lastStatus = response.status;
-      if (response.ok) return { html: await response.text(), finalUrl: response.url || candidate };
+      if (!response.ok) continue;
+
+      const contentType = response.headers.get("content-type") || "";
+      if (candidate.kind === "oembed" || /json/i.test(contentType)) {
+        const data = await response.json().catch(() => null);
+        const title = clean(data?.title || "");
+        const author = clean(data?.author_name || "");
+        const embed = clean(data?.html || "");
+        if (!title && !author && !embed) continue;
+        const escaped = (value) => String(value || "")
+          .replace(/&/g, "&amp;")
+          .replace(/"/g, "&quot;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+        const syntheticHtml = [
+          `<meta property="og:title" content="${escaped(title || author)}">`,
+          `<meta property="og:description" content="${escaped(title)}">`,
+          `<meta name="description" content="${escaped(title)}">`,
+          embed
+        ].join(" ");
+        if (TOURNAMENT_WORDS.test(title) || TOURNAMENT_WORDS.test(embed)) {
+          return { html: syntheticHtml, finalUrl: url };
+        }
+        continue;
+      }
+
+      const html = await response.text();
+      const visible = clean(
+        meta(html, "og:description") ||
+        meta(html, "description") ||
+        meta(html, "og:title") ||
+        ""
+      );
+
+      // Instagram can return a successful HTTP response containing only a
+      // login/challenge shell. Do not stop there; continue to the embed/oEmbed
+      // fallbacks so a public tournament caption can still be recovered.
+      if (TOURNAMENT_WORDS.test(visible) || TOURNAMENT_WORDS.test(html)) {
+        return { html, finalUrl: response.url || candidate.url };
+      }
     } catch {}
   }
+
   throw new Error(`INSTAGRAM_HTTP_${lastStatus || 502}`);
 }
 
