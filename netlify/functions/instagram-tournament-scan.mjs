@@ -359,17 +359,21 @@ export default async function handler(request) {
     result.scan = saved;
     return json({ ...result, saved: true });
   } catch (error) {
-    console.error("instagram-tournament-scan", error?.message || error);
-    const isNoContent = error?.message === "NO_TOURNAMENT_CONTENT";
-    const isBlocked = /^INSTAGRAM_HTTP_/.test(error?.message || "");
-    const code = isNoContent ? "IG-SCAN-204" : isBlocked ? "IG-SCAN-502" : "IG-SCAN-500";
-    const message = isNoContent
-      ? "No tournament-related content was accessible in this Instagram source."
-      : isBlocked
-        ? "Instagram did not provide readable public content for this source. Try a public post/reel that is viewable without login."
-        : "The scanner encountered an internal error while processing this Instagram source.";
+    const rawMessage = String(error?.message || error || "Unknown scanner error");
+    console.error("instagram-tournament-scan", rawMessage);
+    console.error("instagram-tournament-scan stack", error?.stack || "no stack");
+    const isNoContent = rawMessage === "NO_TOURNAMENT_CONTENT";
+    const isBlocked = /^INSTAGRAM_HTTP_/.test(rawMessage);
+    const isSaveError = rawMessage.startsWith("SCAN-SAVE-500:");
+    const code = isSaveError ? "SCAN-SAVE-500" : isNoContent ? "IG-SCAN-204" : isBlocked ? "IG-SCAN-502" : "IG-SCAN-500";
+    const message = isSaveError
+      ? "The tournament scan completed, but AthleteN could not save the result."
+      : isNoContent
+        ? "No tournament-related content was accessible in this Instagram source."
+        : isBlocked
+          ? "Instagram did not provide readable public content for this source. Try a public post/reel that is viewable without login."
+          : "The scanner hit an unexpected processing error. The server log contains the exact cause.";
     return json({
-      error: `${message} Error code: ${code}. Contact NovaCode at novacode.create@gmail.com, send a message in AthleteN, or use Problem/Feedback.`
-    }, 502);
-  }
-}
+      error: message + " Error code: " + code + ". Contact NovaCode at novacode.create@gmail.com, send a message in AthleteN, or use Problem/Feedback."
+    }, isSaveError ? 500 : isNoContent ? 204 : 502);
+  }}
