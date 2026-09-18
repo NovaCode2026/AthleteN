@@ -15,6 +15,12 @@ function authClient(token) {
   if (!url || !key) throw new Error("SUPABASE_PUBLIC_CONFIG_MISSING");
   return createClient(url, key, { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false, autoRefreshToken: false } });
 }
+function serverSupabase() {
+  const url = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
+  const key = env("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("SUPABASE_SERVER_CONFIG_MISSING");
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
 
 function decode(value = "") {
   return value
@@ -223,6 +229,39 @@ export default async function handler(request) {
 
   try {
     const result = await scanPublicSource(sourceUrl);
+    const admin = serverSupabase();
+    const { data: existing } = await admin.from("tournament_scans")
+      .select("source_hash,last_checked_at")
+      .eq("user_id", user.id)
+      .eq("source_url", result.scan.source_url)
+      .maybeSingle();
+    const changed = existing?.source_hash
+      ? (existing.source_hash === result.source_hash
+        ? "No change detected since the previous Instagram scan."
+        : "NEW/CHANGED: the Instagram source or discovered tournament content changed since the previous scan.")
+      : "NEW: first scan of this Instagram tournament source.";
+    result.scan.detected_changes = changed;
+    result.scan.last_checked_at = new Date().toISOString();
+    result.scan.next_check_at = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+    const { data: saved, error: saveError } = await admin.from("tournament_scans").upsert({
+      user_id: user.id,
+      source_url: result.scan.source_url,
+      tournament_name: result.scan.tournament_name || null,
+      tournament_date: result.scan.tournament_date || null,
+      venue: result.scan.venue || null,
+      registration_deadline: result.scan.registration_deadline || null,
+      categories: result.scan.categories || null,
+      notices: result.scan.notices || null,
+      schedules_results: result.scan.schedules_results || null,
+      details: result.scan.details,
+      status: result.scan.status,
+      detected_changes: changed,
+      source_hash: result.source_hash,
+      last_checked_at: result.scan.last_checked_at,
+      next_check_at: result.scan.next_check_at
+    }, { onConflict: "user_id,source_url" }).select().single();
+    if (saveError) console.error("instagram-tournament-scan save", saveError);
+    if (saved) result.scan = saved;
     return json(result);
   } catch (error) {
     console.error("instagram-tournament-scan", error?.message || error);
