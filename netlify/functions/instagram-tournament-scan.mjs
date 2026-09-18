@@ -31,7 +31,7 @@ function decode(value = "") {
 }
 
 function clean(value = "") {
-  return decode(String(value)).replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim();
+  return decode(String(value)).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function meta(html, key) {
@@ -69,26 +69,26 @@ function extractCaption(html) {
     meta(html, "description"),
     first(html, [/"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
     first(html, [/"caption"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
-    first(html, [/"caption"\\s*:\\s*"((?:\\\\.|[^"])*)"/i])
+    first(html, [/"caption"\s*:\s*"((?:\\.|[^"])*)"/i])
   ];
   return candidates.find((v) => v && TOURNAMENT_WORDS.test(v)) || candidates.find(Boolean) || "";
 }
 
 function extractTitle(html, caption) {
   const title = meta(html, "og:title") || first(html, [/<title[^>]*>([\s\S]*?)<\/title>/i]);
-  const fromInstagram = title.replace(/\\s+on Instagram:?.*$/i, "").trim();
+  const fromInstagram = title.replace(/\s+on Instagram:?.*$/i, "").trim();
   if (fromInstagram && !/^(Instagram|Log in|Sign up)/i.test(fromInstagram)) return fromInstagram.slice(0, 180);
-  const line = caption.split(/\\n|\\r|[.!?]/).map((x) => x.trim()).find((x) => TOURNAMENT_WORDS.test(x));
+  const line = caption.split(/\n|\r|[.!?]/).map((x) => x.trim()).find((x) => TOURNAMENT_WORDS.test(x));
   return (line || "").slice(0, 180);
 }
 
 function extractDate(text, html) {
   const iso = first(html, [/"taken_at_timestamp"\s*:\s*(\d{9,12})/i, /"timestamp"\s*:\s*"([^"]+)"/i]);
-  if (iso && /^\\d{9,12}$/.test(iso)) return new Date(Number(iso) * 1000).toISOString().slice(0, 10);
+  if (iso && /^\d{9,12}$/.test(iso)) return new Date(Number(iso) * 1000).toISOString().slice(0, 10);
   const patterns = [
     /(?:date|dates?|event|held|on)\s*[:\-]?\s*([A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*[-–]\s*[A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?)?\s*,?\s*\d{4})/i,
     /\b(\d{1,2}\s+[A-Za-z]{3,12}\s+\d{4})\b/i,
-    /\\b(\\d{1,2}[/-]\\d{1,2}[/-]\\d{4})\\b/
+    /\b(\d{1,2}[/-]\d{1,2}[/-]\d{4})\b/
   ];
   return first(text, patterns);
 }
@@ -104,7 +104,7 @@ function extractFacts(caption, title, sourceUrl) {
   const fees = field(text, [/(?:registration|entry|participation)\s+fee[s]?\s*[:\-]?\s*([^.;|\n]{2,120})/i, /(?:fee|fees)\s*[:\-]?\s*([^.;|\n]{2,120})/i]);
   const categories = field(text, [/(?:age|weight|category|categories|division|divisions|cadet|junior|senior)[^.;|\n]{0,360}/i]);
   const contact = field(text, [/(?:contact|helpline|phone|email|e-?mail)\s*[:\-]?\s*([^.;|\n]{4,220})/i]);
-  const registrationLink = (text.match(/https?:\\/\\/[^\\s)]+/i) || [])[0] || "";
+  const registrationLink = (text.match(/https?:\/\/[^\s)]+/i) || [])[0] || "";
   return {
     tournament_name: title || "",
     tournament_date: date || "",
@@ -132,7 +132,7 @@ function mediaFromHtml(html, fallbackUrl) {
   };
   for (const m of html.matchAll(/"caption"\s*:\s*"((?:\\.|[^"])*)"/gi)) add(m[1]);
   for (const m of html.matchAll(/"text"\s*:\s*"((?:\\.|[^"])*)"/gi)) add(m[1]);
-  for (const m of html.matchAll(/https?:\\/\\/www\\.instagram\\.com\\/(?:p|reel)\\/([a-zA-Z0-9_-]+)[^"\\s]*/gi)) add(extractCaption(html), m[0]);
+  for (const m of html.matchAll(/https?:\/\/www\.instagram\.com\/(?:p|reel)\/([a-zA-Z0-9_-]+)[^"\s]*/gi)) add(extractCaption(html), m[0]);
   return posts.slice(0, MAX_RELATED_POSTS);
 }
 
@@ -211,7 +211,7 @@ async function scanPublicSource(sourceUrl) {
 
 export default async function handler(request) {
   if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
-  const accessToken = request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "");
+  const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!accessToken) return json({ error: "Please sign in before scanning." }, 401);
   let user;
   try {
@@ -225,7 +225,7 @@ export default async function handler(request) {
   const sourceUrl = String(body.sourceUrl || "").trim();
   let parsed;
   try { parsed = new URL(sourceUrl); } catch { return json({ error: "Enter a valid Instagram post, reel, or profile URL." }, 400); }
-  if (!/(^|\\.)instagram\\.com$/i.test(parsed.hostname)) return json({ error: "Only Instagram sources are supported here." }, 400);
+  if (!/(^|\.)instagram\.com$/i.test(parsed.hostname)) return json({ error: "Only Instagram sources are supported here." }, 400);
 
   try {
     const result = await scanPublicSource(sourceUrl);
