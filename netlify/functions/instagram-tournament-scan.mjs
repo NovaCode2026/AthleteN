@@ -27,7 +27,7 @@ function decode(value = "") {
     .replace(/\\u0026/g, "&").replace(/\\u003d/g, "=").replace(/\\u0025/g, "%")
     .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'").replace(/&#x27;/gi, "'")
-    .replace(/&#(\\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
     .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
     .replace(/\\n/g, " ").replace(/\\r/g, " ");
 }
@@ -100,9 +100,9 @@ function extractDate(text, html) {
   if (iso && /^\d{9,12}$/.test(iso)) return new Date(Number(iso) * 1000).toISOString().slice(0, 10);
   const patterns = [
     /(?:date|dates?|event|held|on)\s*[:\-]?\s*([A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*[-–]\s*[A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?)?\s*,?\s*\d{4})/i,
-    /\b(\d{1,2}(?:st|nd|rd|th)?\\s*(?:&|and|[-–])\\s*\d{1,2}(?:st|nd|rd|th)?\\s+[A-Za-z]{3,12}(?:\\s+\\d{4})?)\b/i,
-    /\b(\d{1,2}(?:st|nd|rd|th)?\\s+[A-Za-z]{3,12}(?:\\s+\\d{4})?)\b/i,
-    /\b([A-Za-z]{3,12}\\s+\d{1,2}(?:st|nd|rd|th)?(?:\\s*(?:&|and|[-–])\\s*\d{1,2}(?:st|nd|rd|th)?)?(?:\\s+\\d{4})?)\b/i,
+    /\b(\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+\d{4})?)\b/i,
+    /\b(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+\d{4})?)\b/i,
+    /\b([A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?)?(?:\s+\d{4})?)\b/i,
     /\b(\d{1,2}[/-]\d{1,2}[/-]\d{4})\b/
   ];
   return first(text, patterns);
