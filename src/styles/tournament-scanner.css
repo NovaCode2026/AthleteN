@@ -25,10 +25,12 @@
 .tournament-scanner .source-list, .tournament-scanner .post-list { display: grid; gap: 8px; }
 .tournament-scanner .source-link { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255,255,255,.025); font-size: 11px; overflow-wrap: anywhere; }
 .tournament-scanner .scan-table-wrap { overflow-x: auto; }
-.tournament-scanner table { width: 100%; border-collapse: collapse; }
-.tournament-scanner th, .tournament-scanner td { padding: 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 11px; white-space: nowrap; }
+.tournament-scanner .card.panel { min-width: 0; max-width: 100%; overflow: hidden; }
+.tournament-scanner .scan-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; }
+.tournament-scanner table { width: 100%; max-width: 100%; border-collapse: collapse; table-layout: fixed; }
+.tournament-scanner th, .tournament-scanner td { padding: 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 11px; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
 .tournament-scanner th { color: #89a4c0; font-size: 9px; text-transform: uppercase; letter-spacing: .8px; }
-.tournament-scanner td.source-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+.tournament-scanner td.source-cell { width: 18%; max-width: 280px; overflow-wrap: anywhere; word-break: break-word; }
 .tournament-scanner .scan-row-details { margin-top: 10px; }
 .tournament-scanner .scan-row-details summary { cursor: pointer; color: #9fd9ff; font-size: 11px; font-weight: 800; }
 .tournament-scanner .empty-state { padding: 24px; text-align: center; }
