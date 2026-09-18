@@ -224,7 +224,14 @@ async function fetchInstagram(url) {
 }
 
 async function scanPublicSource(sourceUrl) {
-  const root = await fetchInstagram(sourceUrl);
+  const parsedSource = new URL(sourceUrl);
+  const canonicalSourceUrl = (() => {
+    const parts = parsedSource.pathname.split("/").filter(Boolean);
+    if ((parts[0] || "").toLowerCase() === "p" && parts[1]) return `https://www.instagram.com/p/${parts[1]}/`;
+    if ((parts[0] || "").toLowerCase() === "reel" && parts[1]) return `https://www.instagram.com/reel/${parts[1]}/`;
+    return parsedSource.toString();
+  })();
+  const root = await fetchInstagram(canonicalSourceUrl);
   const caption = extractCaption(root.html);
   const title = extractTitle(root.html, caption);
   const facts = extractFacts(caption, title, root.finalUrl);
@@ -251,7 +258,7 @@ async function scanPublicSource(sourceUrl) {
   const hash = createHash("sha256").update(allText).digest("hex");
   return {
     scan: {
-      source_url: root.finalUrl,
+      source_url: canonicalSourceUrl,
       tournament_name: allFacts.tournament_name,
       tournament_date: allFacts.tournament_date || null,
       venue: allFacts.venue || null,
@@ -337,9 +344,13 @@ export default async function handler(request) {
       last_checked_at: result.scan.last_checked_at,
       next_check_at: result.scan.next_check_at
     }, { onConflict: "user_id,source_url" }).select().single();
-    if (saveError) console.error("instagram-tournament-scan save", saveError);
-    if (saved) result.scan = saved;
-    return json(result);
+    if (saveError) {
+      console.error("instagram-tournament-scan save", saveError);
+      throw new Error(`SCAN-SAVE-500: The scan was completed but could not be saved. ${saveError.message || "Database save failed."}`);
+    }
+    if (!saved) throw new Error("SCAN-SAVE-500: The scan completed but no saved scan record was returned.");
+    result.scan = saved;
+    return json({ ...result, saved: true });
   } catch (error) {
     console.error("instagram-tournament-scan", error?.message || error);
     const isNoContent = error?.message === "NO_TOURNAMENT_CONTENT";
