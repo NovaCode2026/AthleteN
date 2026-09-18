@@ -325,10 +325,13 @@ export default async function handler(request) {
     return json(result);
   } catch (error) {
     console.error("instagram-tournament-scan", error?.message || error);
+    const isNoContent = error?.message === "NO_TOURNAMENT_CONTENT";
+    const code = isNoContent ? "IG-SCAN-204" : "IG-SCAN-502";
+    const message = isNoContent
+      ? "No tournament-related content was accessible in this Instagram source."
+      : "Instagram content could not be read from this source. Instagram may require login or block automated access.";
     return json({
-      error: error?.message === "NO_TOURNAMENT_CONTENT"
-        ? "No tournament-related content was accessible in this Instagram source."
-        : "Instagram content could not be read from this source. Instagram may require login or block automated access."
+      error: `${message} Error code: ${code}. Contact NovaCode at novacode.create@gmail.com, send a message in AthleteN, or use Problem/Feedback.`
     }, 502);
   }
 }
