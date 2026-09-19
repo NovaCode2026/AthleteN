@@ -114,7 +114,9 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
   const details = selectedScan?.details;
   const fields = details?.fields || {};
   const importantFacts = details?.important_facts || {};
-  const isInstagramScan = Boolean(instagramResult?.scan?.source_url);
+  const isInstagramScan = Boolean(
+    instagramResult?.scan?.source_url || /instagram\.com/i.test(selectedScan?.source_url || "")
+  );
   const primaryFields = useMemo(() => Object.entries(fields).filter(([key]) => !["description"].includes(key)), [fields]);
   const pdfs = selectedScan?.pdfs?.length ? selectedScan.pdfs : details?.pdfs || [];
   const sections = details?.sections || [];
