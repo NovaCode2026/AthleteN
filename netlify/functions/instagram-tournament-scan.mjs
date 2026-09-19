@@ -73,67 +73,48 @@ async function analyzeTournamentImage(imageUrl) {
     "Referer": "https://www.instagram.com/",
     "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
   };
-  const prompt = "Analyze this public tournament poster for AthleteN. Extract only information visibly supported by the image; do not guess. Return JSON only with tournament_name, date_text, venue, sport, disciplines, events, categories, organizer, registration, fees, contact, highlights, poster_text. Use arrays for disciplines, events, categories and highlights. Preserve full date ranges. Include every clearly visible event/division. poster_text should be a concise transcription of important readable tournament text.";
+  const prompt = "Analyze this public tournament poster for AthleteN. Read the ENTIRE poster carefully, including small text. Extract every piece of tournament information visibly supported by the image; never guess or invent missing values. Return JSON only. Use these keys: tournament_name, date_text, venue, city, state, country, organizer, host, sport, disciplines, events, categories, gender_categories, age_categories, weight_categories, eligibility, registration, registration_deadline, registration_link, fees, contact, phone, email, website, rules, scoring_system, competition_system, rounds, equipment, schedule, weigh_in, medals, prizes, accommodation, transport, documents, notices, highlights, hashtags, poster_text. Use arrays for disciplines, events, categories, gender_categories, age_categories, weight_categories, highlights, notices. Keep exact wording for dates, fees, phone numbers, emails and important rules. poster_text should be a detailed but concise transcription of all readable tournament text, not a summary that drops details.";
   const parseResponse = async (response) => {
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
-      console.error("instagram-tournament-image-openai", response.status, errorText.slice(0, 800));
+      console.error("instagram-tournament-image-openai", response.status, errorText.slice(0, 1200));
       return null;
     }
     const data = await response.json().catch(() => null);
     const outputParts = [];
     if (data?.output_text) outputParts.push(data.output_text);
-    for (const item of data?.output || []) {
-      for (const part of item?.content || []) {
-        if (typeof part?.text === "string") outputParts.push(part.text);
-      }
-    }
+    for (const item of data?.output || []) for (const part of item?.content || []) if (typeof part?.text === "string") outputParts.push(part.text);
     const parsed = extractJsonObject(outputParts.join("\n"));
-    if (!parsed) console.error("instagram-tournament-image-empty", JSON.stringify(data).slice(0, 1200));
+    if (!parsed) console.error("instagram-tournament-image-empty", JSON.stringify(data).slice(0, 1600));
     return parsed;
   };
+  const callVision = async (image) => fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      input: [{ role: "user", content: [
+        { type: "input_text", text: prompt },
+        { type: "input_image", image_url: image }
+      ] }],
+      max_output_tokens: 5000
+    })
+  });
   try {
-    // First try fetching the Instagram CDN image ourselves. Instagram often exposes
-    // HEIC filenames while the query requests a JPEG derivative.
+    const direct = await callVision(imageUrl);
+    const directParsed = await parseResponse(direct);
+    if (directParsed) return directParsed;
     const imageResponse = await fetch(imageUrl, { headers });
     if (!imageResponse.ok) {
       console.error("instagram-tournament-image-fetch", imageResponse.status, imageResponse.statusText);
-    } else {
-      const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
-      const buffer = Buffer.from(await imageResponse.arrayBuffer());
-      console.log("instagram-tournament-image", { contentType, bytes: buffer.length, imageUrl: imageUrl.slice(0, 180) });
-      if (/^image\//i.test(contentType) && buffer.length && buffer.length <= 12 * 1024 * 1024) {
-        const response = await fetch("https://api.openai.com/v1/responses", {
-          method: "POST",
-          headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            input: [{ role: "user", content: [
-              { type: "input_text", text: prompt },
-              { type: "input_image", image_url: "data:" + contentType + ";base64," + buffer.toString("base64") }
-            ] }],
-            max_output_tokens: 2200
-          })
-        });
-        const parsed = await parseResponse(response);
-        if (parsed) return parsed;
-      }
+      return null;
     }
-
-    // Fallback: let the vision model fetch the public Instagram CDN URL directly.
-    const directResponse = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        input: [{ role: "user", content: [
-          { type: "input_text", text: prompt },
-          { type: "input_image", image_url: imageUrl }
-        ] }],
-        max_output_tokens: 2200
-      })
-    });
-    return await parseResponse(directResponse);
+    const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
+    const buffer = Buffer.from(await imageResponse.arrayBuffer());
+    console.log("instagram-tournament-image", { contentType, bytes: buffer.length, imageUrl: imageUrl.slice(0, 180) });
+    if (!/^image\//i.test(contentType) || !buffer.length || buffer.length > 12 * 1024 * 1024) return null;
+    const fallback = await callVision("data:" + contentType + ";base64," + buffer.toString("base64"));
+    return await parseResponse(fallback);
   } catch (error) {
     console.error("instagram-tournament-image-analysis", error?.stack || error?.message || error);
     return null;
@@ -446,6 +427,7 @@ async function scanPublicSource(sourceUrl) {
   }
   if (poster?.venue) facts.venue = clean(poster.venue);
   if (!facts.organizer && poster?.organizer) facts.organizer = clean(poster.organizer);
+  if (!facts.organizer && poster?.host) facts.organizer = clean(poster.host);
   if (poster?.fees) facts.fees = clean(poster.fees);
   if (Array.isArray(poster?.events) && poster.events.length) facts.categories = poster.events.filter(Boolean).join(", ");
   else if (Array.isArray(poster?.categories) && poster.categories.length) facts.categories = poster.categories.filter(Boolean).join(", ");
@@ -481,6 +463,7 @@ async function scanPublicSource(sourceUrl) {
   }
   if (poster?.venue) allFacts.venue = clean(poster.venue);
   if (!allFacts.organizer && poster?.organizer) allFacts.organizer = clean(poster.organizer);
+  if (!allFacts.organizer && poster?.host) allFacts.organizer = clean(poster.host);
   if (poster?.fees) allFacts.fees = clean(poster.fees);
   if (Array.isArray(poster?.events) && poster.events.length) allFacts.categories = poster.events.filter(Boolean).join(", ");
   else if (Array.isArray(poster?.categories) && poster.categories.length) allFacts.categories = poster.categories.filter(Boolean).join(", ");
@@ -523,7 +506,37 @@ async function scanPublicSource(sourceUrl) {
           poster_sport: clean(poster?.sport || ""),
           poster_disciplines: Array.isArray(poster?.disciplines) ? poster.disciplines.join(", ") : "",
           poster_events: Array.isArray(poster?.events) ? poster.events.join(", ") : "",
-          poster_highlights: Array.isArray(poster?.highlights) ? poster.highlights.join(" | ") : ""
+          poster_highlights: Array.isArray(poster?.highlights) ? poster.highlights.join(" | ") : "",
+          poster_text: posterText,
+          poster_city: clean(poster?.city || ""),
+          poster_state: clean(poster?.state || ""),
+          poster_country: clean(poster?.country || ""),
+          poster_host: clean(poster?.host || ""),
+          poster_age_categories: Array.isArray(poster?.age_categories) ? poster.age_categories.join(", ") : "",
+          poster_weight_categories: Array.isArray(poster?.weight_categories) ? poster.weight_categories.join(", ") : "",
+          poster_gender_categories: Array.isArray(poster?.gender_categories) ? poster.gender_categories.join(", ") : "",
+          poster_eligibility: clean(poster?.eligibility || ""),
+          poster_registration: clean(poster?.registration || ""),
+          poster_registration_deadline: clean(poster?.registration_deadline || ""),
+          poster_registration_link: clean(poster?.registration_link || ""),
+          poster_contact: clean(poster?.contact || ""),
+          poster_phone: clean(poster?.phone || ""),
+          poster_email: clean(poster?.email || ""),
+          poster_website: clean(poster?.website || ""),
+          poster_rules: clean(poster?.rules || ""),
+          poster_scoring_system: clean(poster?.scoring_system || ""),
+          poster_competition_system: clean(poster?.competition_system || ""),
+          poster_rounds: clean(poster?.rounds || ""),
+          poster_equipment: clean(poster?.equipment || ""),
+          poster_schedule: clean(poster?.schedule || ""),
+          poster_weigh_in: clean(poster?.weigh_in || ""),
+          poster_medals: clean(poster?.medals || ""),
+          poster_prizes: clean(poster?.prizes || ""),
+          poster_accommodation: clean(poster?.accommodation || ""),
+          poster_transport: clean(poster?.transport || ""),
+          poster_documents: clean(poster?.documents || ""),
+          poster_notices: Array.isArray(poster?.notices) ? poster.notices.join(" | ") : "",
+          poster_hashtags: Array.isArray(poster?.hashtags) ? poster.hashtags.join(" ") : ""
         },
         headings: [],
         sections: [
