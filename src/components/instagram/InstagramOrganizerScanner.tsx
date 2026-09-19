@@ -36,7 +36,15 @@ function formatDate(value?: string | null) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 function labelize(value: string) { return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
-async function readError(response: Response, fallback: string) { const payload = await response.json().catch(() => ({})); return typeof payload?.error === "string" && payload.error.trim() ? payload.error : fallback; }
+async function readError(response: Response, fallback: string) {
+  const raw = await response.text().catch(() => "");
+  try {
+    const payload = JSON.parse(raw);
+    if (typeof payload?.error === "string" && payload.error.trim()) return payload.error;
+  } catch {}
+  const compact = raw.replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim().slice(0, 500);
+  return compact || `${fallback} HTTP ${response.status}.`;
+}
 
 export default function InstagramOrganizerScanner({ accessToken, setToast }: Props) {
   const [sourceType, setSourceType] = useState<SourceType>("website");
