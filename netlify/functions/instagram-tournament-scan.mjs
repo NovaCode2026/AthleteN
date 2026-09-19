@@ -171,21 +171,51 @@ async function analyzeTournamentImage(imageUrl) {
       };
 
       // Deterministic extraction from OCR text. No guessing.
-      const lines = text.split(/\\n+/).map((line) => clean(line)).filter(Boolean);
-      poster.tournament_name =
-        lines.find((line) => /tournament|championship|cup|open|memorial/i.test(line) && line.length >= 8) || "";
-      poster.date_text =
-        lines.find((line) => /\\b(?:\\d{1,2}(?:st|nd|rd|th)?\\s*(?:and|&|to|[-–])\\s*)?\\d{1,2}(?:st|nd|rd|th)?\\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\s*,?\\s*\\d{4}\\b/i.test(line)) ||
-        lines.find((line) => /\\b\\d{1,2}(?:st|nd|rd|th)?\\s*(?:&|and|to|[-–])\\s*\\d{1,2}(?:st|nd|rd|th)?\\b/i.test(line)) || "";
-      poster.venue = lines.find((line) => /\\b(venue|hall|stadium|indoor|ground|complex|academy|school|university)\\b/i.test(line)) || "";
-      poster.registration_deadline = lines.find((line) => /registration.*(?:last|deadline|close|before)|last date/i.test(line)) || "";
-      poster.fees = lines.find((line) => /(?:fee|fees|entry|registration)\\s*[:=-]?\\s*[₹rs]\\.?\\s*\\d/i.test(line)) || "";
-      poster.phone = lines.find((line) => /(?:\\+?91[ -]?)?\\d{10}\\b/.test(line)) || "";
-      poster.email = lines.find((line) => /[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i.test(line)) || "";
-      poster.registration_link = lines.find((line) => /https?:\/\/|www\.|bit\.ly|forms?\.gle/i.test(line)) || "";
+      const lines = text.split(/\n+/).map((line) => clean(line)).filter(Boolean);
+      const compactText = clean(text.replace(/\s+/g, " "));
+
+      const firstMatch = (value, patterns) => {
+        for (const pattern of patterns) {
+          const match = String(value || "").match(pattern);
+          if (match?.[1]) return clean(match[1]);
+        }
+        return "";
+      };
+
+      const championshipLines = lines.filter((line) => /championship|tournament|cup|open|memorial/i.test(line) && line.length >= 8);
+      poster.tournament_name = championshipLines.sort((a, b) => b.length - a.length)[0] || firstMatch(compactText, [
+        /((?:SHRI|SRI)\s+[A-Z0-9 &'’-]{3,120}?(?:OPEN|CUP|CHAMPIONSHIP|TOURNAMENT)[A-Z0-9 &'’-]{0,80})/i,
+        /([A-Z0-9 &'’-]{4,120}(?:CHAMPIONSHIP|TOURNAMENT|CUP|OPEN)[A-Z0-9 &'’-]{0,80})/i
+      ]);
+
+      poster.date_text = firstMatch(compactText, [
+        /((?:\d{1,2}(?:st|nd|rd|th)?\s*(?:and|&|to|[-–])\s*)?\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})/i,
+        /((?:\d{1,2}(?:st|nd|rd|th)?\s*(?:and|&|to|[-–])\s*)?\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*)/i
+      ]) || lines.find((line) => /\b\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|to|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(line)) || "";
+
+      poster.venue = firstMatch(compactText, [
+        /\bVENUE\s*[:\-]?\s*(.+?)(?=\s+(?:REPORTING|REPORTING TIME|ABOUT THE CHAMPIONSHIP|DATE|DATES|REGISTRATION|CONTACT)\b|$)/i,
+        /\b(?:VENUE|LOCATION)\s*[:\-]?\s*(.+?)(?=\s+(?:REPORTING|ABOUT|REGISTRATION|CONTACT)\b|$)/i
+      ]) || lines.find((line) => /\b(venue|hall|stadium|indoor|ground|complex|academy|school|university)\b/i.test(line)) || "";
+
+      poster.city = firstMatch(poster.venue, [/,\s*([A-Z][A-Za-z .'-]{2,60})(?:,\s*[A-Z][A-Za-z .'-]{2,60})?$/i]);
+
+      poster.registration_deadline = firstMatch(compactText, [
+        /(?:registration|entry)\s+(?:last date|deadline|closes?|closing)\s*[:=-]?\s*(.{3,120}?)(?=\s+(?:fee|fees|contact|venue|about)\b|$)/i,
+        /(?:last date|deadline)\s*[:=-]?\s*(.{3,120}?)(?=\s+(?:fee|fees|contact|venue|about)\b|$)/i
+      ]) || lines.find((line) => /registration.*(?:last|deadline|close|before)|last date/i.test(line)) || "";
+
+      poster.fees = firstMatch(compactText, [
+        /(?:registration|entry|participation)\s+fee[s]?\s*[:=-]?\s*([^.;|]{2,120})/i,
+        /(?:fee|fees)\s*[:=-]?\s*([^.;|]{2,120})/i
+      ]) || lines.find((line) => /(?:fee|fees|entry|registration)\s*[:=-]?\s*[₹rs]\.?\s*\d/i.test(line)) || "";
+
+      poster.phone = firstMatch(compactText, [/((?:\+?91[ -]?)?\d{10})\b/]) || lines.find((line) => /(?:\+?91[ -]?)?\d{10}\b/.test(line)) || "";
+      poster.email = firstMatch(compactText, [/([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i]) || lines.find((line) => /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(line)) || "";
+      poster.registration_link = firstMatch(compactText, [/(https?:\/\/[^\s]+|www\.[^\s]+|bit\.ly\/[^\s]+|forms?\.gle\/[^\s]+)/i]) || lines.find((line) => /https?:\/\/|www\.|bit\.ly|forms?\.gle/i.test(line)) || "";
       poster.website = poster.registration_link;
 
-      poster.events = lines.filter((line) => /kyorugi|poomsae|poomse|fresher|cadet|junior|senior|sub[- ]?junior|under[- ]?\d|\\bkg\\b|\\b\\d+\\s*kg\\b/i.test(line)).slice(0, 30);
+      poster.events = lines.filter((line) => /kyorugi|poomsae|poomse|fresher|cadet|junior|senior|sub[- ]?junior|under[- ]?\d|\bkg\b|\b\d+\s*kg\b/i.test(line)).slice(0, 30);
       poster.categories = poster.events.slice();
       poster.highlights = lines.filter((line) => /gold|silver|bronze|medal|prize|award|contact|register|registration|weigh|draw|schedule/i.test(line)).slice(0, 30);
       poster.hashtags = [...new Set((text.match(/#[A-Za-z0-9_]+/g) || []))];
@@ -524,6 +554,7 @@ async function scanPublicSource(sourceUrl) {
     facts.tournament_date = toDatabaseDate(poster.date_text) || facts.tournament_date;
   }
   if (poster?.venue) facts.venue = clean(poster.venue);
+  if (!facts.location_hint && poster?.city) facts.location_hint = clean(poster.city);
   if (!facts.organizer && poster?.organizer) facts.organizer = clean(poster.organizer);
   if (!facts.organizer && poster?.host) facts.organizer = clean(poster.host);
   if (poster?.fees) facts.fees = clean(poster.fees);
@@ -537,6 +568,7 @@ async function scanPublicSource(sourceUrl) {
 
   const accounts = instagramAccounts(root.html, root.finalUrl, caption);
   const accountResults = [];
+  if (!facts.organizer && accounts[0]) facts.organizer = `@${accounts[0]}`;
   const relatedPosts = mediaFromHtml(root.html, root.finalUrl);
 
   // Check discovered accounts in parallel instead of serially. This is the
@@ -581,6 +613,7 @@ async function scanPublicSource(sourceUrl) {
     allFacts.tournament_date = toDatabaseDate(poster.date_text) || allFacts.tournament_date;
   }
   if (poster?.venue) allFacts.venue = clean(poster.venue);
+  if (!allFacts.location_hint && poster?.city) allFacts.location_hint = clean(poster.city);
   if (!allFacts.organizer && poster?.organizer) allFacts.organizer = clean(poster.organizer);
   if (!allFacts.organizer && poster?.host) allFacts.organizer = clean(poster.host);
   if (poster?.fees) allFacts.fees = clean(poster.fees);
