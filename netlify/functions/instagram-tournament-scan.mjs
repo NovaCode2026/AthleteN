@@ -81,7 +81,9 @@ function extractVisibleInstagramText(html) {
 function extractCaption(html) {
   const rawCandidates = [
     meta(html, "og:description"),
+    meta(html, "twitter:description"),
     meta(html, "description"),
+    first(html, [/"articleBody"\s*:\s*"((?:\\.|[^"])*)"/i]),
     first(html, [/"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
     first(html, [/"caption"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
     first(html, [/"caption"\s*:\s*"((?:\\.|[^"])*)"/i]),
@@ -177,6 +179,7 @@ async function fetchInstagram(url) {
       const encoded = encodeURIComponent(permalink);
       candidates.push({ url: `${permalink}embed/captioned/`, kind: "html" });
       candidates.push({ url: `${permalink}embed/`, kind: "html" });
+      candidates.push({ url: `${permalink}?__a=1&__d=dis`, kind: "json" });
       candidates.push({ url: `https://api.instagram.com/oembed/?url=${encoded}`, kind: "oembed" });
       candidates.push({ url: `https://www.instagram.com/api/v1/oembed/?url=${encoded}`, kind: "oembed" });
     }
@@ -190,12 +193,19 @@ async function fetchInstagram(url) {
       if (!response.ok) continue;
 
       const contentType = response.headers.get("content-type") || "";
-      if (candidate.kind === "oembed" || /json/i.test(contentType)) {
+      if (candidate.kind === "oembed" || candidate.kind === "json" || /json/i.test(contentType)) {
         const data = await response.json().catch(() => null);
-        const title = clean(data?.title || "");
-        const author = clean(data?.author_name || "");
+        const title = clean(data?.title || data?.graphql?.shortcode_media?.title || "");
+        const author = clean(data?.author_name || data?.graphql?.shortcode_media?.owner?.username || "");
+        const captionText = clean(
+          data?.caption?.text ||
+          data?.graphql?.shortcode_media?.edge_media_to_caption?.edges?.[0]?.node?.text ||
+          data?.graphql?.xdt_shortcode_media?.edge_media_to_caption?.edges?.[0]?.node?.text ||
+          ""
+        );
         const embed = clean(data?.html || "");
-        if (!title && !author && !embed) continue;
+        const combined = clean(`${title} ${captionText} ${author}`);
+        if (!combined && !embed) continue;
         const escaped = (value) => String(value || "")
           .replace(/&/g, "&amp;")
           .replace(/"/g, "&quot;")
@@ -203,11 +213,13 @@ async function fetchInstagram(url) {
           .replace(/>/g, "&gt;");
         const syntheticHtml = [
           `<meta property="og:title" content="${escaped(title || author)}">`,
-          `<meta property="og:description" content="${escaped(title)}">`,
-          `<meta name="description" content="${escaped(title)}">`,
+          `<meta property="og:description" content="${escaped(captionText || title)}">`,
+          `<meta name="twitter:description" content="${escaped(captionText || title)}">`,
+          `<meta name="description" content="${escaped(captionText || title)}">`,
+          `<script type="application/ld+json">${escaped(JSON.stringify({ articleBody: captionText }))}</script>`,
           embed
         ].join(" ");
-        if (TOURNAMENT_WORDS.test(title) || TOURNAMENT_WORDS.test(embed)) {
+        if (TOURNAMENT_WORDS.test(combined) || TOURNAMENT_WORDS.test(embed)) {
           return { html: syntheticHtml, finalUrl: url };
         }
         continue;
@@ -242,6 +254,13 @@ async function scanPublicSource(sourceUrl) {
   const caption = extractCaption(root.html);
   const title = extractTitle(root.html, caption);
   const facts = extractFacts(caption, title, root.finalUrl);
+  if (!facts.tournament_name && caption) {
+    const headline = caption
+      .split(/(?:\n|[.!?])+/)
+      .map((part) => clean(part))
+      .find((part) => TOURNAMENT_WORDS.test(part) && part.length >= 8 && part.length <= 180);
+    if (headline) facts.tournament_name = headline;
+  }
   const accounts = instagramAccounts(root.html, root.finalUrl, caption);
   const relatedPosts = mediaFromHtml(root.html, root.finalUrl);
   const accountResults = [];
@@ -260,6 +279,13 @@ async function scanPublicSource(sourceUrl) {
   const uniquePosts = [...new Map(relatedPosts.map((p) => [p.id, p])).values()].filter((p) => TOURNAMENT_WORDS.test(p.caption)).slice(0, MAX_RELATED_POSTS);
   const allText = [title, caption, ...uniquePosts.map((p) => p.caption)].join("\n");
   const allFacts = extractFacts(caption, title, root.finalUrl);
+  if (!allFacts.tournament_name && caption) {
+    const headline = caption
+      .split(/(?:\n|[.!?])+/)
+      .map((part) => clean(part))
+      .find((part) => TOURNAMENT_WORDS.test(part) && part.length >= 8 && part.length <= 180);
+    if (headline) allFacts.tournament_name = headline;
+  }
   if (!allFacts.organizer && accounts[0]) allFacts.organizer = `@${accounts[0]}`;
   if (!allFacts.tournament_name || !TOURNAMENT_WORDS.test(allText)) throw new Error("NO_TOURNAMENT_CONTENT");
   const hash = createHash("sha256").update(allText).digest("hex");
