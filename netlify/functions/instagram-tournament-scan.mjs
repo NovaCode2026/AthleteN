@@ -77,14 +77,20 @@ function extractJsonObject(text) {
   try { return JSON.parse(cleaned.slice(start, end + 1)); } catch { return null; }
 }
 
+function upgradeInstagramImageUrl(imageUrl) {
+  return String(imageUrl || "").replace(/s640x640/gi, "s1440x1440").replace(/e35_s640x640/gi, "e35_s1440x1440");
+}
+
 async function analyzeTournamentImage(imageUrl) {
   if (!imageUrl) return { poster: null, error: "POSTER_IMAGE_URL_MISSING" };
+
+  const requestedImageUrl = upgradeInstagramImageUrl(imageUrl);
 
   // IMPORTANT: Poster extraction is intentionally NOT AI-powered.
   // AthleteN uses local OCR only. No OpenAI request, API key, model, or AI
   // credit is required for the Tournament Scanner.
   try {
-    const response = await fetchBounded(imageUrl, {
+    const response = await fetchBounded(requestedImageUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36",
         "Referer": "https://www.instagram.com/",
@@ -99,7 +105,7 @@ async function analyzeTournamentImage(imageUrl) {
     console.log("instagram-tournament-ocr-image", {
       contentType,
       bytes: buffer.length,
-      imageUrl: imageUrl.slice(0, 180)
+      imageUrl: requestedImageUrl.slice(0, 180), originalImageUrl: imageUrl.slice(0, 180)
     });
 
     if (!buffer.length || buffer.length > 12 * 1024 * 1024) {
@@ -122,8 +128,14 @@ async function analyzeTournamentImage(imageUrl) {
         tessedit_pageseg_mode: "11"
       });
 
-      const result = await worker.recognize(buffer);
-      const text = clean(result?.data?.text || "");
+      const ocrTexts = [];
+      for (const pageSegMode of ["11", "6"]) {
+        await worker.setParameters({ tessedit_pageseg_mode: pageSegMode });
+        const result = await worker.recognize(buffer);
+        const raw = String(result?.data?.text || "");
+        if (raw.trim()) ocrTexts.push(raw);
+      }
+      const text = unique(ocrTexts.flatMap((raw) => raw.split(/\r?\n+/).map((line) => clean(line)))).filter(Boolean).join("\n");
 
       if (!text) return { poster: null, error: "POSTER_OCR_NO_TEXT" };
 
