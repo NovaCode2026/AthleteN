@@ -248,9 +248,13 @@ async function analyzeTournamentImage(imageUrl) {
       poster.venue = firstMatch(compactText, [
         /\bVENUE\s*[:\-]?\s*(.+?)(?=\s+REPORTING\s+TIME|\s+REPORTING|\s+ABOUT\s+THE\s+CHAMPIONSHIP|\s+DATE|\s+DATES|\s+REGISTRATION|\s+CONTACT|$)/i,
         /\b(?:VENUE|LOCATION)\s*[:\-]?\s*(.+?)(?=\s+REPORTING|\s+ABOUT|\s+REGISTRATION|\s+CONTACT|$)/i
-      ]) || "";
-
-      poster.city = firstMatch(poster.venue, [/,\s*([A-Z][A-Za-z .'-]{2,60})(?:,\s*[A-Z][A-Za-z .'-]{2,60})?$/i]);
+      ]) || "";      const locationParts = poster.venue.split(",").map((part) => clean(part)).filter(Boolean);
+      if (locationParts.length >= 3) {
+        poster.city = locationParts[locationParts.length - 2];
+        poster.state = locationParts[locationParts.length - 1];
+      } else if (locationParts.length === 2) {
+        poster.city = locationParts[1];
+      }
       poster.reporting_time = firstMatch(compactText, [/(?:reporting\s*(?:time|date)?|reporting)\s*[:\-]?\s*(\d{1,2}:\d{2}\s*(?:am|pm)?)/i]) || "";
       poster.sport = /\bTAEKWONDO\b/i.test(compactText) ? "Taekwondo" : "";
       poster.equipment = /\bPSS\b/i.test(compactText)
@@ -273,11 +277,11 @@ async function analyzeTournamentImage(imageUrl) {
       poster.phone = firstMatch(compactText, [/((?:\+?91[ -]?)?\d{10})\b/]) || lines.find((line) => /(?:\+?91[ -]?)?\d{10}\b/.test(line)) || "";
       poster.email = firstMatch(compactText, [/([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i]) || lines.find((line) => /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(line)) || "";
       poster.registration_link = firstMatch(compactText, [/(https?:\/\/[^\s]+|www\.[^\s]+|bit\.ly\/[^\s]+|forms?\.gle\/[^\s]+)/i]) || lines.find((line) => /https?:\/\/|www\.|bit\.ly|forms?\.gle/i.test(line)) || "";
-      poster.website = poster.registration_link;
-
-      poster.events = lines.filter((line) => /kyorugi|poomsae|poomse|fresher|cadet|junior|senior|sub[- ]?junior|under[- ]?\d|\bkg\b|\b\d+\s*kg\b/i.test(line)).slice(0, 30);
+      poster.website = poster.registration_link;      poster.events = lines.filter((line) => /kyorugi|poomsae|poomse|fresher|cadet|junior|senior|sub[- ]?junior|under[- ]?\d|\bkg\b|\b\d+\s*kg\b/i.test(line)).slice(0, 30);
       poster.categories = poster.events.slice();
-      poster.highlights = lines.filter((line) => /gold|silver|bronze|medal|prize|award|contact|register|registration|weigh|draw|schedule/i.test(line)).slice(0, 30);
+      poster.age_categories = lines.filter((line) => /cadet|junior|senior|sub[- ]?junior|fresher|under[- ]?\d/i.test(line)).slice(0, 30);
+      poster.weight_categories = lines.filter((line) => /\b\d+\s*kg\b|\bunder[- ]?\d+\s*kg\b/i.test(line)).slice(0, 30);
+      poster.highlights = lines.filter((line) => /gold|silver|bronze|medal|prize|award|contact|register|registration|weigh|draw|schedule|scoring|PSS|athletes|states/i.test(line)).slice(0, 30);
       poster.hashtags = [...new Set((text.match(/#[A-Za-z0-9_]+/g) || []))];
 
       return { poster, error: "" };
@@ -625,16 +629,8 @@ async function scanPublicSource(sourceUrl) {
   if (poster?.host) facts.host = clean(poster.host);
   if (poster?.fees) facts.fees = clean(poster.fees);
   if (Array.isArray(poster?.events) && poster.events.length) facts.categories = poster.events.filter(Boolean).join(", ");
-  else if (Array.isArray(poster?.categories) && poster.categories.length) facts.categories = poster.categories.filter(Boolean).join(", ");
-  if (!facts.tournament_name && caption) {
-    const headline = caption.split(/(?:\n|[.!?])+/).map((part) => clean(part))
-      .find((part) => TOURNAMENT_WORDS.test(part) && part.length >= 8 && part.length <= 180);
-    if (headline) facts.tournament_name = headline;
-  }
-
-  const accounts = instagramAccounts(root.html, root.finalUrl, caption);
+  else if (Array.isArray(poster?.categories) && poster.categories.length) facts.categories = poster.categories.filter(Boolean).join(", ");      const accounts = instagramAccounts(root.html, root.finalUrl, caption);
   const accountResults = [];
-  if (!facts.organizer && accounts[0]) facts.organizer = `@${accounts[0]}`;
   const relatedPosts = mediaFromHtml(root.html, root.finalUrl);
 
   // Check discovered accounts in parallel instead of serially. This is the
@@ -683,24 +679,15 @@ async function scanPublicSource(sourceUrl) {
   if (poster?.organizer) allFacts.organizer = clean(poster.organizer);
   if (poster?.host) allFacts.host = clean(poster.host);
   if (poster?.fees) allFacts.fees = clean(poster.fees);
+  if (!allFacts.registration_deadline_text && poster?.registration_deadline) allFacts.registration_deadline_text = clean(poster.registration_deadline);
+  if (!allFacts.registration_link && poster?.registration_link) allFacts.registration_link = clean(poster.registration_link);
+  if (!allFacts.contact && (poster?.contact || poster?.phone || poster?.email)) allFacts.contact = clean([poster.contact, poster.phone, poster.email].filter(Boolean).join(" | "));
   if (Array.isArray(poster?.events) && poster.events.length) allFacts.categories = poster.events.filter(Boolean).join(", ");
-  else if (Array.isArray(poster?.categories) && poster.categories.length) allFacts.categories = poster.categories.filter(Boolean).join(", ");
-  if (!allFacts.tournament_name && caption) {
-    const headline = caption.split(/(?:\n|[.!?])+/).map((part) => clean(part))
-      .find((part) =>
-        /\b(?:championship|tournament|cup|open)\b/i.test(part) &&
-        !/^#/.test(part) &&
-        part.length >= 8 &&
-        part.length <= 180
-      );
-    if (headline) allFacts.tournament_name = headline;
-  }
-  // Never use a hashtag-only caption fragment as the tournament name.
+  else if (Array.isArray(poster?.categories) && poster.categories.length) allFacts.categories = poster.categories.filter(Boolean).join(", ");      // Caption text is evidence for event details, not a substitute for the tournament identity.
   if (/^#(?:[a-z0-9_]+\s*)+$/i.test(allFacts.tournament_name || "")) {
     allFacts.tournament_name = poster?.tournament_name ? clean(poster.tournament_name) : "";
   }
-  // The scanned Instagram account is a source, not proof that it is the tournament organizer.
-  if (!allFacts.tournament_name || !TOURNAMENT_WORDS.test(allText)) throw new Error("NO_TOURNAMENT_CONTENT");
+  if (!TOURNAMENT_WORDS.test(allText)) throw new Error("NO_TOURNAMENT_CONTENT");
 
   const sourceDateText = extractDate(caption, "");
   const posterDateText = clean(poster?.date_text || "");
