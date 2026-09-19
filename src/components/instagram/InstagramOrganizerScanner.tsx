@@ -168,7 +168,8 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
             ["Organizer", importantFacts.organizer],
             ["Scoring / equipment", importantFacts.equipment_and_scoring],
             ["Important highlights", importantFacts.important_highlights],
-            ["Important notice", importantFacts.important_notice]
+            ["Important notice", importantFacts.important_notice],
+            ["Evidence conflicts", importantFacts.evidence_conflicts]
           ].map(([label, value]) => <div className="detail-row" key={label}><b>{label}</b><span>{value || "Not found in accessible source"}</span></div>)}
         </div>
         <div className="scanner-source-proof">
