@@ -148,13 +148,48 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
         {primaryFields.length > 0 ? <div className="details-list">{primaryFields.map(([key, value]) => <div className="detail-row" key={key}><b>{labelize(key)}</b><span>{value}</span></div>)}</div> : <div className="empty-state"><strong>No labeled fields were detected.</strong><p>Open the source pages below to inspect what the scanner could access.</p></div>}
       </section>
 
-      {(fields.poster_events || fields.poster_disciplines || fields.poster_sport || fields.poster_highlights) && <section className="card panel">
-        <div className="panel-head"><div><h3>Poster / image intelligence</h3><p>Information read from the tournament poster image, kept separate from caption-only facts.</p></div></div>
+      {(fields.poster_image || fields.poster_text || fields.poster_events || fields.poster_disciplines || fields.poster_sport) && <section className="card panel">
+        <div className="panel-head"><div><h3>Complete poster intelligence</h3><p>All readable tournament information extracted from the poster is shown here. Blank fields mean the source did not visibly provide that information.</p></div></div>
         <div className="details-list">
-          {fields.poster_sport && <div className="detail-row"><b>Sport</b><span>{fields.poster_sport}</span></div>}
-          {fields.poster_disciplines && <div className="detail-row"><b>Disciplines</b><span>{fields.poster_disciplines}</span></div>}
-          {fields.poster_events && <div className="detail-row"><b>Events / divisions</b><span>{fields.poster_events}</span></div>}
-          {fields.poster_highlights && <div className="detail-row"><b>Poster highlights</b><span>{fields.poster_highlights}</span></div>}
+          {[
+            ["Image analyzed", fields.image_analyzed],
+            ["Sport", fields.poster_sport],
+            ["Disciplines", fields.poster_disciplines],
+            ["Events / divisions", fields.poster_events],
+            ["Age categories", fields.poster_age_categories],
+            ["Weight categories", fields.poster_weight_categories],
+            ["Gender categories", fields.poster_gender_categories],
+            ["Eligibility", fields.poster_eligibility],
+            ["City", fields.poster_city],
+            ["State", fields.poster_state],
+            ["Country", fields.poster_country],
+            ["Organizer", fields.organizer],
+            ["Host", fields.poster_host],
+            ["Registration", fields.poster_registration],
+            ["Registration deadline", fields.poster_registration_deadline],
+            ["Registration link", fields.poster_registration_link],
+            ["Fees", fields.fees],
+            ["Contact", fields.poster_contact],
+            ["Phone", fields.poster_phone],
+            ["Email", fields.poster_email],
+            ["Website", fields.poster_website],
+            ["Rules", fields.poster_rules],
+            ["Scoring system", fields.poster_scoring_system],
+            ["Competition system", fields.poster_competition_system],
+            ["Rounds", fields.poster_rounds],
+            ["Equipment", fields.poster_equipment],
+            ["Schedule", fields.poster_schedule],
+            ["Weigh-in", fields.poster_weigh_in],
+            ["Medals", fields.poster_medals],
+            ["Prizes", fields.poster_prizes],
+            ["Accommodation", fields.poster_accommodation],
+            ["Transport", fields.poster_transport],
+            ["Documents", fields.poster_documents],
+            ["Notices", fields.poster_notices],
+            ["Highlights", fields.poster_highlights],
+            ["Hashtags", fields.poster_hashtags],
+            ["Poster text", fields.poster_text]
+          ].filter(([, value]) => value).map(([label, value]) => <div className="detail-row" key={label}><b>{label}</b><span>{value}</span></div>)}
         </div>
         {fields.poster_image && <p><a className="source-link" href={fields.poster_image} target="_blank" rel="noreferrer"><ExternalLink size={14}/> Open analyzed poster image</a></p>}
       </section>}
