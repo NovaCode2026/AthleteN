@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-      evidence_conflicts: poster?.evidence_conflicts || "",
 import { createClient } from "@supabase/supabase-js";
 
 const TOURNAMENT_WORDS = /(taekwondo|tournament|championship|championships|open|cup|games|kyorugi|poomsae|registration|weigh[- ]?in|draw|fixture|entry|medal|cadet|junior|senior|rules|scoring|PSS|protector|venue|schedule|fee|accommodation|transport|results?|competition|state|national)/i;
@@ -263,28 +262,6 @@ async function analyzeTournamentImage(imageUrl) {
           current.count += 1;
           // Keep the most informative spelling/format as the displayed value.
           if (normalized.length > current.value.length) current.value = normalized;
-          groups.set(key, current);
-        }
-        const ranked = [...groups.values()].sort((a, b) => b.count - a.count || b.value.length - a.value.length);
-        if (!ranked.length) return { value: "", conflict: false, candidates: [] };
-        const top = ranked[0];
-        const second = ranked[1];
-        const conflict = Boolean(second && second.count >= Math.max(1, top.count - 1));
-        return {
-          value: conflict ? "" : top.value,
-          conflict,
-          candidates: ranked.slice(0, 5).map((item) => ({ value: item.value, count: item.count }))
-        };
-      };
-
-      const consensus = (values, normalizer = normalizeEvidence) => {
-        const groups = new Map();
-        for (const value of values || []) {
-          const normalized = normalizer(value);
-          if (!normalized) continue;
-          const key = normalized.toLowerCase();
-          const current = groups.get(key) || { value: normalized, count: 0 };
-          current.count += 1;
           groups.set(key, current);
         }
         const ranked = [...groups.values()].sort((a, b) => b.count - a.count || b.value.length - a.value.length);
