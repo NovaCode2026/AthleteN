@@ -669,6 +669,33 @@ async function scanPublicSource(sourceUrl) {
   // The scanned Instagram account is a source, not proof that it is the tournament organizer.
   if (!allFacts.tournament_name || !TOURNAMENT_WORDS.test(allText)) throw new Error("NO_TOURNAMENT_CONTENT");
 
+  const sourceDateText = extractDate(caption, "");
+  const posterDateText = clean(poster?.date_text || "");
+  const dateConflict = sourceDateText && posterDateText &&
+    clean(sourceDateText).toLowerCase() !== clean(posterDateText).toLowerCase();
+
+  const importantFacts = {
+    tournament_name: allFacts.tournament_name || "Not found in accessible source",
+    tournament_dates: allFacts.tournament_date_text || "Not found in accessible source",
+    reporting_date: clean(poster?.reporting_date_text || "") || "Not found in accessible source",
+    reporting_time: clean(poster?.reporting_time || "") || "Not found in accessible source",
+    venue: allFacts.venue || "Not found in accessible source",
+    city_state: allFacts.location_hint || "Not found in accessible source",
+    sport: clean(poster?.sport || "") || "Not found in accessible source",
+    age_categories: clean(poster?.age_categories?.join(", ") || "") || "Not found in accessible source",
+    weight_categories: clean(poster?.weight_categories?.join(", ") || "") || "Not found in accessible source",
+    registration_fee: allFacts.fees || "Not found in accessible source",
+    registration_deadline: allFacts.registration_deadline_text || "Not found in accessible source",
+    registration_link: allFacts.registration_link || "Not found in accessible source",
+    official_contact: allFacts.contact || "Not found in accessible source",
+    organizer: allFacts.organizer || "Not found in accessible source",
+    equipment_and_scoring: clean(poster?.equipment || "") || "Not found in accessible source",
+    important_notice: dateConflict
+      ? `Conflict detected between accessible source text and poster OCR: source says "${sourceDateText}"; poster OCR says "${posterDateText}".`
+      : "Not found in accessible source",
+    official_source: canonicalSourceUrl
+  };
+
   const hash = createHash("sha256").update(allText).digest("hex");
   return {
     scan: {
@@ -683,9 +710,15 @@ async function scanPublicSource(sourceUrl) {
       status: "checked",
       detected_changes: "New scan; compare this source again to detect content changes.",
       details: {
+        important_facts: importantFacts,
         description: caption || rawVisibleText || null,
         fields: {
-          organizer: allFacts.organizer,
+          organizer: allFacts.organizer || "",
+          host: allFacts.host || "",
+          reporting_date_text: clean(poster?.reporting_date_text || ""),
+          reporting_time: clean(poster?.reporting_time || ""),
+          sport: clean(poster?.sport || ""),
+          equipment: clean(poster?.equipment || ""),
           location_hint: allFacts.location_hint,
           tournament_date_text: allFacts.tournament_date_text,
           registration_deadline_text: allFacts.registration_deadline_text,
