@@ -68,44 +68,74 @@ function extractJsonObject(text) {
 async function analyzeTournamentImage(imageUrl) {
   const apiKey = env("OPENAI_API_KEY");
   if (!apiKey || !imageUrl) return null;
-  try {
-    const imageResponse = await fetch(imageUrl, { headers: { "User-Agent": "Mozilla/5.0 AthleteN Tournament Scanner" } });
-    if (!imageResponse.ok) return null;
-    const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
-    if (!/^image\//i.test(contentType)) return null;
-    console.log("instagram-tournament-image", {
-      imageUrl: imageUrl.slice(0, 180),
-      contentType,
-      bytes: imageResponse.headers.get("content-length") || "unknown"
-    });
-    const buffer = Buffer.from(await imageResponse.arrayBuffer());
-    if (!buffer.length || buffer.length > 12 * 1024 * 1024) return null;
-    const base64 = buffer.toString("base64");
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        input: [{
-          role: "user",
-          content: [
-            { type: "input_text", text: "Analyze this public tournament poster for AthleteN. Extract only information visibly supported by the image; do not guess. Return JSON only with tournament_name, date_text, venue, sport, disciplines, events, categories, organizer, registration, fees, contact, highlights, poster_text. Use arrays for disciplines, events, categories and highlights. Preserve full date ranges. Include every clearly visible event/division. poster_text should be a concise transcription of important readable tournament text." },
-            { type: "input_image", image_url: "data:" + contentType + ";base64," + base64 }
-          ]
-        }],
-        max_output_tokens: 1800
-      })
-    });
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36",
+    "Referer": "https://www.instagram.com/",
+    "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+  };
+  const prompt = "Analyze this public tournament poster for AthleteN. Extract only information visibly supported by the image; do not guess. Return JSON only with tournament_name, date_text, venue, sport, disciplines, events, categories, organizer, registration, fees, contact, highlights, poster_text. Use arrays for disciplines, events, categories and highlights. Preserve full date ranges. Include every clearly visible event/division. poster_text should be a concise transcription of important readable tournament text.";
+  const parseResponse = async (response) => {
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
-      console.error("instagram-tournament-image-openai", response.status, errorText.slice(0, 500));
+      console.error("instagram-tournament-image-openai", response.status, errorText.slice(0, 800));
       return null;
     }
     const data = await response.json().catch(() => null);
-    const outputText = data?.output_text || data?.output?.flatMap((item) => item?.content || []).map((item) => item?.text || "").filter(Boolean).join("\n") || "";
-    return extractJsonObject(outputText);
+    const outputParts = [];
+    if (data?.output_text) outputParts.push(data.output_text);
+    for (const item of data?.output || []) {
+      for (const part of item?.content || []) {
+        if (typeof part?.text === "string") outputParts.push(part.text);
+      }
+    }
+    const parsed = extractJsonObject(outputParts.join("\n"));
+    if (!parsed) console.error("instagram-tournament-image-empty", JSON.stringify(data).slice(0, 1200));
+    return parsed;
+  };
+  try {
+    // First try fetching the Instagram CDN image ourselves. Instagram often exposes
+    // HEIC filenames while the query requests a JPEG derivative.
+    const imageResponse = await fetch(imageUrl, { headers });
+    if (!imageResponse.ok) {
+      console.error("instagram-tournament-image-fetch", imageResponse.status, imageResponse.statusText);
+    } else {
+      const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
+      const buffer = Buffer.from(await imageResponse.arrayBuffer());
+      console.log("instagram-tournament-image", { contentType, bytes: buffer.length, imageUrl: imageUrl.slice(0, 180) });
+      if (/^image\//i.test(contentType) && buffer.length && buffer.length <= 12 * 1024 * 1024) {
+        const response = await fetch("https://api.openai.com/v1/responses", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            input: [{ role: "user", content: [
+              { type: "input_text", text: prompt },
+              { type: "input_image", image_url: "data:" + contentType + ";base64," + buffer.toString("base64") }
+            ] }],
+            max_output_tokens: 2200
+          })
+        });
+        const parsed = await parseResponse(response);
+        if (parsed) return parsed;
+      }
+    }
+
+    // Fallback: let the vision model fetch the public Instagram CDN URL directly.
+    const directResponse = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        input: [{ role: "user", content: [
+          { type: "input_text", text: prompt },
+          { type: "input_image", image_url: imageUrl }
+        ] }],
+        max_output_tokens: 2200
+      })
+    });
+    return await parseResponse(directResponse);
   } catch (error) {
-    console.error("instagram-tournament-image-analysis", error?.message || error);
+    console.error("instagram-tournament-image-analysis", error?.stack || error?.message || error);
     return null;
   }
 }
