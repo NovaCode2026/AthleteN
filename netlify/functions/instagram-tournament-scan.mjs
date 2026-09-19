@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+      evidence_conflicts: poster?.evidence_conflicts || "",
 import { createClient } from "@supabase/supabase-js";
 
 const TOURNAMENT_WORDS = /(taekwondo|tournament|championship|championships|open|cup|games|kyorugi|poomsae|registration|weigh[- ]?in|draw|fixture|entry|medal|cadet|junior|senior|rules|scoring|PSS|protector|venue|schedule|fee|accommodation|transport|results?|competition|state|national)/i;
@@ -238,13 +239,23 @@ async function analyzeTournamentImage(imageUrl) {
           groups.set(key, current);
         }
         const ranked = [...groups.values()].sort((a, b) => b.count - a.count || b.value.length - a.value.length);
-        return ranked.length && (ranked[0].count >= 2 || (ranked.length === 1 && normalizedPasses.length === 1))
-          ? ranked[0].value
-          : "";
+        if (!ranked.length) return { value: "", conflict: false, candidates: [] };
+        const top = ranked[0];
+        const second = ranked[1];
+        const conflict = Boolean(second && second.count >= Math.max(1, top.count - 1));
+        return {
+          value: conflict ? "" : top.value,
+          conflict,
+          candidates: ranked.slice(0, 5).map((item) => ({ value: item.value, count: item.count }))
+        };
       };
 
-      const extractAcrossPasses = (patterns, normalizer = normalizeEvidence) =>
-        consensus(normalizedPasses.map((pass) => firstMatch(pass.lines.join(" "), patterns)), normalizer);
+      const evidenceConflicts = [];
+      const extractAcrossPasses = (patterns, normalizer = normalizeEvidence, label = "field") => {
+        const result = consensus(normalizedPasses.map((pass) => firstMatch(pass.lines.join(" "), patterns)), normalizer);
+        if (result.conflict) evidenceConflicts.push({ field: label, candidates: result.candidates });
+        return result.value;
+      };
 
       const championshipLines = lines.filter((line) =>
         /championship|tournament|cup|open|memorial/i.test(line) &&
@@ -265,7 +276,9 @@ async function analyzeTournamentImage(imageUrl) {
         );
         return candidates.sort((a, b) => b.length - a.length)[0] || "";
       }).filter(Boolean);
-      poster.tournament_name = consensus(titleCandidates) || "";
+      const titleEvidence = consensus(titleCandidates);
+      if (titleEvidence.conflict) evidenceConflicts.push({ field: "tournament_name", candidates: titleEvidence.candidates });
+      poster.tournament_name = titleEvidence.value || "";
 
       const reportingDate = extractAcrossPasses([
         /(?:reporting\s+(?:time|date)|reporting)\s*[:\-]?\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)?\s*\(?\s*)?(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})/i
@@ -331,6 +344,9 @@ async function analyzeTournamentImage(imageUrl) {
       poster.weight_categories = lines.filter((line) => /\b\d+\s*kg\b|\bunder[- ]?\d+\s*kg\b/i.test(line)).slice(0, 30);
       poster.highlights = lines.filter((line) => /gold|silver|bronze|medal|prize|award|contact|register|registration|weigh|draw|schedule|scoring|PSS|athletes|states/i.test(line)).slice(0, 30);
       poster.hashtags = [...new Set((text.match(/#[A-Za-z0-9_]+/g) || []))];
+      poster.evidence_conflicts = evidenceConflicts.length
+        ? evidenceConflicts.map((item) => `Conflict detected — ${item.field}: ${item.candidates.map((candidate) => candidate.value).filter(Boolean).join(" | ")}`).join("\n")
+        : "";
 
       return { poster, error: "" };
     } finally {
