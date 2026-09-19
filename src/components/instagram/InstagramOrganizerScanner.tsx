@@ -156,7 +156,17 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
         {primaryFields.length > 0 ? <div className="details-list">{primaryFields.map(([key, value]) => <div className="detail-row" key={key}><b>{labelize(key)}</b><span>{value}</span></div>)}</div> : <div className="empty-state"><strong>No labeled fields were detected.</strong><p>Open the source pages below to inspect what the scanner could access.</p></div>}
       </section>
 
-      {(fields.poster_image || fields.poster_text || fields.poster_events || fields.poster_disciplines || fields.poster_sport) && <section className="card panel">
+      {(fields.raw_source_text || fields.source_caption) && <section className="card panel">
+        <div className="panel-head"><div><h3>Raw source information</h3><p>AthleteN shows the text Instagram actually exposed before structured extraction. Nothing from the accessible source is intentionally hidden.</p></div></div>
+        <div className="details-list">
+          {fields.source_caption && <div className="detail-row"><b>Instagram caption</b><span>{fields.source_caption}</span></div>}
+          {fields.raw_source_text && <div className="detail-row"><b>Accessible source text</b><span>{fields.raw_source_text}</span></div>}
+          {fields.source_image_count && <div className="detail-row"><b>Images found</b><span>{fields.source_image_count}</span></div>}
+          {fields.scan_elapsed_seconds && <div className="detail-row"><b>Scan time</b><span>{fields.scan_elapsed_seconds}s</span></div>}
+        </div>
+      </section>}
+
+    {(fields.poster_image || fields.poster_text || fields.poster_events || fields.poster_disciplines || fields.poster_sport) && <section className="card panel">
         <div className="panel-head"><div><h3>Complete poster intelligence</h3><p>All readable tournament information extracted from the poster is shown here. Blank fields mean the source did not visibly provide that information.</p></div></div>
         <div className="details-list">
           {[
