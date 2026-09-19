@@ -18,7 +18,7 @@ async function razorpayCheckout(supabase, user, planId, amountMinor, verificatio
       plan_id: planKey,
       total_count: 120,
       customer_notify: 1,
-      notes: { athleten_user_id: user.id, athleteos_plan_id: planId, verification_id: verificationId }
+      notes: { athleten_user_id: user.id, athleten_plan_id: planId, verification_id: verificationId }
     })
   });
   const data = await response.json().catch(() => ({}));
