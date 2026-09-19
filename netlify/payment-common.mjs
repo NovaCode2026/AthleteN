@@ -37,7 +37,7 @@ export function providerPlanKey(provider, planId) {
 }
 
 export function siteUrl() {
-  return env("ATHLETEOS_SITE_URL") || env("URL") || "https://athleteostkd.netlify.app";
+  return env("ATHLETEN_SITE_URL") || env("URL") || "";
 }
 
 export async function requireApprovedStudent(supabase, userId) {
