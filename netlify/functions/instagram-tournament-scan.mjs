@@ -787,6 +787,7 @@ async function scanPublicSource(sourceUrl) {
     important_notice: dateConflict
       ? `Conflict detected between accessible source text and poster OCR: source says "${sourceDateText}"; poster OCR says "${posterDateText}".`
       : "Not found in accessible source",
+    evidence_conflicts: clean(poster?.evidence_conflicts || "") || "None detected in accessible OCR evidence",
     official_source: canonicalSourceUrl
   };
 
