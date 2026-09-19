@@ -40,7 +40,65 @@ function meta(html, key) {
   const a = new RegExp(`<meta[^>]+(?:property|name)=[\"']${key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}[\"'][^>]+content=[\"']([^\"']+)[\"'][^>]*>`, "i");
   const b = new RegExp(`<meta[^>]+content=[\"']([^\"']+)[\"'][^>]+(?:property|name)=[\"']${key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}[\"'][^>]*>`, "i");
   return clean(html.match(a)?.[1] || html.match(b)?.[1] || "");
+}function extractImageUrls(html) {
+  const urls = [];
+  const add = (value) => {
+    const url = decode(String(value || "")).trim();
+    if (!/^https?:\/\//i.test(url)) return;
+    if (!/\.(?:jpe?g|png|webp)(?:[?#]|$)/i.test(url) && !/instagram.*(?:jpg|jpeg|png|webp)/i.test(url)) return;
+    urls.push(url);
+  };
+  add(meta(html, "og:image"));
+  add(meta(html, "twitter:image"));
+  for (const m of html.matchAll(/"display_url"\s*:\s*"([^"]+)"/gi)) add(m[1]);
+  for (const m of html.matchAll(/"thumbnail_url"\s*:\s*"([^"]+)"/gi)) add(m[1]);
+  return unique(urls).slice(0, 3);
 }
+
+function extractJsonObject(text) {
+  const cleaned = String(text || "").replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  try { return JSON.parse(cleaned.slice(start, end + 1)); } catch { return null; }
+}
+
+async function analyzeTournamentImage(imageUrl) {
+  const apiKey = env("OPENAI_API_KEY");
+  if (!apiKey || !imageUrl) return null;
+  try {
+    const imageResponse = await fetch(imageUrl, { headers: { "User-Agent": "Mozilla/5.0 AthleteN Tournament Scanner" } });
+    if (!imageResponse.ok) return null;
+    const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
+    if (!/^image\//i.test(contentType)) return null;
+    const buffer = Buffer.from(await imageResponse.arrayBuffer());
+    if (!buffer.length || buffer.length > 12 * 1024 * 1024) return null;
+    const base64 = buffer.toString("base64");
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-4.1-mini",
+        input: [{
+          role: "user",
+          content: [
+            { type: "input_text", text: "Analyze this public tournament poster for AthleteN. Extract only information visibly supported by the image; do not guess. Return JSON only with tournament_name, date_text, venue, sport, disciplines, events, categories, organizer, registration, fees, contact, highlights, poster_text. Use arrays for disciplines, events, categories and highlights. Preserve full date ranges. Include every clearly visible event/division. poster_text should be a concise transcription of important readable tournament text." },
+            { type: "input_image", image_url: "data:" + contentType + ";base64," + base64 }
+          ]
+        }],
+        max_output_tokens: 1800
+      })
+    });
+    if (!response.ok) return null;
+    const data = await response.json().catch(() => null);
+    const outputText = data?.output_text || data?.output?.flatMap((item) => item?.content || []).map((item) => item?.text || "").filter(Boolean).join("\n") || "";
+    return extractJsonObject(outputText);
+  } catch (error) {
+    console.error("instagram-tournament-image-analysis", error?.message || error);
+    return null;
+  }
+}
+
 
 function first(html, patterns) {
   for (const p of patterns) {
@@ -270,6 +328,14 @@ async function fetchInstagram(url) {
           ""
         );
         const embed = clean(data?.html || "");
+        const imageUrl = clean(
+          data?.thumbnail_url ||
+          data?.display_url ||
+          data?.graphql?.shortcode_media?.display_url ||
+          data?.graphql?.shortcode_media?.thumbnail_src ||
+          data?.graphql?.xdt_shortcode_media?.display_url ||
+          ""
+        );
         const combined = clean(`${title} ${captionText} ${author}`);
         if (!combined && !embed) continue;
         const escaped = (value) => String(value || "")
@@ -282,6 +348,7 @@ async function fetchInstagram(url) {
           `<meta property="og:description" content="${escaped(captionText || title)}">`,
           `<meta name="twitter:description" content="${escaped(captionText || title)}">`,
           `<meta name="description" content="${escaped(captionText || title)}">`,
+          imageUrl ? `<meta property="og:image" content="${escaped(imageUrl)}">` : "",
           `<script type="application/ld+json">${escaped(JSON.stringify({ articleBody: captionText }))}</script>`,
           embed
         ].join(" ");
@@ -319,7 +386,28 @@ async function scanPublicSource(sourceUrl) {
   const root = await fetchInstagram(canonicalSourceUrl);
   const caption = extractCaption(root.html);
   const title = extractTitle(root.html, caption);
+  const imageUrls = extractImageUrls(root.html);
+  const poster = imageUrls.length ? await analyzeTournamentImage(imageUrls[0]) : null;
+  const posterText = clean(poster?.poster_text || "");
+  const posterFactsText = clean([
+    poster?.tournament_name, poster?.date_text, poster?.venue, poster?.sport, poster?.organizer,
+    poster?.registration, poster?.fees,
+    ...(Array.isArray(poster?.disciplines) ? poster.disciplines : []),
+    ...(Array.isArray(poster?.events) ? poster.events : []),
+    ...(Array.isArray(poster?.categories) ? poster.categories : []),
+    ...(Array.isArray(poster?.highlights) ? poster.highlights : [])
+  ].filter(Boolean).join("\n"));
   const facts = extractFacts(caption, title, root.finalUrl);
+  if (poster?.tournament_name) facts.tournament_name = clean(poster.tournament_name);
+  if (poster?.date_text) {
+    facts.tournament_date_text = clean(poster.date_text);
+    facts.tournament_date = toDatabaseDate(poster.date_text) || facts.tournament_date;
+  }
+  if (poster?.venue) facts.venue = clean(poster.venue);
+  if (!facts.organizer && poster?.organizer) facts.organizer = clean(poster.organizer);
+  if (poster?.fees) facts.fees = clean(poster.fees);
+  if (Array.isArray(poster?.events) && poster.events.length) facts.categories = poster.events.filter(Boolean).join(", ");
+  else if (Array.isArray(poster?.categories) && poster.categories.length) facts.categories = poster.categories.filter(Boolean).join(", ");
   if (!facts.tournament_name && caption) {
     const headline = caption
       .split(/(?:\n|[.!?])+/)
@@ -343,8 +431,18 @@ async function scanPublicSource(sourceUrl) {
     } catch {}
   }
   const uniquePosts = [...new Map(relatedPosts.map((p) => [p.id, p])).values()].filter((p) => TOURNAMENT_WORDS.test(p.caption)).slice(0, MAX_RELATED_POSTS);
-  const allText = [title, caption, ...uniquePosts.map((p) => p.caption)].join("\n");
+  const allText = [title, caption, posterFactsText, posterText, ...uniquePosts.map((p) => p.caption)].join("\n");
   const allFacts = extractFacts(caption, title, root.finalUrl);
+  if (poster?.tournament_name) allFacts.tournament_name = clean(poster.tournament_name);
+  if (poster?.date_text) {
+    allFacts.tournament_date_text = clean(poster.date_text);
+    allFacts.tournament_date = toDatabaseDate(poster.date_text) || allFacts.tournament_date;
+  }
+  if (poster?.venue) allFacts.venue = clean(poster.venue);
+  if (!allFacts.organizer && poster?.organizer) allFacts.organizer = clean(poster.organizer);
+  if (poster?.fees) allFacts.fees = clean(poster.fees);
+  if (Array.isArray(poster?.events) && poster.events.length) allFacts.categories = poster.events.filter(Boolean).join(", ");
+  else if (Array.isArray(poster?.categories) && poster.categories.length) allFacts.categories = poster.categories.filter(Boolean).join(", ");
   if (!allFacts.tournament_name && caption) {
     const headline = caption
       .split(/(?:\n|[.!?])+/)
@@ -378,11 +476,23 @@ async function scanPublicSource(sourceUrl) {
           contact: allFacts.contact,
           registration_link: allFacts.registration_link,
           discovered_accounts: accountResults.map((a) => `@${a.username}`).join(", "),
-          relevant_posts_found: String(uniquePosts.length)
+          relevant_posts_found: String(uniquePosts.length),
+          image_analyzed: poster ? "Yes" : "No",
+          poster_image: imageUrls[0] || "",
+          poster_sport: clean(poster?.sport || ""),
+          poster_disciplines: Array.isArray(poster?.disciplines) ? poster.disciplines.join(", ") : "",
+          poster_events: Array.isArray(poster?.events) ? poster.events.join(", ") : "",
+          poster_highlights: Array.isArray(poster?.highlights) ? poster.highlights.join(" | ") : ""
         },
         headings: [],
-        sections: uniquePosts.map((p) => ({ title: "Relevant Instagram post/reel", content: p.caption, source_url: p.permalink })),
-        key_highlights: uniquePosts.map((p) => p.caption.slice(0, 500)),
+        sections: [
+          ...(posterText ? [{ title: "Tournament poster information", content: posterText, source_url: imageUrls[0] || root.finalUrl }] : []),
+          ...uniquePosts.map((p) => ({ title: "Relevant Instagram post/reel", content: p.caption, source_url: p.permalink }))
+        ],
+        key_highlights: [
+          ...(Array.isArray(poster?.highlights) ? poster.highlights.filter(Boolean).map(String) : []),
+          ...uniquePosts.map((p) => p.caption.slice(0, 500))
+        ],
         pages_scanned: 1 + accountResults.length,
         source_pages: [root.finalUrl, ...accountResults.map((a) => a.url)],
         pdfs: []
