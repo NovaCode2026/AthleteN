@@ -269,8 +269,9 @@ async function analyzeTournamentImage(imageUrl) {
         const top = ranked[0];
         const second = ranked[1];
         const conflict = Boolean(second && second.count >= Math.max(1, top.count - 1));
+        const insufficientEvidence = top.count < 2 && normalizedPasses.length > 1;
         return {
-          value: conflict ? "" : top.value,
+          value: conflict || insufficientEvidence ? "" : top.value,
           conflict,
           candidates: ranked.slice(0, 5).map((item) => ({ value: item.value, count: item.count }))
         };
@@ -326,7 +327,11 @@ async function analyzeTournamentImage(imageUrl) {
           firstMatch(passText, eventDatePatterns)
         ];
       });
-      poster.event_date_text = consensus(eventDateEvidence) || "";
+      const eventDateEvidenceResult = consensus(eventDateEvidence);
+      if (eventDateEvidenceResult.conflict) {
+        evidenceConflicts.push({ field: "event_date", candidates: eventDateEvidenceResult.candidates });
+      }
+      poster.event_date_text = eventDateEvidenceResult.value || "";
 
       poster.date_text = poster.event_date_text || firstMatch(compactText, [
         /((?:\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2}))/i
