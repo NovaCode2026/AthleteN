@@ -66,8 +66,8 @@ function extractJsonObject(text) {
 }
 
 async function analyzeTournamentImage(imageUrl) {
-  const apiKey = env("OPENAI_API_KEY");
-  if (!apiKey || !imageUrl) return null;
+  const apiKey = env("OPENAI_API_KEY") || env("VITE_OPENAI_API_KEY");
+  if (!apiKey || !imageUrl) return { poster: null, error: !apiKey ? "OPENAI_API_KEY_MISSING" : "POSTER_IMAGE_URL_MISSING" };
 
   const headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36",
@@ -75,54 +75,83 @@ async function analyzeTournamentImage(imageUrl) {
     "Accept": "image/jpeg,image/png,image/webp,image/gif,image/*,*/*;q=0.8"
   };
 
-  const prompt = "Analyze this public tournament poster for AthleteN. Read the ENTIRE poster carefully, including small text. Extract EVERY piece of tournament information visibly supported by the image; never guess or invent missing values. Return JSON only. Use these keys: tournament_name, date_text, venue, city, state, country, organizer, host, sport, disciplines, events, categories, gender_categories, age_categories, weight_categories, eligibility, registration, registration_deadline, registration_link, fees, contact, phone, email, website, rules, scoring_system, competition_system, rounds, equipment, schedule, weigh_in, medals, prizes, accommodation, transport, documents, notices, highlights, hashtags, poster_text. Use arrays for disciplines, events, categories, gender_categories, age_categories, weight_categories, highlights, notices. Keep exact wording for dates, fees, phone numbers, emails and important rules. poster_text must be a detailed transcription of all readable tournament text, preserving important lines and details rather than summarizing them away.";
+  const prompt = `Analyze this public tournament poster for AthleteN. Read the ENTIRE image carefully, including small text, logos, footer text, contact details, categories, event icons and every visible line. Extract EVERY piece of tournament information visibly supported by the image. Never guess, infer, or invent missing values.
+
+Return JSON only with exactly these keys:
+tournament_name, date_text, venue, city, state, country, organizer, host, sport, disciplines, events, categories, gender_categories, age_categories, weight_categories, eligibility, registration, registration_deadline, registration_link, fees, contact, phone, email, website, rules, scoring_system, competition_system, rounds, equipment, schedule, weigh_in, medals, prizes, accommodation, transport, documents, notices, highlights, hashtags, poster_text.
+
+Use arrays for disciplines, events, categories, gender_categories, age_categories, weight_categories, highlights, notices. Use strings for all other keys. Keep exact wording for dates, fees, phone numbers, emails, names and important rules. poster_text MUST be a detailed transcription of all readable tournament text, preserving important lines and details instead of summarizing them away. If a field is not visible, return an empty string or empty array.`;
+
+  let lastError = "";
 
   const parseResponse = async (response, provider) => {
     if (!response?.ok) {
       const errorText = await response?.text?.().catch(() => "");
+      lastError = `${provider}:HTTP_${response?.status || 0} ${errorText.slice(0, 700)}`;
       console.error("instagram-tournament-image-openai", provider, response?.status || 0, errorText.slice(0, 1200));
       return null;
     }
+
     const data = await response.json().catch(() => null);
     const outputParts = [];
     if (typeof data?.output_text === "string") outputParts.push(data.output_text);
     for (const item of data?.output || []) {
       for (const part of item?.content || []) {
         if (typeof part?.text === "string") outputParts.push(part.text);
+        if (typeof part?.text?.value === "string") outputParts.push(part.text.value);
       }
     }
     for (const choice of data?.choices || []) {
-      const text = choice?.message?.content;
-      if (typeof text === "string") outputParts.push(text);
-      if (Array.isArray(text)) {
-        for (const part of text) if (typeof part?.text === "string") outputParts.push(part.text);
+      const value = choice?.message?.content;
+      if (typeof value === "string") outputParts.push(value);
+      if (Array.isArray(value)) {
+        for (const part of value) {
+          if (typeof part?.text === "string") outputParts.push(part.text);
+          if (typeof part?.text?.value === "string") outputParts.push(part.text.value);
+        }
       }
     }
-    const parsed = extractJsonObject(outputParts.join("\n"));
-    if (!parsed) console.error("instagram-tournament-image-empty", provider, JSON.stringify(data).slice(0, 1800));
-    return parsed;
+
+    const output = outputParts.join("\n").trim();
+    const parsed = extractJsonObject(output);
+    if (parsed && typeof parsed === "object") return parsed;
+
+    // Some vision responses can contain valid OCR/transcription text without
+    // wrapping it in JSON. Preserve that text rather than throwing it away.
+    if (output && output.length >= 20) {
+      console.warn("instagram-tournament-image-non-json", provider, output.slice(0, 1200));
+      return {
+        poster_text: output,
+        highlights: [output.slice(0, 1000)]
+      };
+    }
+
+    lastError = `${provider}:EMPTY_MODEL_OUTPUT`;
+    console.error("instagram-tournament-image-empty", provider, JSON.stringify(data).slice(0, 1800));
+    return null;
   };
 
-  const callResponsesVision = async (image) => fetch("https://api.openai.com/v1/responses", {
+  const callResponsesVision = async (model, image) => fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model,
       input: [{ role: "user", content: [
         { type: "input_text", text: prompt },
         { type: "input_image", image_url: image }
       ] }],
-      max_output_tokens: 6000
+      max_output_tokens: 7000
     })
   });
 
-  const callChatVision = async (image) => fetch("https://api.openai.com/v1/chat/completions", {
+  const callChatVision = async (model, image) => fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model,
       temperature: 0,
-      max_tokens: 6000,
+      max_tokens: 7000,
+      response_format: { type: "json_object" },
       messages: [{
         role: "user",
         content: [
@@ -134,56 +163,56 @@ async function analyzeTournamentImage(imageUrl) {
   });
 
   try {
-    // Fetch the CDN image ourselves first. This avoids depending on OpenAI
-    // being able to fetch an expiring/private-looking Instagram CDN URL.
     const imageResponse = await fetch(imageUrl, { redirect: "follow", headers });
     if (!imageResponse.ok) {
+      lastError = `INSTAGRAM_IMAGE_HTTP_${imageResponse.status}`;
       console.error("instagram-tournament-image-fetch", imageResponse.status, imageResponse.statusText);
-      return null;
+    } else {
+      const contentType = (imageResponse.headers.get("content-type") || "image/jpeg").split(";")[0].toLowerCase();
+      const buffer = Buffer.from(await imageResponse.arrayBuffer());
+      console.log("instagram-tournament-image", {
+        contentType,
+        bytes: buffer.length,
+        imageUrl: imageUrl.slice(0, 180)
+      });
+
+      if (/^image\//i.test(contentType) && buffer.length && buffer.length <= 12 * 1024 * 1024) {
+        let mime = contentType;
+        if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) mime = "image/jpeg";
+        else if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) mime = "image/png";
+        else if (buffer.length >= 12 && buffer.subarray(0, 4).toString() === "RIFF" && buffer.subarray(8, 12).toString() === "WEBP") mime = "image/webp";
+
+        const dataUrl = "data:" + mime + ";base64," + buffer.toString("base64");
+        const models = ["gpt-4o-mini", "gpt-4.1-mini"];
+
+        for (const model of models) {
+          let parsed = await parseResponse(await callResponsesVision(model, dataUrl), `responses-data-${model}`);
+          if (parsed) return { poster: parsed, error: "" };
+
+          parsed = await parseResponse(await callChatVision(model, dataUrl), `chat-data-${model}`);
+          if (parsed) return { poster: parsed, error: "" };
+        }
+      } else {
+        lastError = `UNSUPPORTED_IMAGE_RESPONSE_${contentType}_${buffer.length}`;
+      }
     }
 
-    const contentType = (imageResponse.headers.get("content-type") || "image/jpeg").split(";")[0].toLowerCase();
-    const buffer = Buffer.from(await imageResponse.arrayBuffer());
-    console.log("instagram-tournament-image", {
-      contentType,
-      bytes: buffer.length,
-      imageUrl: imageUrl.slice(0, 180)
-    });
+    // Final fallback: let the vision API fetch the original Instagram CDN URL.
+    for (const model of ["gpt-4o-mini", "gpt-4.1-mini"]) {
+      let parsed = await parseResponse(await callResponsesVision(model, imageUrl), `responses-url-${model}`);
+      if (parsed) return { poster: parsed, error: "" };
 
-    if (!/^image\//i.test(contentType) || !buffer.length || buffer.length > 12 * 1024 * 1024) return null;
+      parsed = await parseResponse(await callChatVision(model, imageUrl), `chat-url-${model}`);
+      if (parsed) return { poster: parsed, error: "" };
+    }
 
-    // Instagram commonly exposes a .heic-looking filename while the
-    // stp=dst-jpg response is actually JPEG. Detect JPEG/PNG/WebP signatures
-    // and use a supported MIME type instead of trusting the filename.
-    let mime = contentType;
-    if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) mime = "image/jpeg";
-    else if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) mime = "image/png";
-    else if (buffer.length >= 12 && buffer.subarray(0, 4).toString() === "RIFF" && buffer.subarray(8, 12).toString() === "WEBP") mime = "image/webp";
-
-    const dataUrl = "data:" + mime + ";base64," + buffer.toString("base64");
-
-    // Primary Responses API path using the server-fetched image.
-    let parsed = await parseResponse(await callResponsesVision(dataUrl), "responses-data-url");
-    if (parsed) return parsed;
-
-    // Compatibility fallback through Chat Completions.
-    parsed = await parseResponse(await callChatVision(dataUrl), "chat-data-url");
-    if (parsed) return parsed;
-
-    // Last resort: let OpenAI fetch the original CDN URL directly.
-    parsed = await parseResponse(await callResponsesVision(imageUrl), "responses-url");
-    if (parsed) return parsed;
-
-    parsed = await parseResponse(await callChatVision(imageUrl), "chat-url");
-    if (parsed) return parsed;
-
-    return null;
+    return { poster: null, error: lastError || "POSTER_VISION_NO_RESULT" };
   } catch (error) {
-    console.error("instagram-tournament-image-analysis", error?.stack || error?.message || error);
-    return null;
+    const message = error?.message || String(error);
+    console.error("instagram-tournament-image-analysis", error?.stack || message);
+    return { poster: null, error: message };
   }
 }
-
 function first(html, patterns) {
   for (const p of patterns) {
     const m = html.match(p);
@@ -472,9 +501,12 @@ async function scanPublicSource(sourceUrl) {
   const title = extractTitle(root.html, caption);
   const imageUrls = extractImageUrls(root.html);
   let poster = null;
+  let posterAnalysisError = "";
   let analyzedPosterImageUrl = "";
   for (const imageUrl of imageUrls) {
-    poster = await analyzeTournamentImage(imageUrl);
+    const analysis = await analyzeTournamentImage(imageUrl);
+    poster = analysis?.poster || null;
+    posterAnalysisError = analysis?.error || "";
     if (poster) {
       analyzedPosterImageUrl = imageUrl;
       break;
@@ -572,6 +604,7 @@ async function scanPublicSource(sourceUrl) {
           discovered_accounts: accountResults.map((a) => `@${a.username}`).join(", "),
           relevant_posts_found: String(uniquePosts.length),
           image_analyzed: poster ? "Yes" : "No",
+          poster_analysis_status: poster ? "Poster image successfully analyzed." : (posterAnalysisError || "Poster image could not be analyzed."),
           poster_image: analyzedPosterImageUrl || imageUrls[0] || "",
           poster_sport: clean(poster?.sport || ""),
           poster_disciplines: Array.isArray(poster?.disciplines) ? poster.disciplines.join(", ") : "",
