@@ -228,6 +228,55 @@ async function analyzeTournamentImage(imageUrl) {
         .replace(/\s+/g, " ")
         .trim();
 
+      // OCR often produces harmless variants such as "Oct" vs "October",
+      // optional years, or different separators. Normalize those variants
+      // before deciding that two pieces of evidence actually conflict.
+      const semanticEvidenceKey = (value) => normalizeEvidence(value)
+        .toLowerCase()
+        .replace(/\bsept\.?\b/g, "sep")
+        .replace(/\bjan\.?\b/g, "january")
+        .replace(/\bfeb\.?\b/g, "february")
+        .replace(/\bmar\.?\b/g, "march")
+        .replace(/\bapr\.?\b/g, "april")
+        .replace(/\bjun\.?\b/g, "june")
+        .replace(/\bjul\.?\b/g, "july")
+        .replace(/\baug\.?\b/g, "august")
+        .replace(/\bsep\.?\b/g, "september")
+        .replace(/\boct\.?\b/g, "october")
+        .replace(/\bnov\.?\b/g, "november")
+        .replace(/\bdec\.?\b/g, "december")
+        .replace(/\b(\d{1,2})(?:st|nd|rd|th)\b/g, "$1")
+        .replace(/\b(\d{1,2})\s+([a-z]+)\b/g, "$1 $2")
+        .replace(/\s*[-–—]\s*/g, " ")
+        .replace(/\s*&\s*/g, " and ")
+        .replace(/\s*,\s*/g, ", ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      const consensus = (values, normalizer = normalizeEvidence, keyNormalizer = semanticEvidenceKey) => {
+        const groups = new Map();
+        for (const value of values || []) {
+          const normalized = normalizer(value);
+          if (!normalized) continue;
+          const key = keyNormalizer(normalized);
+          const current = groups.get(key) || { value: normalized, count: 0 };
+          current.count += 1;
+          // Keep the most informative spelling/format as the displayed value.
+          if (normalized.length > current.value.length) current.value = normalized;
+          groups.set(key, current);
+        }
+        const ranked = [...groups.values()].sort((a, b) => b.count - a.count || b.value.length - a.value.length);
+        if (!ranked.length) return { value: "", conflict: false, candidates: [] };
+        const top = ranked[0];
+        const second = ranked[1];
+        const conflict = Boolean(second && second.count >= Math.max(1, top.count - 1));
+        return {
+          value: conflict ? "" : top.value,
+          conflict,
+          candidates: ranked.slice(0, 5).map((item) => ({ value: item.value, count: item.count }))
+        };
+      };
+
       const consensus = (values, normalizer = normalizeEvidence) => {
         const groups = new Map();
         for (const value of values || []) {
