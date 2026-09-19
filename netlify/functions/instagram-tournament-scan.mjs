@@ -84,6 +84,16 @@ Use arrays for disciplines, events, categories, gender_categories, age_categorie
 
   let lastError = "";
 
+  const fetchWithTimeout = async (url, options, timeoutMs = 12000) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
   const parseResponse = async (response, provider) => {
     if (!response?.ok) {
       const errorText = await response?.text?.().catch(() => "");
@@ -91,47 +101,34 @@ Use arrays for disciplines, events, categories, gender_categories, age_categorie
       console.error("instagram-tournament-image-openai", provider, response?.status || 0, errorText.slice(0, 1200));
       return null;
     }
-
     const data = await response.json().catch(() => null);
     const outputParts = [];
     if (typeof data?.output_text === "string") outputParts.push(data.output_text);
-    for (const item of data?.output || []) {
-      for (const part of item?.content || []) {
-        if (typeof part?.text === "string") outputParts.push(part.text);
-        if (typeof part?.text?.value === "string") outputParts.push(part.text.value);
-      }
+    for (const item of data?.output || []) for (const part of item?.content || []) {
+      if (typeof part?.text === "string") outputParts.push(part.text);
+      if (typeof part?.text?.value === "string") outputParts.push(part.text.value);
     }
     for (const choice of data?.choices || []) {
       const value = choice?.message?.content;
       if (typeof value === "string") outputParts.push(value);
-      if (Array.isArray(value)) {
-        for (const part of value) {
-          if (typeof part?.text === "string") outputParts.push(part.text);
-          if (typeof part?.text?.value === "string") outputParts.push(part.text.value);
-        }
+      if (Array.isArray(value)) for (const part of value) {
+        if (typeof part?.text === "string") outputParts.push(part.text);
+        if (typeof part?.text?.value === "string") outputParts.push(part.text.value);
       }
     }
-
     const output = outputParts.join("\n").trim();
     const parsed = extractJsonObject(output);
     if (parsed && typeof parsed === "object") return parsed;
-
-    // Some vision responses can contain valid OCR/transcription text without
-    // wrapping it in JSON. Preserve that text rather than throwing it away.
     if (output && output.length >= 20) {
       console.warn("instagram-tournament-image-non-json", provider, output.slice(0, 1200));
-      return {
-        poster_text: output,
-        highlights: [output.slice(0, 1000)]
-      };
+      return { poster_text: output, highlights: [output.slice(0, 1000)] };
     }
-
     lastError = `${provider}:EMPTY_MODEL_OUTPUT`;
     console.error("instagram-tournament-image-empty", provider, JSON.stringify(data).slice(0, 1800));
     return null;
   };
 
-  const callResponsesVision = async (model, image) => fetch("https://api.openai.com/v1/responses", {
+  const callResponsesVision = async (model, image) => fetchWithTimeout("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -144,7 +141,7 @@ Use arrays for disciplines, events, categories, gender_categories, age_categorie
     })
   });
 
-  const callChatVision = async (model, image) => fetch("https://api.openai.com/v1/chat/completions", {
+  const callChatVision = async (model, image) => fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -163,18 +160,11 @@ Use arrays for disciplines, events, categories, gender_categories, age_categorie
   });
 
   try {
-    const imageResponse = await fetch(imageUrl, { redirect: "follow", headers });
-    if (!imageResponse.ok) {
-      lastError = `INSTAGRAM_IMAGE_HTTP_${imageResponse.status}`;
-      console.error("instagram-tournament-image-fetch", imageResponse.status, imageResponse.statusText);
-    } else {
+    const imageResponse = await fetchWithTimeout(imageUrl, { redirect: "follow", headers }, 10000);
+    if (imageResponse.ok) {
       const contentType = (imageResponse.headers.get("content-type") || "image/jpeg").split(";")[0].toLowerCase();
       const buffer = Buffer.from(await imageResponse.arrayBuffer());
-      console.log("instagram-tournament-image", {
-        contentType,
-        bytes: buffer.length,
-        imageUrl: imageUrl.slice(0, 180)
-      });
+      console.log("instagram-tournament-image", { contentType, bytes: buffer.length, imageUrl: imageUrl.slice(0, 180) });
 
       if (/^image\//i.test(contentType) && buffer.length && buffer.length <= 12 * 1024 * 1024) {
         let mime = contentType;
@@ -183,32 +173,42 @@ Use arrays for disciplines, events, categories, gender_categories, age_categorie
         else if (buffer.length >= 12 && buffer.subarray(0, 4).toString() === "RIFF" && buffer.subarray(8, 12).toString() === "WEBP") mime = "image/webp";
 
         const dataUrl = "data:" + mime + ";base64," + buffer.toString("base64");
-        const models = ["gpt-4o-mini", "gpt-4.1-mini"];
-
-        for (const model of models) {
-          let parsed = await parseResponse(await callResponsesVision(model, dataUrl), `responses-data-${model}`);
-          if (parsed) return { poster: parsed, error: "" };
-
-          parsed = await parseResponse(await callChatVision(model, dataUrl), `chat-data-${model}`);
-          if (parsed) return { poster: parsed, error: "" };
+        // Do not serially try four models/endpoints: that can make the whole
+        // serverless function time out. Use one primary vision call and one
+        // compatibility fallback, then continue the scan without poster AI.
+        for (const [provider, call] of [
+          ["responses-data-gpt-4o-mini", () => callResponsesVision("gpt-4o-mini", dataUrl)],
+          ["chat-data-gpt-4o-mini", () => callChatVision("gpt-4o-mini", dataUrl)]
+        ]) {
+          try {
+            const parsed = await parseResponse(await call(), provider);
+            if (parsed) return { poster: parsed, error: "" };
+          } catch (error) {
+            lastError = `${provider}:${error?.name === "AbortError" ? "TIMEOUT" : (error?.message || String(error))}`;
+            console.error("instagram-tournament-image-openai", provider, lastError);
+          }
         }
       } else {
         lastError = `UNSUPPORTED_IMAGE_RESPONSE_${contentType}_${buffer.length}`;
       }
+    } else {
+      lastError = `INSTAGRAM_IMAGE_HTTP_${imageResponse.status}`;
+      console.error("instagram-tournament-image-fetch", imageResponse.status, imageResponse.statusText);
     }
 
-    // Final fallback: let the vision API fetch the original Instagram CDN URL.
-    for (const model of ["gpt-4o-mini", "gpt-4.1-mini"]) {
-      let parsed = await parseResponse(await callResponsesVision(model, imageUrl), `responses-url-${model}`);
+    // One final URL-based fallback. If this also fails, the scanner still
+    // returns caption/source intelligence and records the exact poster error.
+    try {
+      const parsed = await parseResponse(await callResponsesVision("gpt-4o-mini", imageUrl), "responses-url-gpt-4o-mini");
       if (parsed) return { poster: parsed, error: "" };
-
-      parsed = await parseResponse(await callChatVision(model, imageUrl), `chat-url-${model}`);
-      if (parsed) return { poster: parsed, error: "" };
+    } catch (error) {
+      lastError = `responses-url-gpt-4o-mini:${error?.name === "AbortError" ? "TIMEOUT" : (error?.message || String(error))}`;
+      console.error("instagram-tournament-image-openai", lastError);
     }
 
     return { poster: null, error: lastError || "POSTER_VISION_NO_RESULT" };
   } catch (error) {
-    const message = error?.message || String(error);
+    const message = error?.name === "AbortError" ? "POSTER_IMAGE_FETCH_TIMEOUT" : (error?.message || String(error));
     console.error("instagram-tournament-image-analysis", error?.stack || message);
     return { poster: null, error: message };
   }
