@@ -86,10 +86,10 @@ async function cashfreeCheckout(supabase, user, planId, amountMinor, verificatio
       "x-api-version": "2023-08-01"
     },
     body: JSON.stringify({
-      order_id: `athleteos_${crypto.randomUUID().replaceAll("-", "")}`,
+      order_id: `athleten_${crypto.randomUUID().replaceAll("-", "")}`,
       order_amount: amount,
       order_currency: "INR",
-      customer_details: { customer_id: user.id, customer_email: user.email || "athlete@athleteos.local" },
+      customer_details: { customer_id: user.id, customer_email: user.email || "athlete@athleten.local" },
       order_meta: {
         return_url: `${siteUrl()}/checkout/success?order_id={order_id}`,
         notify_url: `${siteUrl()}/.netlify/functions/payment-webhook`
