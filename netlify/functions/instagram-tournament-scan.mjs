@@ -78,292 +78,127 @@ function extractJsonObject(text) {
 }
 
 async function analyzeTournamentImage(imageUrl) {
-  const apiKey = env("OPENAI_API_KEY") || env("VITE_OPENAI_API_KEY");
-  if (!apiKey || !imageUrl) return { poster: null, error: !apiKey ? "OPENAI_API_KEY_MISSING" : "POSTER_IMAGE_URL_MISSING" };
+  if (!imageUrl) return { poster: null, error: "POSTER_IMAGE_URL_MISSING" };
 
-  const headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36",
-    "Referer": "https://www.instagram.com/",
-    "Accept": "image/jpeg,image/png,image/webp,image/gif,image/*,*/*;q=0.8"
-  };
-
-  const prompt = `Analyze this public tournament poster for AthleteN. Read the ENTIRE image carefully, including small text, logos, footer text, contact details, categories, event icons and every visible line. Extract EVERY piece of tournament information visibly supported by the image. Never guess, infer, or invent missing values.
-
-Return JSON only with exactly these keys:
-tournament_name, date_text, venue, city, state, country, organizer, host, sport, disciplines, events, categories, gender_categories, age_categories, weight_categories, eligibility, registration, registration_deadline, registration_link, fees, contact, phone, email, website, rules, scoring_system, competition_system, rounds, equipment, schedule, weigh_in, medals, prizes, accommodation, transport, documents, notices, highlights, hashtags, poster_text.
-
-Use arrays for disciplines, events, categories, gender_categories, age_categories, weight_categories, highlights, notices. Use strings for all other keys. Keep exact wording for dates, fees, phone numbers, emails, names and important rules. poster_text MUST be a detailed transcription of all readable tournament text, preserving important lines and details instead of summarizing them away. If a field is not visible, return an empty string or empty array.`;
-
-  let lastError = "";
-
-  const fetchWithTimeout = async (url, options, timeoutMs = 12000) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      return await fetch(url, { ...options, signal: controller.signal });
-    } finally {
-      clearTimeout(timer);
-    }
-  };
-
-  const parseResponse = async (response, provider) => {
-    if (!response?.ok) {
-      const errorText = await response?.text?.().catch(() => "");
-      lastError = `${provider}:HTTP_${response?.status || 0} ${errorText.slice(0, 700)}`;
-      console.error("instagram-tournament-image-openai", provider, response?.status || 0, errorText.slice(0, 1200));
-      return null;
-    }
-    const data = await response.json().catch(() => null);
-    const outputParts = [];
-    if (typeof data?.output_text === "string") outputParts.push(data.output_text);
-    for (const item of data?.output || []) for (const part of item?.content || []) {
-      if (typeof part?.text === "string") outputParts.push(part.text);
-      if (typeof part?.text?.value === "string") outputParts.push(part.text.value);
-    }
-    for (const choice of data?.choices || []) {
-      const value = choice?.message?.content;
-      if (typeof value === "string") outputParts.push(value);
-      if (Array.isArray(value)) for (const part of value) {
-        if (typeof part?.text === "string") outputParts.push(part.text);
-        if (typeof part?.text?.value === "string") outputParts.push(part.text.value);
-      }
-    }
-    const output = outputParts.join("\n").trim();
-    const parsed = extractJsonObject(output);
-    if (parsed && typeof parsed === "object") return parsed;
-    if (output && output.length >= 20) {
-      console.warn("instagram-tournament-image-non-json", provider, output.slice(0, 1200));
-      return { poster_text: output, highlights: [output.slice(0, 1000)] };
-    }
-    lastError = `${provider}:EMPTY_MODEL_OUTPUT`;
-    console.error("instagram-tournament-image-empty", provider, JSON.stringify(data).slice(0, 1800));
-    return null;
-  };
-
-  const callResponsesVision = async (model, image) => fetchWithTimeout("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      input: [{ role: "user", content: [
-        { type: "input_text", text: prompt },
-        { type: "input_image", image_url: image }
-      ] }],
-      max_output_tokens: 7000
-    })
-  });
-
-  const callChatVision = async (model, image) => fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      temperature: 0,
-      max_tokens: 7000,
-      response_format: { type: "json_object" },
-      messages: [{
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: image, detail: "high" } }
-        ]
-      }]
-    })
-  });
-
+  // IMPORTANT: Poster extraction is intentionally NOT AI-powered.
+  // AthleteN uses local OCR only. No OpenAI request, API key, model, or AI
+  // credit is required for the Tournament Scanner.
   try {
-    const imageResponse = await fetchWithTimeout(imageUrl, { redirect: "follow", headers }, 10000);
-    if (imageResponse.ok) {
-      const contentType = (imageResponse.headers.get("content-type") || "image/jpeg").split(";")[0].toLowerCase();
-      const buffer = Buffer.from(await imageResponse.arrayBuffer());
-      console.log("instagram-tournament-image", { contentType, bytes: buffer.length, imageUrl: imageUrl.slice(0, 180) });
+    const response = await fetchBounded(imageUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36",
+        "Referer": "https://www.instagram.com/",
+        Accept: "image/jpeg,image/png,image/webp,image/*,*/*;q=0.8"
+      }
+    }, 10000);
 
-      if (/^image\//i.test(contentType) && buffer.length && buffer.length <= 12 * 1024 * 1024) {
-        let mime = contentType;
-        if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) mime = "image/jpeg";
-        else if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) mime = "image/png";
-        else if (buffer.length >= 12 && buffer.subarray(0, 4).toString() === "RIFF" && buffer.subarray(8, 12).toString() === "WEBP") mime = "image/webp";
+    if (!response.ok) return { poster: null, error: `POSTER_IMAGE_HTTP_${response.status}` };
 
-        const dataUrl = "data:" + mime + ";base64," + buffer.toString("base64");
-        // Do not serially try four models/endpoints: that can make the whole
-        // serverless function time out. Use one primary vision call and one
-        // compatibility fallback, then continue the scan without poster AI.
-        for (const [provider, call] of [
-          ["responses-data-gpt-4o-mini", () => callResponsesVision("gpt-4o-mini", dataUrl)],
-          ["chat-data-gpt-4o-mini", () => callChatVision("gpt-4o-mini", dataUrl)]
-        ]) {
-          try {
-            const parsed = await parseResponse(await call(), provider);
-            if (parsed) return { poster: parsed, error: "" };
-          } catch (error) {
-            lastError = `${provider}:${error?.name === "AbortError" ? "TIMEOUT" : (error?.message || String(error))}`;
-            console.error("instagram-tournament-image-openai", provider, lastError);
-          }
+    const contentType = (response.headers.get("content-type") || "image/jpeg").split(";")[0].toLowerCase();
+    const buffer = Buffer.from(await response.arrayBuffer());
+    console.log("instagram-tournament-ocr-image", {
+      contentType,
+      bytes: buffer.length,
+      imageUrl: imageUrl.slice(0, 180)
+    });
+
+    if (!buffer.length || buffer.length > 12 * 1024 * 1024) {
+      return { poster: null, error: `POSTER_IMAGE_SIZE_INVALID_${buffer.length}` };
+    }
+
+    // Tesseract is deterministic OCR, not an OpenAI/LLM service.
+    const { createWorker } = await import("tesseract.js");
+    const worker = await createWorker("eng", 1, {
+      logger: (message) => {
+        if (message?.status === "recognizing text" && Number.isFinite(message.progress)) {
+          console.log("instagram-tournament-ocr-progress", Math.round(message.progress * 100));
         }
-      } else {
-        lastError = `UNSUPPORTED_IMAGE_RESPONSE_${contentType}_${buffer.length}`;
       }
-    } else {
-      lastError = `INSTAGRAM_IMAGE_HTTP_${imageResponse.status}`;
-      console.error("instagram-tournament-image-fetch", imageResponse.status, imageResponse.statusText);
-    }
+    });
 
-    // One final URL-based fallback. If this also fails, the scanner still
-    // returns caption/source intelligence and records the exact poster error.
     try {
-      const parsed = await parseResponse(await callResponsesVision("gpt-4o-mini", imageUrl), "responses-url-gpt-4o-mini");
-      if (parsed) return { poster: parsed, error: "" };
-    } catch (error) {
-      lastError = `responses-url-gpt-4o-mini:${error?.name === "AbortError" ? "TIMEOUT" : (error?.message || String(error))}`;
-      console.error("instagram-tournament-image-openai", lastError);
-    }
+      await worker.setParameters({
+        preserve_interword_spaces: "1",
+        tessedit_pageseg_mode: "11"
+      });
 
-    return { poster: null, error: lastError || "POSTER_VISION_NO_RESULT" };
+      const result = await worker.recognize(buffer);
+      const text = clean(result?.data?.text || "");
+
+      if (!text) return { poster: null, error: "POSTER_OCR_NO_TEXT" };
+
+      const poster = {
+        poster_text: text,
+        tournament_name: "",
+        date_text: "",
+        venue: "",
+        city: "",
+        state: "",
+        country: "",
+        organizer: "",
+        host: "",
+        sport: "",
+        disciplines: [],
+        events: [],
+        categories: [],
+        gender_categories: [],
+        age_categories: [],
+        weight_categories: [],
+        eligibility: "",
+        registration: "",
+        registration_deadline: "",
+        registration_link: "",
+        fees: "",
+        contact: "",
+        phone: "",
+        email: "",
+        website: "",
+        rules: "",
+        scoring_system: "",
+        competition_system: "",
+        rounds: "",
+        equipment: "",
+        schedule: "",
+        weigh_in: "",
+        medals: "",
+        prizes: "",
+        accommodation: "",
+        transport: "",
+        documents: "",
+        notices: [],
+        highlights: [],
+        hashtags: []
+      };
+
+      // Deterministic extraction from OCR text. No guessing.
+      const lines = text.split(/\\n+/).map((line) => clean(line)).filter(Boolean);
+      poster.tournament_name =
+        lines.find((line) => /tournament|championship|cup|open|memorial/i.test(line) && line.length >= 8) || "";
+      poster.date_text =
+        lines.find((line) => /\\b(?:\\d{1,2}(?:st|nd|rd|th)?\\s*(?:and|&|to|[-–])\\s*)?\\d{1,2}(?:st|nd|rd|th)?\\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\s*,?\\s*\\d{4}\\b/i.test(line)) ||
+        lines.find((line) => /\\b\\d{1,2}(?:st|nd|rd|th)?\\s*(?:&|and|to|[-–])\\s*\\d{1,2}(?:st|nd|rd|th)?\\b/i.test(line)) || "";
+      poster.venue = lines.find((line) => /\\b(venue|hall|stadium|indoor|ground|complex|academy|school|university)\\b/i.test(line)) || "";
+      poster.registration_deadline = lines.find((line) => /registration.*(?:last|deadline|close|before)|last date/i.test(line)) || "";
+      poster.fees = lines.find((line) => /(?:fee|fees|entry|registration)\\s*[:=-]?\\s*[₹rs]\\.?\\s*\\d/i.test(line)) || "";
+      poster.phone = lines.find((line) => /(?:\\+?91[ -]?)?\\d{10}\\b/.test(line)) || "";
+      poster.email = lines.find((line) => /[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i.test(line)) || "";
+      poster.registration_link = lines.find((line) => /https?:\\/\\/|www\\.|bit\\.ly|forms?\\.gle/i.test(line)) || "";
+      poster.website = poster.registration_link;
+
+      poster.events = lines.filter((line) => /kyorugi|poomsae|poomse|fresher|cadet|junior|senior|sub[- ]?junior|under[- ]?\d|\\bkg\\b|\\b\\d+\\s*kg\\b/i.test(line)).slice(0, 30);
+      poster.categories = poster.events.slice();
+      poster.highlights = lines.filter((line) => /gold|silver|bronze|medal|prize|award|contact|register|registration|weigh|draw|schedule/i.test(line)).slice(0, 30);
+      poster.hashtags = [...new Set((text.match(/#[A-Za-z0-9_]+/g) || []))];
+
+      return { poster, error: "" };
+    } finally {
+      await worker.terminate();
+    }
   } catch (error) {
-    const message = error?.name === "AbortError" ? "POSTER_IMAGE_FETCH_TIMEOUT" : (error?.message || String(error));
-    console.error("instagram-tournament-image-analysis", error?.stack || message);
-    return { poster: null, error: message };
+    console.error("instagram-tournament-ocr-error", error?.stack || error?.message || error);
+    return { poster: null, error: `POSTER_OCR_ERROR_${error?.message || "UNKNOWN"}` };
   }
 }
-function first(html, patterns) {
-  for (const p of patterns) {
-    const m = html.match(p);
-    if (m?.[1]) return clean(m[1]);
-  }
-  return "";
-}
-
-function unique(values) { return [...new Set(values.filter(Boolean))]; }
-
-function instagramAccounts(html, sourceUrl, caption) {
-  const found = [];
-  const add = (value) => {
-    const username = String(value || "").replace(/^@/, "").trim().toLowerCase();
-    if (!/^[a-z0-9._]{1,30}$/.test(username) || IG_PATHS_TO_IGNORE.has(username)) return;
-    found.push(username);
-  };
-  for (const m of caption.matchAll(/@([a-zA-Z0-9._]{1,30})/g)) add(m[1]);
-  for (const m of html.matchAll(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/([a-zA-Z0-9._]{1,30})(?:[/?"'\s]|$)/gi)) add(m[1]);
-  try { add(new URL(sourceUrl).pathname.split("/").filter(Boolean)[0]); } catch {}
-  return unique(found).slice(0, MAX_RELATED_ACCOUNTS);
-}
-
-function captionFromInstagramShell(value) {
-  let text = clean(value);
-  text = text.replace(/^[^:]{0,180}\s+on\s+Instagram:\s*/i, "");
-  const quoted = text.match(/[“"]([^“”"]{8,500})[”"]/);
-  if (quoted?.[1]) text = quoted[1];
-  return text.replace(/(?:\s+on\s+Instagram).*$/i, "").trim().slice(0, 4000);
-}
-
-function extractVisibleInstagramText(html) {
-  const body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || html;
-  return clean(body).replace(/^(?:Instagram|Log in|Sign up|Create new account)\s*/i, "").slice(0, 8000);
-}
-
-function extractCaption(html) {
-  const rawCandidates = [
-    meta(html, "og:description"),
-    meta(html, "twitter:description"),
-    meta(html, "description"),
-    first(html, [/"articleBody"\s*:\s*"((?:\\.|[^"])*)"/i]),
-    first(html, [/"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
-    first(html, [/"caption"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
-    first(html, [/"caption"\s*:\s*"((?:\\.|[^"])*)"/i]),
-    first(html, [/"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
-    extractVisibleInstagramText(html)
-  ];
-  const useful = rawCandidates.map(captionFromInstagramShell)
-    .filter((value) => value && !/^(Instagram|Log in|Sign up|Create new account)$/i.test(value));
-  const tournamentCandidates = useful.filter((value) => TOURNAMENT_WORDS.test(value));
-  return tournamentCandidates.sort((a,b) => b.length-a.length)[0] || "";
-}
-
-function extractTitle(html, caption) {
-  const rawTitle = meta(html, "og:title") || first(html, [/<title[^>]*>([\s\S]*?)<\/title>/i]);
-  const cleanedTitle = captionFromInstagramShell(rawTitle);
-  const combined = clean(`${cleanedTitle} ${caption}`);
-  const named = combined.match(/\b([A-Z][A-Za-z0-9&' -]{2,100}\b(?:Cup|Championships?|Open|Games|Tournament))\b/);
-  return named?.[1] ? named[1].trim().slice(0, 180) : "";
-}
-
-function extractDate(text, html) {
-  const iso = first(html, [/"taken_at_timestamp"\s*:\s*(\d{9,12})/i, /"timestamp"\s*:\s*"([^"]+)"/i]);
-  if (iso && /^\d{9,12}$/.test(iso)) return new Date(Number(iso) * 1000).toISOString().slice(0, 10);
-  const patterns = [
-    /(?:date|dates?|event|held|on)\s*[:\-]?\s*([A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*[-–]\s*[A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?)?\s*,?\s*\d{4})/i,
-    /\b(\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+\d{4})?)\b/i,
-    /\b(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+\d{4})?)\b/i,
-    /\b([A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?)?(?:\s+\d{4})?)\b/i,
-    /\b(\d{1,2}[/-]\d{1,2}[/-]\d{4})\b/
-  ];
-  return first(text, patterns);
-}
-
-function toDatabaseDate(value) {
-  const raw = clean(value).replace(/(\d{1,2})(st|nd|rd|th)\b/gi, "$1");
-  if (!raw) return "";
-  const iso = raw.match(/\b(\d{4}-\d{2}-\d{2})\b/);
-  if (iso?.[1]) return iso[1];
-
-  const dayFirst = raw.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/);
-  if (dayFirst) {
-    const day = Number(dayFirst[1]);
-    const month = Number(dayFirst[2]);
-    const year = Number(dayFirst[3]);
-    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-      const date = new Date(Date.UTC(year, month - 1, day));
-      if (date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day) {
-        return date.toISOString().slice(0, 10);
-      }
-    }
-  }
-
-  const range = raw.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s*(?:&|and|[-–])\s*(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,12})\s+(\d{4})\b/i);
-  if (range) {
-    const monthNames = {
-      jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
-      may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8,
-      sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11
-    };
-    const day = Number(range[1]);
-    const month = monthNames[range[3].toLowerCase()];
-    const year = Number(range[4]);
-    if (month !== undefined && day >= 1 && day <= 31 && year >= 2000 && year <= 2100) {
-      const date = new Date(Date.UTC(year, month, day));
-      if (date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day) {
-        return date.toISOString().slice(0, 10);
-      }
-    }
-  }
-
-  const monthFirst = raw.match(/\b([A-Za-z]{3,12})\s+(\d{1,2})(?:\s*,?\s*|\s+)(\d{4})\b/i);
-  const dayFirstText = raw.match(/\b(\d{1,2})\s+([A-Za-z]{3,12})\s+(\d{4})\b/i);
-  const match = monthFirst || dayFirstText;
-  if (match) {
-    const monthNames = {
-      jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
-      may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8,
-      sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11
-    };
-    const firstPart = match[1].toLowerCase();
-    const secondPart = match[2];
-    const year = Number(match[3]);
-    const month = monthNames[firstPart];
-    const day = Number(secondPart);
-    if (month !== undefined && Number.isInteger(day) && day >= 1 && day <= 31 && year >= 2000 && year <= 2100) {
-      const date = new Date(Date.UTC(year, month, day));
-      if (date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day) {
-        return date.toISOString().slice(0, 10);
-      }
-    }
-  }
-
-  return "";
-}
-
-function field(text, patterns) { return first(text, patterns).slice(0, 500); }
-
 function extractFacts(caption, title, sourceUrl) {
   const text = clean(`${title} ${caption}`);
   const dateText = extractDate(text, "");
