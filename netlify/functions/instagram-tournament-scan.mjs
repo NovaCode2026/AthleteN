@@ -45,7 +45,9 @@ function meta(html, key) {
   const add = (value) => {
     const url = decode(String(value || "")).trim();
     if (!/^https?:\/\//i.test(url)) return;
-    if (!/\.(?:jpe?g|png|webp)(?:[?#]|$)/i.test(url) && !/instagram.*(?:jpg|jpeg|png|webp)/i.test(url)) return;
+    const isInstagramCdn = /(?:fbcdn\.net|cdninstagram\.com|instagram\.com)/i.test(url);
+    const looksLikeImage = /\.(?:jpe?g|png|webp|gif|heic|heif)(?:[?#]|$)/i.test(url);
+    if (!isInstagramCdn && !looksLikeImage) return;
     urls.push(url);
   };
   add(meta(html, "og:image"));
@@ -71,6 +73,11 @@ async function analyzeTournamentImage(imageUrl) {
     if (!imageResponse.ok) return null;
     const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
     if (!/^image\//i.test(contentType)) return null;
+    console.log("instagram-tournament-image", {
+      imageUrl: imageUrl.slice(0, 180),
+      contentType,
+      bytes: imageResponse.headers.get("content-length") || "unknown"
+    });
     const buffer = Buffer.from(await imageResponse.arrayBuffer());
     if (!buffer.length || buffer.length > 12 * 1024 * 1024) return null;
     const base64 = buffer.toString("base64");
@@ -89,7 +96,11 @@ async function analyzeTournamentImage(imageUrl) {
         max_output_tokens: 1800
       })
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      console.error("instagram-tournament-image-openai", response.status, errorText.slice(0, 500));
+      return null;
+    }
     const data = await response.json().catch(() => null);
     const outputText = data?.output_text || data?.output?.flatMap((item) => item?.content || []).map((item) => item?.text || "").filter(Boolean).join("\n") || "";
     return extractJsonObject(outputText);
