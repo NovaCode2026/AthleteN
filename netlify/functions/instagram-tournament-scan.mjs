@@ -182,7 +182,7 @@ async function analyzeTournamentImage(imageUrl) {
       poster.fees = lines.find((line) => /(?:fee|fees|entry|registration)\\s*[:=-]?\\s*[₹rs]\\.?\\s*\\d/i.test(line)) || "";
       poster.phone = lines.find((line) => /(?:\\+?91[ -]?)?\\d{10}\\b/.test(line)) || "";
       poster.email = lines.find((line) => /[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i.test(line)) || "";
-      poster.registration_link = lines.find((line) => /https?:\\/\\/|www\\.|bit\\.ly|forms?\\.gle/i.test(line)) || "";
+      poster.registration_link = lines.find((line) => /https?:\/\/|www\.|bit\.ly|forms?\.gle/i.test(line)) || "";
       poster.website = poster.registration_link;
 
       poster.events = lines.filter((line) => /kyorugi|poomsae|poomse|fresher|cadet|junior|senior|sub[- ]?junior|under[- ]?\d|\\bkg\\b|\\b\\d+\\s*kg\\b/i.test(line)).slice(0, 30);
