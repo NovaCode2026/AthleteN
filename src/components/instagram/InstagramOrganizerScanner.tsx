@@ -145,7 +145,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
         <div className="panel-head">
           <div>
             <p className="eyebrow">Tournament intelligence</p>
-            <h3>{importantFacts.tournament_name || selectedScan.tournament_name || "Tournament"}</h3>
+            <h3>{importantFacts.tournament_name || "Not found in accessible source"}</h3>
             <p>Only facts supported by the accessible Instagram source are shown here. Missing information is not guessed.</p>
           </div>
           <span className="status">{selectedScan.status || "checked"}</span>
@@ -167,6 +167,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
             ["Official contact", importantFacts.official_contact],
             ["Organizer", importantFacts.organizer],
             ["Scoring / equipment", importantFacts.equipment_and_scoring],
+            ["Important highlights", importantFacts.important_highlights],
             ["Important notice", importantFacts.important_notice]
           ].map(([label, value]) => <div className="detail-row" key={label}><b>{label}</b><span>{value || "Not found in accessible source"}</span></div>)}
         </div>
@@ -175,7 +176,6 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
           <span>Source checked: <a href={selectedScan.source_url} target="_blank" rel="noreferrer">{selectedScan.source_url}</a></span>
         </div>
       </section> : <>
-    {selectedScan && <>
       <section className="card panel">
         <div className="panel-head"><div><p className="eyebrow">Latest intelligence</p><h3>{selectedScan.tournament_name || "Tournament source"}</h3><p>{details?.description || "Information extracted from the source and relevant pages."}</p></div><span className={`status ${selectedScan.status === "blocked" ? "blocked" : ""}`}>{selectedScan.status || "checked"}</span></div>
         <div className="scan-summary">
@@ -263,9 +263,6 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
 
       <section className="card panel"><h3>Scan status</h3><p><strong>Last checked:</strong> {formatDate(selectedScan.last_checked_at)}</p><p><strong>Next check:</strong> {formatDate(selectedScan.next_check_at)}</p><p><strong>Change detection:</strong> {selectedScan.detected_changes || "No change information returned."}</p><p><strong>Source:</strong> {selectedScan.source_url}</p></section>
     </>}
-
-
-      </>}
     </>}
 
     <section className="card panel scan-results"><div className="panel-head"><div><h3>Saved scans</h3><p>Select a previous scan to reopen its full extracted intelligence.</p></div></div>{!scans.length ? <div className="empty-state"><strong>No tournament scans yet.</strong><p>Choose a source above and run your first scan.</p></div> : <div className="scan-table-wrap"><table><thead><tr><th>Source</th><th>Tournament</th><th>Date</th><th>Venue</th><th>Last checked</th><th>Status</th><th>Details</th></tr></thead><tbody>{scans.map((scanRow) => <tr key={scanRow.id}><td className="source-cell">{scanRow.source_url}</td><td>{scanRow.tournament_name || "—"}</td><td>{scanRow.tournament_date || "—"}</td><td>{scanRow.venue || "—"}</td><td>{formatDate(scanRow.last_checked_at)}</td><td><span className={`status ${scanRow.status === "blocked" ? "blocked" : ""}`}>{scanRow.status || "—"}</span></td><td><button className="plain" type="button" onClick={() => setSelectedScan(scanRow)}>Open intelligence</button></td></tr>)}</tbody></table></div>}</section>
