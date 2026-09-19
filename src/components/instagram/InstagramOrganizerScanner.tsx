@@ -122,7 +122,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
     <section className="card panel">
       <div className="scanner-source-picker" role="tablist" aria-label="Tournament source type">
         <button type="button" className={`source-option ${sourceType === "website" ? "active" : ""}`} onClick={() => setSourceType("website")} aria-selected={sourceType === "website"}><Globe size={20}/><span><strong>Website</strong><small>Tournament site, notice, schedule or PDF</small></span></button>
-        <button type="button" className={`source-option ${sourceType === "instagram" ? "active" : ""}`} onClick={() => setSourceType("instagram")} aria-selected={sourceType === "instagram"}><Instagram size={20}/><span><strong>Instagram</strong><small>Profile, post, reel or @username</small></span></button>
+        <button type="button" className={`source-option ${sourceType === "instagram" ? "active" : ""}`} onClick={() => setSourceType("instagram")} aria-selected={sourceType === "instagram"}><Instagram size={20}/><span><strong>Instagram</strong><small>Public tournament post or reel</small></span></button>
       </div>
       <form className="scan-form" onSubmit={(event) => void scan(event)}><input value={source} onChange={(event) => setSource(event.target.value)} placeholder={sourceType === "website" ? "https://example.com/tournament" : "https://instagram.com/p/... or /reel/..."} aria-label="Tournament scan source" required/><button className="btn primary" type="submit" disabled={scanning}>{scanning ? <Loader2 className="spin" size={16}/> : <RefreshCw size={16}/>} {scanning ? "Scanning..." : "Scan"}</button></form>
       {sourceType === "website" ? <p className="scanner-help"><Globe size={16}/> The scanner follows relevant same-site pages, notices, schedules, results, rules, equipment, registration pages and linked PDFs.</p> : <p className="scanner-help"><ShieldCheck size={16}/> The scanner automatically follows accessible tournament-related accounts and posts/reels it can discover from the source. Unrelated Instagram content is filtered out.</p>}
@@ -147,6 +147,17 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
       <section className="card panel"><div className="panel-head"><div><h3>All available tournament information</h3><p>The scanner keeps structured facts plus the relevant headings and sections it found, so important updates such as scoring/competition systems are not reduced to only date and venue.</p></div></div>
         {primaryFields.length > 0 ? <div className="details-list">{primaryFields.map(([key, value]) => <div className="detail-row" key={key}><b>{labelize(key)}</b><span>{value}</span></div>)}</div> : <div className="empty-state"><strong>No labeled fields were detected.</strong><p>Open the source pages below to inspect what the scanner could access.</p></div>}
       </section>
+
+      {(fields.poster_events || fields.poster_disciplines || fields.poster_sport || fields.poster_highlights) && <section className="card panel">
+        <div className="panel-head"><div><h3>Poster / image intelligence</h3><p>Information read from the tournament poster image, kept separate from caption-only facts.</p></div></div>
+        <div className="details-list">
+          {fields.poster_sport && <div className="detail-row"><b>Sport</b><span>{fields.poster_sport}</span></div>}
+          {fields.poster_disciplines && <div className="detail-row"><b>Disciplines</b><span>{fields.poster_disciplines}</span></div>}
+          {fields.poster_events && <div className="detail-row"><b>Events / divisions</b><span>{fields.poster_events}</span></div>}
+          {fields.poster_highlights && <div className="detail-row"><b>Poster highlights</b><span>{fields.poster_highlights}</span></div>}
+        </div>
+        {fields.poster_image && <p><a className="source-link" href={fields.poster_image} target="_blank" rel="noreferrer"><ExternalLink size={14}/> Open analyzed poster image</a></p>}
+      </section>}
 
       {(selectedScan.weigh_in_information || selectedScan.categories || selectedScan.notices || selectedScan.schedules_results) && <section className="info-grid">
         {selectedScan.weigh_in_information && <article className="info-card"><h4>Weigh-in / weight check</h4><p>{selectedScan.weigh_in_information}</p></article>}
