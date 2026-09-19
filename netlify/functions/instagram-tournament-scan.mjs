@@ -117,15 +117,61 @@ function extractDate(text, html) {
   return first(text, patterns);
 }
 
+function toDatabaseDate(value) {
+  const raw = clean(value).replace(/(\d{1,2})(st|nd|rd|th)\\b/gi, "$1");
+  if (!raw) return "";
+  const iso = raw.match(/\\b(\\d{4}-\\d{2}-\\d{2})\\b/);
+  if (iso?.[1]) return iso[1];
+
+  const dayFirst = raw.match(/\\b(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})\\b/);
+  if (dayFirst) {
+    const day = Number(dayFirst[1]);
+    const month = Number(dayFirst[2]);
+    const year = Number(dayFirst[3]);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      const date = new Date(Date.UTC(year, month - 1, day));
+      if (date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day) {
+        return date.toISOString().slice(0, 10);
+      }
+    }
+  }
+
+  const monthFirst = raw.match(/\\b([A-Za-z]{3,12})\\s+(\\d{1,2})(?:\\s*,?\\s*|\\s+)(\\d{4})\\b/i);
+  const dayFirstText = raw.match(/\\b(\\d{1,2})\\s+([A-Za-z]{3,12})\\s+(\\d{4})\\b/i);
+  const match = monthFirst || dayFirstText;
+  if (match) {
+    const monthNames = {
+      jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
+      may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8,
+      sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11
+    };
+    const firstPart = match[1].toLowerCase();
+    const secondPart = match[2];
+    const year = Number(match[3]);
+    const month = monthNames[firstPart];
+    const day = Number(secondPart);
+    if (month !== undefined && Number.isInteger(day) && day >= 1 && day <= 31 && year >= 2000 && year <= 2100) {
+      const date = new Date(Date.UTC(year, month, day));
+      if (date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day) {
+        return date.toISOString().slice(0, 10);
+      }
+    }
+  }
+
+  return "";
+}
+
 function field(text, patterns) { return first(text, patterns).slice(0, 500); }
 
 function extractFacts(caption, title, sourceUrl) {
   const text = clean(`${title} ${caption}`);
-  const date = extractDate(text, "");
+  const dateText = extractDate(text, "");
+  const date = toDatabaseDate(dateText);
   const organizer = field(text, [/(?:organizer|organiser|organized by|organised by|hosted by|promoted by)\s*[:\-]?\s*([^.;|\n]{3,180})/i]);
   const venue = field(text, [/(?:venue|location|host venue|held at|taking place at|conducted at)\s*[:\-]?\s*([^.;|\n]{3,180})/i]);
   const locationHint = field(text, [/(?:in|at)\s+([A-Z][A-Za-z .'-]{2,80})\s+is\s+(?:ready|set)/i]);
-  const registration = field(text, [/(?:registration|entry)\s+(?:deadline|closes?|closing|last date)\s*[:\-]?\s*([^.;|\n]{3,180})/i, /(?:deadline|last date)\s*[:\-]?\s*([^.;|\n]{3,180})/i]);
+  const registrationText = field(text, [/(?:registration|entry)\s+(?:deadline|closes?|closing|last date)\s*[:\-]?\s*([^.;|\n]{3,180})/i, /(?:deadline|last date)\s*[:\-]?\s*([^.;|\n]{3,180})/i]);
+  const registration = toDatabaseDate(registrationText);
   const fees = field(text, [/(?:registration|entry|participation)\s+fee[s]?\s*[:\-]?\s*([^.;|\n]{2,120})/i, /(?:fee|fees)\s*[:\-]?\s*([^.;|\n]{2,120})/i]);
   const categories = field(text, [/(?:age|weight|category|categories|division|divisions|cadet|junior|senior)[^.;|\n]{0,360}/i]);
   const contact = field(text, [/(?:contact|helpline|phone|email|e-?mail)\s*[:\-]?\s*([^.;|\n]{4,220})/i]);
@@ -133,9 +179,11 @@ function extractFacts(caption, title, sourceUrl) {
   return {
     tournament_name: title || "",
     tournament_date: date || "",
+    tournament_date_text: dateText || "",
     venue: venue || "",
     location_hint: locationHint || "",
     registration_deadline: registration || "",
+    registration_deadline_text: registrationText || "",
     categories: categories || "",
     fees: fees || "",
     organizer: organizer || "",
