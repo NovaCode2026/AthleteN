@@ -19,6 +19,21 @@
 - Import workflow for legacy AthleteOS backups
 - Test suite with component and integration coverage
 
+### Tournament Scanner — Reel Intelligence
+
+- Support accessible Instagram Reels as a tournament information source
+- Extract useful video frames throughout a Reel, including poster/schedule slides and scene changes
+- Run OCR on relevant Reel frames
+- Extract accessible Reel audio and generate a transcript for tournament-related speech
+- Combine caption, frame OCR, and audio evidence without treating any single source as automatically correct
+- Classify dates by meaning so tournament dates, reporting/check-in dates, registration deadlines, and other dates remain separate
+- Detect conflicting facts instead of silently selecting or inventing a value
+- Require source evidence for every structured tournament field
+- Never promote OCR noise or unsupported inference into a structured fact
+- Show only important tournament information in the normal AthleteN UI; keep raw OCR/debug/source data out of the main result
+- Display Not found in accessible source when an important field is unavailable
+- Preserve source evidence internally so extracted facts can be traced back to the accessible Reel content
+
 ## Future
 
 - Offline-first caching for recently viewed athlete data
