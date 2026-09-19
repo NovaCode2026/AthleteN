@@ -90,22 +90,35 @@ async function analyzeTournamentImage(imageUrl) {
   // AthleteN uses local OCR only. No OpenAI request, API key, model, or AI
   // credit is required for the Tournament Scanner.
   try {
-    const response = await fetchBounded(requestedImageUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36",
-        "Referer": "https://www.instagram.com/",
-        Accept: "image/jpeg,image/png,image/webp,image/*,*/*;q=0.8"
-      }
-    }, 10000);
+    const imageCandidates = unique([imageUrl, requestedImageUrl]);
+    let response = null;
+    let responseUrl = imageUrl;
+    let lastStatus = 0;
 
-    if (!response.ok) return { poster: null, error: `POSTER_IMAGE_HTTP_${response.status}` };
+    for (const candidate of imageCandidates) {
+      const candidateResponse = await fetchBounded(candidate, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36",
+          "Referer": "https://www.instagram.com/",
+          Accept: "image/jpeg,image/png,image/webp,image/*,*/*;q=0.8"
+        }
+      }, 10000);
+      lastStatus = candidateResponse.status;
+      if (candidateResponse.ok) {
+        response = candidateResponse;
+        responseUrl = candidate;
+        break;
+      }
+    }
+
+    if (!response) return { poster: null, error: `POSTER_IMAGE_HTTP_${lastStatus || 0}` };
 
     const contentType = (response.headers.get("content-type") || "image/jpeg").split(";")[0].toLowerCase();
     const buffer = Buffer.from(await response.arrayBuffer());
     console.log("instagram-tournament-ocr-image", {
       contentType,
       bytes: buffer.length,
-      imageUrl: requestedImageUrl.slice(0, 180), originalImageUrl: imageUrl.slice(0, 180)
+      imageUrl: responseUrl.slice(0, 180), originalImageUrl: imageUrl.slice(0, 180), requestedImageUrl: requestedImageUrl.slice(0, 180)
     });
 
     if (!buffer.length || buffer.length > 12 * 1024 * 1024) {
@@ -663,8 +676,17 @@ async function scanPublicSource(sourceUrl) {
   else if (Array.isArray(poster?.categories) && poster.categories.length) allFacts.categories = poster.categories.filter(Boolean).join(", ");
   if (!allFacts.tournament_name && caption) {
     const headline = caption.split(/(?:\n|[.!?])+/).map((part) => clean(part))
-      .find((part) => TOURNAMENT_WORDS.test(part) && part.length >= 8 && part.length <= 180);
+      .find((part) =>
+        /\b(?:championship|tournament|cup|open)\b/i.test(part) &&
+        !/^#/.test(part) &&
+        part.length >= 8 &&
+        part.length <= 180
+      );
     if (headline) allFacts.tournament_name = headline;
+  }
+  // Never use a hashtag-only caption fragment as the tournament name.
+  if (/^#(?:[a-z0-9_]+\s*)+$/i.test(allFacts.tournament_name || "")) {
+    allFacts.tournament_name = poster?.tournament_name ? clean(poster.tournament_name) : "";
   }
   // The scanned Instagram account is a source, not proof that it is the tournament organizer.
   if (!allFacts.tournament_name || !TOURNAMENT_WORDS.test(allText)) throw new Error("NO_TOURNAMENT_CONTENT");
