@@ -118,12 +118,12 @@ function extractDate(text, html) {
 }
 
 function toDatabaseDate(value) {
-  const raw = clean(value).replace(/(\d{1,2})(st|nd|rd|th)\\b/gi, "$1");
+  const raw = clean(value).replace(/(\d{1,2})(st|nd|rd|th)\b/gi, "$1");
   if (!raw) return "";
-  const iso = raw.match(/\\b(\\d{4}-\\d{2}-\\d{2})\\b/);
+  const iso = raw.match(/\b(\d{4}-\d{2}-\d{2})\b/);
   if (iso?.[1]) return iso[1];
 
-  const dayFirst = raw.match(/\\b(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})\\b/);
+  const dayFirst = raw.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/);
   if (dayFirst) {
     const day = Number(dayFirst[1]);
     const month = Number(dayFirst[2]);
@@ -136,8 +136,8 @@ function toDatabaseDate(value) {
     }
   }
 
-  const monthFirst = raw.match(/\\b([A-Za-z]{3,12})\\s+(\\d{1,2})(?:\\s*,?\\s*|\\s+)(\\d{4})\\b/i);
-  const dayFirstText = raw.match(/\\b(\\d{1,2})\\s+([A-Za-z]{3,12})\\s+(\\d{4})\\b/i);
+  const monthFirst = raw.match(/\b([A-Za-z]{3,12})\s+(\d{1,2})(?:\s*,?\s*|\s+)(\d{4})\b/i);
+  const dayFirstText = raw.match(/\b(\d{1,2})\s+([A-Za-z]{3,12})\s+(\d{4})\b/i);
   const match = monthFirst || dayFirstText;
   if (match) {
     const monthNames = {
