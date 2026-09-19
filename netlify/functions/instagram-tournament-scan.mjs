@@ -199,6 +199,145 @@ async function analyzeTournamentImage(imageUrl) {
     return { poster: null, error: `POSTER_OCR_ERROR_${error?.message || "UNKNOWN"}` };
   }
 }
+function first(html, patterns) {
+  for (const p of patterns) {
+    const m = html.match(p);
+    if (m?.[1]) return clean(m[1]);
+  }
+  return "";
+}
+
+function unique(values) { return [...new Set(values.filter(Boolean))]; }
+
+function instagramAccounts(html, sourceUrl, caption) {
+  const found = [];
+  const add = (value) => {
+    const username = String(value || "").replace(/^@/, "").trim().toLowerCase();
+    if (!/^[a-z0-9._]{1,30}$/.test(username) || IG_PATHS_TO_IGNORE.has(username)) return;
+    found.push(username);
+  };
+  for (const m of caption.matchAll(/@([a-zA-Z0-9._]{1,30})/g)) add(m[1]);
+  for (const m of html.matchAll(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/([a-zA-Z0-9._]{1,30})(?:[/?"'\s]|$)/gi)) add(m[1]);
+  try { add(new URL(sourceUrl).pathname.split("/").filter(Boolean)[0]); } catch {}
+  return unique(found).slice(0, MAX_RELATED_ACCOUNTS);
+}
+
+function captionFromInstagramShell(value) {
+  let text = clean(value);
+  text = text.replace(/^[^:]{0,180}\s+on\s+Instagram:\s*/i, "");
+  const quoted = text.match(/[“"]([^“”"]{8,500})[”"]/);
+  if (quoted?.[1]) text = quoted[1];
+  return text.replace(/(?:\s+on\s+Instagram).*$/i, "").trim().slice(0, 4000);
+}
+
+function extractVisibleInstagramText(html) {
+  const body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || html;
+  return clean(body).replace(/^(?:Instagram|Log in|Sign up|Create new account)\s*/i, "").slice(0, 8000);
+}
+
+function extractCaption(html) {
+  const rawCandidates = [
+    meta(html, "og:description"),
+    meta(html, "twitter:description"),
+    meta(html, "description"),
+    first(html, [/"articleBody"\s*:\s*"((?:\\.|[^"])*)"/i]),
+    first(html, [/"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
+    first(html, [/"caption"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
+    first(html, [/"caption"\s*:\s*"((?:\\.|[^"])*)"/i]),
+    first(html, [/"text"\s*:\s*"((?:\\.|[^"])*)"/i]),
+    extractVisibleInstagramText(html)
+  ];
+  const useful = rawCandidates.map(captionFromInstagramShell)
+    .filter((value) => value && !/^(Instagram|Log in|Sign up|Create new account)$/i.test(value));
+  const tournamentCandidates = useful.filter((value) => TOURNAMENT_WORDS.test(value));
+  return tournamentCandidates.sort((a,b) => b.length-a.length)[0] || "";
+}
+
+function extractTitle(html, caption) {
+  const rawTitle = meta(html, "og:title") || first(html, [/<title[^>]*>([\s\S]*?)<\/title>/i]);
+  const cleanedTitle = captionFromInstagramShell(rawTitle);
+  const combined = clean(`${cleanedTitle} ${caption}`);
+  const named = combined.match(/\b([A-Z][A-Za-z0-9&' -]{2,100}\b(?:Cup|Championships?|Open|Games|Tournament))\b/);
+  return named?.[1] ? named[1].trim().slice(0, 180) : "";
+}
+
+function extractDate(text, html) {
+  const iso = first(html, [/"taken_at_timestamp"\s*:\s*(\d{9,12})/i, /"timestamp"\s*:\s*"([^"]+)"/i]);
+  if (iso && /^\d{9,12}$/.test(iso)) return new Date(Number(iso) * 1000).toISOString().slice(0, 10);
+  const patterns = [
+    /(?:date|dates?|event|held|on)\s*[:\-]?\s*([A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*[-–]\s*[A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?)?\s*,?\s*\d{4})/i,
+    /\b(\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+\d{4})?)\b/i,
+    /\b(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+\d{4})?)\b/i,
+    /\b([A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?)?(?:\s+\d{4})?)\b/i,
+    /\b(\d{1,2}[/-]\d{1,2}[/-]\d{4})\b/
+  ];
+  return first(text, patterns);
+}
+
+function toDatabaseDate(value) {
+  const raw = clean(value).replace(/(\d{1,2})(st|nd|rd|th)\b/gi, "$1");
+  if (!raw) return "";
+  const iso = raw.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+  if (iso?.[1]) return iso[1];
+
+  const dayFirst = raw.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/);
+  if (dayFirst) {
+    const day = Number(dayFirst[1]);
+    const month = Number(dayFirst[2]);
+    const year = Number(dayFirst[3]);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      const date = new Date(Date.UTC(year, month - 1, day));
+      if (date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day) {
+        return date.toISOString().slice(0, 10);
+      }
+    }
+  }
+
+  const range = raw.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s*(?:&|and|[-–])\s*(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,12})\s+(\d{4})\b/i);
+  if (range) {
+    const monthNames = {
+      jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
+      may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8,
+      sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11
+    };
+    const day = Number(range[1]);
+    const month = monthNames[range[3].toLowerCase()];
+    const year = Number(range[4]);
+    if (month !== undefined && day >= 1 && day <= 31 && year >= 2000 && year <= 2100) {
+      const date = new Date(Date.UTC(year, month, day));
+      if (date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day) {
+        return date.toISOString().slice(0, 10);
+      }
+    }
+  }
+
+  const monthFirst = raw.match(/\b([A-Za-z]{3,12})\s+(\d{1,2})(?:\s*,?\s*|\s+)(\d{4})\b/i);
+  const dayFirstText = raw.match(/\b(\d{1,2})\s+([A-Za-z]{3,12})\s+(\d{4})\b/i);
+  const match = monthFirst || dayFirstText;
+  if (match) {
+    const monthNames = {
+      jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
+      may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8,
+      sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11
+    };
+    const firstPart = match[1].toLowerCase();
+    const secondPart = match[2];
+    const year = Number(match[3]);
+    const month = monthNames[firstPart];
+    const day = Number(secondPart);
+    if (month !== undefined && Number.isInteger(day) && day >= 1 && day <= 31 && year >= 2000 && year <= 2100) {
+      const date = new Date(Date.UTC(year, month, day));
+      if (date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day) {
+        return date.toISOString().slice(0, 10);
+      }
+    }
+  }
+
+  return "";
+}
+
+function field(text, patterns) { return first(text, patterns).slice(0, 500); }
+
 function extractFacts(caption, title, sourceUrl) {
   const text = clean(`${title} ${caption}`);
   const dateText = extractDate(text, "");
