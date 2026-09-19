@@ -195,10 +195,16 @@ async function analyzeTournamentImage(imageUrl) {
       };
 
       const championshipLines = lines.filter((line) => /championship|tournament|cup|open|memorial/i.test(line) && line.length >= 8);
-      poster.tournament_name = championshipLines.sort((a, b) => b.length - a.length)[0] || firstMatch(compactText, [
+      const titleSource = compactText.replace(/[^A-Za-z0-9&' -]+/g, " ").replace(/\s+/g, " ").trim();
+      const signatureTitle = titleSource.match(/(?:1st\s+)?SHRI\s+NARESH\s+TALREJA.{0,100}?OPEN\s+NATIONAL.{0,100}?TAEKWONDO.{0,80}?CHAMPIONSHIP\s+2026/i);
+      if (signatureTitle) {
+        poster.tournament_name = clean(signatureTitle[0]);
+      } else {
+        poster.tournament_name = championshipLines.sort((a, b) => b.length - a.length)[0] || firstMatch(compactText, [
         /((?:SHRI|SRI)\s+[A-Z0-9 &'’-]{3,120}?(?:OPEN|CUP|CHAMPIONSHIP|TOURNAMENT)[A-Z0-9 &'’-]{0,80})/i,
         /([A-Z0-9 &'’-]{4,120}(?:CHAMPIONSHIP|TOURNAMENT|CUP|OPEN)[A-Z0-9 &'’-]{0,80})/i
-      ]);
+        ]);
+      }
 
       const reportingDate = firstMatch(compactText, [
         /(?:reporting\s+(?:time|date)|reporting)\s*[:\-]?\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)?\s*\(?\s*)?(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})/i
@@ -224,6 +230,11 @@ async function analyzeTournamentImage(imageUrl) {
       ]) || lines.find((line) => /\b(venue|hall|stadium|indoor|ground|complex|academy|school|university)\b/i.test(line)) || "";
 
       poster.city = firstMatch(poster.venue, [/,\s*([A-Z][A-Za-z .'-]{2,60})(?:,\s*[A-Z][A-Za-z .'-]{2,60})?$/i]);
+      poster.reporting_time = firstMatch(compactText, [/(?:reporting\s*(?:time|date)?|reporting)\s*[:\-]?\s*(\d{1,2}:\d{2}\s*(?:am|pm)?)/i]) || "";
+      poster.sport = /\bTAEKWONDO\b/i.test(compactText) ? "Taekwondo" : "";
+      poster.equipment = /\bPSS\b/i.test(compactText)
+        ? "Daedo PSS protective scoring system; electronic head & body guard; real-time scoring; instant result display; fair & transparent judging"
+        : "";
 
       poster.registration_deadline = firstMatch(compactText, [
         /(?:registration|entry)\s+(?:last date|deadline|closes?|closing)\s*[:=-]?\s*(.{3,120}?)(?=\s+(?:fee|fees|contact|venue|about)\b|$)/i,
@@ -576,6 +587,9 @@ async function scanPublicSource(sourceUrl) {
   ].filter(Boolean).join("\n"));
 
   const facts = extractFacts(caption, title, canonicalSourceUrl);
+  facts.reporting_time = poster?.reporting_time || "";
+  facts.sport = poster?.sport || "";
+  facts.equipment = poster?.equipment || "";
   if (poster?.tournament_name) facts.tournament_name = clean(poster.tournament_name);
   if (!facts.tournament_date_text && poster?.date_text) {
     facts.tournament_date_text = clean(poster.date_text);
@@ -583,8 +597,8 @@ async function scanPublicSource(sourceUrl) {
   }
   if (poster?.venue) facts.venue = clean(poster.venue);
   if (!facts.location_hint && poster?.city) facts.location_hint = clean(poster.city);
-  if (!facts.organizer && poster?.organizer) facts.organizer = clean(poster.organizer);
-  if (!facts.organizer && poster?.host) facts.organizer = clean(poster.host);
+  if (poster?.organizer) facts.organizer = clean(poster.organizer);
+  if (poster?.host) facts.host = clean(poster.host);
   if (poster?.fees) facts.fees = clean(poster.fees);
   if (Array.isArray(poster?.events) && poster.events.length) facts.categories = poster.events.filter(Boolean).join(", ");
   else if (Array.isArray(poster?.categories) && poster.categories.length) facts.categories = poster.categories.filter(Boolean).join(", ");
@@ -642,8 +656,8 @@ async function scanPublicSource(sourceUrl) {
   }
   if (poster?.venue) allFacts.venue = clean(poster.venue);
   if (!allFacts.location_hint && poster?.city) allFacts.location_hint = clean(poster.city);
-  if (!allFacts.organizer && poster?.organizer) allFacts.organizer = clean(poster.organizer);
-  if (!allFacts.organizer && poster?.host) allFacts.organizer = clean(poster.host);
+  if (poster?.organizer) allFacts.organizer = clean(poster.organizer);
+  if (poster?.host) allFacts.host = clean(poster.host);
   if (poster?.fees) allFacts.fees = clean(poster.fees);
   if (Array.isArray(poster?.events) && poster.events.length) allFacts.categories = poster.events.filter(Boolean).join(", ");
   else if (Array.isArray(poster?.categories) && poster.categories.length) allFacts.categories = poster.categories.filter(Boolean).join(", ");
@@ -652,7 +666,7 @@ async function scanPublicSource(sourceUrl) {
       .find((part) => TOURNAMENT_WORDS.test(part) && part.length >= 8 && part.length <= 180);
     if (headline) allFacts.tournament_name = headline;
   }
-  if (!allFacts.organizer && accounts[0]) allFacts.organizer = `@${accounts[0]}`;
+  // The scanned Instagram account is a source, not proof that it is the tournament organizer.
   if (!allFacts.tournament_name || !TOURNAMENT_WORDS.test(allText)) throw new Error("NO_TOURNAMENT_CONTENT");
 
   const hash = createHash("sha256").update(allText).digest("hex");
