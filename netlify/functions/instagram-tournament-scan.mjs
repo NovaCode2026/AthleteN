@@ -207,17 +207,25 @@ async function analyzeTournamentImage(imageUrl) {
         return "";
       };
 
-      const championshipLines = lines.filter((line) => /championship|tournament|cup|open|memorial/i.test(line) && line.length >= 8);
+      const championshipLines = lines.filter((line) =>
+        /championship|tournament|cup|open|memorial/i.test(line) &&
+        line.length >= 8 &&
+        !/technology|includes|venue|reporting|about|respect|discipline|perseverance/i.test(line)
+      );
       const titleSource = compactText.replace(/[^A-Za-z0-9&' -]+/g, " ").replace(/\s+/g, " ").trim();
       const signatureTitle = titleSource.match(/(?:1st\s+)?SHRI\s+NARESH\s+TALREJA.{0,100}?OPEN\s+NATIONAL.{0,100}?TAEKWONDO.{0,80}?CHAMPIONSHIP\s+2026/i);
-      if (signatureTitle) {
-        poster.tournament_name = clean(signatureTitle[0]);
-      } else {
-        poster.tournament_name = championshipLines.sort((a, b) => b.length - a.length)[0] || firstMatch(compactText, [
-        /((?:SHRI|SRI)\s+[A-Z0-9 &'’-]{3,120}?(?:OPEN|CUP|CHAMPIONSHIP|TOURNAMENT)[A-Z0-9 &'’-]{0,80})/i,
-        /([A-Z0-9 &'’-]{4,120}(?:CHAMPIONSHIP|TOURNAMENT|CUP|OPEN)[A-Z0-9 &'’-]{0,80})/i
-        ]);
-      }
+      const titleCandidates = [
+        signatureTitle?.[0] || "",
+        ...championshipLines.filter((line) => /taekwondo|championship/i.test(line))
+      ].filter(Boolean);
+      poster.tournament_name = titleCandidates.sort((a, b) => {
+        const score = (s) =>
+          (/(?:shri|memorial)/i.test(s) ? 4 : 0) +
+          (/taekwondo/i.test(s) ? 4 : 0) +
+          (/championship/i.test(s) ? 4 : 0) +
+          (/2026/.test(s) ? 2 : 0);
+        return score(b) - score(a);
+      })[0] || "";
 
       const reportingDate = firstMatch(compactText, [
         /(?:reporting\s+(?:time|date)|reporting)\s*[:\-]?\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)?\s*\(?\s*)?(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})/i
@@ -238,9 +246,9 @@ async function analyzeTournamentImage(imageUrl) {
       ]) || "";
 
       poster.venue = firstMatch(compactText, [
-        /\bVENUE\s*[:\-]?\s*(.+?)(?=\s+(?:REPORTING|REPORTING TIME|ABOUT THE CHAMPIONSHIP|DATE|DATES|REGISTRATION|CONTACT)\b|$)/i,
-        /\b(?:VENUE|LOCATION)\s*[:\-]?\s*(.+?)(?=\s+(?:REPORTING|ABOUT|REGISTRATION|CONTACT)\b|$)/i
-      ]) || lines.find((line) => /\b(venue|hall|stadium|indoor|ground|complex|academy|school|university)\b/i.test(line)) || "";
+        /\bVENUE\s*[:\-]?\s*(.+?)(?=\s+REPORTING\s+TIME|\s+REPORTING|\s+ABOUT\s+THE\s+CHAMPIONSHIP|\s+DATE|\s+DATES|\s+REGISTRATION|\s+CONTACT|$)/i,
+        /\b(?:VENUE|LOCATION)\s*[:\-]?\s*(.+?)(?=\s+REPORTING|\s+ABOUT|\s+REGISTRATION|\s+CONTACT|$)/i
+      ]) || "";
 
       poster.city = firstMatch(poster.venue, [/,\s*([A-Z][A-Za-z .'-]{2,60})(?:,\s*[A-Z][A-Za-z .'-]{2,60})?$/i]);
       poster.reporting_time = firstMatch(compactText, [/(?:reporting\s*(?:time|date)?|reporting)\s*[:\-]?\s*(\d{1,2}:\d{2}\s*(?:am|pm)?)/i]) || "";
@@ -248,6 +256,9 @@ async function analyzeTournamentImage(imageUrl) {
       poster.equipment = /\bPSS\b/i.test(compactText)
         ? "Daedo PSS protective scoring system; electronic head & body guard; real-time scoring; instant result display; fair & transparent judging"
         : "";
+      poster.highlights = lines.filter((line) =>
+        /600\+|10\+\s*states|athletes|coaches|referees|officials|scoring|protective scoring|real-time scoring|instant result/i.test(line)
+      ).slice(0, 8);
 
       poster.registration_deadline = firstMatch(compactText, [
         /(?:registration|entry)\s+(?:last date|deadline|closes?|closing)\s*[:=-]?\s*(.{3,120}?)(?=\s+(?:fee|fees|contact|venue|about)\b|$)/i,
@@ -337,10 +348,10 @@ function extractCaption(html) {
 
 function extractTitle(html, caption) {
   const rawTitle = meta(html, "og:title") || first(html, [/<title[^>]*>([\s\S]*?)<\/title>/i]);
-  const cleanedTitle = captionFromInstagramShell(rawTitle);
-  const combined = clean(`${cleanedTitle} ${caption}`);
-  const named = combined.match(/\b([A-Z][A-Za-z0-9&' -]{2,100}\b(?:Cup|Championships?|Open|Games|Tournament))\b/);
-  return named?.[1] ? named[1].trim().slice(0, 180) : "";
+  const cleanedTitle = clean(captionFromInstagramShell(rawTitle));
+  if (!cleanedTitle || /^#|instagram$/i.test(cleanedTitle) || cleanedTitle.length > 220) return "";
+  const named = cleanedTitle.match(/(?:1st|2nd|3rd|4th|5th)?\s*(?:Shri|Sri)?\s*[A-Z][A-Za-z0-9&' -]{2,120}\b(?:Cup|Championships?|Open|Games|Tournament)\b[^|]{0,80}/i);
+  return named?.[0] ? clean(named[0]).slice(0, 180) : "";
 }
 
 function extractDate(text, html) {
@@ -668,7 +679,7 @@ async function scanPublicSource(sourceUrl) {
     allFacts.tournament_date = toDatabaseDate(poster.date_text) || allFacts.tournament_date;
   }
   if (poster?.venue) allFacts.venue = clean(poster.venue);
-  if (!allFacts.location_hint && poster?.city) allFacts.location_hint = clean(poster.city);
+  if (poster?.city || poster?.state) allFacts.location_hint = [poster.city, poster.state].filter(Boolean).join(", ");
   if (poster?.organizer) allFacts.organizer = clean(poster.organizer);
   if (poster?.host) allFacts.host = clean(poster.host);
   if (poster?.fees) allFacts.fees = clean(poster.fees);
@@ -712,6 +723,9 @@ async function scanPublicSource(sourceUrl) {
     official_contact: allFacts.contact || "Not found in accessible source",
     organizer: allFacts.organizer || "Not found in accessible source",
     equipment_and_scoring: clean(poster?.equipment || "") || "Not found in accessible source",
+    important_highlights: Array.isArray(poster?.highlights) && poster.highlights.length
+      ? poster.highlights.join(" ")
+      : "Not found in accessible source",
     important_notice: dateConflict
       ? `Conflict detected between accessible source text and poster OCR: source says "${sourceDateText}"; poster OCR says "${posterDateText}".`
       : "Not found in accessible source",
