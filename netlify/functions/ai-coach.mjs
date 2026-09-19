@@ -25,7 +25,7 @@ const MAX_EMOTIONAL_PROMPT_LENGTH = 12000;
 const MAX_TOPIC_LENGTH = 64;
 const OPENAI_TIMEOUT_MS = 20000;
 
-// AthleteOS is intentionally athlete-first, not a general coding/productivity assistant.
+// AthleteN is intentionally athlete-first, not a general coding/productivity assistant.
 // This gate runs on the server so clients cannot bypass a frontend-only restriction.
 const codingPatterns = [
   /\b(write|generate|create|build|make|code|program|script|implement|debug|fix)\b.{0,80}\b(code|coding|program|script|software|app|website|api|database|sql|javascript|typescript|python|java|c\+\+|html|css|react|next\.js|node|github)\b/i,
