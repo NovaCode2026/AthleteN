@@ -188,10 +188,23 @@ async function analyzeTournamentImage(imageUrl) {
         /([A-Z0-9 &'’-]{4,120}(?:CHAMPIONSHIP|TOURNAMENT|CUP|OPEN)[A-Z0-9 &'’-]{0,80})/i
       ]);
 
-      poster.date_text = firstMatch(compactText, [
-        /((?:\d{1,2}(?:st|nd|rd|th)?\s*(?:and|&|to|[-–])\s*)?\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})/i,
-        /((?:\d{1,2}(?:st|nd|rd|th)?\s*(?:and|&|to|[-–])\s*)?\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*)/i
-      ]) || lines.find((line) => /\b\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|to|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(line)) || "";
+      const reportingDate = firstMatch(compactText, [
+        /(?:reporting\s+(?:time|date)|reporting)\s*[:\-]?\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)?\s*\(?\s*)?(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})/i
+      ]);
+      poster.reporting_date_text = reportingDate || "";
+
+      const eventDateCandidates = [
+        ...lines.filter((line) => /\b\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|to|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(line)),
+        ...lines.filter((line) => /\b(?:date|dates?|event dates?)\b/i.test(line))
+      ];
+      poster.event_date_text = eventDateCandidates[0] || firstMatch(compactText, [
+        /((?:\d{1,2}(?:st|nd|rd|th)?\s*(?:and|&|to|[-–])\s*)\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})/i,
+        /((?:\d{1,2}(?:st|nd|rd|th)?\s*(?:and|&|to|[-–])\s*)\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*)/i
+      ]) || "";
+
+      poster.date_text = poster.event_date_text || firstMatch(compactText, [
+        /((?:\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2}))/i
+      ]) || "";
 
       poster.venue = firstMatch(compactText, [
         /\bVENUE\s*[:\-]?\s*(.+?)(?=\s+(?:REPORTING|REPORTING TIME|ABOUT THE CHAMPIONSHIP|DATE|DATES|REGISTRATION|CONTACT)\b|$)/i,
@@ -549,7 +562,7 @@ async function scanPublicSource(sourceUrl) {
 
   const facts = extractFacts(caption, title, canonicalSourceUrl);
   if (poster?.tournament_name) facts.tournament_name = clean(poster.tournament_name);
-  if (poster?.date_text) {
+  if (!facts.tournament_date_text && poster?.date_text) {
     facts.tournament_date_text = clean(poster.date_text);
     facts.tournament_date = toDatabaseDate(poster.date_text) || facts.tournament_date;
   }
@@ -608,7 +621,7 @@ async function scanPublicSource(sourceUrl) {
   const allText = [title, caption, rawVisibleText, posterFactsText, posterText, ...uniquePosts.map((p) => p.caption)].filter(Boolean).join("\n");
   const allFacts = extractFacts(caption, title, canonicalSourceUrl);
   if (poster?.tournament_name) allFacts.tournament_name = clean(poster.tournament_name);
-  if (poster?.date_text) {
+  if (!allFacts.tournament_date_text && poster?.date_text) {
     allFacts.tournament_date_text = clean(poster.date_text);
     allFacts.tournament_date = toDatabaseDate(poster.date_text) || allFacts.tournament_date;
   }
