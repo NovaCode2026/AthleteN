@@ -111,6 +111,8 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
   const sourcePages = details?.source_pages || [];
   const relevantPosts = instagramResult?.relevant_posts || [];
   const otherPosts = instagramResult?.other_posts || [];
+  const dateDisplay = details?.fields?.tournament_date_text || selectedScan?.tournament_date || "Not found";
+  const registrationDisplay = details?.fields?.registration_deadline_text || selectedScan?.registration_deadline || "Not found";
 
   return <div className="feature-page tournament-scanner">
     <div className="page-heading">
@@ -135,9 +137,9 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
       <section className="card panel">
         <div className="panel-head"><div><p className="eyebrow">Latest intelligence</p><h3>{selectedScan.tournament_name || "Tournament source"}</h3><p>{details?.description || "Information extracted from the source and relevant pages."}</p></div><span className={`status ${selectedScan.status === "blocked" ? "blocked" : ""}`}>{selectedScan.status || "checked"}</span></div>
         <div className="scan-summary">
-          <div className="summary-item"><CalendarDays size={16}/><span>Date</span><strong>{selectedScan.tournament_date || "Not found"}</strong></div>
+          <div className="summary-item"><CalendarDays size={16}/><span>Date</span><strong>{dateDisplay}</strong></div>
           <div className="summary-item"><MapPin size={16}/><span>Venue</span><strong>{selectedScan.venue || "Not found"}</strong></div>
-          <div className="summary-item"><CalendarDays size={16}/><span>Registration</span><strong>{selectedScan.registration_deadline || "Not found"}</strong></div>
+          <div className="summary-item"><CalendarDays size={16}/><span>Registration</span><strong>{registrationDisplay}</strong></div>
           <div className="summary-item"><Globe size={16}/><span>Pages scanned</span><strong>{details?.pages_scanned ?? 0}</strong></div>
         </div>
       </section>
