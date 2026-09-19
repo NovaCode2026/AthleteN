@@ -141,14 +141,25 @@ async function analyzeTournamentImage(imageUrl) {
         tessedit_pageseg_mode: "11"
       });
 
-      const ocrTexts = [];
-      for (const pageSegMode of ["11", "6"]) {
-        await worker.setParameters({ tessedit_pageseg_mode: pageSegMode });
+      const ocrPasses = [];
+      for (const pageSegMode of ["11", "6", "3", "12"]) {
+        await worker.setParameters({ tessedit_pageseg_mode: pageSegMode, preserve_interword_spaces: "1" });
         const result = await worker.recognize(buffer);
         const raw = String(result?.data?.text || "");
-        if (raw.trim()) ocrTexts.push(raw);
+        const confidence = Number(result?.data?.confidence || 0);
+        if (raw.trim()) ocrPasses.push({ raw, confidence, pageSegMode });
       }
-      const text = unique(ocrTexts.flatMap((raw) => raw.split(/\r?\n+/).map((line) => clean(line)))).filter(Boolean).join("\n");
+
+      // Keep each OCR pass separately. A fact is promoted only when the OCR
+      // evidence is stable enough; one noisy pass must not become a confident fact.
+      const normalizedPasses = ocrPasses.map((pass) => ({
+        ...pass,
+        lines: pass.raw.split(/\r?\n+/).map((line) => clean(line)).filter(Boolean)
+      }));
+      const bestPass = [...normalizedPasses].sort((a, b) => b.confidence - a.confidence)[0];
+      const text = bestPass?.lines?.join("\n") || unique(
+        normalizedPasses.flatMap((pass) => pass.lines)
+      ).join("\n");
 
       if (!text) return { poster: null, error: "POSTER_OCR_NO_TEXT" };
 
@@ -199,8 +210,9 @@ async function analyzeTournamentImage(imageUrl) {
       };
 
       // Deterministic extraction from OCR text. No guessing.
-      const lines = text.split(/\n+/).map((line) => clean(line)).filter(Boolean);
-      const compactText = clean(text.replace(/\s+/g, " "));
+      const lines = (bestPass?.lines?.length ? bestPass.lines : text.split(/\n+/))
+        .map((line) => clean(line)).filter(Boolean);
+      const compactText = clean(lines.join(" ").replace(/\s+/g, " "));
 
       const firstMatch = (value, patterns) => {
         for (const pattern of patterns) {
@@ -210,6 +222,30 @@ async function analyzeTournamentImage(imageUrl) {
         return "";
       };
 
+      const normalizeEvidence = (value) => clean(String(value || ""))
+        .replace(/[|•]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      const consensus = (values, normalizer = normalizeEvidence) => {
+        const groups = new Map();
+        for (const value of values || []) {
+          const normalized = normalizer(value);
+          if (!normalized) continue;
+          const key = normalized.toLowerCase();
+          const current = groups.get(key) || { value: normalized, count: 0 };
+          current.count += 1;
+          groups.set(key, current);
+        }
+        const ranked = [...groups.values()].sort((a, b) => b.count - a.count || b.value.length - a.value.length);
+        return ranked.length && (ranked[0].count >= 2 || (ranked.length === 1 && normalizedPasses.length === 1))
+          ? ranked[0].value
+          : "";
+      };
+
+      const extractAcrossPasses = (patterns, normalizer = normalizeEvidence) =>
+        consensus(normalizedPasses.map((pass) => firstMatch(pass.lines.join(" "), patterns)), normalizer);
+
       const championshipLines = lines.filter((line) =>
         /championship|tournament|cup|open|memorial/i.test(line) &&
         line.length >= 8 &&
@@ -217,20 +253,21 @@ async function analyzeTournamentImage(imageUrl) {
       );
       const titleSource = compactText.replace(/[^A-Za-z0-9&' -]+/g, " ").replace(/\s+/g, " ").trim();
       const signatureTitle = titleSource.match(/(?:1st\s+)?SHRI\s+NARESH\s+TALREJA.{0,100}?OPEN\s+NATIONAL.{0,100}?TAEKWONDO.{0,80}?CHAMPIONSHIP\s+2026/i);
-      const titleCandidates = [
-        signatureTitle?.[0] || "",
-        ...championshipLines.filter((line) => /taekwondo|championship/i.test(line))
-      ].filter(Boolean);
-      poster.tournament_name = titleCandidates.sort((a, b) => {
-        const score = (s) =>
-          (/(?:shri|memorial)/i.test(s) ? 4 : 0) +
-          (/taekwondo/i.test(s) ? 4 : 0) +
-          (/championship/i.test(s) ? 4 : 0) +
-          (/2026/.test(s) ? 2 : 0);
-        return score(b) - score(a);
-      })[0] || "";
+      const titleCandidates = normalizedPasses.map((pass) => {
+        const passText = clean(pass.lines.join(" "));
+        const signature = passText.match(/(?:1st\s+)?SHRI\s+NARESH\s+TALREJA.{0,100}?OPEN\s+NATIONAL.{0,100}?TAEKWONDO.{0,80}?CHAMPIONSHIP\s+2026/i);
+        if (signature?.[0]) return normalizeEvidence(signature[0]);
+        const candidates = pass.lines.filter((line) =>
+          /(?:championship|tournament|cup|open|memorial)/i.test(line) &&
+          /(?:taekwondo|202\d|memorial|shri|sri)/i.test(line) &&
+          line.length >= 12 &&
+          !/technology|includes|venue|reporting|about|respect|discipline|perseverance/i.test(line)
+        );
+        return candidates.sort((a, b) => b.length - a.length)[0] || "";
+      }).filter(Boolean);
+      poster.tournament_name = consensus(titleCandidates) || "";
 
-      const reportingDate = firstMatch(compactText, [
+      const reportingDate = extractAcrossPasses([
         /(?:reporting\s+(?:time|date)|reporting)\s*[:\-]?\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)?\s*\(?\s*)?(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})/i
       ]);
       poster.reporting_date_text = reportingDate || "";
@@ -239,16 +276,24 @@ async function analyzeTournamentImage(imageUrl) {
         ...lines.filter((line) => /\b\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|to|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(line)),
         ...lines.filter((line) => /\b(?:date|dates?|event dates?)\b/i.test(line))
       ];
-      poster.event_date_text = eventDateCandidates[0] || firstMatch(compactText, [
+      const eventDatePatterns = [
         /((?:\d{1,2}(?:st|nd|rd|th)?\s*(?:and|&|to|[-–])\s*)\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})/i,
         /((?:\d{1,2}(?:st|nd|rd|th)?\s*(?:and|&|to|[-–])\s*)\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*)/i
-      ]) || "";
+      ];
+      const eventDateEvidence = normalizedPasses.flatMap((pass) => {
+        const passText = clean(pass.lines.join(" "));
+        return [
+          ...pass.lines.filter((line) => /\b\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|to|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(line)),
+          firstMatch(passText, eventDatePatterns)
+        ];
+      });
+      poster.event_date_text = consensus(eventDateEvidence) || "";
 
       poster.date_text = poster.event_date_text || firstMatch(compactText, [
         /((?:\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2}))/i
       ]) || "";
 
-      poster.venue = firstMatch(compactText, [
+      poster.venue = extractAcrossPasses([
         /\bVENUE\s*[:\-]?\s*(.+?)(?=\s+REPORTING\s+TIME|\s+REPORTING|\s+ABOUT\s+THE\s+CHAMPIONSHIP|\s+DATE|\s+DATES|\s+REGISTRATION|\s+CONTACT|$)/i,
         /\b(?:VENUE|LOCATION)\s*[:\-]?\s*(.+?)(?=\s+REPORTING|\s+ABOUT|\s+REGISTRATION|\s+CONTACT|$)/i
       ]) || "";      const locationParts = poster.venue.split(",").map((part) => clean(part)).filter(Boolean);
@@ -258,7 +303,7 @@ async function analyzeTournamentImage(imageUrl) {
       } else if (locationParts.length === 2) {
         poster.city = locationParts[1];
       }
-      poster.reporting_time = firstMatch(compactText, [/(?:reporting\s*(?:time|date)?|reporting)\s*[:\-]?\s*(\d{1,2}:\d{2}\s*(?:am|pm)?)/i]) || "";
+      poster.reporting_time = extractAcrossPasses([/(?:reporting\s*(?:time|date)?|reporting)\s*[:\-]?\s*(\d{1,2}:\d{2}\s*(?:am|pm)?)/i]) || "";
       poster.sport = /\bTAEKWONDO\b/i.test(compactText) ? "Taekwondo" : "";
       poster.equipment = /\bPSS\b/i.test(compactText)
         ? "Daedo PSS protective scoring system; electronic head & body guard; real-time scoring; instant result display; fair & transparent judging"
@@ -353,10 +398,17 @@ function extractCaption(html) {
   return tournamentCandidates.sort((a,b) => b.length-a.length)[0] || "";
 }
 
-function extractTitle(html, caption) {
+function extractTitle(html) {
   const rawTitle = meta(html, "og:title") || first(html, [/<title[^>]*>([\s\S]*?)<\/title>/i]);
-  const cleanedTitle = clean(captionFromInstagramShell(rawTitle));
-  if (!cleanedTitle || /^#|instagram$/i.test(cleanedTitle) || cleanedTitle.length > 220) return "";
+  const cleanedTitle = clean(String(rawTitle || "").replace(/\\u0026/g, "&"));
+  if (!cleanedTitle || /^(?:Instagram|Log in|Sign up|Create new account)$/i.test(cleanedTitle) || cleanedTitle.length > 220) return "";
+
+  // Only accept a metadata title when it explicitly looks like an event name.
+  // Never parse quoted captions, hashtags, profile names, or generic Instagram
+  // shell text into the tournament identity.
+  if (!/(?:championship|championships|tournament|open|cup|games)\b/i.test(cleanedTitle)) return "";
+  if (!/(?:taekwondo|memorial|202\d|\b(?:1st|2nd|3rd|4th|5th)\b)/i.test(cleanedTitle)) return "";
+
   const named = cleanedTitle.match(/(?:1st|2nd|3rd|4th|5th)?\s*(?:Shri|Sri)?\s*[A-Z][A-Za-z0-9&' -]{2,120}\b(?:Cup|Championships?|Open|Games|Tournament)\b[^|]{0,80}/i);
   return named?.[0] ? clean(named[0]).slice(0, 180) : "";
 }
@@ -586,7 +638,7 @@ async function scanPublicSource(sourceUrl) {
 
   const root = await fetchInstagram(canonicalSourceUrl);
   const caption = extractCaption(root.html);
-  const title = extractTitle(root.html, caption);
+  const title = extractTitle(root.html);
   const rawVisibleText = extractVisibleInstagramText(root.html);
   const imageUrls = extractImageUrls(root.html);
 
@@ -653,7 +705,7 @@ async function scanPublicSource(sourceUrl) {
       if (!page.ok) return null;
       const html = await page.text();
       const profileCaption = extractCaption(html);
-      const profileTitle = extractTitle(html, profileCaption);
+      const profileTitle = extractTitle(html);
       const profilePosts = mediaFromHtml(html, profileUrl);
       return { username, url: profileUrl, posts: profilePosts.slice(0, 10), relevant: profilePosts.length > 0, title: profileTitle || null };
     } catch {
@@ -737,7 +789,7 @@ async function scanPublicSource(sourceUrl) {
       detected_changes: "New scan; compare this source again to detect content changes.",
       details: {
         important_facts: importantFacts,
-        description: caption || rawVisibleText || null,
+        description: poster?.tournament_name || allFacts.tournament_name || "Tournament information extracted from accessible source.",
         fields: {
           organizer: allFacts.organizer || "",
           host: allFacts.host || "",
