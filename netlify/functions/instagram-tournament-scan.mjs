@@ -7,6 +7,18 @@ const MAX_RELATED_ACCOUNTS = 8;
 const MAX_RELATED_POSTS = 30;
 
 function json(payload, status = 200) { return Response.json(payload, { status }); }
+const MAX_SCAN_MS = 110000;
+const MAX_PROFILE_ACCOUNTS = 8;
+
+async function fetchBounded(url, options = {}, timeoutMs = 7000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(500, timeoutMs));
+  try {
+    return await fetch(url, { ...options, signal: controller.signal, redirect: "follow" });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 function env(name) { return Netlify.env.get(name); }
 
 function authClient(token) {
@@ -401,7 +413,7 @@ function mediaFromHtml(html, fallbackUrl) {
 
 async function fetchInstagram(url) {
   const headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36",
     Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
     Referer: "https://www.instagram.com/"
@@ -423,9 +435,11 @@ async function fetchInstagram(url) {
   } catch {}
 
   let lastStatus = 0;
+  const useful = [];
+
   for (const candidate of candidates) {
     try {
-      const response = await fetch(candidate.url, { redirect: "follow", headers });
+      const response = await fetchBounded(candidate.url, { headers }, 7000);
       lastStatus = response.status;
       if (!response.ok) continue;
 
@@ -449,25 +463,17 @@ async function fetchInstagram(url) {
           data?.graphql?.xdt_shortcode_media?.display_url ||
           ""
         );
-        const combined = clean(`${title} ${captionText} ${author}`);
-        if (!combined && !embed) continue;
         const escaped = (value) => String(value || "")
-          .replace(/&/g, "&amp;")
-          .replace(/"/g, "&quot;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
+          .replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         const syntheticHtml = [
           `<meta property="og:title" content="${escaped(title || author)}">`,
           `<meta property="og:description" content="${escaped(captionText || title)}">`,
           `<meta name="twitter:description" content="${escaped(captionText || title)}">`,
           `<meta name="description" content="${escaped(captionText || title)}">`,
           imageUrl ? `<meta property="og:image" content="${escaped(imageUrl)}">` : "",
-          `<script type="application/ld+json">${escaped(JSON.stringify({ articleBody: captionText }))}</script>`,
           embed
         ].join(" ");
-        if (TOURNAMENT_WORDS.test(combined) || TOURNAMENT_WORDS.test(embed)) {
-          return { html: syntheticHtml, finalUrl: url };
-        }
+        if (captionText || title || author || embed || imageUrl) useful.push({ html: syntheticHtml, finalUrl: url });
         continue;
       }
 
@@ -475,20 +481,27 @@ async function fetchInstagram(url) {
       const candidateCaption = extractCaption(html);
       const candidateTitle = extractTitle(html, candidateCaption);
       const visible = clean(`${candidateTitle} ${candidateCaption}`);
-
-      // Instagram can return a successful HTTP response containing only a
-      // login/challenge shell. Do not stop there; continue to the embed/oEmbed
-      // fallbacks so a public tournament caption can still be recovered.
-      if (TOURNAMENT_WORDS.test(visible)) {
-        return { html, finalUrl: response.url || candidate.url };
-      }
-    } catch {}
+      const hasTournament = TOURNAMENT_WORDS.test(visible);
+      const hasImage = extractImageUrls(html).length > 0;
+      const hasUsefulInstagramData = hasTournament || hasImage || /@([a-z0-9._]{1,30})/i.test(visible);
+      if (hasUsefulInstagramData) useful.push({ html, finalUrl: response.url || candidate.url });
+    } catch (error) {
+      if (error?.name !== "AbortError") console.error("instagram-source-fetch", candidate.url, error?.message || error);
+    }
   }
 
-  throw new Error(`INSTAGRAM_HTTP_${lastStatus || 502}`);
-}
+  if (!useful.length) throw new Error(`INSTAGRAM_HTTP_${lastStatus || 502}`);
 
+  // Merge the successful public representations. This prevents a login shell
+  // or sparse HTML response from hiding caption/image data available in an
+  // embed or oEmbed representation.
+  const merged = useful.slice(0, 5).map((item) => item.html).join("\n");
+  const finalUrl = useful[0]?.finalUrl || url;
+  return { html: merged, finalUrl };
+}
 async function scanPublicSource(sourceUrl) {
+  const startedAt = Date.now();
+  const deadline = startedAt + MAX_SCAN_MS;
   const parsedSource = new URL(sourceUrl);
   const canonicalSourceUrl = (() => {
     const parts = parsedSource.pathname.split("/").filter(Boolean);
@@ -496,22 +509,30 @@ async function scanPublicSource(sourceUrl) {
     if ((parts[0] || "").toLowerCase() === "reel" && parts[1]) return `https://www.instagram.com/reel/${parts[1]}/`;
     return parsedSource.toString();
   })();
+
   const root = await fetchInstagram(canonicalSourceUrl);
   const caption = extractCaption(root.html);
   const title = extractTitle(root.html, caption);
+  const rawVisibleText = extractVisibleInstagramText(root.html);
   const imageUrls = extractImageUrls(root.html);
+
+  // The source itself is always preserved. AI enhancement must never replace
+  // or erase information that Instagram already exposed.
   let poster = null;
   let posterAnalysisError = "";
   let analyzedPosterImageUrl = "";
-  for (const imageUrl of imageUrls) {
+
+  for (const imageUrl of imageUrls.slice(0, 2)) {
+    if (Date.now() >= deadline - 25000) break;
     const analysis = await analyzeTournamentImage(imageUrl);
-    poster = analysis?.poster || null;
-    posterAnalysisError = analysis?.error || "";
-    if (poster) {
+    posterAnalysisError = analysis?.error || posterAnalysisError;
+    if (analysis?.poster) {
+      poster = analysis.poster;
       analyzedPosterImageUrl = imageUrl;
       break;
     }
   }
+
   const posterText = clean(poster?.poster_text || "");
   const posterFactsText = clean([
     poster?.tournament_name, poster?.date_text, poster?.venue, poster?.sport, poster?.organizer,
@@ -521,6 +542,7 @@ async function scanPublicSource(sourceUrl) {
     ...(Array.isArray(poster?.categories) ? poster.categories : []),
     ...(Array.isArray(poster?.highlights) ? poster.highlights : [])
   ].filter(Boolean).join("\n"));
+
   const facts = extractFacts(caption, title, canonicalSourceUrl);
   if (poster?.tournament_name) facts.tournament_name = clean(poster.tournament_name);
   if (poster?.date_text) {
@@ -534,29 +556,50 @@ async function scanPublicSource(sourceUrl) {
   if (Array.isArray(poster?.events) && poster.events.length) facts.categories = poster.events.filter(Boolean).join(", ");
   else if (Array.isArray(poster?.categories) && poster.categories.length) facts.categories = poster.categories.filter(Boolean).join(", ");
   if (!facts.tournament_name && caption) {
-    const headline = caption
-      .split(/(?:\n|[.!?])+/)
-      .map((part) => clean(part))
+    const headline = caption.split(/(?:\n|[.!?])+/).map((part) => clean(part))
       .find((part) => TOURNAMENT_WORDS.test(part) && part.length >= 8 && part.length <= 180);
     if (headline) facts.tournament_name = headline;
   }
+
   const accounts = instagramAccounts(root.html, root.finalUrl, caption);
-  const relatedPosts = mediaFromHtml(root.html, root.finalUrl);
   const accountResults = [];
-  for (const username of accounts.slice(0, MAX_RELATED_ACCOUNTS)) {
-    if (username === accounts[0] && !caption.includes("@")) continue;
+  const relatedPosts = mediaFromHtml(root.html, root.finalUrl);
+
+  // Check discovered accounts in parallel instead of serially. This is the
+  // "other things" pass: mentions, source account, tagged Instagram URLs and
+  // accessible profile pages are inspected within the hard time budget.
+  const profileTargets = accounts.slice(0, MAX_PROFILE_ACCOUNTS);
+  const profileResults = await Promise.allSettled(profileTargets.map(async (username) => {
+    if (Date.now() >= deadline - 10000) return null;
+    const profileUrl = `https://www.instagram.com/${username}/`;
     try {
-      const profileUrl = `https://www.instagram.com/${username}/`;
-      const page = await fetchInstagram(profileUrl);
-      const profileCaption = extractCaption(page.html);
-      const profileTitle = extractTitle(page.html, profileCaption);
-      const profilePosts = mediaFromHtml(page.html, profileUrl);
-      accountResults.push({ username, url: profileUrl, posts: profilePosts.slice(0, 10), relevant: profilePosts.length > 0, title: profileTitle || null });
-      for (const post of profilePosts) relatedPosts.push(post);
-    } catch {}
+      const page = await fetchBounded(profileUrl, { headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        Referer: "https://www.instagram.com/"
+      }}, 6500);
+      if (!page.ok) return null;
+      const html = await page.text();
+      const profileCaption = extractCaption(html);
+      const profileTitle = extractTitle(html, profileCaption);
+      const profilePosts = mediaFromHtml(html, profileUrl);
+      return { username, url: profileUrl, posts: profilePosts.slice(0, 10), relevant: profilePosts.length > 0, title: profileTitle || null };
+    } catch {
+      return null;
+    }
+  }));
+  for (const result of profileResults) {
+    if (result.status === "fulfilled" && result.value) {
+      accountResults.push(result.value);
+      relatedPosts.push(...result.value.posts);
+    }
   }
-  const uniquePosts = [...new Map(relatedPosts.map((p) => [p.id, p])).values()].filter((p) => TOURNAMENT_WORDS.test(p.caption)).slice(0, MAX_RELATED_POSTS);
-  const allText = [title, caption, posterFactsText, posterText, ...uniquePosts.map((p) => p.caption)].join("\n");
+
+  const uniquePosts = [...new Map(relatedPosts.map((p) => [p.id, p])).values()]
+    .filter((p) => TOURNAMENT_WORDS.test(p.caption)).slice(0, MAX_RELATED_POSTS);
+
+  const allText = [title, caption, rawVisibleText, posterFactsText, posterText, ...uniquePosts.map((p) => p.caption)].filter(Boolean).join("\n");
   const allFacts = extractFacts(caption, title, canonicalSourceUrl);
   if (poster?.tournament_name) allFacts.tournament_name = clean(poster.tournament_name);
   if (poster?.date_text) {
@@ -570,14 +613,13 @@ async function scanPublicSource(sourceUrl) {
   if (Array.isArray(poster?.events) && poster.events.length) allFacts.categories = poster.events.filter(Boolean).join(", ");
   else if (Array.isArray(poster?.categories) && poster.categories.length) allFacts.categories = poster.categories.filter(Boolean).join(", ");
   if (!allFacts.tournament_name && caption) {
-    const headline = caption
-      .split(/(?:\n|[.!?])+/)
-      .map((part) => clean(part))
+    const headline = caption.split(/(?:\n|[.!?])+/).map((part) => clean(part))
       .find((part) => TOURNAMENT_WORDS.test(part) && part.length >= 8 && part.length <= 180);
     if (headline) allFacts.tournament_name = headline;
   }
   if (!allFacts.organizer && accounts[0]) allFacts.organizer = `@${accounts[0]}`;
   if (!allFacts.tournament_name || !TOURNAMENT_WORDS.test(allText)) throw new Error("NO_TOURNAMENT_CONTENT");
+
   const hash = createHash("sha256").update(allText).digest("hex");
   return {
     scan: {
@@ -592,7 +634,7 @@ async function scanPublicSource(sourceUrl) {
       status: "checked",
       detected_changes: "New scan; compare this source again to detect content changes.",
       details: {
-        description: caption || null,
+        description: caption || rawVisibleText || null,
         fields: {
           organizer: allFacts.organizer,
           location_hint: allFacts.location_hint,
@@ -639,11 +681,17 @@ async function scanPublicSource(sourceUrl) {
           poster_transport: clean(poster?.transport || ""),
           poster_documents: clean(poster?.documents || ""),
           poster_notices: Array.isArray(poster?.notices) ? poster.notices.join(" | ") : "",
-          poster_hashtags: Array.isArray(poster?.hashtags) ? poster.hashtags.join(" ") : ""
+          poster_hashtags: Array.isArray(poster?.hashtags) ? poster.hashtags.join(" ") : "",
+          raw_source_text: rawVisibleText || caption || "",
+          source_caption: caption || "",
+          source_image_count: String(imageUrls.length),
+          scan_elapsed_seconds: ((Date.now() - startedAt) / 1000).toFixed(1)
         },
         headings: [],
         sections: [
-          ...(posterText ? [{ title: "Tournament poster information", content: posterText, source_url: imageUrls[0] || root.finalUrl }] : []),
+          ...(rawVisibleText ? [{ title: "Source text exactly as accessible", content: rawVisibleText, source_url: canonicalSourceUrl }] : []),
+          ...(caption && caption !== rawVisibleText ? [{ title: "Instagram caption", content: caption, source_url: canonicalSourceUrl }] : []),
+          ...(posterText ? [{ title: "Tournament poster information", content: posterText, source_url: analyzedPosterImageUrl || imageUrls[0] || root.finalUrl }] : []),
           ...uniquePosts.map((p) => ({ title: "Relevant Instagram post/reel", content: p.caption, source_url: p.permalink }))
         ],
         key_highlights: [
@@ -660,7 +708,6 @@ async function scanPublicSource(sourceUrl) {
     source_hash: hash
   };
 }
-
 export default async function handler(request) {
   if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
   const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
