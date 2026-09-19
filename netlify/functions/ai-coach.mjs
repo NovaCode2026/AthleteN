@@ -95,7 +95,7 @@ export default async function handler(request) {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
 
   if (!allowedTopics.has(topic) || !prompt) {
-    return json("Choose an AthleteOS topic and enter a prompt.", 400);
+    return json("Choose an AthleteN topic and enter a prompt.", 400);
   }
   if (topic.length > MAX_TOPIC_LENGTH) {
     return json(`Topic is too long. Maximum length is ${MAX_TOPIC_LENGTH} characters.`, 400);
@@ -105,7 +105,7 @@ export default async function handler(request) {
   // authentication, quota reservation, or the OpenAI call so blocked requests
   // cannot consume AI quota or reach the model.
   if (isCodingRequest(`${topic}\n${prompt}`)) {
-    return json("AthleteOS AI focuses on athlete development, training, competition, wellbeing, and sports support. Coding and software-development requests are not available here.", 403);
+    return json("AthleteN AI focuses on athlete development, training, competition, wellbeing, and sports support. Coding and software-development requests are not available here.", 403);
   }
 
   const emotionalSupport = isEmotionalSupportRequest(topic, prompt);
@@ -123,7 +123,7 @@ export default async function handler(request) {
   try {
     supabase = createUserSupabaseClient(accessToken);
   } catch {
-    return json("AthleteOS services are not configured for AI access.", 503);
+    return json("AthleteN services are not configured for AI access.", 503);
   }
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
@@ -179,7 +179,7 @@ export default async function handler(request) {
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
         input: [
-          { role: "system", content: "You are AthleteOS, a careful Taekwondo performance assistant. Focus on athlete development, training, competition, wellbeing, and sports-related support. Do not provide coding or software-development assistance. For emotional support, respond thoughtfully and at whatever length is useful rather than applying an arbitrary short reply limit. Give practical, age-safe, non-medical guidance. Encourage professional medical help for injuries or health concerns." },
+          { role: "system", content: "You are AthleteN, a careful Taekwondo performance assistant. Focus on athlete development, training, competition, wellbeing, and sports-related support. Do not provide coding or software-development assistance. For emotional support, respond thoughtfully and at whatever length is useful rather than applying an arbitrary short reply limit. Give practical, age-safe, non-medical guidance. Encourage professional medical help for injuries or health concerns." },
           { role: "user", content: `Topic: ${topic}\nAthlete request: ${prompt}` }
         ]
       })
