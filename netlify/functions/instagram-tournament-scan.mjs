@@ -387,20 +387,25 @@ async function analyzeTournamentImage(imageUrl) {
       const layoutTitle = (() => {
         const source = normalizeEvidence(titleArea).replace(/[^A-Za-z0-9&' -]+/g, " ");
         const upper = source.toUpperCase();
+        const cleanedTitleSource = upper
+          .replace(/\b(JY|JE|JES|JY['’”]?|INSP|OISC!?|LOTE|P|F|WA|LR)\b/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
         const ordinal = upper.match(/\b(\d{1,2})(ST|ND|RD|TH)\b/i)?.[0] || (upper.match(/^\s*(\d{1,2})\s+(?=SHRI\b|SRI\b)/i)?.[1] ? upper.match(/^\s*(\d{1,2})\s+(?=SHRI\b|SRI\b)/i)[1] + "st" : "");
-        const memorialIndex = upper.indexOf("MEMORIAL");
+        const memorialIndex = cleanedTitleSource.indexOf("MEMORIAL");
         if (memorialIndex < 0) return "";
-        const prefix = upper.slice(0, memorialIndex);
-        const nameSegment = prefix.match(/\b(?:SHRI|SRI)\s+([A-Z]{3,}(?:\s+[A-Z]{3,}){0,4})/i)?.[1] || "";
-        const nameTokens = nameSegment.split(/\s+/)
-          .map((token) => token.replace(/[^A-Z]/gi, ""))
-          .filter((token) => token.length >= 3 && !/^(THE|AND|FOR|OPEN|NATIONAL)$/i.test(token));
-        const name = nameTokens.slice(0, 2).map((token) => token[0] + token.slice(1).toLowerCase()).join(" ");
+        const prefix = cleanedTitleSource.slice(0, memorialIndex);
+        const nameSegment = prefix.match(/\b(?:SHRI|SRI)\s+([A-Z][A-Z-]{2,})(?:\s+([A-Z][A-Z-]{2,}))?/i);
+        const nameTokens = [nameSegment?.[1], nameSegment?.[2]]
+          .filter(Boolean)
+          .map((token) => token.replace(/[^A-Z-]/gi, ""))
+          .filter((token) => token.length >= 3 && !/^(THE|AND|FOR|OPEN|NATIONAL|MEMORIAL)$/i.test(token));
+        const name = nameTokens.map((token) => token[0] + token.slice(1).toLowerCase()).join(" ");
         const memorial = true;
-        const open = upper.match(/\bOPEN(?:\s+NATIONAL)?\b/i)?.[0] || "";
-        const sport = upper.match(/\bTAE[\s-]*KWONDO\b|\bKYORUGI\b|\bPOOMSAE\b/i)?.[0] || "";
-        const competition = upper.match(/\b(?:CHAMPIONSHIP|TOURNAMENT|CUP)\b/i)?.[0] || "";
-        const year = upper.match(/\b20\d{2}\b/)?.[0] || "";
+        const open = cleanedTitleSource.match(/\bOPEN(?:\s+NATIONAL)?\b/i)?.[0] || "";
+        const sport = cleanedTitleSource.match(/\bTAE[\s-]*KWONDO\b|\bKYORUGI\b|\bPOOMSAE\b/i)?.[0] || "";
+        const competition = cleanedTitleSource.match(/\b(?:CHAMPIONSHIP|TOURNAMENT|CUP)\b/i)?.[0] || "";
+        const year = cleanedTitleSource.match(/\b20\d{2}\b/)?.[0] || "";
         if (!name || !memorial || !open || !sport || !competition || !year) return "";
         return clean([ordinal, "Shri", name, "Memorial", open, sport.replace(/[\s-]+/g, " "), competition, year].filter(Boolean).join(" "));
       })();
