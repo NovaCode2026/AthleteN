@@ -497,6 +497,28 @@ function extractDate(text, html) {
   return first(text, patterns);
 }
 
+function semanticDateKey(value) {
+  return clean(String(value || ""))
+    .toLowerCase()
+    .replace(/\bsept\.?\b/g, "sep")
+    .replace(/\bjan\.?\b/g, "january")
+    .replace(/\bfeb\.?\b/g, "february")
+    .replace(/\bmar\.?\b/g, "march")
+    .replace(/\bapr\.?\b/g, "april")
+    .replace(/\bjun\.?\b/g, "june")
+    .replace(/\bjul\.?\b/g, "july")
+    .replace(/\baug\.?\b/g, "august")
+    .replace(/\bsep\.?\b/g, "september")
+    .replace(/\boct\.?\b/g, "october")
+    .replace(/\bnov\.?\b/g, "november")
+    .replace(/\bdec\.?\b/g, "december")
+    .replace(/\b(\d{1,2})(?:st|nd|rd|th)\b/g, "$1")
+    .replace(/\s*[-–—]\s*/g, " ")
+    .replace(/\s*&\s*/g, " and ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function toDatabaseDate(value) {
   const raw = clean(value).replace(/(\d{1,2})(st|nd|rd|th)\b/gi, "$1");
   if (!raw) return "";
@@ -817,6 +839,7 @@ async function scanPublicSource(sourceUrl) {
 
   // Cross-check event dates from independent accessible evidence. A missing
   // year is not a contradiction when another source supplies the year.
+  const crossEvidenceConflicts = [];
   const sourceDateText = clean(extractDate(caption, "") || "");
   const posterDateText = clean(poster?.date_text || "");
   const dateKey = (value) => semanticDateKey(value);
@@ -828,7 +851,7 @@ async function scanPublicSource(sourceUrl) {
   const resolvedEventDate = toDatabaseDate(resolvedEventDateText) || "";
 
   if (dateConflict) {
-    evidenceConflicts.push({
+    crossEvidenceConflicts.push({
       field: "tournament_dates",
       candidates: [
         { value: sourceDateText, source: "Instagram source text" },
@@ -863,7 +886,7 @@ async function scanPublicSource(sourceUrl) {
       : "Not found in accessible source",
     evidence_conflicts: [
       clean(poster?.evidence_conflicts || ""),
-      ...evidenceConflicts.map((item) => {
+      ...crossEvidenceConflicts.map((item) => {
         const candidates = (item.candidates || []).map((candidate) => candidate.value || candidate).filter(Boolean).join(" | ");
         return candidates ? `Conflict detected — ${item.field}: ${candidates}` : "";
       })
