@@ -251,7 +251,9 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
               ["Hashtags", fields.poster_hashtags]
             ].filter(([, value]) => Boolean(String(value || "").trim())).map(([label, value]) => <div className="detail-row" key={label}><b>{label}</b><span>{value}</span></div>)}
           </div>
-          {fields.poster_image && <p><a className="source-link" href={fields.poster_image} target="_blank" rel="noreferrer"><ExternalLink size={14}/> Open analyzed poster image</a></p>}
+          {fields.reel_transcript && <div className="detail-row"><b>Reel transcript</b><span>{fields.reel_transcript}</span></div>}
+          {fields.reel_transcript && <div className="detail-row"><b>Reel transcript</b><span>{fields.reel_transcript}</span></div>}
+        {fields.poster_image && <p><a className="source-link" href={fields.poster_image} target="_blank" rel="noreferrer"><ExternalLink size={14}/> Open analyzed poster image</a></p>}
         </section>}
       </section> : <>
       <section className="card panel">
