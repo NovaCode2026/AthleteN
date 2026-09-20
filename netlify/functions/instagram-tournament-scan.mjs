@@ -1148,7 +1148,7 @@ async function scanPublicSource(sourceUrl) {
   const canonicalSourceUrl = (() => {
     const parts = parsedSource.pathname.split("/").filter(Boolean);
     if ((parts[0] || "").toLowerCase() === "p" && parts[1]) return `https://www.instagram.com/p/${parts[1]}/`;
-    if ((parts[0] || "").toLowerCase() === "reel" && parts[1]) return `https://www.instagram.com/reel/${parts[1]}/`;
+    if (["reel", "reels"].includes((parts[0] || "").toLowerCase()) && parts[1]) return `https://www.instagram.com/reel/${parts[1]}/`;
     return parsedSource.toString();
   })();
 
@@ -1158,7 +1158,7 @@ async function scanPublicSource(sourceUrl) {
   const rawVisibleText = extractVisibleInstagramText(root.html);
   const imageUrls = extractImageUrls(root.html);
   const reelEvidence = extractReelVideoEvidence(root.html);
-  const isReel = /^https:\/\/www\.instagram\.com\/reel\//i.test(canonicalSourceUrl);
+  const isReel = /\/(?:reel|reels)\/[^/]+/i.test(parsedSource.pathname) || reelEvidence.video_urls.length > 0;
 
   // The source itself is always preserved. AI enhancement must never replace  // or erase information that Instagram already exposed.
   let poster = null;
