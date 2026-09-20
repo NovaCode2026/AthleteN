@@ -521,7 +521,9 @@ async function analyzeTournamentImage(imageUrl) {
       poster.age_categories = lines.filter((line) => /cadet|junior|senior|sub[- ]?junior|fresher|under[- ]?\d/i.test(line)).slice(0, 30);
       poster.weight_categories = lines.filter((line) => /\b\d+\s*kg\b|\bunder[- ]?\d+\s*kg\b/i.test(line)).slice(0, 30);
       poster.highlights = evidenceLines.filter((line) =>
-        /600\+\s*athletes|10\+\s*states|athletes|coaches|referees|officials|scoring|PSS|protective scoring|real-time scoring|instant result|fair(?:\s+and|&)\s+transparent|memorial|national/i.test(line)
+        /600\+\s*athletes|10\+\s*states|athletes from|experienced coaches|referees|officials|scoring|PSS|protective scoring|real-time scoring|instant result|fair(?:\s+and|&)\s+transparent/i.test(line) &&
+        line.length >= 20 &&
+        !/^[^A-Za-z]{0,8}(?:open|national|memorial|championship|PSS)[^A-Za-z]*$/i.test(line)
       ).slice(0, 12);
       poster.hashtags = [...new Set((text.match(/#[A-Za-z0-9_]+/g) || []))];
       poster.evidence_conflicts = evidenceConflicts.length
@@ -1004,7 +1006,12 @@ async function scanPublicSource(sourceUrl) {
   // year is not a contradiction when another source supplies the year.
   const crossEvidenceConflicts = [];
   const sourceDateText = clean(extractDate(caption, "") || "");
-  const posterDateText = clean(poster?.date_text || "");
+  const posterDateText = clean(poster?.event_date_text || poster?.date_text || "");
+  const relatedDateCandidates = unique(
+    uniquePosts
+      .map((post) => clean(extractDate(post.caption, "") || ""))
+      .filter(Boolean)
+  );
   const dateKey = (value) => semanticDateKey(value);
   const dateKeysCompatible = (left, right) => {
     const a = dateKey(left);
@@ -1016,10 +1023,23 @@ async function scanPublicSource(sourceUrl) {
     return withoutYear(a) === withoutYear(b) && (!aYear || !bYear || aYear === bYear);
   };
   const dateKeysMatch = sourceDateText && posterDateText && dateKeysCompatible(sourceDateText, posterDateText);
-  const dateConflict = Boolean(sourceDateText && posterDateText && !dateKeysMatch);
+  const relatedSupportsPosterDate = relatedDateCandidates.some((value) => dateKeysCompatible(value, posterDateText));
+  const relatedSupportsSourceDate = relatedDateCandidates.some((value) => dateKeysCompatible(value, sourceDateText));
+
+  // Instagram caption/source text is direct textual evidence; poster OCR is
+  // derived evidence and can misread a single digit. Do not create a user-facing
+  // conflict from a lone OCR disagreement. Only surface a date conflict when
+  // another accessible non-OCR source independently corroborates the alternative.
+  const dateConflict = Boolean(
+    sourceDateText &&
+    posterDateText &&
+    !dateKeysMatch &&
+    relatedSupportsPosterDate &&
+    !relatedSupportsSourceDate
+  );
   const resolvedEventDateText = dateConflict
     ? ""
-    : (posterDateText || sourceDateText || allFacts.tournament_date_text || "");
+    : (sourceDateText || posterDateText || allFacts.tournament_date_text || "");
   const resolvedEventDate = toDatabaseDate(resolvedEventDateText) || "";
 
   // Reporting/check-in dates are administrative evidence, never tournament
@@ -1100,7 +1120,7 @@ async function scanPublicSource(sourceUrl) {
         fields: {
           organizer: fact(allFacts.organizer),
           host: allFacts.host || "",
-          reporting_date_text: clean(poster?.reporting_date_text || ""),
+          reporting_date_text: clean(reportingDateForStructuredOutput || ""),
           reporting_time: clean(poster?.reporting_time || ""),
           sport: clean(poster?.sport || ""),
           equipment: clean(poster?.equipment || ""),
