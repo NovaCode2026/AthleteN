@@ -71,7 +71,40 @@ function meta(html, key) {
   const a = new RegExp(`<meta[^>]+(?:property|name)=[\"']${key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}[\"'][^>]+content=[\"']([^\"']+)[\"'][^>]*>`, "i");
   const b = new RegExp(`<meta[^>]+content=[\"']([^\"']+)[\"'][^>]+(?:property|name)=[\"']${key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}[\"'][^>]*>`, "i");
   return clean(html.match(a)?.[1] || html.match(b)?.[1] || "");
-}function extractImageUrls(html) {
+}function extractReelVideoEvidence(html) {
+  const urls = [];
+  const addUrl = (value) => {
+    const url = decode(String(value || "")).trim();
+    if (/^https?:\/\//i.test(url) && /(?:fbcdn\.net|cdninstagram\.com)/i.test(url)) urls.push(url);
+  };
+  for (const pattern of [
+    /"video_url"\s*:\s*"([^"]+)"/gi,
+    /"videoUrl"\s*:\s*"([^"]+)"/gi,
+    /"contentUrl"\s*:\s*"([^"]+)"/gi,
+    /"src"\s*:\s*"([^"]+\.(?:mp4|m3u8)(?:\?[^"]*)?)"/gi
+  ]) {
+    for (const match of html.matchAll(pattern)) addUrl(match[1]);
+  }
+
+  const transcriptCandidates = [];
+  for (const pattern of [
+    /"(?:transcript|caption_text|closed_captions|subtitles)"\s*:\s*"((?:\\.|[^"])*)"/gi,
+    /"accessibility_caption"\s*:\s*"((?:\\.|[^"])*)"/gi,
+    /"aria-label"\s*:\s*"((?:\\.|[^"])*)"/gi
+  ]) {
+    for (const match of html.matchAll(pattern)) {
+      const value = captionFromInstagramShell(match[1]);
+      if (value && TOURNAMENT_WORDS.test(value)) transcriptCandidates.push(value);
+    }
+  }
+
+  return {
+    video_urls: unique(urls).slice(0, 2),
+    transcript: unique(transcriptCandidates).sort((a, b) => b.length - a.length)[0] || ""
+  };
+}
+
+function extractImageUrls(html) {
   const urls = [];
   const add = (value) => {
     const url = decode(String(value || "")).trim();
@@ -1124,6 +1157,8 @@ async function scanPublicSource(sourceUrl) {
   const title = extractTitle(root.html);
   const rawVisibleText = extractVisibleInstagramText(root.html);
   const imageUrls = extractImageUrls(root.html);
+  const reelEvidence = extractReelVideoEvidence(root.html);
+  const isReel = /^https:\/\/www\.instagram\.com\/reel\//i.test(canonicalSourceUrl);
 
   // The source itself is always preserved. AI enhancement must never replace  // or erase information that Instagram already exposed.
   let poster = null;
@@ -1151,7 +1186,8 @@ async function scanPublicSource(sourceUrl) {
     ...(Array.isArray(poster?.highlights) ? poster.highlights : [])
   ].filter(Boolean).join("\n"));
 
-  const facts = extractFacts(caption, title, canonicalSourceUrl);
+  const sourceEvidenceText = [caption, reelEvidence.transcript, rawVisibleText].filter(Boolean).join("\n");
+  const facts = extractFacts(sourceEvidenceText, title, canonicalSourceUrl);
   facts.reporting_time = poster?.reporting_time || "";
   facts.sport = poster?.sport || "";
   facts.equipment = poster?.equipment || "";
@@ -1204,7 +1240,7 @@ async function scanPublicSource(sourceUrl) {
   const uniquePosts = [...new Map(relatedPosts.map((p) => [p.id, p])).values()]
     .filter((p) => TOURNAMENT_WORDS.test(p.caption)).slice(0, MAX_RELATED_POSTS);
 
-  const allText = [title, caption, rawVisibleText, posterFactsText, posterText, ...uniquePosts.map((p) => p.caption)].filter(Boolean).join("\n");
+  const allText = [title, caption, reelEvidence.transcript, rawVisibleText, posterFactsText, posterText, ...uniquePosts.map((p) => p.caption)].filter(Boolean).join("\n");
   const allFacts = extractFacts(caption, title, canonicalSourceUrl);
   if (poster?.tournament_name) allFacts.tournament_name = clean(poster.tournament_name);
   if (!allFacts.tournament_date_text && poster?.date_text) {
@@ -1233,7 +1269,7 @@ async function scanPublicSource(sourceUrl) {
   // Cross-check event dates from independent accessible evidence. A missing
   // year is not a contradiction when another source supplies the year.
   const crossEvidenceConflicts = [];
-  const sourceDateText = clean(extractDate(caption, "") || "");
+  const sourceDateText = clean(extractDate(sourceEvidenceText, "") || "");
   const posterDateText = clean(poster?.event_date_text || poster?.date_text || "");
   const relatedDateCandidates = unique(
     uniquePosts
@@ -1421,6 +1457,12 @@ async function scanPublicSource(sourceUrl) {
           poster_hashtags: Array.isArray(poster?.hashtags) ? poster.hashtags.join(" ") : "",
           raw_source_text: rawVisibleText || caption || "",
           source_caption: caption || "",
+          source_type: isReel ? "Instagram Reel" : "Instagram post",
+          reel_video_detected: isReel && reelEvidence.video_urls.length ? "Yes" : "",
+          reel_video_url: reelEvidence.video_urls[0] || "",
+          reel_transcript: reelEvidence.transcript || "",
+          source_date_evidence: sourceDateText,
+          poster_date_evidence: posterDateText,
           source_image_count: String(imageUrls.length),
           scan_elapsed_seconds: ((Date.now() - startedAt) / 1000).toFixed(1)
         },
