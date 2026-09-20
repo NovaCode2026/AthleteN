@@ -1432,6 +1432,14 @@ function normalizeMergeKey(value = "") {
     .replace(/\s+/g, " ")
     .trim();
 }
+function mergeTokenSet(value = "") {
+  return new Set(
+    normalizeMergeKey(value)
+      .split(" ")
+      .filter((token) => token.length >= 3 && !/^(the|open|national|memorial|championship|taekwondo|tournament|school|hall|girls|residential|venue|date)$/.test(token))
+  );
+}
+
 
 function mergeEvidenceValues(values = []) {
   const out = [];
@@ -1476,7 +1484,7 @@ function mergeTournamentScans(rows = []) {
         const noise = (text.match(/\b(?:venue|date|the|and|for|insta|instagram|taekwo|sports|championships)\b/g) || []).length;
         return text.length - noise * 12;
       };
-      const tokenSets = normalized.map((item) => tokenSet(item.value));
+      const tokenSets = normalized.map((item) => mergeTokenSet(item.value));
       const meaningfulOverlap = (a, b) => {
         const shared = [...a].filter((token) => b.has(token)).length;
         return shared / Math.max(1, Math.min(a.size, b.size));
