@@ -369,7 +369,8 @@ async function analyzeTournamentImage(imageUrl) {
       const canonicalTitleCandidates = titleCandidates.map(canonicalizeTournamentTitle).filter(Boolean);
       const titleEvidence = consensus(canonicalTitleCandidates);
       if (titleEvidence.conflict) evidenceConflicts.push({ field: "tournament_name", candidates: titleEvidence.candidates });
-      poster.tournament_name = titleEvidence.value || canonicalTitleCandidates[0] || "";
+      const strongTitle = canonicalTitleCandidates.find((value) => /\bSHRI\b/i.test(value) && /\bMEMORIAL\b/i.test(value) && /\bOPEN\s+NATIONAL\b/i.test(value) && /\bTAEKWONDO\b/i.test(value) && /\bCHAMPIONSHIP\s+20\d{2}\b/i.test(value));
+      poster.tournament_name = strongTitle || titleEvidence.value || canonicalTitleCandidates[0] || "";
 
       const reportingDateCandidates = normalizedPasses.map((pass) =>
         firstMatch(pass.lines.join(" "), [
