@@ -568,9 +568,19 @@ function extractDate(text, html) {
     /\b(\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+\d{4})?)\b/i,
     /\b(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+\d{4})?)\b/i,
     /\b([A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?)?(?:\s+\d{4})?)\b/i,
-    /\b(\d{1,2}[/-]\d{1,2}[/-]\d{4})\b/
+    /\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{4})\b/
   ];
-  return first(text, patterns);
+  const administrative = /(?:reporting|check[- ]?in|checkin|weigh[- ]?in|registration|deadline|last\s+date|arrival)\b/i;
+  const eventContext = /(?:event|held|tournament|championship|fights?|competition|matches?)\b/i;
+  const source = clean(text);
+  for (const pattern of patterns) {
+    const match = source.match(pattern);
+    if (!match?.[1]) continue;
+    const prefix = source.slice(Math.max(0, (match.index || 0) - 100), match.index || 0);
+    if (administrative.test(prefix) && !eventContext.test(prefix)) continue;
+    return clean(match[1]);
+  }
+  return "";
 }
 
 function semanticDateKey(value) {
