@@ -425,7 +425,7 @@ async function analyzeTournamentImage(imageUrl) {
         .join(" ")
         .replace(/\s+/g, " ")
         .trim();
-      const reportingCorruptMatch = reportingEvidence.match(/\breporting\s+(?:time|date)?[^\d]{0,80}(\d{1,2})(?:st|nd|rd|th|%|d|o)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*,?\s*(20\d{2})/i);
+      const reportingCorruptMatch = reportingEvidence.match(/\breporting\s+(?:time|date)?[\s\S]{0,120}?\(\s*(\d{1,2})(?:st|nd|rd|th|%|d|o)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*,?\s*(20\d{2})/i) || reportingEvidence.match(/\breporting\s+(?:time|date)?[\s\S]{0,120}?\b(\d{1,2})(?:st|nd|rd|th|%|d|o)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*,?\s*(20\d{2})/i);
       if (reportingCorruptMatch?.[1] && reportingCorruptMatch?.[2]) {
         poster.reporting_date_text = clean(reportingCorruptMatch[1] + " " + reportingCorruptMatch[2] + (reportingCorruptMatch[3] ? " " + reportingCorruptMatch[3] : ""));
       }
