@@ -753,10 +753,9 @@ async function fetchInstagram(url) {
       const candidateCaption = extractCaption(html);
       const candidateTitle = extractTitle(html, candidateCaption);
       const visible = clean(`${candidateTitle} ${candidateCaption}`);
-      const hasTournament = TOURNAMENT_WORDS.test(visible);
-      const hasImage = extractImageUrls(html).length > 0;
-      const hasUsefulInstagramData = hasTournament || hasImage || /@([a-z0-9._]{1,30})/i.test(visible);
-      if (hasUsefulInstagramData) useful.push({ html, finalUrl: response.url || candidate.url });
+      // Any successful public HTML response is usable input. Caption relevance
+      // is handled later; an unrelated caption must never turn into a scanner error.
+      if (html.trim()) useful.push({ html, finalUrl: response.url || candidate.url });
     } catch (error) {
       if (error?.name !== "AbortError") console.error("instagram-source-fetch", candidate.url, error?.message || error);
     }
