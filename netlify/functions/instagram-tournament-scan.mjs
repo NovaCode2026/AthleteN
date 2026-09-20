@@ -413,7 +413,7 @@ async function analyzeTournamentImage(imageUrl) {
 
       const reportingWindows = posterWindow(/\bREPORTING\b/i, 6);
       const layoutReportingTime = reportingWindows.map((window) =>
-        firstMatch(window, [/(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i)])
+        firstMatch(window, [/(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i])
       ).find(Boolean) || "";
       const reportingDatePattern = /\b(\d{1,2})(?:st|nd|rd|th|%|d|o)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*,?\s*(20\d{2})\b/i;
       const layoutReportingDate = reportingWindows.map((window) =>
