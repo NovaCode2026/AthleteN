@@ -1425,6 +1425,158 @@ async function scanPublicSource(sourceUrl) {
     source_hash: hash
   };
 }
+function normalizeMergeKey(value = "") {
+  return clean(String(value || ""))
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function mergeEvidenceValues(values = []) {
+  const out = [];
+  const seen = new Set();
+  for (const raw of values) {
+    const value = valuableText(raw);
+    if (!value) continue;
+    for (const part of value.split(/\s*\|\s*|\s*\n\s*|\s*,\s*(?=(?:Freshers|Kyorugi|Poomsae|Cadet|Junior|Senior|Sub-Junior|Under[- ]?\d)\b)/i)) {
+      const item = clean(part);
+      if (!item) continue;
+      const key = normalizeMergeKey(item);
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(item);
+      }
+    }
+  }
+  return out.join(", ");
+}
+
+function mergeTournamentScans(rows = []) {
+  const sorted = [...rows].sort((a, b) => new Date(b.last_checked_at || 0).getTime() - new Date(a.last_checked_at || 0).getTime());
+  const primary = sorted[0];
+  const details = sorted.map((row) => row.details || {});
+  const factsList = details.map((detail) => detail.important_facts || {});
+  const fieldsList = details.map((detail) => detail.fields || {});
+
+  const allFactKeys = unique(factsList.flatMap((facts) => Object.keys(facts)));
+  const mergedFacts = {};
+  for (const key of allFactKeys) {
+    const values = factsList.map((facts) => facts[key]).filter((value) => valuableText(value));
+    if (!values.length) continue;
+    const uniqueValues = [];
+    const seen = new Set();
+    for (const value of values) {
+      const normalized = normalizeMergeKey(value);
+      if (!seen.has(normalized)) {
+        seen.add(normalized);
+        uniqueValues.push(valuableText(value));
+      }
+    }
+    mergedFacts[key] = uniqueValues.length === 1
+      ? uniqueValues[0]
+      : "Conflict detected — " + uniqueValues.join(" | ");
+  }
+
+  const allFieldKeys = unique(fieldsList.flatMap((fields) => Object.keys(fields)));
+  const mergedFields = {};
+  for (const key of allFieldKeys) {
+    const values = fieldsList.map((fields) => fields[key]).filter((value) => valuableText(value));
+    if (!values.length) continue;
+    if (/^(poster_(events|disciplines|age_categories|weight_categories|gender_categories|highlights|notices|hashtags)|fees|contact|poster_contact|poster_phone|poster_email)$/i.test(key)) {
+      mergedFields[key] = mergeEvidenceValues(values);
+      continue;
+    }
+    const uniqueValues = [];
+    const seen = new Set();
+    for (const value of values) {
+      const normalized = normalizeMergeKey(value);
+      if (!seen.has(normalized)) {
+        seen.add(normalized);
+        uniqueValues.push(valuableText(value));
+      }
+    }
+    mergedFields[key] = uniqueValues.length === 1 ? uniqueValues[0] : uniqueValues.join(" | ");
+  }
+
+  const mergedSections = [];
+  const sectionSeen = new Set();
+  for (const detail of details) {
+    for (const section of detail.sections || []) {
+      const key = normalizeMergeKey(section.title) + "|" + normalizeMergeKey(section.content) + "|" + (section.source_url || "");
+      if (!sectionSeen.has(key)) {
+        sectionSeen.add(key);
+        mergedSections.push(section);
+      }
+    }
+  }
+
+  const mergedPages = unique(details.flatMap((detail) => detail.source_pages || []));
+  const mergedPdfs = [];
+  const pdfSeen = new Set();
+  for (const detail of details) {
+    for (const pdf of detail.pdfs || []) {
+      const key = pdf.href || pdf.label || "";
+      if (key && !pdfSeen.has(key)) {
+        pdfSeen.add(key);
+        mergedPdfs.push(pdf);
+      }
+    }
+  }
+
+  const mergedHighlights = unique(details.flatMap((detail) => detail.key_highlights || []).map(clean).filter(Boolean));
+  const sourceUrls = unique(rows.map((row) => row.source_url).filter(Boolean));
+  const conflicts = [];
+  for (const detail of details) {
+    for (const conflict of detail.conflicts || []) {
+      const key = JSON.stringify(conflict);
+      if (!conflicts.some((item) => JSON.stringify(item) === key)) conflicts.push(conflict);
+    }
+  }
+
+  mergedFields.merged_source_urls = sourceUrls.join(" | ");
+  mergedFields.merged_scan_count = String(rows.length);
+
+  const mergedDetails = {
+    ...primary.details,
+    important_facts: mergedFacts,
+    fields: mergedFields,
+    description: mergedFacts.tournament_name || primary.details?.description || "Merged tournament intelligence.",
+    sections: mergedSections,
+    source_pages: mergedPages,
+    pdfs: mergedPdfs,
+    key_highlights: mergedHighlights,
+    conflicts,
+    merged_sources: sourceUrls,
+    merged_scan_ids: rows.map((row) => row.id),
+    merged_at: new Date().toISOString()
+  };
+
+  const tournamentName = valuableText(mergedFacts.tournament_name) || primary.tournament_name || "Merged tournament";
+  const tournamentDate = valuableText(mergedFacts.tournament_dates) || primary.tournament_date || null;
+  const venue = valuableText(mergedFacts.venue) || primary.venue || null;
+  const registrationDeadline = valuableText(mergedFacts.registration_deadline) || primary.registration_deadline || null;
+  const combinedHash = createHash("sha256").update(rows.map((row) => row.id + ":" + (row.source_hash || "")).sort().join("|")).digest("hex");
+
+  return {
+    ...primary,
+    source_url: primary.source_url,
+    tournament_name: tournamentName,
+    tournament_date: toDatabaseDate(tournamentDate) || primary.tournament_date || null,
+    venue,
+    registration_deadline: registrationDeadline,
+    categories: mergeEvidenceValues(rows.map((row) => row.categories)),
+    notices: mergeEvidenceValues(rows.map((row) => row.notices)),
+    schedules_results: mergeEvidenceValues(rows.map((row) => row.schedules_results)),
+    details: mergedDetails,
+    status: "checked",
+    detected_changes: "Merged " + rows.length + " scans into one tournament result.",
+    source_hash: combinedHash,
+    last_checked_at: new Date().toISOString(),
+    next_check_at: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString()
+  };
+}
+
 export default async function handler(request) {
   if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);  const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!accessToken) return json({ error: "Please sign in before scanning." }, 401);
@@ -1437,6 +1589,66 @@ export default async function handler(request) {
   if (!user) return json({ error: "Please sign in again before scanning." }, 401);
 
   const body = await request.json().catch(() => ({}));
+  const action = String(body.action || "").trim().toLowerCase();
+
+  if (action === "merge") {
+    const scanIds = unique(Array.isArray(body.scanIds) ? body.scanIds.map((id) => String(id || "").trim()).filter(Boolean) : []);
+    if (scanIds.length < 2) return json({ error: "Select at least two scans to merge." }, 400);
+    if (scanIds.length > 10) return json({ error: "Merge up to 10 scans at a time." }, 400);
+
+    try {
+      const admin = serverSupabase();
+      const { data: rows, error: loadError } = await admin.from("tournament_scans")
+        .select("id,user_id,source_url,tournament_name,tournament_date,venue,registration_deadline,weigh_in_information,categories,notices,schedules_results,pdfs,details,status,detected_changes,source_hash,last_checked_at,next_check_at")
+        .eq("user_id", user.id)
+        .in("id", scanIds);
+      if (loadError) throw new Error("MERGE-LOAD-500: " + loadError.message);
+      if (!rows || rows.length !== scanIds.length) return json({ error: "One or more selected scans could not be found." }, 404);
+
+      const nameKeys = rows.map((row) => normalizeMergeKey(row.tournament_name)).filter(Boolean);
+      const dateKeys = rows.map((row) => normalizeMergeKey(row.tournament_date)).filter(Boolean);
+      const venueKeys = rows.map((row) => normalizeMergeKey(row.venue)).filter(Boolean);
+      const sameName = nameKeys.length === rows.length && new Set(nameKeys).size === 1;
+      const sameDateVenue = dateKeys.length === rows.length && venueKeys.length === rows.length && new Set(dateKeys).size === 1 && new Set(venueKeys).size === 1;
+      if (!sameName && !sameDateVenue) {
+        return json({ error: "These scans do not have enough matching tournament evidence to safely merge. Select scans for the same tournament." }, 409);
+      }
+
+      const merged = mergeTournamentScans(rows);
+      const { data: saved, error: saveError } = await admin.from("tournament_scans")
+        .update({
+          source_url: merged.source_url,
+          tournament_name: merged.tournament_name,
+          tournament_date: merged.tournament_date,
+          venue: merged.venue,
+          registration_deadline: merged.registration_deadline,
+          categories: merged.categories || null,
+          notices: merged.notices || null,
+          schedules_results: merged.schedules_results || null,
+          details: merged.details,
+          status: merged.status,
+          detected_changes: merged.detected_changes,
+          source_hash: merged.source_hash,
+          last_checked_at: merged.last_checked_at,
+          next_check_at: merged.next_check_at
+        })
+        .eq("id", merged.id)
+        .eq("user_id", user.id)
+        .select().single();
+      if (saveError) throw new Error("MERGE-SAVE-500: " + saveError.message);
+
+      const duplicateIds = rows.map((row) => row.id).filter((id) => id !== merged.id);
+      if (duplicateIds.length) {
+        const { error: deleteError } = await admin.from("tournament_scans").delete().eq("user_id", user.id).in("id", duplicateIds);
+        if (deleteError) throw new Error("MERGE-DELETE-500: " + deleteError.message);
+      }
+
+      return json({ merged: true, scan: saved, removed_scan_ids: duplicateIds });
+    } catch (error) {
+      console.error("instagram-tournament-scan merge", error?.message || error);
+      return json({ error: String(error?.message || "Tournament merge failed.") }, 500);
+    }
+  }
   const sourceUrl = String(body.sourceUrl || "").trim();
   let parsed;
   try { parsed = new URL(sourceUrl); } catch { return json({ error: "Enter a valid Instagram post, reel, or profile URL." }, 400); }
