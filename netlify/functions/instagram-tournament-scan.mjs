@@ -345,9 +345,10 @@ async function analyzeTournamentImage(imageUrl) {
       }
       poster.event_date_text = eventDateEvidenceResult.value || "";
 
-      poster.date_text = poster.event_date_text || firstMatch(compactText, [
-        /((?:\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2}))/i
-      ]) || "";
+      // Never fall back to an arbitrary single date here. A reporting/check-in
+      // date must not become the tournament date when the event-date pattern
+      // was not reliably recovered.
+      poster.date_text = poster.event_date_text || "";
 
       poster.venue = extractAcrossPasses([
         /\bVENUE\s*[:\-]?\s*(.+?)(?=\s+REPORTING\s+TIME|\s+REPORTING|\s+ABOUT\s+THE\s+CHAMPIONSHIP|\s+DATE|\s+DATES|\s+REGISTRATION|\s+CONTACT|$)/i,
@@ -670,7 +671,8 @@ function extractFacts(caption, title, sourceUrl) {
   const fees = field(text, [/(?:registration|entry|participation)\s+fee[s]?\s*[:\-]?\s*([^.;|\n]{2,120})/i, /(?:fee|fees)\s*[:\-]?\s*([^.;|\n]{2,120})/i]);
   const categories = field(text, [/(?:age|weight|category|categories|division|divisions|cadet|junior|senior)[^.;|\n]{0,360}/i]);
   const contact = field(text, [/(?:contact|helpline|phone|email|e-?mail)\s*[:\-]?\s*([^.;|\n]{4,220})/i]);
-  const registrationLink = (text.match(/https?:\/\/[^\s)]+/i) || [])[0] || "";
+  const registrationContext = text.match(/(?:registration|register|entry|entries|application|apply|form)[^.;|]{0,260}(https?:\/\/[^\s)]+|www\.[^\s)]+)/i);
+  const registrationLink = registrationContext?.[1] || "";
   return {
     tournament_name: title || "",
     tournament_date: date || "",
