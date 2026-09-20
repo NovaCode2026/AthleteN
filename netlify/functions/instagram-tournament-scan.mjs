@@ -399,19 +399,43 @@ function first(html, patterns) {
 function unique(values) { return [...new Set(values.filter(Boolean))]; }
 
 function instagramAccounts(html, sourceUrl, caption) {
-  const found = [];
-  const add = (value) => {
+  // Rank account evidence instead of treating every @handle in Instagram's
+  // shell HTML as relevant. This prevents unrelated shell handles from being
+  // followed while preserving the source author, explicit caption mentions,
+  // public attribution, and explicit Instagram profile links.
+  const ranked = [];
+  const seen = new Set();
+  const add = (value, priority) => {
     const username = String(value || "").replace(/^@/, "").trim().toLowerCase();
-    if (!/^[a-z0-9._]{1,30}$/.test(username) || IG_PATHS_TO_IGNORE.has(username)) return;
-    found.push(username);
+    if (!/^[a-z0-9._]{1,30}$/.test(username) || IG_PATHS_TO_IGNORE.has(username) || seen.has(username)) return;
+    seen.add(username);
+    ranked.push({ username, priority });
   };
-  for (const m of caption.matchAll(/@([a-zA-Z0-9._]{1,30})/g)) add(m[1]);
-  // Embed pages often expose the source author only as "(@handle)" rather
-  // than as an Instagram URL. Capture that public attribution too.
-  for (const m of html.matchAll(/@([a-zA-Z0-9._]{1,30})/g)) add(m[1]);
-  for (const m of html.matchAll(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/([a-zA-Z0-9._]{1,30})(?:[/?"'\s]|$)/gi)) add(m[1]);
-  try { add(new URL(sourceUrl).pathname.split("/").filter(Boolean)[0]); } catch {}
-  return unique(found).slice(0, MAX_RELATED_ACCOUNTS);
+
+  for (const m of caption.matchAll(/@([a-zA-Z0-9._]{1,30})/g)) add(m[1], 100);
+
+  // Public embed attribution, e.g. "A post shared by Name (@handle)".
+  for (const m of html.matchAll(/(?:A\s+post\s+shared\s+by|shared\s+by)[^@]{0,180}@([a-zA-Z0-9._]{1,30})/gi)) {
+    add(m[1], 120);
+  }
+
+  // Explicit profile links exposed by the source/embed are stronger evidence
+  // than arbitrary handles appearing elsewhere in Instagram's shell.
+  for (const m of html.matchAll(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/([a-zA-Z0-9._]{1,30})(?:[/?"'\s]|$)/gi)) {
+    const username = m[1].toLowerCase();
+    if (!IG_PATHS_TO_IGNORE.has(username)) add(username, 80);
+  }
+
+  try {
+    const parts = new URL(sourceUrl).pathname.split("/").filter(Boolean);
+    const sourceProfile = parts[0] && !IG_PATHS_TO_IGNORE.has(parts[0].toLowerCase()) ? parts[0] : "";
+    if (sourceProfile) add(sourceProfile, 110);
+  } catch {}
+
+  return ranked
+    .sort((a, b) => b.priority - a.priority || a.username.localeCompare(b.username))
+    .slice(0, MAX_RELATED_ACCOUNTS)
+    .map((item) => item.username);
 }
 
 function captionFromInstagramShell(value) {
@@ -791,14 +815,33 @@ async function scanPublicSource(sourceUrl) {
   }
   if (!TOURNAMENT_WORDS.test(allText)) throw new Error("NO_TOURNAMENT_CONTENT");
 
-  const sourceDateText = extractDate(caption, "");
+  // Cross-check event dates from independent accessible evidence. A missing
+  // year is not a contradiction when another source supplies the year.
+  const sourceDateText = clean(extractDate(caption, "") || "");
   const posterDateText = clean(poster?.date_text || "");
-  const dateConflict = sourceDateText && posterDateText &&
-    clean(sourceDateText).toLowerCase() !== clean(posterDateText).toLowerCase();
+  const dateKey = (value) => semanticDateKey(value);
+  const dateKeysMatch = sourceDateText && posterDateText && dateKey(sourceDateText) === dateKey(posterDateText);
+  const dateConflict = Boolean(sourceDateText && posterDateText && !dateKeysMatch);
+  const resolvedEventDateText = dateConflict
+    ? ""
+    : (posterDateText || sourceDateText || allFacts.tournament_date_text || "");
+  const resolvedEventDate = toDatabaseDate(resolvedEventDateText) || "";
+
+  if (dateConflict) {
+    evidenceConflicts.push({
+      field: "tournament_dates",
+      candidates: [
+        { value: sourceDateText, source: "Instagram source text" },
+        { value: posterDateText, source: "poster OCR" }
+      ]
+    });
+  }
 
   const importantFacts = {
     tournament_name: allFacts.tournament_name || "Not found in accessible source",
-    tournament_dates: allFacts.tournament_date_text || "Not found in accessible source",
+    tournament_dates: dateConflict
+      ? `Conflict detected — source: "${sourceDateText}" | poster: "${posterDateText}"`
+      : (resolvedEventDateText || "Not found in accessible source"),
     reporting_date: clean(poster?.reporting_date_text || "") || "Not found in accessible source",
     reporting_time: clean(poster?.reporting_time || "") || "Not found in accessible source",
     venue: allFacts.venue || "Not found in accessible source",
@@ -818,7 +861,13 @@ async function scanPublicSource(sourceUrl) {
     important_notice: dateConflict
       ? `Conflict detected between accessible source text and poster OCR: source says "${sourceDateText}"; poster OCR says "${posterDateText}".`
       : "Not found in accessible source",
-    evidence_conflicts: clean(poster?.evidence_conflicts || "") || "None detected in accessible OCR evidence",
+    evidence_conflicts: [
+      clean(poster?.evidence_conflicts || ""),
+      ...evidenceConflicts.map((item) => {
+        const candidates = (item.candidates || []).map((candidate) => candidate.value || candidate).filter(Boolean).join(" | ");
+        return candidates ? `Conflict detected — ${item.field}: ${candidates}` : "";
+      })
+    ].filter(Boolean).join("\n") || "None detected in accessible evidence",
     official_source: canonicalSourceUrl
   };
 
@@ -827,7 +876,7 @@ async function scanPublicSource(sourceUrl) {
     scan: {
       source_url: canonicalSourceUrl,
       tournament_name: allFacts.tournament_name,
-      tournament_date: allFacts.tournament_date || null,
+      tournament_date: resolvedEventDate || allFacts.tournament_date || null,
       venue: allFacts.venue || null,
       registration_deadline: allFacts.registration_deadline || null,
       categories: allFacts.categories || null,
@@ -846,7 +895,7 @@ async function scanPublicSource(sourceUrl) {
           sport: clean(poster?.sport || ""),
           equipment: clean(poster?.equipment || ""),
           location_hint: allFacts.location_hint,
-          tournament_date_text: allFacts.tournament_date_text,
+          tournament_date_text: resolvedEventDateText,
           registration_deadline_text: allFacts.registration_deadline_text,
           fees: allFacts.fees,
           contact: allFacts.contact,
