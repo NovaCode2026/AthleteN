@@ -1165,7 +1165,10 @@ async function scanPublicSource(sourceUrl) {
   let posterAnalysisError = "";
   let analyzedPosterImageUrl = "";
 
-  for (const imageUrl of imageUrls.slice(0, 2)) {
+  // Analyze several exposed poster/frame images. A Reel can expose a
+  // thumbnail plus alternate frames; limiting this to two made readable
+  // tournament evidence disappear when the first frame was decorative.
+  for (const imageUrl of imageUrls.slice(0, 3)) {
     if (Date.now() >= deadline - 25000) break;
     const analysis = await analyzeTournamentImage(imageUrl);
     posterAnalysisError = analysis?.error || posterAnalysisError;
@@ -1188,21 +1191,35 @@ async function scanPublicSource(sourceUrl) {
 
   const sourceEvidenceText = [caption, reelEvidence.transcript, rawVisibleText].filter(Boolean).join("\n");
   const facts = extractFacts(sourceEvidenceText, title, canonicalSourceUrl);
+  // Run the same deterministic fact extractor over readable poster OCR as a
+  // second evidence path. The poster-specific parser remains authoritative for
+  // structured fields, while this fallback recovers simple facts when OCR puts
+  // labels/values in an unexpected layout.
+  const posterFallbackFacts = posterText
+    ? extractFacts(posterText, poster?.tournament_name || title, analyzedPosterImageUrl || canonicalSourceUrl)
+    : {};
   facts.reporting_time = poster?.reporting_time || "";
   facts.sport = poster?.sport || "";
   facts.equipment = poster?.equipment || "";
   if (poster?.tournament_name) facts.tournament_name = clean(poster.tournament_name);
-  if (!facts.tournament_date_text && poster?.date_text) {
-    facts.tournament_date_text = clean(poster.date_text);
-    facts.tournament_date = toDatabaseDate(poster.date_text) || facts.tournament_date;
+  else if (posterFallbackFacts.tournament_name) facts.tournament_name = clean(posterFallbackFacts.tournament_name);
+  if (!facts.tournament_date_text && (poster?.date_text || posterFallbackFacts.tournament_date_text)) {
+    const value = poster?.date_text || posterFallbackFacts.tournament_date_text;
+    facts.tournament_date_text = clean(value);
+    facts.tournament_date = toDatabaseDate(value) || facts.tournament_date;
   }
   if (poster?.venue) facts.venue = clean(poster.venue);
+  else if (posterFallbackFacts.venue) facts.venue = clean(posterFallbackFacts.venue);
   if (!facts.location_hint && poster?.city) facts.location_hint = clean(poster.city);
+  if (!facts.location_hint && posterFallbackFacts.location_hint) facts.location_hint = clean(posterFallbackFacts.location_hint);
   if (poster?.organizer) facts.organizer = clean(poster.organizer);
+  else if (posterFallbackFacts.organizer) facts.organizer = clean(posterFallbackFacts.organizer);
   if (poster?.host) facts.host = clean(poster.host);
   if (poster?.fees) facts.fees = clean(poster.fees);
+  else if (posterFallbackFacts.fees) facts.fees = clean(posterFallbackFacts.fees);
   if (Array.isArray(poster?.events) && poster.events.length) facts.categories = poster.events.filter(Boolean).join(", ");
-  else if (Array.isArray(poster?.categories) && poster.categories.length) facts.categories = poster.categories.filter(Boolean).join(", ");      const accounts = instagramAccounts(root.html, root.finalUrl, caption);
+  else if (Array.isArray(poster?.categories) && poster.categories.length) facts.categories = poster.categories.filter(Boolean).join(", ");
+  else if (posterFallbackFacts.categories) facts.categories = clean(posterFallbackFacts.categories);      const accounts = instagramAccounts(root.html, root.finalUrl, caption);
   const accountResults = [];
   const relatedPosts = mediaFromHtml(root.html, root.finalUrl);
 
@@ -1243,20 +1260,27 @@ async function scanPublicSource(sourceUrl) {
   const allText = [title, caption, reelEvidence.transcript, rawVisibleText, posterFactsText, posterText, ...uniquePosts.map((p) => p.caption)].filter(Boolean).join("\n");
   const allFacts = extractFacts(caption, title, canonicalSourceUrl);
   if (poster?.tournament_name) allFacts.tournament_name = clean(poster.tournament_name);
-  if (!allFacts.tournament_date_text && poster?.date_text) {
-    allFacts.tournament_date_text = clean(poster.date_text);
-    allFacts.tournament_date = toDatabaseDate(poster.date_text) || allFacts.tournament_date;
+  else if (posterFallbackFacts.tournament_name) allFacts.tournament_name = clean(posterFallbackFacts.tournament_name);
+  if (!allFacts.tournament_date_text && (poster?.date_text || posterFallbackFacts.tournament_date_text)) {
+    const value = poster?.date_text || posterFallbackFacts.tournament_date_text;
+    allFacts.tournament_date_text = clean(value);
+    allFacts.tournament_date = toDatabaseDate(value) || allFacts.tournament_date;
   }
   if (poster?.venue) allFacts.venue = clean(poster.venue);
+  else if (posterFallbackFacts.venue) allFacts.venue = clean(posterFallbackFacts.venue);
   if (poster?.city || poster?.state) allFacts.location_hint = [poster.city, poster.state].filter(Boolean).join(", ");
+  else if (posterFallbackFacts.location_hint) allFacts.location_hint = clean(posterFallbackFacts.location_hint);
   if (poster?.organizer) allFacts.organizer = clean(poster.organizer);
+  else if (posterFallbackFacts.organizer) allFacts.organizer = clean(posterFallbackFacts.organizer);
   if (poster?.host) allFacts.host = clean(poster.host);
   if (poster?.fees) allFacts.fees = clean(poster.fees);
+  else if (posterFallbackFacts.fees) allFacts.fees = clean(posterFallbackFacts.fees);
   if (!allFacts.registration_deadline_text && poster?.registration_deadline) allFacts.registration_deadline_text = clean(poster.registration_deadline);
   if (!allFacts.registration_link && poster?.registration_link) allFacts.registration_link = clean(poster.registration_link);
   if (!allFacts.contact && (poster?.contact || poster?.phone || poster?.email)) allFacts.contact = clean([poster.contact, poster.phone, poster.email].filter(Boolean).join(" | "));
   if (Array.isArray(poster?.events) && poster.events.length) allFacts.categories = poster.events.filter(Boolean).join(", ");
-  else if (Array.isArray(poster?.categories) && poster.categories.length) allFacts.categories = poster.categories.filter(Boolean).join(", ");      // Caption text is evidence for event details, not a substitute for the tournament identity.
+  else if (Array.isArray(poster?.categories) && poster.categories.length) allFacts.categories = poster.categories.filter(Boolean).join(", ");
+  else if (posterFallbackFacts.categories) allFacts.categories = clean(posterFallbackFacts.categories);      // Caption text is evidence for event details, not a substitute for the tournament identity.
   if (/^#(?:[a-z0-9_]+\s*)+$/i.test(allFacts.tournament_name || "")) {
     allFacts.tournament_name = poster?.tournament_name ? clean(poster.tournament_name) : "";
   }
@@ -1420,6 +1444,10 @@ async function scanPublicSource(sourceUrl) {
           relevant_posts_found: String(uniquePosts.length),
           image_analyzed: poster ? "Yes" : "No",
           poster_analysis_status: poster ? "Poster image successfully analyzed." : (posterAnalysisError || "Poster image could not be analyzed."),
+          source_type: isReel ? "Instagram Reel" : "Instagram post",
+          reel_video_detected: isReel && reelEvidence.video_urls.length ? "Yes" : "No",
+          reel_video_url: reelEvidence.video_urls[0] || "",
+          reel_transcript: clean(reelEvidence.transcript || ""),
           poster_image: analyzedPosterImageUrl || imageUrls[0] || "",
           poster_sport: clean(poster?.sport || ""),
           poster_disciplines: Array.isArray(poster?.disciplines) ? poster.disciplines.join(", ") : "",
