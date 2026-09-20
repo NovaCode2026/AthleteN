@@ -31,3 +31,14 @@ test("poster evidence remains conflict-aware", () => {
   assert.match(backend, /evidence_conflicts/);
   assert.match(backend, /Conflict detected/);
 });
+
+test("Instagram publication timestamps are never treated as tournament dates", () => {
+  assert.doesNotMatch(backend, /taken_at_timestamp/);
+  assert.doesNotMatch(backend, /"timestamp"\\s\*:\\s\*"\(\[\^"\]\+\)"/);
+});
+
+test("Date comparison allows a source date without a year to match poster evidence with a year", () => {
+  assert.match(backend, /dateKeysCompatible/);
+  assert.match(backend, /withoutYear/);
+  assert.match(backend, /!aYear \|\| !bYear \|\| aYear === bYear/);
+});
