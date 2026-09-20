@@ -1461,21 +1461,55 @@ function mergeTournamentScans(rows = []) {
 
   const allFactKeys = unique(factsList.flatMap((facts) => Object.keys(facts)));
   const mergedFacts = {};
+  const canonicalMergeValue = (key, values) => {
+    const cleaned = values.map((value) => valuableText(value)).filter(Boolean);
+    if (!cleaned.length) return "";
+    const normalized = cleaned.map((value) => ({ value, key: normalizeMergeKey(value) }));
+    if (new Set(normalized.map((item) => item.key)).size === 1) return normalized[0].value;
+
+    // A source caption can contain the same tournament title plus unrelated
+    // caption text. Prefer the cleaner, shorter title when the meaningful
+    // tournament tokens substantially overlap.
+    if (key === "tournament_name") {
+      const score = (value) => {
+        const text = normalizeMergeKey(value);
+        const noise = (text.match(/\b(?:venue|date|the|and|for|insta|instagram|taekwo|sports|championships)\b/g) || []).length;
+        return text.length - noise * 12;
+      };
+      const tokenSets = normalized.map((item) => tokenSet(item.value));
+      const meaningfulOverlap = (a, b) => {
+        const shared = [...a].filter((token) => b.has(token)).length;
+        return shared / Math.max(1, Math.min(a.size, b.size));
+      };
+      let best = normalized[0];
+      for (let i = 1; i < normalized.length; i++) {
+        if (meaningfulOverlap(tokenSets[0], tokenSets[i]) >= 0.6 && score(normalized[i].value) < score(best.value)) best = normalized[i];
+      }
+      return best.value;
+    }
+
+    // Venue/location strings often differ only by abbreviated vs full form.
+    // When one contains the meaningful tokens of the other, use the fuller
+    // evidence instead of presenting a false conflict.
+    if (key === "venue") {
+      const sets = normalized.map((item) => tokenSet(item.value));
+      for (let i = 0; i < normalized.length; i++) {
+        for (let j = 0; j < normalized.length; j++) {
+          if (i === j) continue;
+          if (meaningfulTokenOverlap(sets[i], sets[j]) >= 0.6) {
+            return normalized.reduce((best, item) => item.value.length > best.length ? item.value : best, normalized[0].value);
+          }
+        }
+      }
+    }
+
+    return "Conflict detected — " + normalized.map((item) => item.value).join(" | ");
+  };
+
   for (const key of allFactKeys) {
     const values = factsList.map((facts) => facts[key]).filter((value) => valuableText(value));
     if (!values.length) continue;
-    const uniqueValues = [];
-    const seen = new Set();
-    for (const value of values) {
-      const normalized = normalizeMergeKey(value);
-      if (!seen.has(normalized)) {
-        seen.add(normalized);
-        uniqueValues.push(valuableText(value));
-      }
-    }
-    mergedFacts[key] = uniqueValues.length === 1
-      ? uniqueValues[0]
-      : "Conflict detected — " + uniqueValues.join(" | ");
+    mergedFacts[key] = canonicalMergeValue(key, values);
   }
 
   const allFieldKeys = unique(fieldsList.flatMap((fields) => Object.keys(fields)));
@@ -1609,6 +1643,10 @@ export default async function handler(request) {
       const dateKeys = rows.map((row) => normalizeMergeKey(row.tournament_date)).filter(Boolean);
       const venueKeys = rows.map((row) => normalizeMergeKey(row.venue)).filter(Boolean);
       const tokenSet = (value) => new Set(normalizeMergeKey(value).split(" ").filter((token) => token.length >= 3 && !/^(the|open|national|memorial|championship|taekwondo|tournament|school|hall|girls|residential|venue|date)$/.test(token)));
+      const meaningfulTokenOverlap = (a, b) => {
+        const shared = [...a].filter((token) => b.has(token)).length;
+        return shared / Math.max(1, Math.min(a.size, b.size));
+      };
       const overlap = (a, b) => {
         const left = tokenSet(a);
         const right = tokenSet(b);
