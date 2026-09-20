@@ -1063,14 +1063,50 @@ export default async function handler(request) {
     const result = await scanPublicSource(sourceUrl);
     const admin = serverSupabase();
     const { data: existing } = await admin.from("tournament_scans")
-      .select("source_hash,last_checked_at")
+      .select("source_hash,last_checked_at,details")
       .eq("user_id", user.id)
       .eq("source_url", result.scan.source_url)
       .maybeSingle();
+
+    const missingValue = (value) => {
+      const normalized = String(value || "").trim();
+      return !normalized || /^not found in accessible source$/i.test(normalized) || /^none detected/i.test(normalized);
+    };
+    const comparableFacts = [
+      ["Tournament name", "tournament_name"],
+      ["Tournament dates", "tournament_dates"],
+      ["Reporting date", "reporting_date"],
+      ["Reporting time", "reporting_time"],
+      ["Venue", "venue"],
+      ["City / State", "city_state"],
+      ["Sport", "sport"],
+      ["Age categories", "age_categories"],
+      ["Weight categories", "weight_categories"],
+      ["Registration fee", "registration_fee"],
+      ["Registration deadline", "registration_deadline"],
+      ["Registration link", "registration_link"],
+      ["Official contact", "official_contact"],
+      ["Organizer", "organizer"],
+      ["Scoring / equipment", "equipment_and_scoring"],
+      ["Important highlights", "important_highlights"],
+      ["Important notice", "important_notice"]
+    ];
+    const previousFacts = existing?.details?.important_facts || {};
+    const currentFacts = result.scan.details?.important_facts || {};
+    const changes = [];
+    if (existing?.source_hash) {
+      for (const [label, key] of comparableFacts) {
+        const before = missingValue(previousFacts[key]) ? "" : String(previousFacts[key]).trim();
+        const after = missingValue(currentFacts[key]) ? "" : String(currentFacts[key]).trim();
+        if (!before && after) changes.push(`NEW — ${label}: ${after}`);
+        else if (before && !after) changes.push(`REMOVED — ${label}: ${before}`);
+        else if (before && after && semanticDateKey(before) !== semanticDateKey(after)) changes.push(`CHANGED — ${label}: ${before} → ${after}`);
+      }
+    }
     const changed = existing?.source_hash
-      ? (existing.source_hash === result.source_hash
+      ? (existing.source_hash === result.source_hash && changes.length === 0
         ? "No change detected since the previous Instagram scan."
-        : "NEW/CHANGED: the Instagram source or discovered tournament content changed since the previous scan.")
+        : `CHANGED: ${changes.length ? changes.slice(0, 20).join(" | ") : "the accessible Instagram source or discovered tournament content changed."}`)
       : "NEW: first scan of this Instagram tournament source.";
     result.scan.detected_changes = changed;
     result.scan.last_checked_at = new Date().toISOString();
