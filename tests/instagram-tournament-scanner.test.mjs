@@ -47,3 +47,13 @@ test("poster URLs are not accepted as registration links without registration co
   assert.match(backend, /Do not accept arbitrary URLs from poster OCR/);
   assert.match(backend, /registrationUrlLines = lines\.filter/);
 });
+
+test("generic source URLs are not promoted to registration links", () => {
+  assert.match(backend, /registrationContext = text\.match/);
+  assert.doesNotMatch(backend, /text\.match\(\/https\?:\\\/\\\/\[\^\\s\)\]\+\/i\)/);
+});
+
+test("reporting/check-in dates cannot silently become tournament dates", () => {
+  assert.match(backend, /poster\.date_text = poster\.event_date_text \|\| ""/);
+  assert.doesNotMatch(backend, /poster\.date_text = poster\.event_date_text \|\| firstMatch\(compactText/);
+});
