@@ -559,8 +559,8 @@ function extractTitle(html) {
 }
 
 function extractDate(text, html) {
-  const iso = first(html, [/"taken_at_timestamp"\s*:\s*(\d{9,12})/i, /"timestamp"\s*:\s*"([^"]+)"/i]);
-  if (iso && /^\d{9,12}$/.test(iso)) return new Date(Number(iso) * 1000).toISOString().slice(0, 10);
+  // Never use Instagram publication timestamps as tournament dates. A post
+  // date is reporting/source metadata, not evidence of when the tournament is.
   const patterns = [
     /(?:date|dates?|event|held|on)\s*[:\-]?\s*([A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*[-–]\s*[A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?)?\s*,?\s*\d{4})/i,
     /\b(\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+\d{4})?)\b/i,
@@ -920,7 +920,16 @@ async function scanPublicSource(sourceUrl) {
   const sourceDateText = clean(extractDate(caption, "") || "");
   const posterDateText = clean(poster?.date_text || "");
   const dateKey = (value) => semanticDateKey(value);
-  const dateKeysMatch = sourceDateText && posterDateText && dateKey(sourceDateText) === dateKey(posterDateText);
+  const dateKeysCompatible = (left, right) => {
+    const a = dateKey(left);
+    const b = dateKey(right);
+    if (!a || !b) return false;
+    const aYear = a.match(/\b(20\d{2}|19\d{2})\b/)?.[1] || "";
+    const bYear = b.match(/\b(20\d{2}|19\d{2})\b/)?.[1] || "";
+    const withoutYear = (value) => value.replace(/\b(20\d{2}|19\d{2})\b/g, "").replace(/\s+/g, " ").trim();
+    return withoutYear(a) === withoutYear(b) && (!aYear || !bYear || aYear === bYear);
+  };
+  const dateKeysMatch = sourceDateText && posterDateText && dateKeysCompatible(sourceDateText, posterDateText);
   const dateConflict = Boolean(sourceDateText && posterDateText && !dateKeysMatch);
   const resolvedEventDateText = dateConflict
     ? ""
