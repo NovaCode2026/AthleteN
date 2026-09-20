@@ -913,11 +913,12 @@ async function scanPublicSource(sourceUrl) {
     });
   }
 
+  const fact = (value) => valuableText(value) || "";
   const importantFacts = {
-    tournament_name: allFacts.tournament_name || "Not found in accessible source",
+    tournament_name: fact(allFacts.tournament_name),
     tournament_dates: dateConflict
       ? `Conflict detected — source: "${sourceDateText}" | poster: "${posterDateText}"`
-      : (resolvedEventDateText || "Not found in accessible source"),
+      : fact(resolvedEventDateText),
     reporting_date: clean(poster?.reporting_date_text || "") || "Not found in accessible source",
     reporting_time: clean(poster?.reporting_time || "") || "Not found in accessible source",
     venue: allFacts.venue || "Not found in accessible source",
@@ -943,7 +944,7 @@ async function scanPublicSource(sourceUrl) {
         const candidates = (item.candidates || []).map((candidate) => candidate.value || candidate).filter(Boolean).join(" | ");
         return candidates ? `Conflict detected — ${item.field}: ${candidates}` : "";
       })
-    ].filter(Boolean).join("\n") || "None detected in accessible evidence",
+    ].filter(Boolean).join("\n"),
     official_source: canonicalSourceUrl
   };
 
@@ -964,7 +965,7 @@ async function scanPublicSource(sourceUrl) {
         important_facts: importantFacts,
         description: poster?.tournament_name || allFacts.tournament_name || "Tournament information extracted from accessible source.",
         fields: {
-          organizer: allFacts.organizer || "",
+          organizer: fact(allFacts.organizer),
           host: allFacts.host || "",
           reporting_date_text: clean(poster?.reporting_date_text || ""),
           reporting_time: clean(poster?.reporting_time || ""),
