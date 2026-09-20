@@ -888,7 +888,11 @@ async function scanPublicSource(sourceUrl) {
   if (/^#(?:[a-z0-9_]+\s*)+$/i.test(allFacts.tournament_name || "")) {
     allFacts.tournament_name = poster?.tournament_name ? clean(poster.tournament_name) : "";
   }
-  if (!TOURNAMENT_WORDS.test(allText)) throw new Error("NO_TOURNAMENT_CONTENT");
+  // An irrelevant caption must never abort a scan. The scanner keeps going
+  // because the poster, source metadata, discovered accounts, or related posts
+  // may still contain useful tournament evidence. If no tournament evidence
+  // exists anywhere, the result simply contains no tournament facts.
+  const hasTournamentEvidence = TOURNAMENT_WORDS.test(allText);
 
   // Cross-check event dates from independent accessible evidence. A missing
   // year is not a contradiction when another source supplies the year.
@@ -919,25 +923,23 @@ async function scanPublicSource(sourceUrl) {
     tournament_dates: dateConflict
       ? `Conflict detected — source: "${sourceDateText}" | poster: "${posterDateText}"`
       : fact(resolvedEventDateText),
-    reporting_date: clean(poster?.reporting_date_text || "") || "Not found in accessible source",
-    reporting_time: clean(poster?.reporting_time || "") || "Not found in accessible source",
-    venue: allFacts.venue || "Not found in accessible source",
-    city_state: allFacts.location_hint || "Not found in accessible source",
-    sport: clean(poster?.sport || "") || "Not found in accessible source",
-    age_categories: clean(poster?.age_categories?.join(", ") || "") || "Not found in accessible source",
-    weight_categories: clean(poster?.weight_categories?.join(", ") || "") || "Not found in accessible source",
-    registration_fee: allFacts.fees || "Not found in accessible source",
-    registration_deadline: allFacts.registration_deadline_text || "Not found in accessible source",
-    registration_link: allFacts.registration_link || "Not found in accessible source",
-    official_contact: allFacts.contact || "Not found in accessible source",
-    organizer: allFacts.organizer || "Not found in accessible source",
-    equipment_and_scoring: clean(poster?.equipment || "") || "Not found in accessible source",
-    important_highlights: Array.isArray(poster?.highlights) && poster.highlights.length
-      ? poster.highlights.join(" ")
-      : "Not found in accessible source",
+    reporting_date: fact(poster?.reporting_date_text),
+    reporting_time: fact(poster?.reporting_time),
+    venue: fact(allFacts.venue),
+    city_state: fact(allFacts.location_hint),
+    sport: fact(poster?.sport),
+    age_categories: fact(poster?.age_categories?.join(", ")),
+    weight_categories: fact(poster?.weight_categories?.join(", ")),
+    registration_fee: fact(allFacts.fees),
+    registration_deadline: fact(allFacts.registration_deadline_text),
+    registration_link: fact(allFacts.registration_link),
+    official_contact: fact(allFacts.contact),
+    organizer: fact(allFacts.organizer),
+    equipment_and_scoring: fact(poster?.equipment),
+    important_highlights: fact(Array.isArray(poster?.highlights) ? poster.highlights.join(" ") : ""),
     important_notice: dateConflict
       ? `Conflict detected between accessible source text and poster OCR: source says "${sourceDateText}"; poster OCR says "${posterDateText}".`
-      : "Not found in accessible source",
+      : "",
     evidence_conflicts: [
       clean(poster?.evidence_conflicts || ""),
       ...crossEvidenceConflicts.map((item) => {
@@ -963,7 +965,8 @@ async function scanPublicSource(sourceUrl) {
       detected_changes: "New scan; compare this source again to detect content changes.",
       details: {
         important_facts: importantFacts,
-        description: poster?.tournament_name || allFacts.tournament_name || "Tournament information extracted from accessible source.",
+        description: poster?.tournament_name || allFacts.tournament_name || (hasTournamentEvidence ? "Tournament information extracted from accessible source." : "Tournament source scanned."),
+        tournament_evidence_found: hasTournamentEvidence,
         fields: {
           organizer: fact(allFacts.organizer),
           host: allFacts.host || "",
@@ -1140,18 +1143,15 @@ export default async function handler(request) {
     const rawMessage = String(error?.message || error || "Unknown scanner error");
     console.error("instagram-tournament-scan", rawMessage);
     console.error("instagram-tournament-scan stack", error?.stack || "no stack");
-    const isNoContent = rawMessage === "NO_TOURNAMENT_CONTENT";
     const isBlocked = /^INSTAGRAM_HTTP_/.test(rawMessage);
     const isSaveError = rawMessage.startsWith("SCAN-SAVE-500:");
-    const code = isSaveError ? "SCAN-SAVE-500" : isNoContent ? "IG-SCAN-204" : isBlocked ? "IG-SCAN-502" : "IG-SCAN-500";
+    const code = isSaveError ? "SCAN-SAVE-500" : isBlocked ? "IG-SCAN-502" : "IG-SCAN-500";
     const message = isSaveError
       ? "The tournament scan completed, but AthleteN could not save the result."
-      : isNoContent
-        ? "No tournament-related content was accessible in this Instagram source."
-        : isBlocked
-          ? "Instagram did not provide readable public content for this source. Try a public post/reel that is viewable without login."
-          : "The scanner hit an unexpected processing error. The server log contains the exact cause.";
+      : isBlocked
+        ? "Instagram did not provide readable public content for this source. Try a public post/reel that is viewable without login."
+        : "The scanner hit an unexpected processing error. The server log contains the exact cause.";
     return json({
       error: message + " Error code: " + code + ". Contact NovaCode at novacode.create@gmail.com, send a message in AthleteN, or use Problem/Feedback."
-    }, isSaveError ? 500 : isNoContent ? 204 : 502);
+    }, isSaveError ? 500 : isBlocked ? 502 : 500);
   }}
