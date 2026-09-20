@@ -653,8 +653,21 @@ async function analyzeTournamentImage(imageUrl) {
       poster.rounds = extractAcrossPasses([/(?:rounds?|number\s+of\s+rounds?)\s*[:\-]?\s*(.+?)(?=\s+(?:equipment|schedule|weigh|rules)\b|$)/i], normalizeEvidence, "rounds") || "";
       poster.schedule = extractAcrossPasses([/(?:schedule|program|programme)\s*[:\-]?\s*(.+?)(?=\s+(?:weigh|registration|contact|venue|rules)\b|$)/i], normalizeEvidence, "schedule") || "";
       poster.weigh_in = extractAcrossPasses([/(?:weigh[-\s]?in|weight\s+check)\s*[:\-]?\s*(.+?)(?=\s+(?:registration|contact|venue|schedule|rules)\b|$)/i], normalizeEvidence, "weigh_in") || "";
-      poster.medals = extractAcrossPasses([/(?:medals?|awards?)\s*[:\-]?\s*(.+?)(?=\s+(?:prizes?|accommodation|transport|registration)\b|$)/i], normalizeEvidence, "medals") || "";
-      poster.prizes = extractAcrossPasses([/(?:prizes?|cash\s+prizes?)\s*[:\-]?\s*(.+?)(?=\s+(?:medals?|accommodation|transport|registration)\b|$)/i], normalizeEvidence, "prizes") || "";
+      const cleanAwardEvidence = (value) => {
+        const normalized = normalizeEvidence(value);
+        if (!normalized || normalized.length < 3) return "";
+        const letters = (normalized.match(/[A-Za-z]/g) || []).length;
+        const symbols = (normalized.match(/[^A-Za-z0-9₹$%.,&+()/' -]/g) || []).length;
+        if (letters < 3 || symbols > Math.max(3, Math.floor(normalized.length * 0.2))) return "";
+        if (/^(?:ist|1st)\s*(?:®|©|\||_|-|—|lr|ha|kr|[A-Za-z]{0,2})/i.test(normalized)) return "";
+        return normalized;
+      };
+      poster.medals = cleanAwardEvidence(extractAcrossPasses([
+        /(?:medals?|awards?)\s*[:\-]?\s*(.+?)(?=\s+(?:prizes?|accommodation|transport|registration)\b|$)/i
+      ], normalizeEvidence, "medals")) || "";
+      poster.prizes = cleanAwardEvidence(extractAcrossPasses([
+        /(?:prizes?|cash\s+prizes?)\s*[:\-]?\s*(.+?)(?=\s+(?:medals?|accommodation|transport|registration)\b|$)/i
+      ], normalizeEvidence, "prizes")) || "";
       poster.accommodation = extractAcrossPasses([/(?:accommodation|lodging)\s*[:\-]?\s*(.+?)(?=\s+(?:transport|registration|contact|venue)\b|$)/i], normalizeEvidence, "accommodation") || "";
       poster.transport = extractAcrossPasses([/(?:transport|transportation)\s*[:\-]?\s*(.+?)(?=\s+(?:accommodation|registration|contact|venue)\b|$)/i], normalizeEvidence, "transport") || "";
       poster.documents = extractAcrossPasses([/(?:documents?|documents\s+required|required\s+documents?)\s*[:\-]?\s*(.+?)(?=\s+(?:registration|contact|venue|date)\b|$)/i], normalizeEvidence, "documents") || "";
@@ -687,9 +700,29 @@ async function analyzeTournamentImage(imageUrl) {
         /https?:\/\/|www\.|bit\.ly|forms?\.gle/i.test(line)
       );
       poster.registration_link = firstMatch(registrationUrlLines.join(" "), [/(https?:\/\/[^\s|]+|www\.[^\s|]+|bit\.ly\/[^\s|]+|forms?\.gle\/[^\s|]+)/i]) || "";
-      poster.website = "";      poster.events = unique(lines.filter((line) => /kyorugi|poomsae|poomse|fresher|cadet|junior|senior|sub[- ]?junior|under[- ]?\d|\bkg\b|\b\d+\s*kg\b/i.test(line)).slice(0, 30));
+      poster.website = "";      const eventLines = lines.filter((line) =>
+        /\b(?:kyorugi|poomsae|poomse)\b/i.test(line) &&
+        !/\b(?:venue|location|reporting|date|registration|fee|contact|rules)\b/i.test(line)
+      );
+      poster.events = unique(eventLines
+        .map((line) => normalizeEvidence(line)
+          .replace(/\bpoomse\b/gi, "Poomsae")
+          .replace(/\bfresher(?:s)?\b/gi, "Freshers")
+          .replace(/\bkyorugi\b/gi, "Kyorugi")
+          .replace(/\s+/g, " ")
+          .trim())
+        .filter((line) => line.length >= 4)
+        .slice(0, 30));
       poster.categories = poster.events.slice();
-      poster.age_categories = lines.filter((line) => /cadet|junior|senior|sub[- ]?junior|fresher|under[- ]?\d/i.test(line)).slice(0, 30);
+
+      // "Freshers" is not automatically an age category. On tournament
+      // posters it is commonly an event/division label (for example,
+      // Freshers Kyorugi / Freshers Poomsae). Only classify it as an age
+      // category when the source explicitly frames it as an age/group field.
+      poster.age_categories = lines.filter((line) =>
+        /\b(?:cadet|junior|senior|sub[- ]?junior|under[- ]?\d)\b/i.test(line) ||
+        (/(?:age|age\s+group|age\s+category|age\s+categories)\b/i.test(line) && /\bfresher(?:s)?\b/i.test(line))
+      ).slice(0, 30);
       poster.weight_categories = lines.filter((line) => /\b\d+\s*kg\b|\bunder[- ]?\d+\s*kg\b/i.test(line)).slice(0, 30);
       poster.highlights = evidenceLines.filter((line) =>
         /600\+\s*athletes|10\+\s*states|athletes from|experienced coaches|referees|officials|scoring|PSS|protective scoring|real-time scoring|instant result|fair(?:\s+and|&)\s+transparent/i.test(line) &&
