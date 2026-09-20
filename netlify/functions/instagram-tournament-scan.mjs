@@ -48,6 +48,18 @@ function clean(value = "") {
   return decode(String(value)).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// Main-result sanitizer: only meaningful evidence is allowed into the clean
+// tournament facts. Missing/placeholder values disappear instead of being
+// rendered as "none", "N/A", or similar filler.
+function valuableText(value, max = 700) {
+  const text = clean(String(value || ""));
+  if (!text) return "";
+  const bad = /^(none|none detected|n\/a|na|null|undefined|unknown|not found|not available|not applicable|no information|no change detected|no previous change detected|—|-)+$/i;
+  if (bad.test(text)) return "";
+  if (/^(instagram|instagram\.com|view this post on instagram|a post shared by)$/i.test(text)) return "";
+  return text.slice(0, max);
+}
+
 function meta(html, key) {
   const a = new RegExp(`<meta[^>]+(?:property|name)=[\"']${key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}[\"'][^>]+content=[\"']([^\"']+)[\"'][^>]*>`, "i");
   const b = new RegExp(`<meta[^>]+content=[\"']([^\"']+)[\"'][^>]+(?:property|name)=[\"']${key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}[\"'][^>]*>`, "i");
