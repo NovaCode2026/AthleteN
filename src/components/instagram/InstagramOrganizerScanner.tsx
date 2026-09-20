@@ -6,7 +6,8 @@ import "../../styles/tournament-scanner.css";
 type SourceType = "website" | "instagram";
 type Props = { accessToken?: string; setToast: (toast: { type: "success" | "error" | "warning"; message: string } | null) => void };
 type DetailSection = { title: string; content: string; source_url?: string };
-type MergeSuggestion = { id: string; scan_ids: string[]; evidence_match: number; anchors: string[]; tournament_names: string[]; dates: string[]; venues: string[]; organizers: string[]; source_urls: string[] };\ntype ScanDetails = { description?: string | null; fields?: Record<string, string>; important_facts?: Record<string, string>; headings?: string[]; sections?: DetailSection[]; key_highlights?: string[]; pages_scanned?: number; source_pages?: string[]; pdfs?: Array<{ href: string; label: string }>; conflicts?: Array<{ field: string; candidates: Array<{ value: string; source_url?: string }> }>; tournament_group?: { id: string; name: string; scan_ids: string[]; created_at?: string } };
+type MergeSuggestion = { id: string; scan_ids: string[]; evidence_match: number; anchors: string[]; tournament_names: string[]; dates: string[]; venues: string[]; organizers: string[]; source_urls: string[] };
+type ScanDetails = { description?: string | null; fields?: Record<string, string>; important_facts?: Record<string, string>; headings?: string[]; sections?: DetailSection[]; key_highlights?: string[]; pages_scanned?: number; source_pages?: string[]; pdfs?: Array<{ href: string; label: string }>; conflicts?: Array<{ field: string; candidates: Array<{ value: string; source_url?: string }> }>; tournament_group?: { id: string; name: string; scan_ids: string[]; created_at?: string } };
 type ScanRow = { id: string; source_url: string; tournament_name?: string | null; tournament_date?: string | null; venue?: string | null; registration_deadline?: string | null; weigh_in_information?: string | null; categories?: string | null; notices?: string | null; schedules_results?: string | null; pdfs?: Array<{ href: string; label: string }> | null; details?: ScanDetails | null; status?: string | null; detected_changes?: string | null; last_checked_at?: string | null; next_check_at?: string | null };
 type InstagramPost = { id: string; caption?: string; timestamp?: string | null; permalink?: string | null; media_type?: string | null; media_product_type?: string | null };
 type InstagramResult = { organizer?: { username?: string; name?: string | null; biography?: string | null; followers_count?: number | null }; relevant_posts?: InstagramPost[]; other_posts?: InstagramPost[]; related_accounts?: Array<{ username: string; url: string; relevant?: boolean; title?: string | null; posts?: InstagramPost[] }>; posts_scanned?: number; scan_limit?: number; more_posts_available?: boolean; scan?: ScanRow };
@@ -54,7 +55,11 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
   const [selectedScan, setSelectedScan] = useState<ScanRow | null>(null);
   const [instagramResult, setInstagramResult] = useState<InstagramResult | null>(null);
   const [mergeSelection, setMergeSelection] = useState<string[]>([]);
-  const [merging, setMerging] = useState(false);\n  const [mergeSuggestions, setMergeSuggestions] = useState<MergeSuggestion[]>([]);\n  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);\n  const [groupName, setGroupName] = useState("");\n  const [grouping, setGrouping] = useState(false);
+  const [merging, setMerging] = useState(false);
+  const [mergeSuggestions, setMergeSuggestions] = useState<MergeSuggestion[]>([]);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
+  const [groupName, setGroupName] = useState("");
+  const [grouping, setGrouping] = useState(false);
 
   async function loadScans() {
     if (!accessToken) return;
@@ -68,7 +73,8 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
       setSelectedScan((current) => current ? rows.find((row) => row.id === current.id) || current : rows[0] || null);
     }
   }
-  useEffect(() => { void loadScans(); }, [accessToken]);\n  async function loadMergeSuggestions() {
+  useEffect(() => { void loadScans(); }, [accessToken]);
+  async function loadMergeSuggestions() {
     if (!accessToken) return;
     const response = await fetch("/.netlify/functions/instagram-tournament-scan", {
       method: "POST",
@@ -380,7 +386,8 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
         {selectedScan.notices && <article className="info-card"><h4>Notices</h4><p>{selectedScan.notices}</p></article>}
       </section>}
 
-      {sections.length > 0 && <section className="card panel"><h3>Source sections discovered</h3><div className="details-list">{sections.map((section, index) => <div className="detail-row" key={`${section.title}-${index}`}><b>{section.title}</b><span>{section.content}{section.source_url ? `\n${section.source_url}` : ""}</span></div>)}</div></section>}
+      {sections.length > 0 && <section className="card panel"><h3>Source sections discovered</h3><div className="details-list">{sections.map((section, index) => <div className="detail-row" key={`${section.title}-${index}`}><b>{section.title}</b><span>{section.content}{section.source_url ? `
+${section.source_url}` : ""}</span></div>)}</div></section>}
 
       {details?.key_highlights?.length ? <section className="card panel"><h3>Key source highlights</h3><div className="details-list">{details.key_highlights.map((highlight, index) => <div className="detail-row" key={`${highlight}-${index}`}><b>Detected</b><span>{highlight}</span></div>)}</div></section> : null}
 
