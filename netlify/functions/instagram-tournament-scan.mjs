@@ -700,19 +700,25 @@ async function analyzeTournamentImage(imageUrl) {
         /https?:\/\/|www\.|bit\.ly|forms?\.gle/i.test(line)
       );
       poster.registration_link = firstMatch(registrationUrlLines.join(" "), [/(https?:\/\/[^\s|]+|www\.[^\s|]+|bit\.ly\/[^\s|]+|forms?\.gle\/[^\s|]+)/i]) || "";
-      poster.website = "";      const eventLines = lines.filter((line) =>
-        /\b(?:kyorugi|poomsae|poomse)\b/i.test(line) &&
-        !/\b(?:venue|location|reporting|date|registration|fee|contact|rules)\b/i.test(line)
-      );
-      poster.events = unique(eventLines
-        .map((line) => normalizeEvidence(line)
-          .replace(/\bpoomse\b/gi, "Poomsae")
-          .replace(/\bfresher(?:s)?\b/gi, "Freshers")
-          .replace(/\bkyorugi\b/gi, "Kyorugi")
-          .replace(/\s+/g, " ")
-          .trim())
-        .filter((line) => line.length >= 4)
-        .slice(0, 30));
+      poster.website = "";      // Build event/division labels from the meaningful sport tokens rather
+      // than copying entire OCR lines. This prevents layout noise such as
+      // "FRESHERS FRESHERS POOMSAE |" from becoming a structured event.
+      const extractedEventLabels = [];
+      for (const line of lines) {
+        if (/\b(?:venue|location|reporting|date|registration|fee|contact|rules)\b/i.test(line)) continue;
+        const normalizedLine = normalizeEvidence(line);
+        const freshers = /\bfresher(?:s)?\b/i.test(normalizedLine);
+        const sportTokens = [...normalizedLine.matchAll(/\b(?:kyorug(?:i)?|poomsae|poomse)\b/gi)]
+          .map((match) => {
+            const token = match[0].toLowerCase();
+            if (token.startsWith("kyorug")) return "Kyorugi";
+            return "Poomsae";
+          });
+        for (const sport of sportTokens) {
+          extractedEventLabels.push(freshers ? "Freshers " + sport : sport);
+        }
+      }
+      poster.events = unique(extractedEventLabels);
       poster.categories = poster.events.slice();
 
       // "Freshers" is not automatically an age category. On tournament
