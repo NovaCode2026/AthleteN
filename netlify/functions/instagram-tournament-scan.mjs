@@ -264,26 +264,65 @@ async function analyzeTournamentImage(imageUrl) {
         .replace(/\s+/g, " ")
         .trim();
 
+      const tokenOverlap = (left, right) => {
+        const a = new Set(semanticEvidenceKey(left).split(/\\s+/).filter((token) => token.length > 1));
+        const b = new Set(semanticEvidenceKey(right).split(/\\s+/).filter((token) => token.length > 1));
+        if (!a.size || !b.size) return 0;
+        let common = 0;
+        for (const token of a) if (b.has(token)) common += 1;
+        return common / Math.max(1, Math.min(a.size, b.size));
+      };
+
+      // OCR passes are multiple readings of the same poster, not independent
+      // sources. Earlier logic required the exact same string twice, which
+      // incorrectly discarded real facts when Tesseract varied punctuation or
+      // dropped a word in one pass. Cluster near-identical readings first,
+      // then only call it a conflict when materially different values have
+      // repeated support. A single clean value from the strongest OCR pass is
+      // still usable when there is no competing evidence.
       const consensus = (values, normalizer = normalizeEvidence, keyNormalizer = semanticEvidenceKey) => {
-        const groups = new Map();
-        for (const value of values || []) {
-          const normalized = normalizer(value);
+        const groups = [];
+        for (const raw of values || []) {
+          const normalized = normalizer(raw);
           if (!normalized) continue;
           const key = keyNormalizer(normalized);
-          const current = groups.get(key) || { value: normalized, count: 0 };
-          current.count += 1;
-          // Keep the most informative spelling/format as the displayed value.
-          if (normalized.length > current.value.length) current.value = normalized;
-          groups.set(key, current);
+          let group = groups.find((item) => item.key === key || tokenOverlap(item.value, normalized) >= 0.82);
+          if (!group) {
+            group = { value: normalized, count: 0, bestIndex: Number.MAX_SAFE_INTEGER, variants: [] };
+            groups.push(group);
+          }
+          group.count += 1;
+          group.variants.push(normalized);
+          if (normalized.length > group.value.length) group.value = normalized;
         }
-        const ranked = [...groups.values()].sort((a, b) => b.count - a.count || b.value.length - a.value.length);
+
+        const ranked = groups.sort((a, b) => b.count - a.count || b.value.length - a.value.length);
         if (!ranked.length) return { value: "", conflict: false, candidates: [] };
+
         const top = ranked[0];
         const second = ranked[1];
-        const conflict = Boolean(second && second.count >= Math.max(1, top.count - 1));
-        const insufficientEvidence = top.count < 2 && normalizedPasses.length > 1;
+        const repeatedAlternatives = ranked.filter((item) => item.count >= 2);
+        const conflict = Boolean(
+          repeatedAlternatives.length >= 2 &&
+          second &&
+          second.count >= 2 &&
+          tokenOverlap(top.value, second.value) < 0.82
+        );
+
+        // If several OCR passes disagree only once each, prefer the strongest
+        // pass rather than surfacing noisy "conflicts". If the best pass did
+        // not yield a value, use the most common candidate.
+        let value = conflict ? "" : top.value;
+        if (!value) {
+          const firstNonEmpty = values.map((item, index) => ({
+            value: normalizer(item),
+            index
+          })).find((item) => item.value);
+          value = firstNonEmpty?.value || "";
+        }
+
         return {
-          value: conflict || insufficientEvidence ? "" : top.value,
+          value,
           conflict,
           candidates: ranked.slice(0, 5).map((item) => ({ value: item.value, count: item.count }))
         };
@@ -291,7 +330,8 @@ async function analyzeTournamentImage(imageUrl) {
 
       const evidenceConflicts = [];
       const extractAcrossPasses = (patterns, normalizer = normalizeEvidence, label = "field") => {
-        const result = consensus(normalizedPasses.map((pass) => firstMatch(pass.lines.join(" "), patterns)), normalizer);
+        const extracted = normalizedPasses.map((pass) => firstMatch(pass.lines.join(" "), patterns));
+        const result = consensus(extracted, normalizer);
         if (result.conflict) evidenceConflicts.push({ field: label, candidates: result.candidates });
         return result.value;
       };
@@ -317,7 +357,7 @@ async function analyzeTournamentImage(imageUrl) {
       }).filter(Boolean);
       const titleEvidence = consensus(titleCandidates);
       if (titleEvidence.conflict) evidenceConflicts.push({ field: "tournament_name", candidates: titleEvidence.candidates });
-      poster.tournament_name = titleEvidence.value || "";
+      poster.tournament_name = titleEvidence.value || titleCandidates[0] || "";
 
       const reportingDate = extractAcrossPasses([
         /(?:reporting\s+(?:time|date)|reporting)\s*[:\-]?\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)?\s*\(?\s*)?(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})/i
@@ -343,7 +383,7 @@ async function analyzeTournamentImage(imageUrl) {
       if (eventDateEvidenceResult.conflict) {
         evidenceConflicts.push({ field: "event_date", candidates: eventDateEvidenceResult.candidates });
       }
-      poster.event_date_text = eventDateEvidenceResult.value || "";
+      poster.event_date_text = eventDateEvidenceResult.value || eventDateEvidence.find(Boolean) || "";
 
       // Never fall back to an arbitrary single date here. A reporting/check-in
       // date must not become the tournament date when the event-date pattern
