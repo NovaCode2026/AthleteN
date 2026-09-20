@@ -1550,6 +1550,38 @@ function mergeEvidenceValues(values = []) {
   return out.join(", ");
 }
 
+function tournamentEvidence(row = {}) {
+  const facts = row.details?.important_facts || {};
+  const fields = row.details?.fields || {};
+  return {
+    name: valuableText(row.tournament_name || facts.tournament_name || ""),
+    date: valuableText(row.tournament_date || facts.tournament_dates || fields.tournament_date_text || ""),
+    venue: valuableText(row.venue || facts.venue || ""),
+    organizer: valuableText(facts.organizer || fields.organizer || ""),
+    sport: valuableText(facts.sport || fields.poster_sport || ""),
+    city: valuableText(facts.city_state || [fields.poster_city, fields.poster_state].filter(Boolean).join(", "))
+  };
+}
+function similarity(a = "", b = "") {
+  const left = mergeTokenSet(a); const right = mergeTokenSet(b);
+  if (!left.size || !right.size) return 0;
+  const shared = [...left].filter((token) => right.has(token)).length;
+  return shared / Math.max(1, Math.min(left.size, right.size));
+}
+function buildMergeSuggestions(rows = []) {
+  const suggestions = [];
+  for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++) {
+    const a = rows[i], b = rows[j]; if (a.id === b.id) continue;
+    const ea = tournamentEvidence(a), eb = tournamentEvidence(b);
+    const scores = { name: similarity(ea.name, eb.name), date: similarity(ea.date, eb.date), venue: similarity(ea.venue, eb.venue), organizer: similarity(ea.organizer, eb.organizer), sport: similarity(ea.sport, eb.sport), city: similarity(ea.city, eb.city) };
+    const anchors = Object.entries(scores).filter(([, value]) => value >= 0.6).map(([key]) => key === "name" ? "tournament name" : key === "city" ? "city/state" : key);
+    const evidenceMatch = Math.round(scores.name * 35 + scores.date * 25 + scores.venue * 20 + scores.organizer * 10 + scores.sport * 5 + scores.city * 5);
+    const sameGroup = a.details?.tournament_group?.id && a.details.tournament_group.id === b.details?.tournament_group?.id;
+    if (!sameGroup && anchors.length >= 2 && (evidenceMatch >= 60 || (scores.date >= 0.6 && scores.venue >= 0.6) || scores.name >= 0.78)) suggestions.push({ id: `${a.id}:${b.id}`, scan_ids: [a.id, b.id], evidence_match: Math.min(100, evidenceMatch), anchors, tournament_names: [ea.name, eb.name].filter(Boolean), dates: [ea.date, eb.date].filter(Boolean), venues: [ea.venue, eb.venue].filter(Boolean), organizers: [ea.organizer, eb.organizer].filter(Boolean), source_urls: [a.source_url, b.source_url].filter(Boolean) });
+  }
+  return suggestions.sort((a, b) => b.evidence_match - a.evidence_match).slice(0, 12);
+}
+
 function mergeTournamentScans(rows = []) {
   const sorted = [...rows].sort((a, b) => new Date(b.last_checked_at || 0).getTime() - new Date(a.last_checked_at || 0).getTime());
   const primary = sorted[0];
@@ -1590,7 +1622,7 @@ function mergeTournamentScans(rows = []) {
     // When one contains the meaningful tokens of the other, use the fuller
     // evidence instead of presenting a false conflict.
     if (key === "venue") {
-      const sets = normalized.map((item) => tokenSet(item.value));
+      const sets = normalized.map((item) => mergeTokenSet(item.value));
       for (let i = 0; i < normalized.length; i++) {
         for (let j = 0; j < normalized.length; j++) {
           if (i === j) continue;
@@ -1722,6 +1754,34 @@ export default async function handler(request) {
 
   const body = await request.json().catch(() => ({}));
   const action = String(body.action || "").trim().toLowerCase();
+
+  if (action === "suggest_merges") {
+    try {
+      const admin = serverSupabase();
+      const { data: rows, error } = await admin.from("tournament_scans").select("id,user_id,source_url,tournament_name,tournament_date,venue,details").eq("user_id", user.id).order("last_checked_at", { ascending: false }).limit(30);
+      if (error) throw new Error("SUGGESTIONS-LOAD-500: " + error.message);
+      return json({ suggestions: buildMergeSuggestions(rows || []) });
+    } catch (error) { return json({ error: String(error?.message || "Could not build merge suggestions.") }, 500); }
+  }
+
+  if (action === "create_group") {
+    const scanIds = unique(Array.isArray(body.scanIds) ? body.scanIds.map((id) => String(id || "").trim()).filter(Boolean) : []);
+    const groupName = valuableText(body.groupName, 160);
+    if (scanIds.length < 2) return json({ error: "Select at least two scans for a tournament group." }, 400);
+    if (!groupName) return json({ error: "Enter a tournament group name." }, 400);
+    try {
+      const admin = serverSupabase();
+      const { data: rows, error } = await admin.from("tournament_scans").select("id,user_id,details").eq("user_id", user.id).in("id", scanIds);
+      if (error) throw new Error("GROUP-LOAD-500: " + error.message);
+      if (!rows || rows.length !== scanIds.length) return json({ error: "One or more selected scans could not be found." }, 404);
+      const group = { id: createHash("sha256").update(user.id + "|" + groupName + "|" + [...scanIds].sort().join("|")).digest("hex").slice(0, 24), name: groupName, scan_ids: scanIds, created_at: new Date().toISOString() };
+      for (const row of rows) {
+        const { error: updateError } = await admin.from("tournament_scans").update({ details: { ...(row.details || {}), tournament_group: group } }).eq("id", row.id).eq("user_id", user.id);
+        if (updateError) throw new Error("GROUP-SAVE-500: " + updateError.message);
+      }
+      return json({ grouped: true, group });
+    } catch (error) { return json({ error: String(error?.message || "Tournament group creation failed.") }, 500); }
+  }
 
   if (action === "merge") {
     const scanIds = unique(Array.isArray(body.scanIds) ? body.scanIds.map((id) => String(id || "").trim()).filter(Boolean) : []);
