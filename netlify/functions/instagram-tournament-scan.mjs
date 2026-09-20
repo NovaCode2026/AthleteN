@@ -337,63 +337,71 @@ async function analyzeTournamentImage(imageUrl) {
         return result.value;
       };
 
-      const championshipLines = lines.filter((line) =>
+      // Contextual OCR cleanup. Only obvious OCR substitutions are corrected
+      // when the surrounding token proves the intended role.
+      const normalizeOcrEvidenceLine = (line) => {
+        let value = normalizeEvidence(line);
+        value = value
+          .replace(/\b(\d{1,2})%(?=\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec))/i, "$1nd")
+          .replace(/\b(\d{1,2})d(?=\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec))/i, "$1rd")
+          .replace(/\b(\d{1,2})o(?=\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec))/i, "$1th")
+          .replace(/\b(\d)00\s*(am|pm)\b/gi, "$1:00 $2")
+          .replace(/\b(\d)\s*:?\s*(\d{2})\s*(am|pm)\b/gi, "$1:$2 $3");
+        return normalizeEvidence(value);
+      };
+      const normalizedEvidenceLines = unique(normalizedPasses.flatMap((pass) =>
+        pass.lines.map(normalizeOcrEvidenceLine).filter(Boolean)
+      ));
+      const normalizedCompactText = normalizeEvidence(normalizedEvidenceLines.join(" "));
+
+      const championshipLines = normalizedEvidenceLines.filter((line) =>
         /championship|tournament|cup|open|memorial/i.test(line) &&
         line.length >= 8 &&
         !/technology|includes|venue|reporting|about|respect|discipline|perseverance/i.test(line)
       );
-      const titleSource = compactText.replace(/[^A-Za-z0-9&' -]+/g, " ").replace(/\s+/g, " ").trim();
-      const signatureTitle = titleSource.match(/(?:1st\s+)?SHRI\s+NARESH\s+TALREJA.{0,100}?OPEN\s+NATIONAL.{0,100}?TAEKWONDO.{0,80}?CHAMPIONSHIP\s+2026/i);
-      const titleCandidates = normalizedPasses.map((pass) => {
-        const passText = clean(pass.lines.join(" "));
-        const signature = passText.match(/(?:1st\s+)?SHRI\s+NARESH\s+TALREJA.{0,100}?OPEN\s+NATIONAL.{0,100}?TAEKWONDO.{0,80}?CHAMPIONSHIP\s+2026/i);
-        if (signature?.[0]) return normalizeEvidence(signature[0]);
-        const candidates = pass.lines.filter((line) =>
-          /(?:championship|tournament|cup|open|memorial)/i.test(line) &&
-          /(?:taekwondo|202\d|memorial|shri|sri)/i.test(line) &&
-          line.length >= 12 &&
-          !/technology|includes|venue|reporting|about|respect|discipline|perseverance/i.test(line)
-        );
-        return candidates.sort((a, b) => b.length - a.length)[0] || "";
+      const titleSource = normalizedCompactText.replace(/[^A-Za-z0-9&' -]+/g, " ").replace(/\s+/g, " ").trim();
+      const titlePatterns = [
+        /(?:\b(\d{1,2}(?:st|nd|rd|th))\s+)?(?:SHRI|SRI)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){1,5}).{0,100}?(MEMORIAL).{0,70}?(OPEN(?:\s+NATIONAL)?).{0,80}?(TAE[\s-]*KWONDO|KYORUGI|POOMSAE).{0,60}?(CHAMPIONSHIP|TOURNAMENT|CUP).{0,40}?(20\d{2})/i,
+        /(?:\b(\d{1,2}(?:st|nd|rd|th))\s+)?([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){1,5}).{0,80}?(MEMORIAL).{0,60}?(OPEN(?:\s+NATIONAL)?).{0,80}?(TAE[\s-]*KWONDO|KYORUGI|POOMSAE).{0,60}?(CHAMPIONSHIP|TOURNAMENT|CUP).{0,40}?(20\d{2})/i
+      ];
+      const titleCandidates = normalizedEvidenceLines.map((line, index) => {
+        const window = normalizedEvidenceLines.slice(Math.max(0, index - 6), Math.min(normalizedEvidenceLines.length, index + 4)).join(" ");
+        for (const pattern of titlePatterns) {
+          const match = window.match(pattern);
+          if (match?.[0]) return normalizeEvidence(match[0]);
+        }
+        return "";
       }).filter(Boolean);
       const canonicalizeTournamentTitle = (value) => {
         const source = normalizeEvidence(value).replace(/[^A-Za-z0-9&' -]+/g, " ");
-        const match = source.match(/(?:\b(\d{1,2}(?:st|nd|rd|th))\s+)?(?:SHRI|SRI)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){1,4})\s+(MEMORIAL)\s+(OPEN\s+NATIONAL)\s+(TAE[\s-]*KWONDO)\s+(CHAMPIONSHIP)\s+(20\d{2})/i);
+        const match = source.match(/(?:\b(\d{1,2}(?:st|nd|rd|th))\s+)?(?:SHRI|SRI)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){1,5})\s+(MEMORIAL)\s+(OPEN(?:\s+NATIONAL)?)\s+(TAE[\s-]*KWONDO|KYORUGI|POOMSAE)\s+(CHAMPIONSHIP|TOURNAMENT|CUP)\s+(20\d{2})/i);
         if (match) {
           const ordinal = match[1] ? match[1] + " " : "";
           const person = match[2].replace(/\s+/g, " ").trim();
-          return clean(ordinal + "Shri " + person + " Memorial Open National Taekwondo Championship " + match[7]);
+          return clean(ordinal + "Shri " + person + " Memorial " + match[4] + " " + match[5].replace(/[\s-]+/g, " ") + " " + match[6] + " " + match[7]);
         }
         return normalizeEvidence(value);
       };
       const canonicalTitleCandidates = titleCandidates.map(canonicalizeTournamentTitle).filter(Boolean);
       const titleEvidence = consensus(canonicalTitleCandidates);
       if (titleEvidence.conflict) evidenceConflicts.push({ field: "tournament_name", candidates: titleEvidence.candidates });
-      const strongTitle = canonicalTitleCandidates.find((value) => /\bSHRI\b/i.test(value) && /\bMEMORIAL\b/i.test(value) && /\bOPEN\s+NATIONAL\b/i.test(value) && /\bTAEKWONDO\b/i.test(value) && /\bCHAMPIONSHIP\s+20\d{2}\b/i.test(value));
-      poster.tournament_name = strongTitle || titleEvidence.value || canonicalTitleCandidates[0] || "";
+      poster.tournament_name = canonicalTitleCandidates.find((value) => /\b(?:memorial|open|national|taekwondo|kyorugi|poomsae)\b/i.test(value)) || titleEvidence.value || canonicalTitleCandidates[0] || "";
 
-      const reportingDateCandidates = normalizedPasses.map((pass) =>
-        firstMatch(pass.lines.join(" "), [
-          /(?:reporting\s+(?:time|date)|reporting)\s*[:\-]?\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)?\s*)?(?:\(?\s*)(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})(?:\s*\)?)/i
-        ])
-      ).filter(Boolean);
+      const reportingDateCandidates = normalizedEvidenceLines
+        .filter((line) => /\breporting\b/i.test(line))
+        .map((line) => firstMatch(line, [
+          /(?:reporting\s+(?:time|date)|reporting)\s*[:\-]?\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)?\s*)?(?:\(?\s*)(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})(?:\s*\)?)/i
+        ]))
+        .filter(Boolean);
       const reportingDateResult = consensus(reportingDateCandidates, normalizeEvidence, semanticDateKey);
       poster.reporting_date_text = reportingDateResult.conflict ? "" : reportingDateResult.value || "";
 
-      const eventDateCandidates = [
-        ...lines.filter((line) => /\b\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|to|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(line)),
-        ...lines.filter((line) => /\b(?:date|dates?|event dates?)\b/i.test(line))
-      ];
-      const eventDatePatterns = [
-        /((?:\d{1,2}(?:st|nd|rd|th)?\s*(?:and|&|to|[-–])\s*)\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})/i,
-        /((?:\d{1,2}(?:st|nd|rd|th)?\s*(?:and|&|to|[-–])\s*)\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*)/i
-      ];
-      const eventDateEvidence = normalizedPasses.flatMap((pass) => pass.lines.map((line) => {
+      const eventDateEvidence = normalizedEvidenceLines.flatMap((line) => {
         const administrative = /(?:reporting|check[- ]?in|checkin|weigh[- ]?in|registration|deadline|arrival)\b/i.test(line);
-        const eventContext = /(?:fights?|event|tournament|championship|competition|matches?)\b/i.test(line);
+        const eventContext = /(?:fights?|event|tournament|championship|competition|matches?|held)\b/i.test(line);
         if (administrative && !eventContext) return "";
         return firstMatch(line, eventDatePatterns);
-      }).filter(Boolean));
+      }).filter(Boolean);
       const eventDateEvidenceResult = consensus(eventDateEvidence, normalizeEvidence, semanticDateKey);
       if (eventDateEvidenceResult.conflict) {
         evidenceConflicts.push({ field: "event_date", candidates: eventDateEvidenceResult.candidates });
@@ -480,7 +488,7 @@ async function analyzeTournamentImage(imageUrl) {
       poster.transport = extractAcrossPasses([/(?:transport|transportation)\s*[:\-]?\s*(.+?)(?=\s+(?:accommodation|registration|contact|venue)\b|$)/i], normalizeEvidence, "transport") || "";
       poster.documents = extractAcrossPasses([/(?:documents?|documents\s+required|required\s+documents?)\s*[:\-]?\s*(.+?)(?=\s+(?:registration|contact|venue|date)\b|$)/i], normalizeEvidence, "documents") || "";
       poster.notices = lines.filter((line) => /\b(?:notice|important|note|mandatory|must|strictly|compulsory)\b/i.test(line)).slice(0, 20);
-      poster.sport = /tae[\s-]*kwondo/i.test(compactText) ? "Taekwondo" : "";
+      poster.sport = /tae[\s-]*kwondo/i.test(normalizedCompactText) ? "Taekwondo" : "";
       poster.equipment = /\bPSS\b/i.test(compactText)
         ? "Daedo PSS protective scoring system; electronic head & body guard; real-time scoring; instant result display; fair & transparent judging"
         : "";
