@@ -6,7 +6,7 @@ import "../../styles/tournament-scanner.css";
 type SourceType = "website" | "instagram";
 type Props = { accessToken?: string; setToast: (toast: { type: "success" | "error" | "warning"; message: string } | null) => void };
 type DetailSection = { title: string; content: string; source_url?: string };
-type ScanDetails = { description?: string | null; fields?: Record<string, string>; important_facts?: Record<string, string>; headings?: string[]; sections?: DetailSection[]; key_highlights?: string[]; pages_scanned?: number; source_pages?: string[]; pdfs?: Array<{ href: string; label: string }> };
+type ScanDetails = { description?: string | null; fields?: Record<string, string>; important_facts?: Record<string, string>; headings?: string[]; sections?: DetailSection[]; key_highlights?: string[]; pages_scanned?: number; source_pages?: string[]; pdfs?: Array<{ href: string; label: string }>; conflicts?: Array<{ field: string; candidates: Array<{ value: string; source_url?: string }> }> };
 type ScanRow = { id: string; source_url: string; tournament_name?: string | null; tournament_date?: string | null; venue?: string | null; registration_deadline?: string | null; weigh_in_information?: string | null; categories?: string | null; notices?: string | null; schedules_results?: string | null; pdfs?: Array<{ href: string; label: string }> | null; details?: ScanDetails | null; status?: string | null; detected_changes?: string | null; last_checked_at?: string | null; next_check_at?: string | null };
 type InstagramPost = { id: string; caption?: string; timestamp?: string | null; permalink?: string | null; media_type?: string | null; media_product_type?: string | null };
 type InstagramResult = { organizer?: { username?: string; name?: string | null; biography?: string | null; followers_count?: number | null }; relevant_posts?: InstagramPost[]; other_posts?: InstagramPost[]; related_accounts?: Array<{ username: string; url: string; relevant?: boolean; title?: string | null; posts?: InstagramPost[] }>; posts_scanned?: number; scan_limit?: number; more_posts_available?: boolean; scan?: ScanRow };
@@ -189,6 +189,11 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
 
       <section className="card panel"><div className="panel-head"><div><h3>All available tournament information</h3><p>The scanner keeps structured facts plus the relevant headings and sections it found, so important updates such as scoring/competition systems are not reduced to only date and venue.</p></div></div>
         {primaryFields.length > 0 ? <div className="details-list">{primaryFields.map(([key, value]) => <div className="detail-row" key={key}><b>{labelize(key)}</b><span>{value}</span></div>)}</div> : <div className="empty-state"><strong>No labeled fields were detected.</strong><p>Open the source pages below to inspect what the scanner could access.</p></div>}
+      </section>
+
+      {details?.conflicts?.length ? <section className="card panel">
+        <div className="panel-head"><div><h3>Evidence conflicts</h3><p>Conflicting values are shown instead of choosing one silently.</p></div></div>
+        <div className="details-list">{details.conflicts.map((conflict, index) => <div className="detail-row" key={`${conflict.field}-${index}`}><b>{labelize(conflict.field)}</b><span>{conflict.candidates.map((candidate, candidateIndex) => <span key={`${candidate.value}-${candidateIndex}`} style={{ display: "block" }}>{candidate.value}{candidate.source_url ? ` — ${candidate.source_url}` : ""}</span>)}</span></div>)}</div>
       </section>
 
       {(fields.raw_source_text || fields.source_caption) && <section className="card panel">
