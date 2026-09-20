@@ -421,12 +421,21 @@ async function analyzeTournamentImage(imageUrl) {
 
       poster.phone = firstMatch(compactText, [/((?:\+?91[ -]?)?\d{10})\b/]) || lines.find((line) => /(?:\+?91[ -]?)?\d{10}\b/.test(line)) || "";
       poster.email = firstMatch(compactText, [/([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i]) || lines.find((line) => /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(line)) || "";
-      poster.registration_link = firstMatch(compactText, [/(https?:\/\/[^\s]+|www\.[^\s]+|bit\.ly\/[^\s]+|forms?\.gle\/[^\s]+)/i]) || lines.find((line) => /https?:\/\/|www\.|bit\.ly|forms?\.gle/i.test(line)) || "";
-      poster.website = poster.registration_link;      poster.events = lines.filter((line) => /kyorugi|poomsae|poomse|fresher|cadet|junior|senior|sub[- ]?junior|under[- ]?\d|\bkg\b|\b\d+\s*kg\b/i.test(line)).slice(0, 30);
+      // A URL is only a registration link when the poster ties it to
+      // registration/application/entry language or it is a recognizable form
+      // short-link. Do not promote an arbitrary sponsor/site URL into a fact.
+      const registrationUrlLines = lines.filter((line) =>
+        /(?:register|registration|apply|application|entry|entries|form|forms?\.gle|bit\.ly)/i.test(line) &&
+        /https?:\/\/|www\.|bit\.ly|forms?\.gle/i.test(line)
+      );
+      poster.registration_link = firstMatch(registrationUrlLines.join(" "), [/(https?:\/\/[^\s|]+|www\.[^\s|]+|bit\.ly\/[^\s|]+|forms?\.gle\/[^\s|]+)/i]) || "";
+      poster.website = "";      poster.events = lines.filter((line) => /kyorugi|poomsae|poomse|fresher|cadet|junior|senior|sub[- ]?junior|under[- ]?\d|\bkg\b|\b\d+\s*kg\b/i.test(line)).slice(0, 30);
       poster.categories = poster.events.slice();
       poster.age_categories = lines.filter((line) => /cadet|junior|senior|sub[- ]?junior|fresher|under[- ]?\d/i.test(line)).slice(0, 30);
       poster.weight_categories = lines.filter((line) => /\b\d+\s*kg\b|\bunder[- ]?\d+\s*kg\b/i.test(line)).slice(0, 30);
-      poster.highlights = lines.filter((line) => /gold|silver|bronze|medal|prize|award|contact|register|registration|weigh|draw|schedule|scoring|PSS|athletes|states/i.test(line)).slice(0, 30);
+      poster.highlights = lines.filter((line) =>
+        /gold|silver|bronze|medal|prize|award|draw|schedule|scoring|PSS|protective scoring|real-time scoring|instant result|\d+\+\s*(?:athletes|states|coaches|referees|officials)/i.test(line)
+      ).slice(0, 12);
       poster.hashtags = [...new Set((text.match(/#[A-Za-z0-9_]+/g) || []))];
       poster.evidence_conflicts = evidenceConflicts.length
         ? evidenceConflicts.map((item) => `Conflict detected — ${item.field}: ${item.candidates.map((candidate) => candidate.value).filter(Boolean).join(" | ")}`).join("\n")
@@ -939,7 +948,7 @@ async function scanPublicSource(sourceUrl) {
     medals_prizes: fact([poster?.medals, poster?.prizes].filter(Boolean).join(" | ")),
     important_notice: dateConflict
       ? `Conflict detected between accessible source text and poster OCR: source says "${sourceDateText}"; poster OCR says "${posterDateText}".`
-      : "",
+      : fact(Array.isArray(poster?.notices) ? poster.notices.join(" ") : ""),
     evidence_conflicts: [
       clean(poster?.evidence_conflicts || ""),
       ...crossEvidenceConflicts.map((item) => {
