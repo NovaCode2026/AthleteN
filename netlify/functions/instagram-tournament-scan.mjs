@@ -383,31 +383,52 @@ async function analyzeTournamentImage(imageUrl) {
 
       // Recover the complete event title from the title area rather than
       // requiring every word to appear on one OCR line.
-      const titleArea = normalizedEvidenceLines.slice(0, Math.min(14, normalizedEvidenceLines.length)).join(" ");
+      // Build the title from anchor tokens across the poster OCR area.
+      // Tesseract may split a designed title across lines or inject decorative
+      // noise between real words, so title reconstruction must be layout-agnostic.
+      const titleArea = normalizedEvidenceLines.slice(0, Math.min(24, normalizedEvidenceLines.length)).join(" ");
       const layoutTitle = (() => {
-        const source = normalizeEvidence(titleArea).replace(/[^A-Za-z0-9&' -]+/g, " ");
-        const upper = source.toUpperCase();
-        const cleanedTitleSource = upper
-          .replace(/\b(JY|JE|JES|JY['’”]?|INSP|OISC!?|LOTE|P|F|WA|LR)\b/g, " ")
+        const upper = normalizeEvidence(titleArea)
+          .replace(/[^A-Za-z0-9&' -]+/g, " ")
+          .toUpperCase()
+          .replace(/\b(JY|JE|JES|JY['’”]?|INSP|OISC!?|LOTE|WA|LR)\b/g, " ")
           .replace(/\s+/g, " ")
           .trim();
-        const ordinal = upper.match(/\b(\d{1,2})(ST|ND|RD|TH)\b/i)?.[0] || (upper.match(/^\s*(\d{1,2})\s+(?=SHRI\b|SRI\b)/i)?.[1] ? upper.match(/^\s*(\d{1,2})\s+(?=SHRI\b|SRI\b)/i)[1] + "st" : "");
-        const memorialIndex = cleanedTitleSource.indexOf("MEMORIAL");
-        if (memorialIndex < 0) return "";
-        const prefix = cleanedTitleSource.slice(0, memorialIndex);
-        const nameSegment = prefix.match(/\b(?:SHRI|SRI)\s+([A-Z][A-Z-]{2,})(?:\s+([A-Z][A-Z-]{2,}))?/i);
-        const nameTokens = [nameSegment?.[1], nameSegment?.[2]]
+
+        const memorialIndex = upper.indexOf("MEMORIAL");
+        const sportMatch = upper.match(/\bTAE[\s-]*KWONDO\b|\bKYORUGI\b|\bPOOMSAE\b/i);
+        const competitionMatch = upper.match(/\b(CHAMPIONSHIP|TOURNAMENT|CUP)\b/i);
+        const yearMatch = upper.match(/\b20\d{2}\b/);
+        if (memorialIndex < 0 || !sportMatch || !competitionMatch || !yearMatch) return "";
+
+        const prefix = upper.slice(0, memorialIndex);
+        const nameMatch = prefix.match(/\b(?:SHRI|SRI)\s+([A-Z][A-Z-]{2,})(?:\s+([A-Z][A-Z-]{2,}))?/i);
+        if (!nameMatch) return "";
+
+        const nameTokens = [nameMatch[1], nameMatch[2]]
           .filter(Boolean)
           .map((token) => token.replace(/[^A-Z-]/gi, ""))
           .filter((token) => token.length >= 3 && !/^(THE|AND|FOR|OPEN|NATIONAL|MEMORIAL)$/i.test(token));
-        const name = nameTokens.map((token) => token[0] + token.slice(1).toLowerCase()).join(" ");
-        const memorial = true;
-        const open = cleanedTitleSource.match(/\bOPEN(?:\s+NATIONAL)?\b/i)?.[0] || "";
-        const sport = cleanedTitleSource.match(/\bTAE[\s-]*KWONDO\b|\bKYORUGI\b|\bPOOMSAE\b/i)?.[0] || "";
-        const competition = cleanedTitleSource.match(/\b(?:CHAMPIONSHIP|TOURNAMENT|CUP)\b/i)?.[0] || "";
-        const year = cleanedTitleSource.match(/\b20\d{2}\b/)?.[0] || "";
-        if (!name || !memorial || !open || !sport || !competition || !year) return "";
-        return clean([ordinal, "Shri", name, "Memorial", open, sport.replace(/[\s-]+/g, " "), competition, year].filter(Boolean).join(" "));
+        if (nameTokens.length < 2) return "";
+
+        const name = nameTokens.slice(0, 2)
+          .map((token) => token[0] + token.slice(1).toLowerCase())
+          .join(" ");
+
+        const ordinalMatch = upper.match(/\b(\d{1,2})(?:ST|ND|RD|TH)?\s+(?=SHRI\b|SRI\b)/i);
+        const ordinalToken = ordinalMatch?.[0]?.trim() || "";
+        const ordinalNumber = ordinalToken.match(/^\d+/)?.[0] || "";
+        const ordinal = ordinalNumber
+          ? ordinalNumber + (ordinalToken.includes("ND") ? "nd" : ordinalToken.includes("RD") ? "rd" : ordinalToken.includes("TH") ? "th" : "st")
+          : "";
+
+        const open = upper.match(/\bOPEN(?:\s+NATIONAL)?\b/i)?.[0] || "OPEN";
+        const sport = sportMatch[0].replace(/[\s-]+/g, " ");
+        const competition = competitionMatch[1];
+        const year = yearMatch[0];
+
+        return clean([ordinal, "Shri", name, "Memorial", open, sport, competition, year]
+          .filter(Boolean).join(" "));
       })();
 
       const venueWindow = posterWindow(/\b(?:VENUE|LOCATION)\b/i, 5);
