@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ExternalLink, FileText, Globe, Instagram, Loader2, MapPin, RefreshCw, ShieldCheck, GitMerge } from "lucide-react";
+import { CalendarDays, ExternalLink, FileText, Globe, Instagram, Loader2, MapPin, RefreshCw, ShieldCheck, GitMerge, Sparkles, FolderPlus } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import "../../styles/tournament-scanner.css";
 
 type SourceType = "website" | "instagram";
 type Props = { accessToken?: string; setToast: (toast: { type: "success" | "error" | "warning"; message: string } | null) => void };
 type DetailSection = { title: string; content: string; source_url?: string };
-type ScanDetails = { description?: string | null; fields?: Record<string, string>; important_facts?: Record<string, string>; headings?: string[]; sections?: DetailSection[]; key_highlights?: string[]; pages_scanned?: number; source_pages?: string[]; pdfs?: Array<{ href: string; label: string }>; conflicts?: Array<{ field: string; candidates: Array<{ value: string; source_url?: string }> }> };
+type MergeSuggestion = { id: string; scan_ids: string[]; evidence_match: number; anchors: string[]; tournament_names: string[]; dates: string[]; venues: string[]; organizers: string[]; source_urls: string[] };\ntype ScanDetails = { description?: string | null; fields?: Record<string, string>; important_facts?: Record<string, string>; headings?: string[]; sections?: DetailSection[]; key_highlights?: string[]; pages_scanned?: number; source_pages?: string[]; pdfs?: Array<{ href: string; label: string }>; conflicts?: Array<{ field: string; candidates: Array<{ value: string; source_url?: string }> }>; tournament_group?: { id: string; name: string; scan_ids: string[]; created_at?: string } };
 type ScanRow = { id: string; source_url: string; tournament_name?: string | null; tournament_date?: string | null; venue?: string | null; registration_deadline?: string | null; weigh_in_information?: string | null; categories?: string | null; notices?: string | null; schedules_results?: string | null; pdfs?: Array<{ href: string; label: string }> | null; details?: ScanDetails | null; status?: string | null; detected_changes?: string | null; last_checked_at?: string | null; next_check_at?: string | null };
 type InstagramPost = { id: string; caption?: string; timestamp?: string | null; permalink?: string | null; media_type?: string | null; media_product_type?: string | null };
 type InstagramResult = { organizer?: { username?: string; name?: string | null; biography?: string | null; followers_count?: number | null }; relevant_posts?: InstagramPost[]; other_posts?: InstagramPost[]; related_accounts?: Array<{ username: string; url: string; relevant?: boolean; title?: string | null; posts?: InstagramPost[] }>; posts_scanned?: number; scan_limit?: number; more_posts_available?: boolean; scan?: ScanRow };
@@ -54,7 +54,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
   const [selectedScan, setSelectedScan] = useState<ScanRow | null>(null);
   const [instagramResult, setInstagramResult] = useState<InstagramResult | null>(null);
   const [mergeSelection, setMergeSelection] = useState<string[]>([]);
-  const [merging, setMerging] = useState(false);
+  const [merging, setMerging] = useState(false);\n  const [mergeSuggestions, setMergeSuggestions] = useState<MergeSuggestion[]>([]);\n  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);\n  const [groupName, setGroupName] = useState("");\n  const [grouping, setGrouping] = useState(false);
 
   async function loadScans() {
     if (!accessToken) return;
@@ -68,7 +68,50 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
       setSelectedScan((current) => current ? rows.find((row) => row.id === current.id) || current : rows[0] || null);
     }
   }
-  useEffect(() => { void loadScans(); }, [accessToken]);
+  useEffect(() => { void loadScans(); }, [accessToken]);\n  async function loadMergeSuggestions() {
+    if (!accessToken) return;
+    const response = await fetch("/.netlify/functions/instagram-tournament-scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ action: "suggest_merges" })
+    });
+    const payload = await response.json().catch(() => ({})) as { suggestions?: MergeSuggestion[] };
+    if (response.ok) setMergeSuggestions(payload.suggestions || []);
+  }
+
+  async function createTournamentGroup() {
+    if (mergeSelection.length < 2) {
+      setToast({ type: "warning", message: "Select at least two scans to create a tournament group." });
+      return;
+    }
+    const name = groupName.trim();
+    if (!name) {
+      setToast({ type: "warning", message: "Enter a tournament group name first." });
+      return;
+    }
+    setGrouping(true);
+    try {
+      const response = await fetch("/.netlify/functions/instagram-tournament-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ action: "create_group", scanIds: mergeSelection, groupName: name })
+      });
+      const payload = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Tournament group creation failed.");
+      setGroupName("");
+      setMergeSelection([]);
+      await loadScans();
+      await loadMergeSuggestions();
+      setToast({ type: "success", message: `Tournament group “${name}” created.` });
+    } catch (error) {
+      setToast({ type: "error", message: error instanceof Error ? error.message : "Tournament group creation failed." });
+    } finally {
+      setGrouping(false);
+    }
+  }
+
+  useEffect(() => { void loadMergeSuggestions(); }, [accessToken, scans.length]);
+
 
   async function scanWebsite(url: string) {
     const response = await fetch("/.netlify/functions/tournament-scan", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ sourceUrl: url }) });
@@ -349,14 +392,40 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
     </>}
     </>}
 
+    <section className="card panel">
+      <div className="panel-head">
+        <div><p className="eyebrow">Evidence engine</p><h3><Sparkles size={18}/> Possible same tournament</h3><p>AthleteN compares accessible evidence such as tournament name, dates, venue, organizer, sport and city. It never merges automatically.</p></div>
+      </div>
+      {mergeSuggestions.filter((item) => !dismissedSuggestions.includes(item.id)).length === 0 ? (
+        <div className="empty-state"><strong>No merge suggestion is waiting for review.</strong><p>New scans are checked against your saved tournament evidence.</p></div>
+      ) : (
+        <div className="details-list">
+          {mergeSuggestions.filter((item) => !dismissedSuggestions.includes(item.id)).map((item) => (
+            <div className="detail-row" key={item.id}>
+              <b>Possible match • {item.evidence_match}% evidence match</b>
+              <span>
+                <strong>{item.tournament_names.filter(Boolean).join(" ↔ ") || "Tournament evidence"}</strong>
+                {item.dates.length > 0 && <><br/>Dates: {item.dates.join(" ↔ ")}</>}
+                {item.venues.length > 0 && <><br/>Venues: {item.venues.join(" ↔ ")}</>}
+                {item.organizers.length > 0 && <><br/>Organizers: {item.organizers.join(" ↔ ")}</>}
+                <br/>Matching evidence: {item.anchors.join(", ")}
+                <br/><button className="plain" type="button" onClick={() => setMergeSelection(item.scan_ids)}>Review merge</button>
+                <button className="plain" type="button" onClick={() => setDismissedSuggestions((current) => [...current, item.id])}>Keep separate</button>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+
     <section className="card panel scan-results">
       <div className="panel-head">
-        <div><h3>Saved scans</h3><p>Select two or more scans for the same tournament to combine their evidence into one result.</p></div>
+        <div><h3>Saved scans</h3><p>Select scans manually to merge them, or create a tournament group that keeps related posts, reels, notices and updates together without deleting their individual evidence.</p></div>
         <button className="btn secondary" type="button" onClick={() => void mergeSelectedScans()} disabled={merging || mergeSelection.length < 2}>
           {merging ? <Loader2 className="spin" size={16}/> : <GitMerge size={16}/>} {merging ? "Merging..." : `Merge same tournament${mergeSelection.length ? ` (${mergeSelection.length})` : ""}`}
         </button>
       </div>
-      {!scans.length ? <div className="empty-state"><strong>No tournament scans yet.</strong><p>Choose a source above and run your first scan.</p></div> : <div className="scan-table-wrap"><table><thead><tr><th>Select</th><th>Source</th><th>Tournament</th><th>Date</th><th>Venue</th><th>Last checked</th><th>Status</th><th>Details</th></tr></thead><tbody>{scans.map((scanRow) => <tr key={scanRow.id}><td><input type="checkbox" aria-label={`Select ${scanRow.tournament_name || "tournament scan"} for merge`} checked={mergeSelection.includes(scanRow.id)} onChange={(event) => setMergeSelection((current) => event.target.checked ? [...current, scanRow.id] : current.filter((id) => id !== scanRow.id))}/></td><td className="source-cell">{scanRow.source_url}</td><td>{scanRow.tournament_name || ""}</td><td>{scanRow.tournament_date || ""}</td><td>{scanRow.venue || ""}</td><td>{formatDate(scanRow.last_checked_at)}</td><td><span className={`status ${scanRow.status === "blocked" ? "blocked" : ""}`}>{scanRow.status || ""}</span></td><td><button className="plain" type="button" onClick={() => setSelectedScan(scanRow)}>Open intelligence</button></td></tr>)}</tbody></table></div>}
+      {!scans.length ? <div className="empty-state"><strong>No tournament scans yet.</strong><p>Choose a source above and run your first scan.</p></div> : <div className="scan-table-wrap"><table><thead><tr><th>Select</th><th>Source</th><th>Tournament</th><th>Date</th><th>Venue</th><th>Last checked</th><th>Status</th><th>Details</th></tr></thead><tbody>{scans.map((scanRow) => <tr key={scanRow.id}><td><input type="checkbox" aria-label={`Select ${scanRow.tournament_name || "tournament scan"} for merge`} checked={mergeSelection.includes(scanRow.id)} onChange={(event) => setMergeSelection((current) => event.target.checked ? [...current, scanRow.id] : current.filter((id) => id !== scanRow.id))}/></td><td className="source-cell">{scanRow.source_url}</td><td>{scanRow.tournament_name || ""}{scanRow.details?.tournament_group?.name ? <small style={{display:"block"}}>📁 {scanRow.details.tournament_group.name}</small> : null}</td><td>{scanRow.tournament_date || ""}</td><td>{scanRow.venue || ""}</td><td>{formatDate(scanRow.last_checked_at)}</td><td><span className={`status ${scanRow.status === "blocked" ? "blocked" : ""}`}>{scanRow.status || ""}</span></td><td><button className="plain" type="button" onClick={() => setSelectedScan(scanRow)}>Open intelligence</button></td></tr>)}</tbody></table></div>}
     </section>
   </div>;
 }
