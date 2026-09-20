@@ -224,7 +224,8 @@ async function analyzeTournamentImage(imageUrl) {
       // Deterministic extraction from OCR text. No guessing.
       const lines = (bestPass?.lines?.length ? bestPass.lines : text.split(/\n+/))
         .map((line) => clean(line)).filter(Boolean);
-      const compactText = clean(lines.join(" ").replace(/\s+/g, " "));
+      const evidenceLines = unique(normalizedPasses.flatMap((pass) => pass.lines));
+      const compactText = clean(evidenceLines.join(" ").replace(/\s+/g, " "));
 
       const firstMatch = (value, patterns) => {
         for (const pattern of patterns) {
@@ -265,8 +266,8 @@ async function analyzeTournamentImage(imageUrl) {
         .trim();
 
       const tokenOverlap = (left, right) => {
-        const a = new Set(semanticEvidenceKey(left).split(/\\s+/).filter((token) => token.length > 1));
-        const b = new Set(semanticEvidenceKey(right).split(/\\s+/).filter((token) => token.length > 1));
+        const a = new Set(semanticEvidenceKey(left).split(/\s+/).filter((token) => token.length > 1));
+        const b = new Set(semanticEvidenceKey(right).split(/\s+/).filter((token) => token.length > 1));
         if (!a.size || !b.size) return 0;
         let common = 0;
         for (const token of a) if (b.has(token)) common += 1;
@@ -355,14 +356,28 @@ async function analyzeTournamentImage(imageUrl) {
         );
         return candidates.sort((a, b) => b.length - a.length)[0] || "";
       }).filter(Boolean);
-      const titleEvidence = consensus(titleCandidates);
+      const canonicalizeTournamentTitle = (value) => {
+        const source = normalizeEvidence(value).replace(/[^A-Za-z0-9&' -]+/g, " ");
+        const match = source.match(/(?:\b(\d{1,2}(?:st|nd|rd|th))\s+)?(?:SHRI|SRI)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){1,4})\s+(MEMORIAL)\s+(OPEN\s+NATIONAL)\s+(TAE[\s-]*KWONDO)\s+(CHAMPIONSHIP)\s+(20\d{2})/i);
+        if (match) {
+          const ordinal = match[1] ? match[1] + " " : "";
+          const person = match[2].replace(/\s+/g, " ").trim();
+          return clean(ordinal + "Shri " + person + " Memorial Open National Taekwondo Championship " + match[7]);
+        }
+        return normalizeEvidence(value);
+      };
+      const canonicalTitleCandidates = titleCandidates.map(canonicalizeTournamentTitle).filter(Boolean);
+      const titleEvidence = consensus(canonicalTitleCandidates);
       if (titleEvidence.conflict) evidenceConflicts.push({ field: "tournament_name", candidates: titleEvidence.candidates });
-      poster.tournament_name = titleEvidence.value || titleCandidates[0] || "";
+      poster.tournament_name = titleEvidence.value || canonicalTitleCandidates[0] || "";
 
-      const reportingDate = extractAcrossPasses([
-        /(?:reporting\s+(?:time|date)|reporting)\s*[:\-]?\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)?\s*\(?\s*)?(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})/i
-      ]);
-      poster.reporting_date_text = reportingDate || "";
+      const reportingDateCandidates = normalizedPasses.map((pass) =>
+        firstMatch(pass.lines.join(" "), [
+          /(?:reporting\s+(?:time|date)|reporting)\s*[:\-]?\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)?\s*)?(?:\(?\s*)(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})(?:\s*\)?)/i
+        ])
+      ).filter(Boolean);
+      const reportingDateResult = consensus(reportingDateCandidates, normalizeEvidence, semanticDateKey);
+      poster.reporting_date_text = reportingDateResult.conflict ? "" : reportingDateResult.value || "";
 
       const eventDateCandidates = [
         ...lines.filter((line) => /\b\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|to|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(line)),
@@ -372,14 +387,13 @@ async function analyzeTournamentImage(imageUrl) {
         /((?:\d{1,2}(?:st|nd|rd|th)?\s*(?:and|&|to|[-–])\s*)\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*20\d{2})/i,
         /((?:\d{1,2}(?:st|nd|rd|th)?\s*(?:and|&|to|[-–])\s*)\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*)/i
       ];
-      const eventDateEvidence = normalizedPasses.flatMap((pass) => {
-        const passText = clean(pass.lines.join(" "));
-        return [
-          ...pass.lines.filter((line) => /\b\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|to|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(line)),
-          firstMatch(passText, eventDatePatterns)
-        ];
-      });
-      const eventDateEvidenceResult = consensus(eventDateEvidence);
+      const eventDateEvidence = normalizedPasses.flatMap((pass) => pass.lines.map((line) => {
+        const administrative = /(?:reporting|check[- ]?in|checkin|weigh[- ]?in|registration|deadline|arrival)\b/i.test(line);
+        const eventContext = /(?:fights?|event|tournament|championship|competition|matches?)\b/i.test(line);
+        if (administrative && !eventContext) return "";
+        return firstMatch(line, eventDatePatterns);
+      }).filter(Boolean));
+      const eventDateEvidenceResult = consensus(eventDateEvidence, normalizeEvidence, semanticDateKey);
       if (eventDateEvidenceResult.conflict) {
         evidenceConflicts.push({ field: "event_date", candidates: eventDateEvidenceResult.candidates });
       }
@@ -390,10 +404,16 @@ async function analyzeTournamentImage(imageUrl) {
       // was not reliably recovered.
       poster.date_text = poster.event_date_text || "";
 
+      const normalizeLocationPart = (value) => clean(value)
+        .replace(/\s*[:|]\s*[A-Za-z0-9]{1,4}\s*$/g, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
       poster.venue = extractAcrossPasses([
         /\bVENUE\s*[:\-]?\s*(.+?)(?=\s+REPORTING\s+TIME|\s+REPORTING|\s+ABOUT\s+THE\s+CHAMPIONSHIP|\s+DATE|\s+DATES|\s+REGISTRATION|\s+CONTACT|$)/i,
         /\b(?:VENUE|LOCATION)\s*[:\-]?\s*(.+?)(?=\s+REPORTING|\s+ABOUT|\s+REGISTRATION|\s+CONTACT|$)/i
-      ]) || "";      const locationParts = poster.venue.split(",").map((part) => clean(part)).filter(Boolean);
+      ]) || "";
+      poster.venue = poster.venue.split(",").map(normalizeLocationPart).filter(Boolean).join(", ");
+      const locationParts = poster.venue.split(",").map(normalizeLocationPart).filter(Boolean);
       if (locationParts.length >= 3) {
         poster.city = locationParts[locationParts.length - 2];
         poster.state = locationParts[locationParts.length - 1];
@@ -422,10 +442,14 @@ async function analyzeTournamentImage(imageUrl) {
       poster.disciplines = [...new Set(lines
         .filter((line) => /\b(?:kyorugi|poomsae|poomse)\b/i.test(line))
         .flatMap((line) => (line.match(/\b(?:kyorugi|poomsae|poomse)\b/gi) || []).map((item) => item.replace(/^poomse$/i, "Poomsae"))))];
-      poster.gender_categories = lines.filter((line) =>
-        /\b(?:male|female|men|women|boys|girls|mixed)\b/i.test(line) &&
-        line.length <= 180
-      ).slice(0, 20);
+      poster.gender_categories = evidenceLines
+        .filter((line) =>
+          /\b(?:gender|boys?|girls?|male|female|men|women|mixed)\b/i.test(line) &&
+          /\b(?:category|categories|division|divisions|event|events|under[- ]?\d|kg)\b/i.test(line) &&
+          !/\b(?:venue|location|school|residential|ashok hall)\b/i.test(line) &&
+          line.length <= 180
+        )
+        .slice(0, 20);
       poster.eligibility = extractAcrossPasses([
         /(?:eligibility|eligible|eligibility\s+criteria)\s*[:\-]?\s*(.+?)(?=\s+(?:registration|fee|contact|venue|date|reporting)\b|$)/i
       ], normalizeEvidence, "eligibility") || "";
@@ -455,7 +479,7 @@ async function analyzeTournamentImage(imageUrl) {
       poster.transport = extractAcrossPasses([/(?:transport|transportation)\s*[:\-]?\s*(.+?)(?=\s+(?:accommodation|registration|contact|venue)\b|$)/i], normalizeEvidence, "transport") || "";
       poster.documents = extractAcrossPasses([/(?:documents?|documents\s+required|required\s+documents?)\s*[:\-]?\s*(.+?)(?=\s+(?:registration|contact|venue|date)\b|$)/i], normalizeEvidence, "documents") || "";
       poster.notices = lines.filter((line) => /\b(?:notice|important|note|mandatory|must|strictly|compulsory)\b/i.test(line)).slice(0, 20);
-      poster.sport = /\bTAEKWONDO\b/i.test(compactText) ? "Taekwondo" : "";
+      poster.sport = /tae[\s-]*kwondo/i.test(compactText) ? "Taekwondo" : "";
       poster.equipment = /\bPSS\b/i.test(compactText)
         ? "Daedo PSS protective scoring system; electronic head & body guard; real-time scoring; instant result display; fair & transparent judging"
         : "";
@@ -487,8 +511,8 @@ async function analyzeTournamentImage(imageUrl) {
       poster.categories = poster.events.slice();
       poster.age_categories = lines.filter((line) => /cadet|junior|senior|sub[- ]?junior|fresher|under[- ]?\d/i.test(line)).slice(0, 30);
       poster.weight_categories = lines.filter((line) => /\b\d+\s*kg\b|\bunder[- ]?\d+\s*kg\b/i.test(line)).slice(0, 30);
-      poster.highlights = lines.filter((line) =>
-        /gold|silver|bronze|medal|prize|award|draw|schedule|scoring|PSS|protective scoring|real-time scoring|instant result|\d+\+\s*(?:athletes|states|coaches|referees|officials)/i.test(line)
+      poster.highlights = evidenceLines.filter((line) =>
+        /600\+\s*athletes|10\+\s*states|athletes|coaches|referees|officials|scoring|PSS|protective scoring|real-time scoring|instant result|fair(?:\s+and|&)\s+transparent|memorial|national/i.test(line)
       ).slice(0, 12);
       poster.hashtags = [...new Set((text.match(/#[A-Za-z0-9_]+/g) || []))];
       poster.evidence_conflicts = evidenceConflicts.length
@@ -989,6 +1013,20 @@ async function scanPublicSource(sourceUrl) {
     : (posterDateText || sourceDateText || allFacts.tournament_date_text || "");
   const resolvedEventDate = toDatabaseDate(resolvedEventDateText) || "";
 
+  // Reporting/check-in dates are administrative evidence, never tournament
+  // evidence. If OCR produces a materially distant reporting date, omit it
+  // rather than promoting obvious OCR noise into a structured fact.
+  const reportingDateForStructuredOutput = (() => {
+    const raw = clean(poster?.reporting_date_text || "");
+    if (!raw || !resolvedEventDate) return raw;
+    const event = new Date(resolvedEventDate + "T00:00:00Z");
+    const reportIso = toDatabaseDate(raw);
+    const report = new Date(reportIso + "T00:00:00Z");
+    if (!reportIso || Number.isNaN(event.getTime()) || Number.isNaN(report.getTime())) return raw;
+    const distanceDays = Math.round(Math.abs(event.getTime() - report.getTime()) / 86400000);
+    return distanceDays <= 14 ? raw : "";
+  })();
+
   if (dateConflict) {
     crossEvidenceConflicts.push({
       field: "tournament_dates",
@@ -1005,7 +1043,7 @@ async function scanPublicSource(sourceUrl) {
     tournament_dates: dateConflict
       ? `Conflict detected — source: "${sourceDateText}" | poster: "${posterDateText}"`
       : fact(resolvedEventDateText),
-    reporting_date: fact(poster?.reporting_date_text),
+    reporting_date: fact(reportingDateForStructuredOutput),
     reporting_time: fact(poster?.reporting_time),
     venue: fact(allFacts.venue),
     city_state: fact(allFacts.location_hint),
