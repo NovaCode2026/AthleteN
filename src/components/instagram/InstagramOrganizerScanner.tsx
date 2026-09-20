@@ -431,6 +431,12 @@ ${section.source_url}` : ""}</span></div>)}</div></section>}
         <button className="btn secondary" type="button" onClick={() => void mergeSelectedScans()} disabled={merging || mergeSelection.length < 2}>
           {merging ? <Loader2 className="spin" size={16}/> : <GitMerge size={16}/>} {merging ? "Merging..." : `Merge same tournament${mergeSelection.length ? ` (${mergeSelection.length})` : ""}`}
         </button>
+        <div className="scanner-group-actions">
+          <input value={groupName} onChange={(event) => setGroupName(event.target.value)} placeholder="Tournament group name" aria-label="Tournament group name"/>
+          <button className="btn secondary" type="button" onClick={() => void createTournamentGroup()} disabled={grouping || mergeSelection.length < 2}>
+            {grouping ? <Loader2 className="spin" size={16}/> : <FolderPlus size={16}/>} {grouping ? "Creating..." : "Create group"}
+          </button>
+        </div>
       </div>
       {!scans.length ? <div className="empty-state"><strong>No tournament scans yet.</strong><p>Choose a source above and run your first scan.</p></div> : <div className="scan-table-wrap"><table><thead><tr><th>Select</th><th>Source</th><th>Tournament</th><th>Date</th><th>Venue</th><th>Last checked</th><th>Status</th><th>Details</th></tr></thead><tbody>{scans.map((scanRow) => <tr key={scanRow.id}><td><input type="checkbox" aria-label={`Select ${scanRow.tournament_name || "tournament scan"} for merge`} checked={mergeSelection.includes(scanRow.id)} onChange={(event) => setMergeSelection((current) => event.target.checked ? [...current, scanRow.id] : current.filter((id) => id !== scanRow.id))}/></td><td className="source-cell">{scanRow.source_url}</td><td>{scanRow.tournament_name || ""}{scanRow.details?.tournament_group?.name ? <small style={{display:"block"}}>📁 {scanRow.details.tournament_group.name}</small> : null}</td><td>{scanRow.tournament_date || ""}</td><td>{scanRow.venue || ""}</td><td>{formatDate(scanRow.last_checked_at)}</td><td><span className={`status ${scanRow.status === "blocked" ? "blocked" : ""}`}>{scanRow.status || ""}</span></td><td><button className="plain" type="button" onClick={() => setSelectedScan(scanRow)}>Open intelligence</button></td></tr>)}</tbody></table></div>}
     </section>
