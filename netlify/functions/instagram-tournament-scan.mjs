@@ -1590,7 +1590,7 @@ function mergeTournamentScans(rows = []) {
   const fieldsList = details.map((detail) => detail.fields || {});
 
   const allFactKeys = unique(factsList.flatMap((facts) => Object.keys(facts)));
-  const mergedFacts = {};
+  const mergedFacts = {};\n  const meaningfulTokenOverlap = (a, b) => {\n    const left = mergeTokenSet(a); const right = mergeTokenSet(b);\n    if (!left.size || !right.size) return 0;\n    const shared = [...left].filter((token) => right.has(token)).length;\n    return shared / Math.max(1, Math.min(left.size, right.size));\n  };
   const canonicalMergeValue = (key, values) => {
     const cleaned = values.map((value) => valuableText(value)).filter(Boolean);
     if (!cleaned.length) return "";
