@@ -296,7 +296,6 @@ async function analyzeTournamentImage(imageUrl) {
           group.variants.push(normalized);
           if (normalized.length > group.value.length) group.value = normalized;
         }
-
         const ranked = groups.sort((a, b) => b.count - a.count || b.value.length - a.value.length);
         if (!ranked.length) return { value: "", conflict: false, candidates: [] };
 
@@ -354,6 +353,81 @@ async function analyzeTournamentImage(imageUrl) {
       ));
       const normalizedCompactText = normalizeEvidence(normalizedEvidenceLines.join(" "));
 
+      // Layout-agnostic poster extraction: OCR frequently places a label on
+      // one line and its value on the next. Build short evidence windows so
+      // poster design/layout does not determine whether a fact is extracted.
+      const posterWindow = (labelPattern, span = 4) => {
+        const hits = [];
+        for (let i = 0; i < normalizedEvidenceLines.length; i++) {
+          if (!labelPattern.test(normalizedEvidenceLines[i])) continue;
+          hits.push(normalizedEvidenceLines.slice(i, Math.min(normalizedEvidenceLines.length, i + span)).join(" "));
+        }
+        return unique(hits);
+      };
+      const firstWindowMatch = (labelPattern, patterns, span = 4) => {
+        for (const window of posterWindow(labelPattern, span)) {
+          const value = firstMatch(window, patterns);
+          if (value) return value;
+        }
+        return "";
+      };
+      const posterDatePattern = /\b\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*,?\s*20\d{2}\b/i;
+      const singlePosterDatePattern = /\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*,?\s*20\d{2}\b/i;
+
+      // Recover the complete event title from the title area rather than
+      // requiring every word to appear on one OCR line.
+      const titleArea = normalizedEvidenceLines.slice(0, Math.min(14, normalizedEvidenceLines.length)).join(" ");
+      const layoutTitleMatch = titleArea.match(/\b(\d{1,2}(?:st|nd|rd|th)\s+)?(?:SHRI|SRI)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){1,6})\s+(MEMORIAL)\s+(OPEN(?:\s+NATIONAL)?)\s+(TAE[\s-]*KWONDO|KYORUGI|POOMSAE)\s+(CHAMPIONSHIP|TOURNAMENT|CUP)\s+(20\d{2})\b/i);
+      const layoutTitle = layoutTitleMatch
+        ? clean((layoutTitleMatch[1] || "") + "Shri " + layoutTitleMatch[2] + " Memorial " + layoutTitleMatch[4] + " " + layoutTitleMatch[5].replace(/[\s-]+/g, " ") + " " + layoutTitleMatch[6] + " " + layoutTitleMatch[7])
+        : "";
+
+      const venueWindow = posterWindow(/\b(?:VENUE|LOCATION)\b/i, 5);
+      const layoutVenue = venueWindow.map((window) =>
+        firstMatch(window, [
+          /\bVENUE\s*[:\-]?\s*(.+?)(?=\s+REPORTING\b|\s+FIGHTS?\b|\s+DATE\b|\s+REGISTRATION\b|\s+CONTACT\b|$)/i,
+          /\bLOCATION\s*[:\-]?\s*(.+?)(?=\s+REPORTING\b|\s+FIGHTS?\b|\s+DATE\b|\s+REGISTRATION\b|\s+CONTACT\b|$)/i
+        ])
+      ).find(Boolean) || "";
+
+      const reportingWindows = posterWindow(/\bREPORTING\b/i, 5);
+      const layoutReportingTime = reportingWindows.map((window) =>
+        firstMatch(window, [/(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i])
+      ).find(Boolean) || "";
+      const layoutReportingDate = reportingWindows.map((window) =>
+        firstMatch(window, [new RegExp("(" + singlePosterDatePattern.source + ")", "i")])
+      ).find(Boolean) || "";
+
+      const fightWindows = [
+        ...posterWindow(/\b(?:FIGHTS?|MATCH(?:ES)?|TOURNAMENT|CHAMPIONSHIP|EVENT)\b/i, 5),
+        normalizedEvidenceLines.slice(0, 20).join(" ")
+      ];
+      const layoutEventDate = fightWindows.map((window) =>
+        firstMatch(window, [
+          new RegExp("(" + posterDatePattern.source + ")", "i"),
+          new RegExp("(" + singlePosterDatePattern.source + ")", "i")
+        ])
+      ).find((value) => value && !/reporting|check[- ]?in|weigh[- ]?in|registration|deadline/i.test(value)) || "";
+
+      const layoutLocation = layoutVenue || "";
+      if (layoutTitle) poster.tournament_name = layoutTitle;
+      if (layoutVenue) poster.venue = normalizeEvidence(layoutVenue);
+      if (layoutReportingTime) poster.reporting_time = normalizeEvidence(layoutReportingTime);
+      if (layoutReportingDate) poster.reporting_date_text = normalizeEvidence(layoutReportingDate);
+      if (layoutEventDate) {
+        poster.event_date_text = normalizeEvidence(layoutEventDate);
+        poster.date_text = poster.event_date_text;
+      }
+
+      // Venue OCR often contains the full "venue, city, state" string.
+      const locationPartsFromLayout = layoutLocation.split(",").map((part) => clean(part)).filter(Boolean);
+      if (locationPartsFromLayout.length >= 3) {
+        poster.city = locationPartsFromLayout[locationPartsFromLayout.length - 2];
+        poster.state = locationPartsFromLayout[locationPartsFromLayout.length - 1];
+      } else if (locationPartsFromLayout.length === 2) {
+        poster.city = locationPartsFromLayout[locationPartsFromLayout.length - 1];
+      }
+
       const championshipLines = normalizedEvidenceLines.filter((line) =>
         /championship|tournament|cup|open|memorial/i.test(line) &&
         line.length >= 8 &&
@@ -385,7 +459,7 @@ async function analyzeTournamentImage(imageUrl) {
       const canonicalTitleCandidates = titleCandidates.map(canonicalizeTournamentTitle).filter(Boolean);
       const titleEvidence = consensus(canonicalTitleCandidates);
       if (titleEvidence.conflict) evidenceConflicts.push({ field: "tournament_name", candidates: titleEvidence.candidates });
-      poster.tournament_name = canonicalTitleCandidates.find((value) => /\b(?:memorial|open|national|taekwondo|kyorugi|poomsae)\b/i.test(value)) || titleEvidence.value || canonicalTitleCandidates[0] || "";
+      poster.tournament_name = layoutTitle || canonicalTitleCandidates.find((value) => /\b(?:memorial|open|national|taekwondo|kyorugi|poomsae)\b/i.test(value)) || titleEvidence.value || canonicalTitleCandidates[0] || "";
 
       const reportingDateCandidates = normalizedEvidenceLines
         .filter((line) => /\breporting\b/i.test(line))
@@ -421,6 +495,7 @@ async function analyzeTournamentImage(imageUrl) {
         /\bVENUE\s*[:\-]?\s*(.+?)(?=\s+REPORTING\s+TIME|\s+REPORTING|\s+ABOUT\s+THE\s+CHAMPIONSHIP|\s+DATE|\s+DATES|\s+REGISTRATION|\s+CONTACT|$)/i,
         /\b(?:VENUE|LOCATION)\s*[:\-]?\s*(.+?)(?=\s+REPORTING|\s+ABOUT|\s+REGISTRATION|\s+CONTACT|$)/i
       ]) || "";
+      if (layoutVenue) poster.venue = normalizeEvidence(layoutVenue);
       poster.venue = poster.venue.split(",").map(normalizeLocationPart).filter(Boolean).join(", ");
       const locationParts = poster.venue.split(",").map(normalizeLocationPart).filter(Boolean);
       if (locationParts.length >= 3) {
@@ -430,6 +505,8 @@ async function analyzeTournamentImage(imageUrl) {
         poster.city = locationParts[1];
       }
       poster.reporting_time = extractAcrossPasses([/(?:reporting\s*(?:time|date)?|reporting)\s*[:\-]?\s*(\d{1,2}:\d{2}\s*(?:am|pm)?)/i], normalizeEvidence, "reporting_time") || "";
+      if (layoutReportingTime) poster.reporting_time = normalizeEvidence(layoutReportingTime);
+      if (layoutReportingDate) poster.reporting_date_text = normalizeEvidence(layoutReportingDate);
 
       // Labeled poster fields are extracted only when the OCR repeatedly
       // supports the same value. This keeps OCR noise from becoming a fact.
@@ -516,7 +593,7 @@ async function analyzeTournamentImage(imageUrl) {
         /https?:\/\/|www\.|bit\.ly|forms?\.gle/i.test(line)
       );
       poster.registration_link = firstMatch(registrationUrlLines.join(" "), [/(https?:\/\/[^\s|]+|www\.[^\s|]+|bit\.ly\/[^\s|]+|forms?\.gle\/[^\s|]+)/i]) || "";
-      poster.website = "";      poster.events = lines.filter((line) => /kyorugi|poomsae|poomse|fresher|cadet|junior|senior|sub[- ]?junior|under[- ]?\d|\bkg\b|\b\d+\s*kg\b/i.test(line)).slice(0, 30);
+      poster.website = "";      poster.events = unique(lines.filter((line) => /kyorugi|poomsae|poomse|fresher|cadet|junior|senior|sub[- ]?junior|under[- ]?\d|\bkg\b|\b\d+\s*kg\b/i.test(line)).slice(0, 30));
       poster.categories = poster.events.slice();
       poster.age_categories = lines.filter((line) => /cadet|junior|senior|sub[- ]?junior|fresher|under[- ]?\d/i.test(line)).slice(0, 30);
       poster.weight_categories = lines.filter((line) => /\b\d+\s*kg\b|\bunder[- ]?\d+\s*kg\b/i.test(line)).slice(0, 30);
@@ -596,7 +673,6 @@ function captionFromInstagramShell(value) {
   if (quoted?.[1]) text = quoted[1];
   return text.replace(/(?:\s+on\s+Instagram).*$/i, "").trim().slice(0, 4000);
 }
-
 function extractVisibleInstagramText(html) {
   const body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || html;
   return clean(body).replace(/^(?:Instagram|Log in|Sign up|Create new account)\s*/i, "").slice(0, 8000);
@@ -896,8 +972,7 @@ async function scanPublicSource(sourceUrl) {
   const rawVisibleText = extractVisibleInstagramText(root.html);
   const imageUrls = extractImageUrls(root.html);
 
-  // The source itself is always preserved. AI enhancement must never replace
-  // or erase information that Instagram already exposed.
+  // The source itself is always preserved. AI enhancement must never replace  // or erase information that Instagram already exposed.
   let poster = null;
   let posterAnalysisError = "";
   let analyzedPosterImageUrl = "";
@@ -1196,8 +1271,7 @@ async function scanPublicSource(sourceUrl) {
   };
 }
 export default async function handler(request) {
-  if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
-  const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);  const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!accessToken) return json({ error: "Please sign in before scanning." }, 401);
   let user;
   try {
