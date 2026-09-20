@@ -387,12 +387,14 @@ async function analyzeTournamentImage(imageUrl) {
       const layoutTitle = (() => {
         const source = normalizeEvidence(titleArea).replace(/[^A-Za-z0-9&' -]+/g, " ");
         const upper = source.toUpperCase();
-        const ordinal = upper.match(/\b(\d{1,2})(ST|ND|RD|TH)\b/i)?.[0] || "";
+        const ordinal = upper.match(/\b(\d{1,2})(ST|ND|RD|TH)\b/i)?.[0] || (upper.match(/^\s*(\d{1,2})\s+(?=SHRI\b|SRI\b)/i)?.[1] ? upper.match(/^\s*(\d{1,2})\s+(?=SHRI\b|SRI\b)/i)[1] + "st" : "");
         const memorialIndex = upper.indexOf("MEMORIAL");
         if (memorialIndex < 0) return "";
         const prefix = upper.slice(0, memorialIndex);
-        const nameSegment = prefix.match(/\b(?:SHRI|SRI)\s+([A-Z]{3,}(?:\s+[A-Z]{3,}){0,2})\s*$/i)?.[1] || "";
-        const nameTokens = nameSegment.split(/\s+/).filter((token) => token.length >= 3);
+        const nameSegment = prefix.match(/\b(?:SHRI|SRI)\s+([A-Z]{3,}(?:\s+[A-Z]{3,}){0,4})/i)?.[1] || "";
+        const nameTokens = nameSegment.split(/\s+/)
+          .map((token) => token.replace(/[^A-Z]/gi, ""))
+          .filter((token) => token.length >= 3 && !/^(THE|AND|FOR|OPEN|NATIONAL)$/i.test(token));
         const name = nameTokens.slice(0, 2).map((token) => token[0] + token.slice(1).toLowerCase()).join(" ");
         const memorial = true;
         const open = upper.match(/\bOPEN(?:\s+NATIONAL)?\b/i)?.[0] || "";
@@ -516,8 +518,12 @@ async function analyzeTournamentImage(imageUrl) {
             if (!eventIso || !item.iso) return true;
             return item.iso <= eventIso;
           });
-        if (plausible.length) {
-          poster.reporting_date_text = plausible.sort((a, b) => a.value.length - b.value.length)[0].value;
+        if (plausible.length && !layoutReportingDate) {
+          poster.reporting_date_text = plausible.sort((a, b) => {
+            const aIso = a.iso || "";
+            const bIso = b.iso || "";
+            return (aIso.localeCompare(bIso) || a.value.length - b.value.length);
+          })[0].value;
         }
       }
 
@@ -531,7 +537,7 @@ async function analyzeTournamentImage(imageUrl) {
       if (eventDateEvidenceResult.conflict) {
         evidenceConflicts.push({ field: "event_date", candidates: eventDateEvidenceResult.candidates });
       }
-      poster.event_date_text = eventDateEvidenceResult.value || eventDateEvidence.find(Boolean) || "";
+      poster.event_date_text = layoutEventDate || eventDateEvidenceResult.value || eventDateEvidence.find(Boolean) || "";
 
       // Never fall back to an arbitrary single date here. A reporting/check-in
       // date must not become the tournament date when the event-date pattern
