@@ -398,46 +398,6 @@ async function analyzeTournamentImage(imageUrl) {
         return clean([ordinal, "Shri", name, "Memorial", open, sport.replace(/[\s-]+/g, " "), competition, year].filter(Boolean).join(" "));
       })();
 
-      // Build a clean title from the strongest tournament tokens found in the
-      // poster rather than exposing the highest-noise OCR line.
-      const titleEvidence = normalizedEvidenceLines
-        .slice(0, Math.min(20, normalizedEvidenceLines.length))
-        .join(" ")
-        .replace(/[^A-Za-z0-9&' -]+/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-      const titleName = titleEvidence.match(/\b(?:SHRI|SRI)\s+([A-Za-z]+(?:\s+[A-Za-z]+){1,5})\s+MEMORIAL\b/i)?.[1] || "";
-      const titleOrdinal = titleEvidence.match(/\b(\d{1,2})(?:st|nd|rd|th)\b/i)?.[0] || "";
-      const titleYear = titleEvidence.match(/\b20\d{2}\b/)?.[0] || "";
-      const titleSport = titleEvidence.match(/\bTAE[\s-]*KWONDO\b|\bKYORUGI\b|\bPOOMSAE\b/i)?.[0] || "";
-      const titleCompetition = titleEvidence.match(/\b(?:CHAMPIONSHIP|TOURNAMENT|CUP)\b/i)?.[0] || "";
-      const titleOpen = /\bOPEN\b/i.test(titleEvidence) ? ( /\bOPEN\s+NATIONAL\b/i.test(titleEvidence) ? "Open National" : "Open") : "";
-      const reconstructedTitle = titleName && titleSport && titleCompetition && titleYear
-        ? clean([titleOrdinal, "Shri", titleName.replace(/\s+/g, " "), "Memorial", titleOpen, titleSport.replace(/[\s-]+/g, " "), titleCompetition, titleYear].filter(Boolean).join(" "))
-        : "";
-      if (reconstructedTitle) poster.tournament_name = reconstructedTitle;
-
-      // Reporting date is often OCR-corrupted around the ordinal (for example
-      // "2% October 2026"). Recover it from the reporting-labelled evidence,
-      // but never invent a day from unrelated OCR digits.
-      const reportingEvidence = normalizedEvidenceLines
-        .filter((line) => /\breporting\b/i.test(line))
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim();
-      const reportingCorruptMatch = reportingEvidence.match(/\breporting\s+(?:time|date)?[\s\S]{0,120}?\(\s*(\d{1,2})(?:st|nd|rd|th|%|d|o)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*,?\s*(20\d{2})/i) || reportingEvidence.match(/\breporting\s+(?:time|date)?[\s\S]{0,120}?\b(\d{1,2})(?:st|nd|rd|th|%|d|o)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*,?\s*(20\d{2})/i);
-      if (reportingCorruptMatch?.[1] && reportingCorruptMatch?.[2]) {
-        poster.reporting_date_text = clean(reportingCorruptMatch[1] + " " + reportingCorruptMatch[2] + (reportingCorruptMatch[3] ? " " + reportingCorruptMatch[3] : ""));
-      }
-
-      // Preserve the reporting date when it is OCR-corrupted but independently
-      // anchored to the reporting label. The final structured validation below
-      // still rejects dates that are chronologically impossible.
-      if (poster.reporting_date_text && poster.reporting_time) {
-        const normalizedReport = poster.reporting_date_text.replace(/\b(\d{1,2})\b/, "$1");
-        poster.reporting_date_text = normalizedReport;
-      }
-
       const venueWindow = posterWindow(/\b(?:VENUE|LOCATION)\b/i, 5);
       const layoutVenue = venueWindow.map((window) =>
         firstMatch(window, [
