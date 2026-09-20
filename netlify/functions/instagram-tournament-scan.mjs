@@ -386,7 +386,10 @@ async function analyzeTournamentImage(imageUrl) {
       // Build the title from anchor tokens across the poster OCR area.
       // Tesseract may split a designed title across lines or inject decorative
       // noise between real words, so title reconstruction must be layout-agnostic.
-      const titleArea = normalizedEvidenceLines.slice(0, Math.min(24, normalizedEvidenceLines.length)).join(" ");
+      // Use the full normalized OCR evidence for title reconstruction. Poster
+      // layouts can place the title across more than 24 OCR lines, and OCR can
+      // insert decorative garbage between the meaningful anchor words.
+      const titleArea = normalizedEvidenceLines.join(" ");
       const layoutTitle = (() => {
         const upper = normalizeEvidence(titleArea)
           .replace(/[^A-Za-z0-9&' -]+/g, " ")
@@ -395,14 +398,18 @@ async function analyzeTournamentImage(imageUrl) {
           .replace(/\s+/g, " ")
           .trim();
 
-        const memorialIndex = upper.indexOf("MEMORIAL");
         const sportMatch = upper.match(/\bTAE[\s-]*KWONDO\b|\bKYORUGI\b|\bPOOMSAE\b/i);
         const competitionMatch = upper.match(/\b(CHAMPIONSHIP|TOURNAMENT|CUP)\b/i);
         const yearMatch = upper.match(/\b20\d{2}\b/);
-        if (memorialIndex < 0 || !sportMatch || !competitionMatch || !yearMatch) return "";
+        const memorialMatch = upper.match(/\bMEMORIAL\b/i);
+        if (!memorialMatch || !sportMatch || !competitionMatch || !yearMatch) return "";
 
-        const prefix = upper.slice(0, memorialIndex);
-        const nameMatch = prefix.match(/\b(?:SHRI|SRI)\s+([A-Z][A-Z-]{2,})(?:\s+([A-Z][A-Z-]{2,}))?/i);
+        // Prefer the first meaningful SHRI/SRI person-name sequence immediately
+        // before MEMORIAL. This tolerates OCR noise between the name tokens while
+        // refusing arbitrary words elsewhere on the poster.
+        const prefix = upper.slice(0, memorialMatch.index);
+        const nameMatch = prefix.match(/\b(?:SHRI|SRI)\s+([A-Z][A-Z-]{2,})(?:\s+[^\s]+)?\s+([A-Z][A-Z-]{2,})\s*$/i)
+          || prefix.match(/\b(?:SHRI|SRI)\s+([A-Z][A-Z-]{2,})\s+([A-Z][A-Z-]{2,})\s*$/i);
         if (!nameMatch) return "";
 
         const nameTokens = [nameMatch[1], nameMatch[2]]
@@ -415,11 +422,11 @@ async function analyzeTournamentImage(imageUrl) {
           .map((token) => token[0] + token.slice(1).toLowerCase())
           .join(" ");
 
-        const ordinalMatch = upper.match(/\b(\d{1,2})(?:ST|ND|RD|TH)?\s+(?=SHRI\b|SRI\b)/i);
-        const ordinalToken = ordinalMatch?.[0]?.trim() || "";
+        const ordinalBeforeName = upper.slice(0, prefix.length).match(/\b(\d{1,2})(?:ST|ND|RD|TH)?\s+(?=SHRI\b|SRI\b)/i);
+        const ordinalToken = ordinalBeforeName?.[0]?.trim() || "";
         const ordinalNumber = ordinalToken.match(/^\d+/)?.[0] || "";
         const ordinal = ordinalNumber
-          ? ordinalNumber + (ordinalToken.includes("ND") ? "nd" : ordinalToken.includes("RD") ? "rd" : ordinalToken.includes("TH") ? "th" : "st")
+          ? ordinalNumber + (ordinalToken.toUpperCase().includes("ND") ? "nd" : ordinalToken.toUpperCase().includes("RD") ? "rd" : ordinalToken.toUpperCase().includes("TH") ? "th" : "st")
           : "";
 
         const open = upper.match(/\bOPEN(?:\s+NATIONAL)?\b/i)?.[0] || "OPEN";
