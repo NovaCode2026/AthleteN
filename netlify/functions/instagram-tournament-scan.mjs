@@ -395,9 +395,10 @@ async function analyzeTournamentImage(imageUrl) {
         /(?:registration|entry)\s+(?:deadline|last\s+date|closes?|closing)\s*[:\-]?\s*(.+?)(?=\s+(?:fee|fees|contact|venue|date)\b|$)/i,
         /(?:deadline|last\s+date)\s*[:\-]?\s*(.+?)(?=\s+(?:fee|fees|contact|venue|date)\b|$)/i
       ], normalizeEvidence, "registration_deadline") || "";
-      poster.registration_link = poster.registration_link || extractAcrossPasses([
-        /((?:https?:\/\/|www\.)[^\s|]+)/i
-      ], normalizeEvidence, "registration_link") || "";
+      // Do not accept arbitrary URLs from poster OCR. A URL becomes a
+      // registration link only when the poster explicitly associates it with
+      // registration/application/entry language or it is a recognizable form.
+      poster.registration_link = poster.registration_link || "";
       poster.contact = extractAcrossPasses([
         /(?:contact|helpline|contact\s+details?)\s*[:\-]?\s*(.+?)(?=\s+(?:registration|fee|venue|date|reporting)\b|$)/i
       ], normalizeEvidence, "contact") || "";
