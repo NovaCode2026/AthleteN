@@ -1608,9 +1608,22 @@ export default async function handler(request) {
       const nameKeys = rows.map((row) => normalizeMergeKey(row.tournament_name)).filter(Boolean);
       const dateKeys = rows.map((row) => normalizeMergeKey(row.tournament_date)).filter(Boolean);
       const venueKeys = rows.map((row) => normalizeMergeKey(row.venue)).filter(Boolean);
+      const tokenSet = (value) => new Set(normalizeMergeKey(value).split(" ").filter((token) => token.length >= 3 && !/^(the|open|national|memorial|championship|taekwondo|tournament|school|hall|girls|residential|venue|date)$/.test(token)));
+      const overlap = (a, b) => {
+        const left = tokenSet(a);
+        const right = tokenSet(b);
+        if (!left.size || !right.size) return 0;
+        let shared = 0;
+        for (const token of left) if (right.has(token)) shared++;
+        return shared / Math.min(left.size, right.size);
+      };
       const sameName = nameKeys.length === rows.length && new Set(nameKeys).size === 1;
-      const sameDateVenue = dateKeys.length === rows.length && venueKeys.length === rows.length && new Set(dateKeys).size === 1 && new Set(venueKeys).size === 1;
-      if (!sameName && !sameDateVenue) {
+      const sameDate = dateKeys.length === rows.length && new Set(dateKeys).size === 1;
+      const venueOverlap = venueKeys.length >= 2
+        ? Math.min(...venueKeys.map((venue, index) => venueKeys.filter((_, otherIndex) => otherIndex !== index).map((other) => overlap(venue, other))).flat())
+        : 0;
+      const strongSameTournamentEvidence = sameDate && venueOverlap >= 0.5;
+      if (!sameName && !strongSameTournamentEvidence) {
         return json({ error: "These scans do not have enough matching tournament evidence to safely merge. Select scans for the same tournament." }, 409);
       }
 
