@@ -408,14 +408,14 @@ async function analyzeTournamentImage(imageUrl) {
         // before MEMORIAL. This tolerates OCR noise between the name tokens while
         // refusing arbitrary words elsewhere on the poster.
         const prefix = upper.slice(0, memorialMatch.index);
-        const nameMatch = prefix.match(/\b(?:SHRI|SRI)\s+([A-Z][A-Z-]{2,})(?:\s+[^\s]+)?\s+([A-Z][A-Z-]{2,})\s*$/i)
-          || prefix.match(/\b(?:SHRI|SRI)\s+([A-Z][A-Z-]{2,})\s+([A-Z][A-Z-]{2,})\s*$/i);
-        if (!nameMatch) return "";
-
-        const nameTokens = [nameMatch[1], nameMatch[2]]
-          .filter(Boolean)
-          .map((token) => token.replace(/[^A-Z-]/gi, ""))
-          .filter((token) => token.length >= 3 && !/^(THE|AND|FOR|OPEN|NATIONAL|MEMORIAL)$/i.test(token));
+        const nameRegion = prefix.match(/\b(?:SHRI|SRI)\b([\s\S]*)$/i)?.[1] || "";
+        const ignoredNameNoise = new Set(["THE","AND","FOR","OPEN","NATIONAL","MEMORIAL","JE","JY","JES","INSP","OISC","LOTE","WA","LR"]);
+        const nameTokens = nameRegion
+          .split(/\s+/)
+          .map((token) => token.replace(/[^A-Z-]/gi, "").toUpperCase())
+          .filter((token) => token.length >= 3 && /^[A-Z][A-Z-]+$/.test(token) && !ignoredNameNoise.has(token))
+          .slice(0, 2);
+        if (nameTokens.length < 2) return "";
         if (nameTokens.length < 2) return "";
 
         const name = nameTokens.slice(0, 2)
@@ -446,7 +446,7 @@ async function analyzeTournamentImage(imageUrl) {
         ])
       ).find(Boolean) || "";
 
-      const reportingWindows = posterWindow(/\bREPORTING\b/i, 6);
+      const reportingWindows = posterWindow(/\bREPORTING\b/i, 10);
       const layoutReportingTime = reportingWindows.map((window) =>
         firstMatch(window, [/(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i])
       ).find(Boolean) || "";
@@ -522,7 +522,11 @@ async function analyzeTournamentImage(imageUrl) {
       poster.tournament_name = layoutTitle || canonicalTitleCandidates.find((value) => /\b(?:memorial|open|national|taekwondo|kyorugi|poomsae)\b/i.test(value)) || titleEvidence.value || canonicalTitleCandidates[0] || "";
 
       const reportingDateCandidates = normalizedEvidenceLines
-        .filter((line) => /\breporting\b/i.test(line))
+        .flatMap((line, index) => {
+          if (!/\breporting\b/i.test(line) && !/\breporting\b/i.test(normalizedEvidenceLines[index - 1] || "") && !/\breporting\b/i.test(normalizedEvidenceLines[index - 2] || "")) return [];
+          return [line, normalizedEvidenceLines[index + 1] || "", normalizedEvidenceLines[index + 2] || ""]
+            .filter(Boolean);
+        })
         .flatMap((line) => {
           const values = [];
           const patterns = [
