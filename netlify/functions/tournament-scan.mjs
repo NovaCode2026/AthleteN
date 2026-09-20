@@ -3,6 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 
 const planIntervals = { free: 12, student: 6, pro: 3, champion: 1, academy: 0.5 };
 const maxDiscoveredPages = 30;
+const MAX_SCAN_MS = 95000;
+const MAX_PAGE_FETCH_MS = 8000;
+const MAX_PARALLEL_PAGES = 5;
 const relevantLinkPattern = /(tournament|championship|open|notice|circular|announcement|schedule|result|fixture|draw|weigh|registration|entry|pdf|rules|equipment|accommodation|transport|venue|fee|category|eligibility|contact|scoring|system)/i;
 const infoPatterns = {
   registration_deadline: [/(?:registration|entry)\s+(?:deadline|closes?|closing|last\s+date)\s*[:\-]?\s*([^.;|]{4,180})/i, /(?:last\s+date|deadline)\s*[:\-]\s*([^.;|]{4,180})/i],
@@ -163,27 +166,71 @@ function scanPage(html, sourceUrl) {
   };
 }
 
-async function fetchText(url) {
-  const response = await fetch(url, { headers: { "User-Agent": "AthleteN-TournamentScanner/2.0", Accept: "text/html,text/plain,application/xml,text/xml,application/xhtml+xml" } });
-  if (!response.ok) throw new Error(`HTTP_${response.status}`);
-  const contentType = response.headers.get("content-type") || "";
-  if (!contentType.includes("text/html") && !contentType.includes("text/plain") && !contentType.includes("xml")) throw new Error("UNSUPPORTED_CONTENT");
-  return response.text();
+async function fetchText(url, timeoutMs = MAX_PAGE_FETCH_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "AthleteN-TournamentScanner/2.0",
+        Accept: "text/html,text/plain,application/xml,text/xml,application/xhtml+xml"
+      },
+      signal: controller.signal,
+      redirect: "follow"
+    });
+    if (!response.ok) throw new Error(`HTTP_${response.status}`);
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("text/html") && !contentType.includes("text/plain") && !contentType.includes("xml")) throw new Error("UNSUPPORTED_CONTENT");
+    return response.text();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function mergeDetails(pages) {
   const fields = {};
+  const fieldEvidence = {};
+  const conflicts = [];
   const sections = [];
   const headings = new Set();
   const highlights = [];
+  const normalizeField = (value) => String(value || "").replace(/\\s+/g, " ").trim().toLowerCase();
+
   for (const page of pages) {
-    Object.entries(page.extracted.details?.fields || {}).forEach(([key, value]) => { if (!fields[key]) fields[key] = value; });
+    Object.entries(page.extracted.details?.fields || {}).forEach(([key, value]) => {
+      if (!value) return;
+      const normalized = normalizeField(value);
+      fieldEvidence[key] ||= [];
+      if (!fieldEvidence[key].some((item) => item.normalized === normalized)) {
+        fieldEvidence[key].push({ value: String(value).trim(), normalized, source_url: page.url });
+      }
+    });
     for (const section of page.extracted.details?.sections || []) sections.push({ ...section, source_url: page.url });
     for (const heading of page.extracted.details?.headings || []) headings.add(heading);
     highlights.push(...(page.extracted.details?.key_highlights || []));
   }
+
+  for (const [key, evidence] of Object.entries(fieldEvidence)) {
+    if (!evidence.length) continue;
+    const counts = new Map();
+    for (const item of evidence) counts.set(item.normalized, (counts.get(item.normalized) || 0) + 1);
+    const ranked = [...evidence].sort((a, b) => (counts.get(b.normalized) || 0) - (counts.get(a.normalized) || 0) || b.value.length - a.value.length);
+    const distinct = [...new Set(evidence.map((item) => item.normalized))];
+    if (distinct.length > 1) {
+      conflicts.push({
+        field: key,
+        candidates: evidence.slice(0, 6).map((item) => ({ value: item.value, source_url: item.source_url }))
+      });
+      fields[key] = "";
+    } else {
+      fields[key] = ranked[0].value;
+    }
+  }
+
   return {
     fields,
+    field_evidence: fieldEvidence,
+    conflicts,
     headings: [...headings].slice(0, 100),
     sections: sections.slice(0, 80),
     key_highlights: [...new Set(highlights)].slice(0, 40),
@@ -193,6 +240,8 @@ function mergeDetails(pages) {
 }
 
 export async function scanSource(sourceUrl) {
+  const startedAt = Date.now();
+  const deadline = startedAt + MAX_SCAN_MS;
   const rootHtml = await fetchText(sourceUrl);
   const parsedSource = new URL(sourceUrl);
   const discovered = new Set([parsedSource.toString()]);
@@ -201,21 +250,31 @@ export async function scanSource(sourceUrl) {
     discovered.add(link);
   }
   try {
-    const sitemap = await fetchText(new URL("/sitemap.xml", sourceUrl).toString());
-    for (const link of extractSitemapLinks(sitemap, sourceUrl)) {
-      if (discovered.size >= maxDiscoveredPages) break;
-      discovered.add(link);
+    if (Date.now() < deadline - MAX_PAGE_FETCH_MS) {
+      const sitemap = await fetchText(new URL("/sitemap.xml", sourceUrl).toString());
+      for (const link of extractSitemapLinks(sitemap, sourceUrl)) {
+        if (discovered.size >= maxDiscoveredPages) break;
+        discovered.add(link);
+      }
     }
   } catch {}
+
+  const urls = [...discovered];
   const pages = [];
-  for (const url of discovered) {
-    try {
+  for (let i = 0; i < urls.length; i += MAX_PARALLEL_PAGES) {
+    if (Date.now() >= deadline - 1500) break;
+    const batch = urls.slice(i, i + MAX_PARALLEL_PAGES);
+    const results = await Promise.allSettled(batch.map(async (url) => {
       const html = url === parsedSource.toString() ? rootHtml : await fetchText(url);
-      pages.push({ url, html, extracted: scanPage(html, url) });
-    } catch {}
+      return { url, html, extracted: scanPage(html, url) };
+    }));
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value) pages.push(result.value);
+    }
   }
+
   if (!pages.length) throw new Error("SOURCE_UNAVAILABLE");
-  const primary = pages[0].extracted;
+  const primary = pages.find((page) => page.url === parsedSource.toString())?.extracted || pages[0].extracted;
   const allPdfs = pages.flatMap((page) => page.extracted.pdfs || []);
   const uniquePdfs = [...new Map(allPdfs.map((pdf) => [pdf.href, pdf])).values()].slice(0, 40);
   const allText = pages.map((page) => `${page.url}\n${normalizeText(page.html)}`).join("\n");
