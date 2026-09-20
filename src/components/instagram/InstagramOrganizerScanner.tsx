@@ -151,10 +151,10 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
           <span className="status">{selectedScan.status || "checked"}</span>
         </div>
         <div className="scan-summary">
-          <div className="summary-item"><CalendarDays size={16}/><span>Tournament dates</span><strong>{importantFacts.tournament_dates || "Not found in accessible source"}</strong></div>
-          <div className="summary-item"><CalendarDays size={16}/><span>Reporting</span><strong>{[importantFacts.reporting_date, importantFacts.reporting_time].filter(Boolean).join(" • ") || "Not found in accessible source"}</strong></div>
-          <div className="summary-item"><MapPin size={16}/><span>Venue</span><strong>{importantFacts.venue || "Not found in accessible source"}</strong></div>
-          <div className="summary-item"><Globe size={16}/><span>Sport</span><strong>{importantFacts.sport || "Not found in accessible source"}</strong></div>
+          <div className="summary-item"><CalendarDays size={16}/><span>Tournament dates</span><strong>{importantFacts.tournament_dates || "—"}</strong></div>
+          <div className="summary-item"><CalendarDays size={16}/><span>Reporting</span><strong>{[importantFacts.reporting_date, importantFacts.reporting_time].filter(Boolean).join(" • ") || "—"}</strong></div>
+          <div className="summary-item"><MapPin size={16}/><span>Venue</span><strong>{importantFacts.venue || "—"}</strong></div>
+          <div className="summary-item"><Globe size={16}/><span>Sport</span><strong>{importantFacts.sport || "—"}</strong></div>
         </div>
         <div className="details-list important-facts-list">
           {[
@@ -170,7 +170,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
             ["Important highlights", importantFacts.important_highlights],
             ["Important notice", importantFacts.important_notice],
             ["Evidence conflicts", importantFacts.evidence_conflicts]
-          ].map(([label, value]) => <div className="detail-row" key={label}><b>{label}</b><span>{value || "Not found in accessible source"}</span></div>)}
+          ].filter(([, value]) => Boolean(String(value || "").trim())).map(([label, value]) => <div className="detail-row" key={label}><b>{label}</b><span>{value}</span></div>)}
         </div>
         <div className="scanner-source-proof">
           <ShieldCheck size={16}/>
