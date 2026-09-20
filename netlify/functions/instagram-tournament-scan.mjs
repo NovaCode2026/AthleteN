@@ -462,12 +462,27 @@ async function analyzeTournamentImage(imageUrl) {
         ...posterWindow(/\b(?:FIGHTS?|MATCH(?:ES)?|TOURNAMENT|CHAMPIONSHIP|EVENT)\b/i, 5),
         normalizedEvidenceLines.slice(0, 20).join(" ")
       ];
-      const layoutEventDate = fightWindows.map((window) =>
-        firstMatch(window, [
-          new RegExp("(" + posterDatePattern.source + ")", "i"),
-          new RegExp("(" + singlePosterDatePattern.source + ")", "i")
-        ])
-      ).find((value) => value && !/reporting|check[- ]?in|weigh[- ]?in|registration|deadline/i.test(value)) || "";
+      const layoutEventCandidates = fightWindows.flatMap((window) => {
+        const candidates = [
+          firstMatch(window, [new RegExp("(" + posterDatePattern.source + ")", "i")]),
+          firstMatch(window, [new RegExp("(" + singlePosterDatePattern.source + ")", "i")])
+        ];
+        return candidates.filter(Boolean).filter((value) =>
+          !/reporting|check[- ]?in|weigh[- ]?in|registration|deadline/i.test(value)
+        );
+      }).filter(Boolean);
+      const layoutEventDate = layoutEventCandidates.find((value) => {
+        // A reporting/check-in date must never become the tournament date.
+        // A genuine multi-day event range is still valid even when it starts
+        // on the reporting date (e.g. reporting 2 Oct, event 2–4 Oct).
+        const reportingDateKeys = reportingDateCandidates
+          .map((value) => semanticDateKey(value))
+          .filter(Boolean);
+        const candidateKey = semanticDateKey(value);
+        if (!candidateKey || !reportingDateKeys.length) return true;
+        const isRange = /\d{1,2}\s*(?:&|and|[-–])\s*\d{1,2}/i.test(value);
+        return isRange || !reportingDateKeys.includes(candidateKey);
+      }) || "";
 
       const layoutLocation = layoutVenue || "";
       if (layoutTitle) poster.tournament_name = layoutTitle;
@@ -569,7 +584,12 @@ async function analyzeTournamentImage(imageUrl) {
         const eventContext = /(?:fights?|event|tournament|championship|competition|matches?|held)\b/i.test(line);
         if (administrative && !eventContext) return "";
         return firstMatch(line, eventDatePatterns);
-      }).filter(Boolean);
+      }).filter(Boolean).filter((value) => {
+        const reportingDateKeys = reportingDateCandidates.map((item) => semanticDateKey(item)).filter(Boolean);
+        const candidateKey = semanticDateKey(value);
+        const isRange = /\d{1,2}\s*(?:&|and|[-–])\s*\d{1,2}/i.test(value);
+        return !candidateKey || !reportingDateKeys.includes(candidateKey) || isRange;
+      });
       const eventDateEvidenceResult = consensus(eventDateEvidence, normalizeEvidence, semanticDateKey);
       if (eventDateEvidenceResult.conflict) {
         evidenceConflicts.push({ field: "event_date", candidates: eventDateEvidenceResult.candidates });
