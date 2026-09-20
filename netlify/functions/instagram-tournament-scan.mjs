@@ -386,16 +386,16 @@ async function analyzeTournamentImage(imageUrl) {
       const titleArea = normalizedEvidenceLines.slice(0, Math.min(14, normalizedEvidenceLines.length)).join(" ");
       const layoutTitle = (() => {
         const source = normalizeEvidence(titleArea).replace(/[^A-Za-z0-9&' -]+/g, " ");
-        const ordinal = source.match(/\\b(\\d{1,2})(st|nd|rd|th)\\b/i)?.[0] || "";
-        const nameMatch = source.match(/\\b(?:SHRI|SRI)\\s+([A-Z][A-Za-z]+(?:\\s+[A-Z][A-Za-z]+){0,5})\\s+MEMORIAL\\b/i);
-        const name = nameMatch?.[1] ? nameMatch[1].replace(/\\s+/g, " ").trim() : "";
-        const memorial = /\\bMEMORIAL\\b/i.test(source);
-        const open = source.match(/\\bOPEN(?:\\s+NATIONAL)?\\b/i)?.[0] || "";
-        const sport = source.match(/\\bTAE[\\s-]*KWONDO\\b|\\bKYORUGI\\b|\\bPOOMSAE\\b/i)?.[0] || "";
-        const competition = source.match(/\\b(?:CHAMPIONSHIP|TOURNAMENT|CUP)\\b/i)?.[0] || "";
-        const year = source.match(/\\b20\\d{2}\\b/)?.[0] || "";
+        const ordinal = source.match(/\b(\d{1,2})(st|nd|rd|th)\b/i)?.[0] || "";
+        const nameMatch = source.match(/\b(?:SHRI|SRI)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,5})\s+MEMORIAL\b/i);
+        const name = nameMatch?.[1] ? nameMatch[1].replace(/\s+/g, " ").trim() : "";
+        const memorial = /\bMEMORIAL\b/i.test(source);
+        const open = source.match(/\bOPEN(?:\s+NATIONAL)?\b/i)?.[0] || "";
+        const sport = source.match(/\bTAE[\s-]*KWONDO\b|\bKYORUGI\b|\bPOOMSAE\b/i)?.[0] || "";
+        const competition = source.match(/\b(?:CHAMPIONSHIP|TOURNAMENT|CUP)\b/i)?.[0] || "";
+        const year = source.match(/\b20\d{2}\b/)?.[0] || "";
         if (!name || !memorial || !open || !sport || !competition || !year) return "";
-        return clean([ordinal, "Shri", name, "Memorial", open, sport.replace(/[\\s-]+/g, " "), competition, year].filter(Boolean).join(" "));
+        return clean([ordinal, "Shri", name, "Memorial", open, sport.replace(/[\s-]+/g, " "), competition, year].filter(Boolean).join(" "));
       })();
 
       const venueWindow = posterWindow(/\b(?:VENUE|LOCATION)\b/i, 5);
@@ -478,12 +478,12 @@ async function analyzeTournamentImage(imageUrl) {
       poster.tournament_name = layoutTitle || canonicalTitleCandidates.find((value) => /\b(?:memorial|open|national|taekwondo|kyorugi|poomsae)\b/i.test(value)) || titleEvidence.value || canonicalTitleCandidates[0] || "";
 
       const reportingDateCandidates = normalizedEvidenceLines
-        .filter((line) => /\\breporting\\b/i.test(line))
+        .filter((line) => /\breporting\b/i.test(line))
         .flatMap((line) => {
           const values = [];
           const patterns = [
-            /(?:reporting\\s+(?:time|date)|reporting)[^0-9]{0,80}?(\\d{1,2})(?:st|nd|rd|th|%|d|o)?\\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\s*,?\\s*(20\\d{2})/i,
-            /(?:reporting\\s+(?:time|date)|reporting)[^0-9]{0,80}?(\\d{1,2})\\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?)\\b/i
+            /(?:reporting\s+(?:time|date)|reporting)[^0-9]{0,80}?(\d{1,2})(?:st|nd|rd|th|%|d|o)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*,?\s*(20\d{2})/i,
+            /(?:reporting\s+(?:time|date)|reporting)[^0-9]{0,80}?(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?)\b/i
           ];
           for (const pattern of patterns) {
             const match = line.match(pattern);
@@ -1154,8 +1154,8 @@ async function scanPublicSource(sourceUrl) {
   const resolvedEventDateText = dateConflict
     ? ""
     : (
-      (sourceDateText && /\\b20\\d{2}\\b/.test(sourceDateText) ? sourceDateText : "") ||
-      (posterDateText && /\\b20\\d{2}\\b/.test(posterDateText) ? posterDateText : "") ||
+      (sourceDateText && /\b20\d{2}\b/.test(sourceDateText) ? sourceDateText : "") ||
+      (posterDateText && /\b20\d{2}\b/.test(posterDateText) ? posterDateText : "") ||
       sourceDateText ||
       posterDateText ||
       allFacts.tournament_date_text ||
@@ -1179,8 +1179,8 @@ async function scanPublicSource(sourceUrl) {
       if (Number.isFinite(reportTime) && Number.isFinite(eventTime) && reportTime > eventTime) return "";
     }
 
-    const eventMatch = clean(resolvedEventDateText).match(/\\b(\\d{1,2})(?:st|nd|rd|th)?\\s*(?:&|and|[-–])\\s*(\\d{1,2})(?:st|nd|rd|th)?\\s+([A-Za-z]{3,12})/i);
-    const reportMatch = clean(raw).match(/\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+([A-Za-z]{3,12})/i);
+    const eventMatch = clean(resolvedEventDateText).match(/\b(\d{1,2})(?:st|nd|rd|th)?\s*(?:&|and|[-–])\s*(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,12})/i);
+    const reportMatch = clean(raw).match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,12})/i);
     if (eventMatch && reportMatch) {
       const months = {jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,nov:11,november:11,dec:12,december:12};
       const eventMonth = months[eventMatch[3].toLowerCase()];
