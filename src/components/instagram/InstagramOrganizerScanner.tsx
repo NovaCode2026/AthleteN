@@ -220,8 +220,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
               ["Documents", fields.poster_documents],
               ["Notices", fields.poster_notices],
               ["Highlights", fields.poster_highlights],
-              ["Hashtags", fields.poster_hashtags],
-              ["Poster text", fields.poster_text]
+              ["Hashtags", fields.poster_hashtags]
             ].filter(([, value]) => Boolean(String(value || "").trim())).map(([label, value]) => <div className="detail-row" key={label}><b>{label}</b><span>{value}</span></div>)}
           </div>
           {fields.poster_image && <p><a className="source-link" href={fields.poster_image} target="_blank" rel="noreferrer"><ExternalLink size={14}/> Open analyzed poster image</a></p>}
@@ -295,8 +294,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
             ["Documents", fields.poster_documents],
             ["Notices", fields.poster_notices],
             ["Highlights", fields.poster_highlights],
-            ["Hashtags", fields.poster_hashtags],
-            ["Poster text", fields.poster_text]
+            ["Hashtags", fields.poster_hashtags]
           ].filter(([, value]) => value).map(([label, value]) => <div className="detail-row" key={label}><b>{label}</b><span>{value}</span></div>)}
         </div>
         {fields.poster_image && <p><a className="source-link" href={fields.poster_image} target="_blank" rel="noreferrer"><ExternalLink size={14}/> Open analyzed poster image</a></p>}
