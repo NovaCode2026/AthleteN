@@ -347,7 +347,60 @@ async function analyzeTournamentImage(imageUrl) {
       } else if (locationParts.length === 2) {
         poster.city = locationParts[1];
       }
-      poster.reporting_time = extractAcrossPasses([/(?:reporting\s*(?:time|date)?|reporting)\s*[:\-]?\s*(\d{1,2}:\d{2}\s*(?:am|pm)?)/i]) || "";
+      poster.reporting_time = extractAcrossPasses([/(?:reporting\s*(?:time|date)?|reporting)\s*[:\-]?\s*(\d{1,2}:\d{2}\s*(?:am|pm)?)/i], normalizeEvidence, "reporting_time") || "";
+
+      // Labeled poster fields are extracted only when the OCR repeatedly
+      // supports the same value. This keeps OCR noise from becoming a fact.
+      poster.organizer = extractAcrossPasses([
+        /(?:organizer|organiser|organized\s+by|organised\s+by)\s*[:\-]?\s*(.+?)(?=\s+(?:host|venue|location|registration|contact|fee|date|reporting)\b|$)/i
+      ], normalizeEvidence, "organizer") || "";
+      poster.host = extractAcrossPasses([
+        /(?:host|hosted\s+by)\s*[:\-]?\s*(.+?)(?=\s+(?:organizer|organiser|venue|location|registration|contact|fee|date|reporting)\b|$)/i
+      ], normalizeEvidence, "host") || "";
+      poster.city = extractAcrossPasses([
+        /(?:city|town)\s*[:\-]?\s*([^,;|]+?)(?=\s+(?:state|country|venue|location)\b|$)/i
+      ], normalizeEvidence, "city") || poster.city;
+      poster.state = extractAcrossPasses([
+        /(?:state|province)\s*[:\-]?\s*([^,;|]+?)(?=\s+(?:country|venue|location)\b|$)/i
+      ], normalizeEvidence, "state") || poster.state;
+      poster.country = extractAcrossPasses([
+        /country\s*[:\-]?\s*([^,;|]+?)(?=\s+(?:venue|location|registration|contact)\b|$)/i
+      ], normalizeEvidence, "country") || "";
+      poster.disciplines = [...new Set(lines
+        .filter((line) => /\b(?:kyorugi|poomsae|poomse)\b/i.test(line))
+        .flatMap((line) => (line.match(/\b(?:kyorugi|poomsae|poomse)\b/gi) || []).map((item) => item.replace(/^poomse$/i, "Poomsae"))))];
+      poster.gender_categories = lines.filter((line) =>
+        /\b(?:male|female|men|women|boys|girls|mixed)\b/i.test(line) &&
+        line.length <= 180
+      ).slice(0, 20);
+      poster.eligibility = extractAcrossPasses([
+        /(?:eligibility|eligible|eligibility\s+criteria)\s*[:\-]?\s*(.+?)(?=\s+(?:registration|fee|contact|venue|date|reporting)\b|$)/i
+      ], normalizeEvidence, "eligibility") || "";
+      poster.registration = extractAcrossPasses([
+        /(?:registration|entry|entries)\s*[:\-]?\s*(.+?)(?=\s+(?:deadline|last\s+date|fee|fees|contact|venue|date)\b|$)/i
+      ], normalizeEvidence, "registration") || "";
+      poster.registration_deadline = poster.registration_deadline || extractAcrossPasses([
+        /(?:registration|entry)\s+(?:deadline|last\s+date|closes?|closing)\s*[:\-]?\s*(.+?)(?=\s+(?:fee|fees|contact|venue|date)\b|$)/i,
+        /(?:deadline|last\s+date)\s*[:\-]?\s*(.+?)(?=\s+(?:fee|fees|contact|venue|date)\b|$)/i
+      ], normalizeEvidence, "registration_deadline") || "";
+      poster.registration_link = poster.registration_link || extractAcrossPasses([
+        /((?:https?:\/\/|www\.)[^\s|]+)/i
+      ], normalizeEvidence, "registration_link") || "";
+      poster.contact = extractAcrossPasses([
+        /(?:contact|helpline|contact\s+details?)\s*[:\-]?\s*(.+?)(?=\s+(?:registration|fee|venue|date|reporting)\b|$)/i
+      ], normalizeEvidence, "contact") || "";
+      poster.rules = extractAcrossPasses([/(?:rules|regulations)\s*[:\-]?\s*(.+?)(?=\s+(?:scoring|competition|equipment|schedule|weigh)\b|$)/i], normalizeEvidence, "rules") || "";
+      poster.scoring_system = extractAcrossPasses([/(?:scoring\s+system|scoring)\s*[:\-]?\s*(.+?)(?=\s+(?:competition|equipment|schedule|weigh|rules)\b|$)/i], normalizeEvidence, "scoring_system") || "";
+      poster.competition_system = extractAcrossPasses([/(?:competition\s+system|competition\s+format|format)\s*[:\-]?\s*(.+?)(?=\s+(?:rounds?|equipment|schedule|weigh|rules)\b|$)/i], normalizeEvidence, "competition_system") || "";
+      poster.rounds = extractAcrossPasses([/(?:rounds?|number\s+of\s+rounds?)\s*[:\-]?\s*(.+?)(?=\s+(?:equipment|schedule|weigh|rules)\b|$)/i], normalizeEvidence, "rounds") || "";
+      poster.schedule = extractAcrossPasses([/(?:schedule|program|programme)\s*[:\-]?\s*(.+?)(?=\s+(?:weigh|registration|contact|venue|rules)\b|$)/i], normalizeEvidence, "schedule") || "";
+      poster.weigh_in = extractAcrossPasses([/(?:weigh[-\s]?in|weight\s+check)\s*[:\-]?\s*(.+?)(?=\s+(?:registration|contact|venue|schedule|rules)\b|$)/i], normalizeEvidence, "weigh_in") || "";
+      poster.medals = extractAcrossPasses([/(?:medals?|awards?)\s*[:\-]?\s*(.+?)(?=\s+(?:prizes?|accommodation|transport|registration)\b|$)/i], normalizeEvidence, "medals") || "";
+      poster.prizes = extractAcrossPasses([/(?:prizes?|cash\s+prizes?)\s*[:\-]?\s*(.+?)(?=\s+(?:medals?|accommodation|transport|registration)\b|$)/i], normalizeEvidence, "prizes") || "";
+      poster.accommodation = extractAcrossPasses([/(?:accommodation|lodging)\s*[:\-]?\s*(.+?)(?=\s+(?:transport|registration|contact|venue)\b|$)/i], normalizeEvidence, "accommodation") || "";
+      poster.transport = extractAcrossPasses([/(?:transport|transportation)\s*[:\-]?\s*(.+?)(?=\s+(?:accommodation|registration|contact|venue)\b|$)/i], normalizeEvidence, "transport") || "";
+      poster.documents = extractAcrossPasses([/(?:documents?|documents\s+required|required\s+documents?)\s*[:\-]?\s*(.+?)(?=\s+(?:registration|contact|venue|date)\b|$)/i], normalizeEvidence, "documents") || "";
+      poster.notices = lines.filter((line) => /\b(?:notice|important|note|mandatory|must|strictly|compulsory)\b/i.test(line)).slice(0, 20);
       poster.sport = /\bTAEKWONDO\b/i.test(compactText) ? "Taekwondo" : "";
       poster.equipment = /\bPSS\b/i.test(compactText)
         ? "Daedo PSS protective scoring system; electronic head & body guard; real-time scoring; instant result display; fair & transparent judging"
