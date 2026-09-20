@@ -384,7 +384,7 @@ async function analyzeTournamentImage(imageUrl) {
       // Recover the complete event title from the title area rather than
       // requiring every word to appear on one OCR line.
       const titleArea = normalizedEvidenceLines.slice(0, Math.min(14, normalizedEvidenceLines.length)).join(" ");
-      const layoutTitleMatch = titleArea.match(/\b(\d{1,2}(?:st|nd|rd|th)\s+)?(?:SHRI|SRI)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){1,6})\s+(MEMORIAL)\s+(OPEN(?:\s+NATIONAL)?)\s+(TAE[\s-]*KWONDO|KYORUGI|POOMSAE)\s+(CHAMPIONSHIP|TOURNAMENT|CUP)\s+(20\d{2})\b/i);
+      const layoutTitleMatch = titleArea.match(/\b(\d{1,2}(?:st|nd|rd|th)\s+)?(?:SHRI|SRI)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){1,6})\s+MEMORIAL.{0,24}?OPEN(?:\s+NATIONAL)?.{0,24}?(TAE[\s-]*KWONDO|KYORUGI|POOMSAE).{0,24}?(CHAMPIONSHIP|TOURNAMENT|CUP).{0,12}?(20\d{2})\b/i);
       const layoutTitle = layoutTitleMatch
         ? clean((layoutTitleMatch[1] || "") + "Shri " + layoutTitleMatch[2] + " Memorial " + layoutTitleMatch[4] + " " + layoutTitleMatch[5].replace(/[\s-]+/g, " ") + " " + layoutTitleMatch[6] + " " + layoutTitleMatch[7])
         : "";
