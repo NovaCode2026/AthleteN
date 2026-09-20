@@ -123,8 +123,8 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
   const sourcePages = details?.source_pages || [];
   const relevantPosts = instagramResult?.relevant_posts || [];
   const otherPosts = instagramResult?.other_posts || [];
-  const dateDisplay = details?.fields?.tournament_date_text || selectedScan?.tournament_date || "Not found";
-  const registrationDisplay = details?.fields?.registration_deadline_text || selectedScan?.registration_deadline || "Not found";
+  const dateDisplay = details?.fields?.tournament_date_text || selectedScan?.tournament_date || "";
+  const registrationDisplay = details?.fields?.registration_deadline_text || selectedScan?.registration_deadline || "";
 
   return <div className="feature-page tournament-scanner">
     <div className="page-heading">
@@ -145,16 +145,16 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
         <div className="panel-head">
           <div>
             <p className="eyebrow">Tournament intelligence</p>
-            <h3>{importantFacts.tournament_name || "Not found in accessible source"}</h3>
-            <p>Only facts supported by the accessible Instagram source are shown here. Missing information is not guessed.</p>
+            <h3>{importantFacts.tournament_name || "Tournament information"}</h3>
+            <p>Only valuable facts supported by accessible tournament evidence are shown. Unsupported fields are omitted.</p>
           </div>
           <span className="status">{selectedScan.status || "checked"}</span>
         </div>
         <div className="scan-summary">
-          <div className="summary-item"><CalendarDays size={16}/><span>Tournament dates</span><strong>{importantFacts.tournament_dates || "—"}</strong></div>
-          <div className="summary-item"><CalendarDays size={16}/><span>Reporting</span><strong>{[importantFacts.reporting_date, importantFacts.reporting_time].filter(Boolean).join(" • ") || "—"}</strong></div>
-          <div className="summary-item"><MapPin size={16}/><span>Venue</span><strong>{importantFacts.venue || "—"}</strong></div>
-          <div className="summary-item"><Globe size={16}/><span>Sport</span><strong>{importantFacts.sport || "—"}</strong></div>
+          {importantFacts.tournament_dates && <div className="summary-item"><CalendarDays size={16}/><span>Tournament dates</span><strong>{importantFacts.tournament_dates}</strong></div>}
+          {[importantFacts.reporting_date, importantFacts.reporting_time].filter(Boolean).length > 0 && <div className="summary-item"><CalendarDays size={16}/><span>Reporting</span><strong>{[importantFacts.reporting_date, importantFacts.reporting_time].filter(Boolean).join(" • ")}</strong></div>}
+          {importantFacts.venue && <div className="summary-item"><MapPin size={16}/><span>Venue</span><strong>{importantFacts.venue}</strong></div>}
+          {importantFacts.sport && <div className="summary-item"><Globe size={16}/><span>Sport</span><strong>{importantFacts.sport}</strong></div>}
         </div>
         <div className="details-list important-facts-list">
           {[
@@ -167,6 +167,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
             ["Official contact", importantFacts.official_contact],
             ["Organizer", importantFacts.organizer],
             ["Scoring / equipment", importantFacts.equipment_and_scoring],
+            ["Medals / prizes", importantFacts.medals_prizes],
             ["Important highlights", importantFacts.important_highlights],
             ["Important notice", importantFacts.important_notice],
             ["Evidence conflicts", importantFacts.evidence_conflicts]
