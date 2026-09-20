@@ -42,3 +42,8 @@ test("Date comparison allows a source date without a year to match poster eviden
   assert.match(backend, /withoutYear/);
   assert.match(backend, /!aYear \|\| !bYear \|\| aYear === bYear/);
 });
+
+test("poster URLs are not accepted as registration links without registration context", () => {
+  assert.match(backend, /Do not accept arbitrary URLs from poster OCR/);
+  assert.match(backend, /registrationUrlLines = lines\.filter/);
+});
