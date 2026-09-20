@@ -937,6 +937,7 @@ async function scanPublicSource(sourceUrl) {
     organizer: fact(allFacts.organizer),
     equipment_and_scoring: fact(poster?.equipment),
     important_highlights: fact(Array.isArray(poster?.highlights) ? poster.highlights.join(" ") : ""),
+    medals_prizes: fact([poster?.medals, poster?.prizes].filter(Boolean).join(" | ")),
     important_notice: dateConflict
       ? `Conflict detected between accessible source text and poster OCR: source says "${sourceDateText}"; poster OCR says "${posterDateText}".`
       : "",
