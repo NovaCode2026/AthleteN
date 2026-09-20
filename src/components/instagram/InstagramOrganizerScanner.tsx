@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ExternalLink, FileText, Globe, Instagram, Loader2, MapPin, RefreshCw, ShieldCheck } from "lucide-react";
+import { CalendarDays, ExternalLink, FileText, Globe, Instagram, Loader2, MapPin, RefreshCw, ShieldCheck, GitMerge } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import "../../styles/tournament-scanner.css";
 
@@ -53,6 +53,8 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
   const [scans, setScans] = useState<ScanRow[]>([]);
   const [selectedScan, setSelectedScan] = useState<ScanRow | null>(null);
   const [instagramResult, setInstagramResult] = useState<InstagramResult | null>(null);
+  const [mergeSelection, setMergeSelection] = useState<string[]>([]);
+  const [merging, setMerging] = useState(false);
 
   async function loadScans() {
     if (!accessToken) return;
@@ -86,6 +88,32 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
     if (!response.ok) throw new Error(payload.error || "Instagram tournament scan failed.");
     setInstagramResult(payload);
     return payload;
+  }
+
+  async function mergeSelectedScans() {
+    if (mergeSelection.length < 2) {
+      setToast({ type: "warning", message: "Select at least two scans of the same tournament." });
+      return;
+    }
+    setMerging(true);
+    try {
+      const response = await fetch("/.netlify/functions/instagram-tournament-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ action: "merge", scanIds: mergeSelection })
+      });
+      const payload = await response.json().catch(() => ({})) as { error?: string; scan?: ScanRow };
+      if (!response.ok) throw new Error(payload.error || "Tournament merge failed.");
+      if (payload.scan) setSelectedScan(payload.scan);
+      setInstagramResult(null);
+      setMergeSelection([]);
+      await loadScans();
+      setToast({ type: "success", message: "The selected scans were merged into one tournament result." });
+    } catch (error) {
+      setToast({ type: "error", message: error instanceof Error ? error.message : "Tournament merge failed." });
+    } finally {
+      setMerging(false);
+    }
   }
 
   async function scan(event: React.FormEvent) {
@@ -319,6 +347,14 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
     </>}
     </>}
 
-    <section className="card panel scan-results"><div className="panel-head"><div><h3>Saved scans</h3><p>Select a previous scan to reopen its full extracted intelligence.</p></div></div>{!scans.length ? <div className="empty-state"><strong>No tournament scans yet.</strong><p>Choose a source above and run your first scan.</p></div> : <div className="scan-table-wrap"><table><thead><tr><th>Source</th><th>Tournament</th><th>Date</th><th>Venue</th><th>Last checked</th><th>Status</th><th>Details</th></tr></thead><tbody>{scans.map((scanRow) => <tr key={scanRow.id}><td className="source-cell">{scanRow.source_url}</td><td>{scanRow.tournament_name || ""}</td><td>{scanRow.tournament_date || ""}</td><td>{scanRow.venue || ""}</td><td>{formatDate(scanRow.last_checked_at)}</td><td><span className={`status ${scanRow.status === "blocked" ? "blocked" : ""}`}>{scanRow.status || ""}</span></td><td><button className="plain" type="button" onClick={() => setSelectedScan(scanRow)}>Open intelligence</button></td></tr>)}</tbody></table></div>}</section>
+    <section className="card panel scan-results">
+      <div className="panel-head">
+        <div><h3>Saved scans</h3><p>Select two or more scans for the same tournament to combine their evidence into one result.</p></div>
+        <button className="btn secondary" type="button" onClick={() => void mergeSelectedScans()} disabled={merging || mergeSelection.length < 2}>
+          {merging ? <Loader2 className="spin" size={16}/> : <GitMerge size={16}/>} {merging ? "Merging..." : `Merge same tournament${mergeSelection.length ? ` (${mergeSelection.length})` : ""}`}
+        </button>
+      </div>
+      {!scans.length ? <div className="empty-state"><strong>No tournament scans yet.</strong><p>Choose a source above and run your first scan.</p></div> : <div className="scan-table-wrap"><table><thead><tr><th>Select</th><th>Source</th><th>Tournament</th><th>Date</th><th>Venue</th><th>Last checked</th><th>Status</th><th>Details</th></tr></thead><tbody>{scans.map((scanRow) => <tr key={scanRow.id}><td><input type="checkbox" aria-label={`Select ${scanRow.tournament_name || "tournament scan"} for merge`} checked={mergeSelection.includes(scanRow.id)} onChange={(event) => setMergeSelection((current) => event.target.checked ? [...current, scanRow.id] : current.filter((id) => id !== scanRow.id))}/></td><td className="source-cell">{scanRow.source_url}</td><td>{scanRow.tournament_name || ""}</td><td>{scanRow.tournament_date || ""}</td><td>{scanRow.venue || ""}</td><td>{formatDate(scanRow.last_checked_at)}</td><td><span className={`status ${scanRow.status === "blocked" ? "blocked" : ""}`}>{scanRow.status || ""}</span></td><td><button className="plain" type="button" onClick={() => setSelectedScan(scanRow)}>Open intelligence</button></td></tr>)}</tbody></table></div>}
+    </section>
   </div>;
 }
