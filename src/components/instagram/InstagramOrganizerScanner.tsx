@@ -180,6 +180,52 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
           <ShieldCheck size={16}/>
           <span>Source checked: <a href={selectedScan.source_url} target="_blank" rel="noreferrer">{selectedScan.source_url}</a></span>
         </div>
+
+        {(fields.poster_image || fields.poster_text || fields.poster_events || fields.poster_disciplines || fields.poster_sport || fields.poster_age_categories || fields.poster_weight_categories) && <section className="card panel">
+          <div className="panel-head"><div><h3>Complete poster intelligence</h3><p>Only readable tournament information supported by the accessible poster is shown. OCR noise is not promoted into structured facts.</p></div></div>
+          <div className="details-list">
+            {[
+              ["Sport", fields.poster_sport],
+              ["Disciplines", fields.poster_disciplines],
+              ["Events / divisions", fields.poster_events],
+              ["Age categories", fields.poster_age_categories],
+              ["Weight categories", fields.poster_weight_categories],
+              ["Gender categories", fields.poster_gender_categories],
+              ["Eligibility", fields.poster_eligibility],
+              ["City", fields.poster_city],
+              ["State", fields.poster_state],
+              ["Country", fields.poster_country],
+              ["Organizer", fields.organizer],
+              ["Host", fields.poster_host],
+              ["Reporting date", fields.reporting_date_text],
+              ["Reporting time", fields.reporting_time],
+              ["Registration", fields.poster_registration],
+              ["Registration deadline", fields.poster_registration_deadline],
+              ["Registration link", fields.poster_registration_link],
+              ["Fees", fields.fees],
+              ["Contact", fields.poster_contact],
+              ["Phone", fields.poster_phone],
+              ["Email", fields.poster_email],
+              ["Rules", fields.poster_rules],
+              ["Scoring system", fields.poster_scoring_system],
+              ["Competition system", fields.poster_competition_system],
+              ["Rounds", fields.poster_rounds],
+              ["Equipment", fields.poster_equipment],
+              ["Schedule", fields.poster_schedule],
+              ["Weigh-in", fields.poster_weigh_in],
+              ["Medals", fields.poster_medals],
+              ["Prizes", fields.poster_prizes],
+              ["Accommodation", fields.poster_accommodation],
+              ["Transport", fields.poster_transport],
+              ["Documents", fields.poster_documents],
+              ["Notices", fields.poster_notices],
+              ["Highlights", fields.poster_highlights],
+              ["Hashtags", fields.poster_hashtags],
+              ["Poster text", fields.poster_text]
+            ].filter(([, value]) => Boolean(String(value || "").trim())).map(([label, value]) => <div className="detail-row" key={label}><b>{label}</b><span>{value}</span></div>)}
+          </div>
+          {fields.poster_image && <p><a className="source-link" href={fields.poster_image} target="_blank" rel="noreferrer"><ExternalLink size={14}/> Open analyzed poster image</a></p>}
+        </section>}
       </section> : <>
       <section className="card panel">
         <div className="panel-head"><div><p className="eyebrow">Latest intelligence</p><h3>{selectedScan.tournament_name || "Tournament source"}</h3><p>{details?.description || "Information extracted from the source and relevant pages."}</p></div><span className={`status ${selectedScan.status === "blocked" ? "blocked" : ""}`}>{selectedScan.status || "checked"}</span></div>
