@@ -57,3 +57,8 @@ test("reporting/check-in dates cannot silently become tournament dates", () => {
   assert.match(backend, /poster\.date_text = poster\.event_date_text \|\| ""/);
   assert.doesNotMatch(backend, /poster\.date_text = poster\.event_date_text \|\| firstMatch\(compactText/);
 });
+
+test("administrative dates are excluded from generic tournament-date extraction", () => {
+  assert.match(backend, /const administrative = \/\(\?:reporting\|check\[- \]\?in\|checkin\|weigh\[- \]\?in\|registration\|deadline\|last\\s\+date\|arrival\)/);
+  assert.match(backend, /if \(administrative\.test\(prefix\) && !eventContext\.test\(prefix\)\) continue/);
+});
