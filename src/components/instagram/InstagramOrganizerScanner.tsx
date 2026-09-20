@@ -198,7 +198,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
       {details?.conflicts?.length ? <section className="card panel">
         <div className="panel-head"><div><h3>Evidence conflicts</h3><p>Conflicting values are shown instead of choosing one silently.</p></div></div>
         <div className="details-list">{details.conflicts.map((conflict, index) => <div className="detail-row" key={`${conflict.field}-${index}`}><b>{labelize(conflict.field)}</b><span>{conflict.candidates.map((candidate, candidateIndex) => <span key={`${candidate.value}-${candidateIndex}`} style={{ display: "block" }}>{candidate.value}{candidate.source_url ? ` — ${candidate.source_url}` : ""}</span>)}</span></div>)}</div>
-      </section>
+      </section> : null}
 
       {(fields.raw_source_text || fields.source_caption) && <section className="card panel">
         <div className="panel-head"><div><h3>Raw source information</h3><p>AthleteN shows the text Instagram actually exposed before structured extraction. Nothing from the accessible source is intentionally hidden.</p></div></div>
