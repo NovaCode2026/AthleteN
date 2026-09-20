@@ -386,14 +386,19 @@ async function analyzeTournamentImage(imageUrl) {
       const titleArea = normalizedEvidenceLines.slice(0, Math.min(14, normalizedEvidenceLines.length)).join(" ");
       const layoutTitle = (() => {
         const source = normalizeEvidence(titleArea).replace(/[^A-Za-z0-9&' -]+/g, " ");
-        const ordinal = source.match(/\b(\d{1,2})(st|nd|rd|th)\b/i)?.[0] || "";
-        const nameMatch = source.match(/\b(?:SHRI|SRI)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,5})\s+MEMORIAL\b/i);
-        const name = nameMatch?.[1] ? nameMatch[1].replace(/\s+/g, " ").trim() : "";
-        const memorial = /\bMEMORIAL\b/i.test(source);
-        const open = source.match(/\bOPEN(?:\s+NATIONAL)?\b/i)?.[0] || "";
-        const sport = source.match(/\bTAE[\s-]*KWONDO\b|\bKYORUGI\b|\bPOOMSAE\b/i)?.[0] || "";
-        const competition = source.match(/\b(?:CHAMPIONSHIP|TOURNAMENT|CUP)\b/i)?.[0] || "";
-        const year = source.match(/\b20\d{2}\b/)?.[0] || "";
+        const upper = source.toUpperCase();
+        const ordinal = upper.match(/\b(\d{1,2})(ST|ND|RD|TH)\b/i)?.[0] || "";
+        const memorialIndex = upper.indexOf("MEMORIAL");
+        if (memorialIndex < 0) return "";
+        const prefix = upper.slice(0, memorialIndex);
+        const nameSegment = prefix.match(/\b(?:SHRI|SRI)\s+([A-Z]{3,}(?:\s+[A-Z]{3,}){0,2})\s*$/i)?.[1] || "";
+        const nameTokens = nameSegment.split(/\s+/).filter((token) => token.length >= 3);
+        const name = nameTokens.slice(0, 2).map((token) => token[0] + token.slice(1).toLowerCase()).join(" ");
+        const memorial = true;
+        const open = upper.match(/\bOPEN(?:\s+NATIONAL)?\b/i)?.[0] || "";
+        const sport = upper.match(/\bTAE[\s-]*KWONDO\b|\bKYORUGI\b|\bPOOMSAE\b/i)?.[0] || "";
+        const competition = upper.match(/\b(?:CHAMPIONSHIP|TOURNAMENT|CUP)\b/i)?.[0] || "";
+        const year = upper.match(/\b20\d{2}\b/)?.[0] || "";
         if (!name || !memorial || !open || !sport || !competition || !year) return "";
         return clean([ordinal, "Shri", name, "Memorial", open, sport.replace(/[\s-]+/g, " "), competition, year].filter(Boolean).join(" "));
       })();
@@ -406,12 +411,16 @@ async function analyzeTournamentImage(imageUrl) {
         ])
       ).find(Boolean) || "";
 
-      const reportingWindows = posterWindow(/\bREPORTING\b/i, 5);
+      const reportingWindows = posterWindow(/\bREPORTING\b/i, 6);
       const layoutReportingTime = reportingWindows.map((window) =>
-        firstMatch(window, [/(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i])
+        firstMatch(window, [/(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i)])
       ).find(Boolean) || "";
+      const reportingDatePattern = /\b(\d{1,2})(?:st|nd|rd|th|%|d|o)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*,?\s*(20\d{2})\b/i;
       const layoutReportingDate = reportingWindows.map((window) =>
-        firstMatch(window, [new RegExp("(" + singlePosterDatePattern.source + ")", "i")])
+        firstMatch(window, [
+          reportingDatePattern,
+          new RegExp("(" + singlePosterDatePattern.source + ")", "i")
+        ])
       ).find(Boolean) || "";
 
       const fightWindows = [
@@ -494,7 +503,10 @@ async function analyzeTournamentImage(imageUrl) {
         .filter(Boolean);
 
       const reportingDateResult = consensus(reportingDateCandidates, normalizeEvidence, semanticDateKey);
-      poster.reporting_date_text = reportingDateResult.conflict ? "" : reportingDateResult.value || "";
+      // Prefer a direct label-window match. It survives OCR variants such as
+      // "2% October 2026" after contextual normalization, while consensus
+      // remains the guard against competing OCR readings.
+      poster.reporting_date_text = layoutReportingDate || (reportingDateResult.conflict ? "" : reportingDateResult.value || "");
 
       if (reportingDateCandidates.length) {
         const plausible = reportingDateCandidates
