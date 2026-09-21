@@ -10,21 +10,73 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
+  const [verificationNotice, setVerificationNotice] = useState('');
 
   async function submit() {
     setError('');
-    if (!email.trim() || password.length < 6 || (register && !name.trim())) {
-      setError(register ? 'Enter your name, email and a 6+ character password.' : 'Enter your email and password.');
+    setVerificationNotice('');
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail || !cleanEmail.includes('@') || password.length < 6 || (register && !name.trim())) {
+      setError(register ? 'Enter your name, a valid email and a 6+ character password.' : 'Enter your email and password.');
       return;
     }
+
     setBusy(true);
-    const result = register
-      ? await supabase.auth.signUp({ email: email.trim(), password, options: { data: { full_name: name.trim() } } })
-      : await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    setBusy(false);
-    if (result.error) setError(result.error.message);
-    else if (register) setError('Account created. Check your email if confirmation is enabled.');
+    try {
+      if (register) {
+        const result = await supabase.auth.signUp({
+          email: cleanEmail,
+          password,
+          options: { data: { full_name: name.trim() } },
+        });
+
+        if (result.error) {
+          setError(result.error.message);
+          return;
+        }
+
+        if (result.data.session) {
+          setVerificationNotice('Account created. Your email is already verified or email confirmation is disabled.');
+        } else {
+          setVerificationNotice('Account created. Check your inbox and verify your email before signing in.');
+        }
+      } else {
+        const result = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+
+        if (result.error) {
+          if (/email not confirmed/i.test(result.error.message)) {
+            setError('Your email is not verified yet. Check your inbox, then tap RESEND VERIFICATION below if needed.');
+          } else {
+            setError(result.error.message);
+          }
+          return;
+        }
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resendVerification() {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setError('Enter the email address you used to register first.');
+      return;
+    }
+
+    setError('');
+    setVerificationNotice('');
+    setResending(true);
+    try {
+      const result = await supabase.auth.resend({ type: 'signup', email: cleanEmail });
+      if (result.error) setError(result.error.message);
+      else setVerificationNotice('Verification email sent. Check your inbox and spam folder.');
+    } finally {
+      setResending(false);
+    }
   }
 
   return (
@@ -33,14 +85,57 @@ export default function AuthScreen() {
         <Text style={styles.brand}>ATHLETEN</Text>
         <Text style={styles.title}>{register ? 'Create your athlete account' : 'Welcome back'}</Text>
         <Text style={styles.subtitle}>Training, competitions and progress in one place.</Text>
-        {register && <TextInput value={name} onChangeText={setName} placeholder="Full name" placeholderTextColor={Colors.dark.muted} style={styles.input} />}
-        <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor={Colors.dark.muted} style={styles.input} />
-        <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password" placeholderTextColor={Colors.dark.muted} style={styles.input} />
+
+        {register && (
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="Full name"
+            placeholderTextColor={Colors.dark.muted}
+            style={styles.input}
+          />
+        )}
+
+        <TextInput
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          placeholder="Email"
+          placeholderTextColor={Colors.dark.muted}
+          style={styles.input}
+        />
+
+        <TextInput
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          placeholder="Password"
+          placeholderTextColor={Colors.dark.muted}
+          style={styles.input}
+        />
+
         {!!error && <Text style={styles.error}>{error}</Text>}
-        <Pressable onPress={submit} disabled={busy} style={styles.primary}>
+        {!!verificationNotice && <Text style={styles.notice}>{verificationNotice}</Text>}
+
+        <Pressable onPress={submit} disabled={busy || resending} style={styles.primary}>
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{register ? 'CREATE ACCOUNT' : 'SIGN IN'}</Text>}
         </Pressable>
-        <Pressable onPress={() => { setRegister(!register); setError(''); }}>
+
+        {!register && /not verified|not confirmed/i.test(error) && (
+          <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>
+            {resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION</Text>}
+          </Pressable>
+        )}
+
+        {register && !!verificationNotice && (
+          <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>
+            {resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION EMAIL</Text>}
+          </Pressable>
+        )}
+
+        <Pressable onPress={() => { setRegister(!register); setError(''); setVerificationNotice(''); }}>
           <Text style={styles.switch}>{register ? 'Already have an account? Sign in' : 'New to AthleteN? Create an account'}</Text>
         </Pressable>
       </View>
@@ -57,6 +152,9 @@ const styles = StyleSheet.create({
   input:{backgroundColor:Colors.dark.surface,borderWidth:1,borderColor:Colors.dark.border,borderRadius:14,color:Colors.dark.text,padding:15,fontSize:15},
   primary:{backgroundColor:Colors.dark.accent,borderRadius:14,padding:15,alignItems:'center'},
   primaryText:{color:'#fff',fontSize:12,fontWeight:'900',letterSpacing:1},
+  secondary:{backgroundColor:'transparent',borderWidth:1,borderColor:Colors.dark.accent,borderRadius:14,padding:14,alignItems:'center'},
+  secondaryText:{color:Colors.dark.accent,fontSize:12,fontWeight:'900',letterSpacing:1},
   switch:{color:Colors.dark.accent,textAlign:'center',fontSize:13,padding:10},
-  error:{color:'#B6D0FF',fontSize:12,lineHeight:18},
+  error:{color:'#FF9BAA',fontSize:12,lineHeight:18},
+  notice:{color:'#9BC3FF',fontSize:12,lineHeight:18},
 });
