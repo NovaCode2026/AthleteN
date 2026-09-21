@@ -3,11 +3,13 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { useRouter } from 'expo-router';
 
 const c=Colors.dark;
 
 export default function ProfileScreen(){
  const {profile,session,signOut,refreshProfile}=useAuth();
+ const router=useRouter();
  const [name,setName]=useState(profile?.full_name||'');
  const [dob,setDob]=useState(String(profile?.date_of_birth||''));
  const [gender,setGender]=useState(String(profile?.gender||''));
@@ -92,6 +94,7 @@ export default function ProfileScreen(){
   </Section>
 
   {!!message&&<Text style={styles.message}>{message}</Text>}
+  {(profile?.role === 'admin' || profile?.role === 'super_admin') && <Pressable onPress={()=>router.push('/admin')} style={styles.adminButton}><Text style={styles.adminButtonText}>OPEN ADMIN COMMAND CENTER</Text></Pressable>}
   <Pressable onPress={signOut} style={styles.signOut}><Text style={styles.signOutText}>SIGN OUT</Text></Pressable>
  </ScrollView>
 }
