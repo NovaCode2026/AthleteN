@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -54,7 +55,7 @@ export default function TrainingScreen() {
     if (error) setMessage(error.message); else await load();
   }
 
-  return <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+  return <SafeAreaView style={s.screen} edges={['top']}><ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
     <View style={s.header}><View><Text style={s.kicker}>ATHLETEN PERFORMANCE</Text><Text style={s.title}>Training</Text><Text style={s.sub}>{profile?.discipline || 'Taekwondo'} training, logged properly.</Text></View><View style={s.icon}><Text style={s.iconText}>↗</Text></View></View>
     <View style={s.hero}><Text style={s.heroTitle}>Training program</Text><Text style={s.heroSub}>Set the training window you want. AthleteN does not force a fixed duration.</Text></View>
     <View style={s.card}>
