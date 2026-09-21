@@ -32,7 +32,7 @@ export default function AuthScreen() {
         const result = await supabase.auth.signUp({
           email: cleanEmail,
           password,
-          options: { data: { full_name: name.trim() } },
+          options: { data: { full_name: name.trim() }, emailRedirectTo: 'athletenmobile:///' },
         });
 
         if (result.error) {
