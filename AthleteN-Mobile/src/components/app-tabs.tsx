@@ -21,6 +21,11 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon src={require('@/assets/images/tabIcons/explore.png')} renderingMode="template" />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="ai">
+        <NativeTabs.Trigger.Label>AI</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon src={require('@/assets/images/tabIcons/explore.png')} renderingMode="template" />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="compete">
         <NativeTabs.Trigger.Label>Compete</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon src={require('@/assets/images/tabIcons/explore.png')} renderingMode="template" />
