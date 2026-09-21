@@ -543,3 +543,25 @@ th {
 
 /* ATHLETEOS_SECURE_MESSAGING */
 .messaging-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;min-width:0}.messaging-sidebar,.messaging-chat{min-width:0}.messaging-sidebar{display:grid;gap:14px;align-content:start}.conversation-list{display:grid;gap:6px;max-height:420px;overflow:auto}.conversation-item{appearance:none;border:1px solid transparent;background:transparent;color:inherit;text-align:left;padding:10px;border-radius:10px;cursor:pointer;display:grid;gap:3px}.conversation-item:hover,.conversation-item.active{background:rgba(73,215,255,.09);border-color:rgba(73,215,255,.2)}.conversation-item small,.empty-copy,.message-bubble small,.message-bubble>span{color:var(--muted,#8fa7bf);font-size:.78rem}.messaging-create{display:grid;gap:8px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)}.messaging-create input,.message-compose input,.message-compose select,.messaging-header input{min-width:0}.messaging-header{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:12px}.messaging-header .inline-form{margin:0}.message-list{display:flex;flex-direction:column;gap:9px;min-height:360px;max-height:52vh;overflow:auto;padding:14px 2px}.message-bubble{max-width:78%;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.06);align-self:flex-start}.message-bubble.mine{align-self:flex-end;background:rgba(73,215,255,.12)}.message-bubble p{margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}.message-compose{display:grid;grid-template-columns:180px minmax(0,1fr) auto;gap:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px}.message-compose input,.message-compose select{height:42px}@media(max-width:850px){.messaging-layout{grid-template-columns:1fr}.messaging-header{align-items:flex-start;flex-direction:column}.messaging-header .inline-form{width:100%}.message-compose{grid-template-columns:1fr}.message-bubble{max-width:92%}}
+
+/* AthleteN responsive shell hardening */
+html, body, #root { max-width: 100%; min-width: 0; }
+.app-shell, .app-shell > main, .sidebar, .sidebar nav { min-width: 0; }
+.sidebar nav button, .logout { min-width: 0; }
+.sidebar nav button { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 1fr; width: 100%; min-width: 0; }
+  .sidebar { position: sticky; top: 0; z-index: 25; width: 100%; max-height: 250px; overflow: auto; padding: 14px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .edition { margin-bottom: 10px; }
+  .sidebar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 160px; overflow-y: auto; overflow-x: hidden; }
+  .sidebar nav button, .logout { width: 100%; }
+  .logout { margin-top: 4px; }
+  .app-shell > main { width: 100%; max-width: 100%; overflow-x: hidden; padding: 20px 15px; }
+  .hero, .grid, .metrics, .page-head, .header-actions, .admin-workspace { min-width: 0; max-width: 100%; }
+}
+@media (max-width: 480px) {
+  .sidebar nav { grid-template-columns: 1fr 1fr; }
+  .sidebar nav button { font-size: 11px; padding: 9px 8px; }
+  .app-shell > main { padding-left: 12px; padding-right: 12px; }
+  .auth-card { padding: 24px 18px; }
+}
