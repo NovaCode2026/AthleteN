@@ -4,90 +4,322 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
-const c=Colors.dark;
-const resources=[
- ['profiles','Users'],['training_sessions','Training'],['training_plans','Training plans'],['tournaments','Tournaments'],['matches','Matches'],['medals','Medals'],
- ['weight_logs','Weight logs'],['goals','Goals'],['competition_checklists','Checklists'],['tournament_scans','Scanner'],['documents','Documents'],['certificates','Certificates'],
- ['notifications','Notifications'],['announcements','Announcements'],['support_tickets','Support tickets'],['subscriptions','Subscriptions'],['subscription_usage','Usage'],
- ['feature_flags','Feature flags'],['student_verifications','Verifications'],['audit_logs','Audit logs'],['feedback_items','Feedback'],['roadmap_items','Roadmap'],
- ['calendar_events','Calendar'],['injuries','Injuries'],['attendance_records','Attendance'],['referrals','Referrals']
+const c = Colors.dark;
+
+const resources = [
+  ['profiles', 'Athletes'], ['training_sessions', 'Training'], ['training_plans', 'Training Plans'],
+  ['tournaments', 'Tournaments'], ['matches', 'Matches'], ['medals', 'Medals'], ['weight_logs', 'Weight'],
+  ['goals', 'Goals'], ['competition_checklists', 'Checklists'], ['tournament_scans', 'Scanner'],
+  ['documents', 'Documents'], ['certificates', 'Certificates'], ['notifications', 'Notifications'],
+  ['announcements', 'Announcements'], ['support_tickets', 'Support'], ['subscriptions', 'Subscriptions'],
+  ['subscription_usage', 'Usage'], ['feature_flags', 'Feature Flags'], ['student_verifications', 'Verification'],
+  ['audit_logs', 'Audit Logs'], ['feedback_items', 'Feedback'], ['roadmap_items', 'Roadmap'],
+  ['calendar_events', 'Calendar'], ['injuries', 'Injuries'], ['attendance_records', 'Attendance'], ['referrals', 'Referrals'],
 ] as const;
 
-type Row=Record<string,any>;
-export default function AdminScreen(){
- const {profile}=useAuth();
- const role=String(profile?.role||'athlete'); const canManage=role==='admin'||role==='super_admin'; const owner=role==='super_admin';
- const [selected,setSelected]=useState<string>('profiles'); const [rows,setRows]=useState<Row[]>([]); const [counts,setCounts]=useState<Record<string,number>>({});
- const [query,setQuery]=useState(''); const [selectedRow,setSelectedRow]=useState<Row|null>(null); const [draft,setDraft]=useState('');
- const [createOpen,setCreateOpen]=useState(false); const [createJson,setCreateJson]=useState('{}'); const [announcementOpen,setAnnouncementOpen]=useState(false);
- const [announcementTitle,setAnnouncementTitle]=useState(''); const [announcementBody,setAnnouncementBody]=useState('');
- const [loading,setLoading]=useState(false); const [busy,setBusy]=useState(false); const [message,setMessage]=useState('');
+type Row = Record<string, any>;
+type Field = { key: string; value: string; original: any };
 
- const loadCounts=useCallback(async()=>{
-  if(!canManage)return;
-  const result:Record<string,number>={};
-  await Promise.all(resources.map(async([table])=>{const r=await supabase.from(table).select('*',{count:'exact',head:true});result[table]=r.count??0;}));
-  setCounts(result);
- },[canManage]);
-
- const load=useCallback(async()=>{
-  if(!canManage)return;
-  setLoading(true);setMessage('');setSelectedRow(null);
-  const {data,error}=await supabase.from(selected).select('*').limit(100);
-  if(error)setMessage(error.message); else setRows((data||[]) as Row[]);
-  setLoading(false);
- },[canManage,selected]);
-
- useEffect(()=>{void loadCounts()},[loadCounts]);
- useEffect(()=>{void load()},[load]);
-
- const filtered=useMemo(()=>{const q=query.trim().toLowerCase();return q?rows.filter(r=>JSON.stringify(r).toLowerCase().includes(q)):rows},[rows,query]);
-
- if(!canManage)return <View style={s.denied}><Text style={s.brand}>ATHLETEN</Text><Text style={s.deniedTitle}>Admin access required</Text><Text style={s.meta}>Your account does not have an administrator role.</Text></View>;
-
- async function refresh(){await load();await loadCounts()}
- function open(r:Row){setSelectedRow(r);setDraft(JSON.stringify(r,null,2));}
- async function save(){
-  if(!selectedRow?.id)return;
-  let value:Row;try{value=JSON.parse(draft)}catch{setMessage('Record editor contains invalid JSON.');return}
-  delete value.id;delete value.created_at;delete value.updated_at;
-  setBusy(true);const {error}=await supabase.from(selected).update(value).eq('id',selectedRow.id);setBusy(false);
-  if(error)setMessage(error.message);else{setMessage('Record saved.');await refresh()}
- }
- async function remove(){
-  if(!selectedRow?.id||!owner)return;
-  Alert.alert('Delete record','This permanently deletes the selected record.',[{text:'Cancel',style:'cancel'},{text:'Delete',style:'destructive',onPress:async()=>{setBusy(true);const {error}=await supabase.from(selected).delete().eq('id',selectedRow.id);setBusy(false);if(error)setMessage(error.message);else{setMessage('Record deleted.');await refresh()}}}]);
- }
- async function create(){
-  let value:Row;try{value=JSON.parse(createJson)}catch{setMessage('New record JSON is invalid.');return}
-  if(!value||Array.isArray(value)){setMessage('New record must be a JSON object.');return}
-  delete value.id;delete value.created_at;delete value.updated_at;
-  setBusy(true);const {error}=await supabase.from(selected).insert(value);setBusy(false);
-  if(error)setMessage(error.message);else{setCreateOpen(false);setCreateJson('{}');setMessage('Record created.');await refresh()}
- }
- async function publish(){
-  if(!announcementTitle.trim()||!announcementBody.trim())return;
-  setBusy(true);const {error}=await supabase.from('announcements').insert({title:announcementTitle.trim(),body:announcementBody.trim(),audience:'all',published_at:new Date().toISOString(),created_by:profile?.user_id});setBusy(false);
-  if(error)setMessage(error.message);else{setAnnouncementTitle('');setAnnouncementBody('');setAnnouncementOpen(false);setMessage('Announcement published.');await refresh()}
- }
-
- return <ScrollView style={s.screen} contentContainerStyle={s.content}>
-  <View style={s.hero}><Text style={s.kicker}>SECURE ADMINISTRATION</Text><Text style={s.title}>Command Center</Text><Text style={s.sub}>Operate AthleteN from mobile: users, athlete data, verification, support, billing, product controls and records.</Text><View style={s.identity}><Text style={s.role}>{owner?'OWNER':'ADMIN'}</Text><Text style={s.meta}>Signed in administrator</Text></View></View>
-  <View style={s.statRow}><Stat label="USERS" value={counts.profiles??0}/><Stat label="RECORDS" value={Object.values(counts).reduce((a,b)=>a+b,0)}/><Stat label="SUPPORT" value={counts.support_tickets??0}/></View>
-  <View style={s.actions}><Pressable style={s.primary} onPress={()=>void refresh()} disabled={loading}><Text style={s.primaryText}>{loading?'REFRESHING…':'REFRESH ALL'}</Text></Pressable><Pressable style={s.secondary} onPress={()=>setAnnouncementOpen(v=>!v)}><Text style={s.secondaryText}>ANNOUNCEMENT</Text></Pressable><Pressable style={s.secondary} onPress={()=>{setCreateJson('{}');setCreateOpen(v=>!v)}}><Text style={s.secondaryText}>+ NEW RECORD</Text></Pressable></View>
-  {announcementOpen&&<View style={s.panel}><Text style={s.panelTitle}>Publish announcement</Text><Field value={announcementTitle} onChangeText={setAnnouncementTitle} placeholder="Title"/><TextInput value={announcementBody} onChangeText={setAnnouncementBody} placeholder="Message" placeholderTextColor={c.muted} multiline style={[s.input,s.textarea]}/><Pressable style={s.primary} onPress={()=>void publish()} disabled={busy}><Text style={s.primaryText}>PUBLISH NOW</Text></Pressable></View>}
-  {createOpen&&<View style={s.panel}><Text style={s.panelTitle}>Create record in {resources.find(x=>x[0]===selected)?.[1]}</Text><TextInput value={createJson} onChangeText={setCreateJson} multiline spellCheck={false} style={[s.input,s.json]} /><Pressable style={s.primary} onPress={()=>void create()} disabled={busy}><Text style={s.primaryText}>CREATE RECORD</Text></Pressable></View>}
-  <Text style={s.section}>RESOURCES</Text>
-  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.resourceRow}>{resources.map(([table,label])=><Pressable key={table} onPress={()=>{setSelected(table);setQuery('');}} style={[s.resource,selected===table&&s.resourceActive]}><Text style={s.resourceText}>{label}</Text><Text style={s.resourceCount}>{counts[table]??'—'}</Text></Pressable>)}</ScrollView>
-  <View style={s.toolbar}><Text style={s.section}>{resources.find(x=>x[0]===selected)?.[1]}</Text><TextInput value={query} onChangeText={setQuery} placeholder="Search records" placeholderTextColor={c.muted} style={s.search}/></View>
-  {!!message&&<Text style={s.message}>{message}</Text>}
-  {loading?<ActivityIndicator color={c.accent} size="large"/>:filtered.map((r,i)=><View key={String(r.id||i)} style={s.record}><View style={s.recordHead}><Text style={s.recordTitle}>{String(r.name||r.full_name||r.title||r.event_name||r.id||'Record').slice(0,50)}</Text><Text style={s.recordId}>{r.id?String(r.id).slice(0,8):'no id'}</Text></View><Text style={s.jsonPreview} numberOfLines={4}>{JSON.stringify(r,null,2)}</Text><View style={s.actions}><Pressable style={s.secondary} onPress={()=>open(r)}><Text style={s.secondaryText}>OPEN / EDIT</Text></Pressable>{owner&&r.id?<Pressable style={s.danger} onPress={()=>remove()}><Text style={s.dangerText}>DELETE</Text></Pressable>:null}</View></View>)}
-  {filtered.length===0&&!loading&&<View style={s.empty}><Text style={s.recordTitle}>No records found</Text><Text style={s.meta}>Try another resource, search term, or refresh.</Text></View>}
-  {selectedRow&&<View style={s.panel}><Text style={s.panelTitle}>Record editor</Text><Text style={s.meta}>Primary key and timestamps are protected.</Text><TextInput value={draft} onChangeText={setDraft} multiline spellCheck={false} style={[s.input,s.json]}/><View style={s.actions}><Pressable style={s.primary} onPress={()=>void save()} disabled={busy}><Text style={s.primaryText}>{busy?'SAVING…':'SAVE RECORD'}</Text></Pressable><Pressable style={s.secondary} onPress={()=>setSelectedRow(null)}><Text style={s.secondaryText}>CLOSE</Text></Pressable></View></View>}
- </ScrollView>
+function labelize(key: string) {
+  return key.replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
 }
-function Stat({label,value}:{label:string;value:number}){return <View style={s.stat}><Text style={s.statLabel}>{label}</Text><Text style={s.statValue}>{value}</Text></View>}
-function Field({value,onChangeText,placeholder}:{value:string;onChangeText:(v:string)=>void;placeholder:string}){return <TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={c.muted} style={s.input}/>}
-const s=StyleSheet.create({
- screen:{flex:1,backgroundColor:'#07090D'},content:{padding:18,paddingTop:48,paddingBottom:60,gap:12},hero:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:22,padding:20,gap:9},kicker:{color:c.accent,fontSize:10,fontWeight:'900',letterSpacing:1.8},title:{color:c.text,fontSize:30,fontWeight:'900'},sub:{color:c.muted,fontSize:13,lineHeight:19},identity:{marginTop:5,borderTopWidth:1,borderTopColor:c.border,paddingTop:12},role:{color:c.accent,fontSize:12,fontWeight:'900',letterSpacing:1},meta:{color:c.muted,fontSize:11,lineHeight:17},statRow:{flexDirection:'row',gap:9},stat:{flex:1,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:15,padding:13},statLabel:{color:c.muted,fontSize:9,fontWeight:'900',letterSpacing:1},statValue:{color:c.text,fontSize:24,fontWeight:'900',marginTop:3},actions:{flexDirection:'row',gap:8,flexWrap:'wrap'},primary:{backgroundColor:c.accent,borderRadius:12,paddingVertical:13,paddingHorizontal:15,alignItems:'center',justifyContent:'center',minWidth:120},primaryText:{color:'#fff',fontSize:10,fontWeight:'900',letterSpacing:1},secondary:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:12,paddingVertical:12,paddingHorizontal:13,alignItems:'center',justifyContent:'center'},secondaryText:{color:c.text,fontSize:10,fontWeight:'900',letterSpacing:.7},danger:{backgroundColor:'#2A1116',borderWidth:1,borderColor:'#61303A',borderRadius:12,paddingVertical:12,paddingHorizontal:13},dangerText:{color:'#F0A8B1',fontSize:10,fontWeight:'900'},panel:{backgroundColor:c.surface,borderWidth:1,borderColor:c.accentSoft,borderRadius:18,padding:15,gap:10},panelTitle:{color:c.text,fontSize:17,fontWeight:'800'},input:{backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,padding:13,fontSize:13},textarea:{minHeight:110,textAlignVertical:'top'},json:{minHeight:220,textAlignVertical:'top',fontFamily:'monospace'},section:{color:c.muted,fontSize:10,fontWeight:'900',letterSpacing:1.5},resourceRow:{gap:8,paddingVertical:2},resource:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:12,paddingVertical:10,paddingHorizontal:12,minWidth:100},resourceActive:{borderColor:c.accent,backgroundColor:c.accentDeep},resourceText:{color:c.text,fontSize:11,fontWeight:'800'},resourceCount:{color:c.muted,fontSize:10,marginTop:3},toolbar:{gap:8},search:{marginTop:3},message:{color:'#9BC3FF',fontSize:12},record:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:16,padding:14,gap:10},recordHead:{flexDirection:'row',justifyContent:'space-between',gap:8},recordTitle:{color:c.text,fontSize:14,fontWeight:'800',flex:1},recordId:{color:c.muted,fontSize:10},jsonPreview:{color:'#AEB9CB',fontFamily:'monospace',fontSize:10,lineHeight:15},empty:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:16,padding:20,gap:6},denied:{flex:1,backgroundColor:c.background,alignItems:'center',justifyContent:'center',padding:30,gap:12},brand:{color:c.accent,fontSize:14,fontWeight:'900',letterSpacing:4},deniedTitle:{color:c.text,fontSize:24,fontWeight:'900'}
+
+function editableFields(row: Row): Field[] {
+  return Object.keys(row)
+    .filter(key => !['id', 'user_id', 'created_at', 'updated_at'].includes(key))
+    .map(key => ({ key, value: row[key] == null ? '' : String(row[key]), original: row[key] }));
+}
+
+function coerce(value: string, original: any) {
+  if (value === '' && (original === null || original === undefined)) return null;
+  if (typeof original === 'number') return Number(value);
+  if (typeof original === 'boolean') return value.toLowerCase() === 'true';
+  return value;
+}
+
+export default function AdminScreen() {
+  const { profile } = useAuth();
+  const role = String(profile?.role || 'athlete');
+  const canManage = role === 'admin' || role === 'super_admin';
+  const owner = role === 'super_admin';
+
+  const [selected, setSelected] = useState('profiles');
+  const [rows, setRows] = useState<Row[]>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [query, setQuery] = useState('');
+  const [selectedRow, setSelectedRow] = useState<Row | null>(null);
+  const [fields, setFields] = useState<Field[]>([]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newFields, setNewFields] = useState<{ key: string; value: string }[]>([{ key: '', value: '' }]);
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
+  const [announcementTitle, setAnnouncementTitle] = useState('');
+  const [announcementBody, setAnnouncementBody] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const currentLabel = resources.find(([table]) => table === selected)?.[1] || selected;
+
+  const loadCounts = useCallback(async () => {
+    if (!canManage) return;
+    const result: Record<string, number> = {};
+    await Promise.all(resources.map(async ([table]) => {
+      const r = await supabase.from(table).select('*', { count: 'exact', head: true });
+      result[table] = r.count ?? 0;
+    }));
+    setCounts(result);
+  }, [canManage]);
+
+  const load = useCallback(async () => {
+    if (!canManage) return;
+    setLoading(true);
+    setMessage('');
+    setSelectedRow(null);
+    const { data, error } = await supabase.from(selected).select('*').limit(100);
+    if (error) setMessage(error.message);
+    else setRows((data || []) as Row[]);
+    setLoading(false);
+  }, [canManage, selected]);
+
+  useEffect(() => { void loadCounts(); }, [loadCounts]);
+  useEffect(() => { void load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? rows.filter(row => JSON.stringify(row).toLowerCase().includes(q)) : rows;
+  }, [rows, query]);
+
+  if (!canManage) {
+    return <View style={s.denied}><Text style={s.brand}>ATHLETEN</Text><Text style={s.deniedTitle}>Admin access required</Text><Text style={s.meta}>This command center is restricted to administrators.</Text></View>;
+  }
+
+  function openRecord(row: Row) {
+    setSelectedRow(row);
+    setFields(editableFields(row));
+  }
+
+  function setField(key: string, value: string) {
+    setFields(current => current.map(field => field.key === key ? { ...field, value } : field));
+  }
+
+  async function saveRecord() {
+    if (!selectedRow?.id) return;
+    const update: Row = {};
+    fields.forEach(field => { update[field.key] = coerce(field.value, field.original); });
+    setBusy(true);
+    const { error } = await supabase.from(selected).update(update).eq('id', selectedRow.id);
+    setBusy(false);
+    if (error) setMessage(error.message);
+    else { setMessage('Changes saved successfully.'); setSelectedRow(null); await load(); await loadCounts(); }
+  }
+
+  async function deleteRecord() {
+    if (!selectedRow?.id || !owner) return;
+    Alert.alert('Delete record', 'This permanently removes this record.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        setBusy(true);
+        const { error } = await supabase.from(selected).delete().eq('id', selectedRow.id);
+        setBusy(false);
+        if (error) setMessage(error.message);
+        else { setMessage('Record deleted.'); setSelectedRow(null); await load(); await loadCounts(); }
+      }},
+    ]);
+  }
+
+  async function createRecord() {
+    const payload: Row = {};
+    newFields.filter(field => field.key.trim()).forEach(field => payload[field.key.trim()] = field.value);
+    if (!Object.keys(payload).length) { setMessage('Add at least one field.'); return; }
+    setBusy(true);
+    const { error } = await supabase.from(selected).insert(payload);
+    setBusy(false);
+    if (error) setMessage(error.message);
+    else { setCreateOpen(false); setNewFields([{ key: '', value: '' }]); setMessage('Record created.'); await load(); await loadCounts(); }
+  }
+
+  async function publishAnnouncement() {
+    if (!announcementTitle.trim() || !announcementBody.trim()) return;
+    setBusy(true);
+    const { error } = await supabase.from('announcements').insert({
+      title: announcementTitle.trim(),
+      body: announcementBody.trim(),
+      audience: 'all',
+      published_at: new Date().toISOString(),
+      created_by: profile?.user_id,
+    });
+    setBusy(false);
+    if (error) setMessage(error.message);
+    else { setAnnouncementTitle(''); setAnnouncementBody(''); setAnnouncementOpen(false); setMessage('Announcement published.'); await load(); await loadCounts(); }
+  }
+
+  return (
+    <View style={s.screen}>
+      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        <View style={s.topBar}>
+          <View style={s.brandRow}>
+            <View style={s.brandMark}><Text style={s.brandMarkText}>A</Text></View>
+            <View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>OWNER COMMAND CENTER</Text></View>
+          </View>
+          <Pressable style={s.menuButton} onPress={() => setDrawerOpen(true)}><Text style={s.menuIcon}>☰</Text><Text style={s.menuText}>MENU</Text></Pressable>
+        </View>
+
+        <View style={s.hero}>
+          <Text style={s.kicker}>ADMINISTRATION</Text>
+          <Text style={s.title}>Command Center</Text>
+          <Text style={s.sub}>Manage every AthleteN system from one clean mobile workspace.</Text>
+          <View style={s.ownerPill}><View style={s.ownerDot} /><Text style={s.ownerText}>{owner ? 'SUPER ADMIN' : 'ADMIN'} • SECURE</Text></View>
+        </View>
+
+        <View style={s.statGrid}>
+          <AdminStat label="ATHLETES" value={counts.profiles ?? 0} />
+          <AdminStat label="TRAINING" value={counts.training_sessions ?? 0} />
+          <AdminStat label="EVENTS" value={counts.tournaments ?? 0} />
+          <AdminStat label="SUPPORT" value={counts.support_tickets ?? 0} />
+        </View>
+
+        <View style={s.sectionHead}><View><Text style={s.sectionKicker}>WORKSPACE</Text><Text style={s.sectionTitle}>{currentLabel}</Text></View><Text style={s.count}>{filtered.length} RECORDS</Text></View>
+
+        <View style={s.toolbar}>
+          <TextInput value={query} onChangeText={setQuery} placeholder={`Search ${currentLabel.toLowerCase()}...`} placeholderTextColor={c.muted} style={s.search} />
+          <Pressable style={s.addButton} onPress={() => setCreateOpen(!createOpen)}><Text style={s.addText}>＋ ADD</Text></Pressable>
+        </View>
+
+        {announcementOpen && (
+          <View style={s.panel}>
+            <Text style={s.panelTitle}>Publish announcement</Text>
+            <TextInput value={announcementTitle} onChangeText={setAnnouncementTitle} placeholder="Announcement title" placeholderTextColor={c.muted} style={s.input} />
+            <TextInput value={announcementBody} onChangeText={setAnnouncementBody} placeholder="Write the announcement..." placeholderTextColor={c.muted} style={[s.input, s.textarea]} multiline />
+            <View style={s.buttonRow}><Pressable style={s.primary} onPress={publishAnnouncement}><Text style={s.primaryText}>PUBLISH</Text></Pressable><Pressable style={s.secondary} onPress={() => setAnnouncementOpen(false)}><Text style={s.secondaryText}>CANCEL</Text></Pressable></View>
+          </View>
+        )}
+
+        {createOpen && (
+          <View style={s.panel}>
+            <Text style={s.panelTitle}>Add {currentLabel}</Text>
+            <Text style={s.panelHint}>Enter fields as normal text. IDs and timestamps are generated by the database when supported.</Text>
+            {newFields.map((field, index) => (
+              <View style={s.newField} key={index}>
+                <TextInput value={field.key} onChangeText={value => setNewFields(all => all.map((item, i) => i === index ? { ...item, key: value } : item))} placeholder="Field name" placeholderTextColor={c.muted} style={[s.input, s.keyInput]} />
+                <TextInput value={field.value} onChangeText={value => setNewFields(all => all.map((item, i) => i === index ? { ...item, value } : item))} placeholder="Value" placeholderTextColor={c.muted} style={[s.input, s.valueInput]} />
+              </View>
+            ))}
+            <Pressable onPress={() => setNewFields([...newFields, { key: '', value: '' }])}><Text style={s.addField}>＋ Add another field</Text></Pressable>
+            <View style={s.buttonRow}><Pressable style={s.primary} onPress={createRecord} disabled={busy}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>CREATE</Text>}</Pressable><Pressable style={s.secondary} onPress={() => setCreateOpen(false)}><Text style={s.secondaryText}>CANCEL</Text></Pressable></View>
+          </View>
+        )}
+
+        {selected === 'announcements' && !announcementOpen && <Pressable style={s.featureButton} onPress={() => setAnnouncementOpen(true)}><Text style={s.featureIcon}>＋</Text><View><Text style={s.featureTitle}>Publish announcement</Text><Text style={s.featureMeta}>Send an AthleteN update to users</Text></View></Pressable>}
+
+        {message ? <Text style={s.message}>{message}</Text> : null}
+
+        {loading ? <View style={s.loading}><ActivityIndicator color={c.accentBright} /><Text style={s.meta}>Loading {currentLabel.toLowerCase()}...</Text></View> : filtered.length === 0 ? (
+          <View style={s.empty}><Text style={s.emptyTitle}>Nothing here yet</Text><Text style={s.meta}>No records match this search.</Text></View>
+        ) : filtered.map(row => (
+          <Pressable key={String(row.id || JSON.stringify(row))} onPress={() => openRecord(row)} style={({ pressed }) => [s.record, pressed && s.pressed]}>
+            <View style={s.recordTop}>
+              <View style={s.recordIcon}><Text style={s.recordIconText}>{currentLabel.slice(0, 1).toUpperCase()}</Text></View>
+              <View style={s.recordInfo}><Text style={s.recordTitle}>{String(row.full_name || row.name || row.title || row.email || row.username || row.id || 'Record')}</Text><Text style={s.recordMeta}>{selected === 'profiles' ? [row.sport, row.discipline, row.club].filter(Boolean).join(' • ') : `ID • ${String(row.id || '').slice(0, 8)}`}</Text></View>
+              <Text style={s.chevron}>›</Text>
+            </View>
+            <View style={s.recordBottom}><Text style={s.preview}>{preview(row)}</Text><Text style={s.editHint}>EDIT →</Text></View>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {drawerOpen && (
+        <View style={s.drawerLayer}>
+          <Pressable style={s.drawerBackdrop} onPress={() => setDrawerOpen(false)} />
+          <View style={s.drawer}>
+            <View style={s.drawerHeader}><View><Text style={s.drawerKicker}>ATHLETEN</Text><Text style={s.drawerTitle}>Admin Menu</Text></View><Pressable onPress={() => setDrawerOpen(false)} style={s.close}><Text style={s.closeText}>×</Text></Pressable></View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {[
+                ['ATHLETES', ['profiles', 'student_verifications', 'documents']],
+                ['PERFORMANCE', ['training_sessions', 'training_plans', 'weight_logs', 'goals', 'injuries', 'attendance_records']],
+                ['COMPETITION', ['tournaments', 'matches', 'medals', 'competition_checklists', 'certificates']],
+                ['PRODUCT', ['tournament_scans', 'roadmap_items', 'feature_flags']],
+                ['COMMUNICATION', ['announcements', 'notifications', 'feedback_items', 'support_tickets']],
+                ['BUSINESS', ['subscriptions', 'subscription_usage', 'referrals']],
+                ['SYSTEM', ['audit_logs', 'calendar_events']],
+              ].map(([group, tables]) => (
+                <View key={group as string} style={s.drawerGroup}>
+                  <Text style={s.drawerGroupTitle}>{group as string}</Text>
+                  {(tables as string[]).map(table => {
+                    const item = resources.find(([name]) => name === table);
+                    return <Pressable key={table} onPress={() => { setSelected(table); setDrawerOpen(false); setQuery(''); }} style={[s.drawerItem, selected === table && s.drawerItemActive]}><Text style={s.drawerItemText}>{item?.[1] || labelize(table)}</Text><Text style={s.drawerCount}>{counts[table] ?? 0}</Text></Pressable>;
+                  })}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      )}
+
+      {selectedRow && (
+        <View style={s.editorLayer}>
+          <View style={s.editor}>
+            <View style={s.editorHeader}><View><Text style={s.kicker}>EDIT RECORD</Text><Text style={s.editorTitle}>{String(selectedRow.full_name || selectedRow.name || selectedRow.title || currentLabel)}</Text></View><Pressable onPress={() => setSelectedRow(null)}><Text style={s.closeText}>×</Text></Pressable></View>
+            <ScrollView style={s.editorScroll} contentContainerStyle={s.editorContent} showsVerticalScrollIndicator={false}>
+              {fields.map(field => (
+                <View key={field.key} style={s.field}>
+                  <Text style={s.fieldLabel}>{labelize(field.key)}</Text>
+                  <TextInput value={field.value} onChangeText={value => setField(field.key, value)} placeholder={labelize(field.key)} placeholderTextColor={c.muted} style={s.input} multiline={field.value.length > 80} />
+                </View>
+              ))}
+              <Text style={s.advancedHint}>Advanced database fields such as IDs and timestamps are protected from normal editing.</Text>
+            </ScrollView>
+            <View style={s.editorActions}>
+              <Pressable style={s.primary} onPress={saveRecord} disabled={busy}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>SAVE CHANGES</Text>}</Pressable>
+              {owner && <Pressable style={s.danger} onPress={deleteRecord} disabled={busy}><Text style={s.dangerText}>DELETE</Text></Pressable>}
+              <Pressable style={s.secondary} onPress={() => setSelectedRow(null)}><Text style={s.secondaryText}>CANCEL</Text></Pressable>
+            </View>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function preview(row: Row) {
+  const values = Object.entries(row).filter(([key]) => !['id', 'user_id', 'created_at', 'updated_at'].includes(key)).slice(0, 2).map(([key, value]) => `${labelize(key)}: ${value ?? '—'}`);
+  return values.join('  •  ') || 'Open to manage this record';
+}
+
+function AdminStat({ label, value }: { label: string; value: number }) {
+  return <View style={s.stat}><Text style={s.statLabel}>{label}</Text><Text style={s.statValue}>{value}</Text></View>;
+}
+
+function labelize(key: string) {
+  return key.replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
+}
+
+const s = StyleSheet.create({
+  screen:{flex:1,backgroundColor:c.background},
+  content:{paddingHorizontal:18,paddingTop:10,paddingBottom:40,gap:12},
+  topBar:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
+  brandRow:{flexDirection:'row',alignItems:'center',gap:10},
+  brandMark:{width:40,height:40,borderRadius:13,backgroundColor:c.accentDeep,borderWidth:1,borderColor:c.accent,alignItems:'center',justifyContent:'center'},
+  brandMarkText:{color:c.accentBright,fontSize:20,fontWeight:'900'},
+  brand:{color:c.text,fontSize:15,fontWeight:'900',letterSpacing:3.5},
+  brandSub:{color:c.muted,fontSize:7,fontWeight:'800',letterSpacing:1.1,marginTop:2},
+  menuButton:{flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:12,paddingVertical:10,borderRadius:12,backgroundColor:c.surface,borderWidth:1,borderColor:c.border},
+  menuIcon:{color:c.text,fontSize:16}, menuText:{color:c.text,fontSize:9,fontWeight:'900',letterSpacing:1},
+  hero:{backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:22,padding:18,gap:8},
+  kicker:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.5},
+  title:{color:c.text,fontSize:28,fontWeight:'900'},
+  sub:{color:c.muted,fontSize:12,lineHeight:18},
+  ownerPill:{alignSelf:'flex-start',flexDirection:'row',alignItems:'center',gap:7,backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep,borderRadius:999,paddingHorizontal:10,paddingVertical:6},
+  ownerDot:{width:7,height:7,borderRadius:4,backgroundColor:c.success}, ownerText:{color:'#BBD6FF',fontSize:8,fontWeight:'900',letterSpacing:1},
+  statGrid:{flexDirection:'row',gap:9}, stat:{flex:1,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:16,padding:12,gap:4},
+  statLabel:{color:c.muted,fontSize:7,fontWeight:'900',letterSpacing:1},statValue:{color:c.text,fontSize:20,fontWeight:'900'},
+  sectionHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-end',marginTop:7},sectionKicker:{color:c.muted,fontSize:8,fontWeight:'900',letterSpacing:1.3},sectionTitle:{color:c.text,fontSize:20,fontWeight:'900',marginTop:2},count:{color:c.accentBright,fontSize:8,fontWeight:'900'},
+  toolbar:{flexDirection:'row',gap:8},search:{flex:1,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:13,color:c.text,paddingHorizontal:13,paddingVertical:12,fontSize:13},addButton:{backgroundColor:c.accent,borderRadius:13,paddingHorizontal:15,justifyContent:'center'},addText:{color:'#fff',fontSize:10,fontWeight:'900',letterSpacing:.7},
+  panel:{backgroundColor:c.surfaceRaised,borderWidth:1,borderColor:c.borderStrong,borderRadius:18,padding:14,gap:10},panelTitle:{color:c.text,fontSize:16,fontWeight:'900'},panelHint:{color:c.muted,fontSize:11,lineHeight:16},
+  input:{backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,paddingHorizontal:13,paddingVertical:12,fontSize:13},textarea:{minHeight:100,textAlignVertical:'top'},buttonRow:{flexDirection:'row',gap:8,flexWrap:'wrap'},primary:{backgroundColor:c.accent,borderRadius:12,paddingVertical:13,paddingHorizontal:16,alignItems:'center',justifyContent:'center',minWidth:120},primaryText:{color:'#fff',fontSize:10,fontWeight:'900',letterSpacing:1},secondary:{backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:12,paddingVertical:12,paddingHorizontal:14,alignItems:'center',justifyContent:'center'},secondaryText:{color:c.text,fontSize:10,fontWeight:'900',letterSpacing:.7},danger:{backgroundColor:'#2A1116',borderWidth:1,borderColor:'#67313C',borderRadius:12,paddingVertical:12,paddingHorizontal:14,alignItems:'center',justifyContent:'center'},dangerText:{color:c.danger,fontSize:10,fontWeight:'900'},addField:{color:c.accentBright,fontSize:11,fontWeight:'800'},newField:{flexDirection:'row',gap:8},keyInput:{flex:1},valueInput:{flex:1.5},featureButton:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep,borderRadius:16,padding:14},featureIcon:{color:c.accentBright,fontSize:23},featureTitle:{color:c.text,fontSize:13,fontWeight:'800'},featureMeta:{color:c.muted,fontSize:10,marginTop:2},
+  message:{color:c.accentBright,fontSize:11},loading:{padding:30,alignItems:'center',gap:8},empty:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:17,padding:22,gap:5},emptyTitle:{color:c.text,fontSize:16,fontWeight:'800'},
+  record:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:18,padding:14,gap:12},pressed:{opacity:.75},recordTop:{flexDirection:'row',alignItems:'center',gap:10},recordIcon:{width:38,height:38,borderRadius:12,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'},recordIconText:{color:c.accentBright,fontSize:14,fontWeight:'900'},recordInfo:{flex:1},recordTitle:{color:c.text,fontSize:14,fontWeight:'800'},recordMeta:{color:c.muted,fontSize:10,marginTop:3},chevron:{color:c.muted,fontSize:25},recordBottom:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:10},preview:{color:c.muted,fontSize:10,flex:1},editHint:{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1},
+  drawerLayer:{position:'absolute',top:0,left:0,right:0,bottom:0,flexDirection:'row'},drawerBackdrop:{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:'#000',opacity:.62},drawer:{width:'82%',maxWidth:360,backgroundColor:c.surfaceRaised,borderRightWidth:1,borderRightColor:c.borderStrong,paddingTop:54,paddingHorizontal:16},drawerHeader:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:16},drawerKicker:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.4},drawerTitle:{color:c.text,fontSize:25,fontWeight:'900',marginTop:2},close:{width:38,height:38,borderRadius:12,backgroundColor:c.surface,alignItems:'center',justifyContent:'center'},closeText:{color:c.text,fontSize:27,fontWeight:'300'},drawerGroup:{gap:5,marginBottom:17},drawerGroupTitle:{color:c.muted,fontSize:8,fontWeight:'900',letterSpacing:1.4,marginBottom:3},drawerItem:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:11,paddingHorizontal:11,borderRadius:11},drawerItemActive:{backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep},drawerItemText:{color:c.text,fontSize:12,fontWeight:'700'},drawerCount:{color:c.muted,fontSize:10},
+  editorLayer:{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:'#000000AA',justifyContent:'flex-end'},editor:{maxHeight:'92%',backgroundColor:c.surfaceRaised,borderTopLeftRadius:25,borderTopRightRadius:25,borderWidth:1,borderColor:c.borderStrong,paddingTop:17,paddingHorizontal:18,paddingBottom:18},editorHeader:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:10},editorTitle:{color:c.text,fontSize:20,fontWeight:'900',marginTop:3,flex:1},editorScroll:{marginTop:12},editorContent:{paddingBottom:10,gap:12},field:{gap:6},fieldLabel:{color:c.text,fontSize:11,fontWeight:'800'},advancedHint:{color:c.muted,fontSize:10,lineHeight:16,marginTop:5},editorActions:{flexDirection:'row',gap:8,marginTop:8,flexWrap:'wrap'},
+  meta:{color:c.muted,fontSize:12,lineHeight:18},denied:{flex:1,backgroundColor:c.background,alignItems:'center',justifyContent:'center',padding:30,gap:12},deniedTitle:{color:c.text,fontSize:24,fontWeight:'900'},
 });
