@@ -4,63 +4,28 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
-const c=Colors.dark;
+const c = Colors.dark;
 
-export default function ScannerScreen(){
- const {session}=useAuth();
- const [url,setUrl]=useState('');
- const [scans,setScans]=useState<any[]>([]);
- const [busy,setBusy]=useState(false);
- const [message,setMessage]=useState('');
+export default function ScannerScreen() {
+ const { session } = useAuth();
+ const [url,setUrl]=useState(''); const [scans,setScans]=useState<any[]>([]); const [busy,setBusy]=useState(false); const [message,setMessage]=useState('');
 
- const load=useCallback(async()=>{
-  if(!session)return;
-  const {data,error}=await supabase.from('tournament_scans').select('id,source_url,tournament_name,tournament_date,venue,registration_deadline,weigh_in_information,categories,notices,pdfs,schedules_results,status,last_checked_at,next_check_at,detected_changes,created_at').eq('user_id',session.user.id).order('created_at',{ascending:false});
-  if(error)setMessage(error.message);else setScans(data||[]);
- },[session]);
+ const load=useCallback(async()=>{if(!session)return;const {data,error}=await supabase.from('tournament_scans').select('id,source_url,tournament_name,tournament_date,venue,registration_deadline,weigh_in_information,categories,notices,pdfs,schedules_results,status,last_checked_at,next_check_at,detected_changes,created_at').eq('user_id',session.user.id).order('created_at',{ascending:false});if(error)setMessage(error.message);else setScans(data||[])},[session]);
  useEffect(()=>{void load()},[load]);
 
- async function saveScan(){
-  if(!session||!url.trim()){setMessage('A source URL is required.');return}
-  try{new URL(url.trim())}catch{setMessage('Enter a valid URL.');return}
-  setBusy(true);setMessage('');
-  const {error}=await supabase.from('tournament_scans').upsert({user_id:session.user.id,source_url:url.trim(),status:'pending'},{onConflict:'user_id,source_url'});
-  setBusy(false);
-  if(error)setMessage(error.message);else{setUrl('');setMessage('Source saved. The scanner record is ready for processing by the configured backend scanner.');await load()}
- }
- async function remove(id:string){
-  setBusy(true);const {error}=await supabase.from('tournament_scans').delete().eq('id',id).eq('user_id',session?.user.id);setBusy(false);if(error)setMessage(error.message);else await load();
- }
- return <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-  <Text style={styles.eyebrow}>ATHLETEN TOOLS</Text><Text style={styles.title}>Tournament scanner</Text>
-  <Text style={styles.sub}>Save official tournament sources and review the intelligence returned by the AthleteN backend. This screen never invents scan results.</Text>
-  <View style={styles.card}>
-   <Text style={styles.label}>Source URL *</Text>
-   <TextInput value={url} onChangeText={setUrl} placeholder="https://..." placeholderTextColor={c.muted} autoCapitalize="none" keyboardType="url" style={styles.input}/>
-   <Pressable onPress={saveScan} disabled={busy} style={styles.button}>{busy?<ActivityIndicator color="#fff"/>:<Text style={styles.buttonText}>SAVE SOURCE</Text>}</Pressable>
-   {!!message&&<Text style={styles.message}>{message}</Text>}
-  </View>
-  <Text style={styles.section}>SAVED SOURCES ({scans.length})</Text>
-  {scans.length===0?<View style={styles.card}><Text style={styles.cardTitle}>No scans saved</Text><Text style={styles.meta}>Add a tournament website or other supported source above.</Text></View>:scans.map(s=><View style={styles.card} key={s.id}>
-   <Text style={styles.cardTitle}>{s.tournament_name||'Pending scan'}</Text>
-   <Text style={styles.url}>{s.source_url}</Text>
-   <View style={styles.row}><Text style={styles.meta}>Status: {s.status}</Text>{s.tournament_date&&<Text style={styles.meta}>Date: {s.tournament_date}</Text>}</View>
-   {s.venue?<Text style={styles.meta}>Venue: {s.venue}</Text>:null}
-   {s.registration_deadline?<Text style={styles.meta}>Registration deadline: {s.registration_deadline}</Text>:null}
-   {s.weigh_in_information?<Text style={styles.meta}>Weigh-in: {s.weigh_in_information}</Text>:null}
-   {s.categories?<Text style={styles.meta}>Categories: {s.categories}</Text>:null}
-   {s.notices?<Text style={styles.meta}>Notices: {s.notices}</Text>:null}
-   {s.schedules_results?<Text style={styles.meta}>Schedule/results: {s.schedules_results}</Text>:null}
-   {s.detected_changes?<Text style={styles.change}>Detected changes: {s.detected_changes}</Text>:null}
-   {Array.isArray(s.pdfs)&&s.pdfs.length>0?<Text style={styles.meta}>Documents found: {s.pdfs.length}</Text>:null}
-   <View style={styles.actions}>
-    <Pressable onPress={()=>Linking.openURL(s.source_url)} style={styles.secondary}><Text style={styles.secondaryText}>OPEN SOURCE</Text></Pressable>
-    <Pressable onPress={()=>remove(s.id)} disabled={busy} style={styles.secondary}><Text style={styles.deleteText}>DELETE</Text></Pressable>
-   </View>
-   <Text style={styles.meta}>Last checked: {s.last_checked_at||'Not checked yet'}</Text>
-  </View>)}
+ async function saveScan(){if(!session||!url.trim()){setMessage('A source URL is required.');return}try{new URL(url.trim())}catch{setMessage('Enter a valid URL.');return}setBusy(true);setMessage('');const {error}=await supabase.from('tournament_scans').upsert({user_id:session.user.id,source_url:url.trim(),status:'pending'},{onConflict:'user_id,source_url'});setBusy(false);if(error)setMessage(error.message);else{setUrl('');setMessage('Source saved.');await load()}}
+ async function remove(id:string){setBusy(true);const {error}=await supabase.from('tournament_scans').delete().eq('id',id).eq('user_id',session?.user.id);setBusy(false);if(error)setMessage(error.message);else await load()}
+
+ return <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+  <View><Text style={s.kicker}>ATHLETEN INTELLIGENCE</Text><Text style={s.title}>Scanner</Text><Text style={s.sub}>Track tournament sources and review intelligence returned by your AthleteN backend.</Text></View>
+  <View style={s.hero}><View><Text style={s.heroTitle}>Scan a tournament source</Text><Text style={s.heroSub}>Paste an official URL. AthleteN keeps the source attached to your account.</Text></View><Text style={s.heroIcon}>⌁</Text></View>
+  <View style={s.card}><Text style={s.label}>SOURCE URL</Text><TextInput value={url} onChangeText={setUrl} placeholder="https://..." placeholderTextColor={c.muted} autoCapitalize="none" keyboardType="url" style={s.input}/><Pressable onPress={saveScan} disabled={busy} style={s.button}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>SAVE SOURCE</Text>}</Pressable>{message?<Text style={s.message}>{message}</Text>:null}</View>
+  <View style={s.sectionHead}><Text style={s.section}>SAVED SOURCES</Text><Text style={s.count}>{scans.length}</Text></View>
+  {!scans.length?<View style={s.empty}><Text style={s.emptyTitle}>No sources saved</Text><Text style={s.meta}>Add a tournament website above to start building your intelligence record.</Text></View>:scans.map(scan=><View style={s.scan} key={scan.id}><View style={s.scanTop}><View style={s.scanIcon}><Text style={s.scanIconText}>S</Text></View><View style={s.scanCopy}><Text style={s.scanTitle}>{scan.tournament_name||'Pending scan'}</Text><Text style={s.url}>{scan.source_url}</Text></View><View style={s.statusDot} /></View><View style={s.dataGrid}><Data label="STATUS" value={scan.status||'pending'}/><Data label="DATE" value={scan.tournament_date||'—'}/><Data label="VENUE" value={scan.venue||'—'}/><Data label="DEADLINE" value={scan.registration_deadline||'—'}/></View>{scan.detected_changes?<Text style={s.change}>Changes detected: {scan.detected_changes}</Text>:null}<View style={s.actions}><Pressable onPress={()=>Linking.openURL(scan.source_url)} style={s.secondary}><Text style={s.secondaryText}>OPEN SOURCE</Text></Pressable><Pressable onPress={()=>remove(scan.id)} disabled={busy} style={s.deleteButton}><Text style={s.deleteText}>DELETE</Text></Pressable></View><Text style={s.meta}>Last checked: {scan.last_checked_at||'Not checked yet'}</Text></View>)}
  </ScrollView>
 }
-const styles=StyleSheet.create({
- screen:{flex:1,backgroundColor:c.background},content:{padding:20,paddingTop:52,paddingBottom:50,gap:12},eyebrow:{color:c.accent,fontSize:10,fontWeight:'900',letterSpacing:1.5},title:{color:c.text,fontSize:29,fontWeight:'800'},sub:{color:c.muted,fontSize:14,lineHeight:20},section:{color:c.muted,fontSize:10,fontWeight:'900',letterSpacing:1.5,marginTop:8},card:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:17,padding:16,gap:9},label:{color:c.text,fontSize:12,fontWeight:'700'},input:{backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,padding:14,fontSize:14},button:{backgroundColor:c.accent,borderRadius:13,padding:14,alignItems:'center'},buttonText:{color:'#fff',fontSize:11,fontWeight:'900',letterSpacing:1},message:{color:'#B6D0FF',fontSize:12},cardTitle:{color:c.text,fontSize:16,fontWeight:'750'},meta:{color:c.muted,fontSize:12,lineHeight:18},url:{color:'#8DB9FF',fontSize:11},row:{flexDirection:'row',justifyContent:'space-between',gap:10},change:{color:'#B6D0FF',fontSize:12,lineHeight:18},actions:{flexDirection:'row',gap:10,marginTop:3},secondary:{flex:1,borderWidth:1,borderColor:c.border,borderRadius:11,padding:11,alignItems:'center'},secondaryText:{color:c.text,fontSize:10,fontWeight:'900',letterSpacing:1},deleteText:{color:'#F0A8B1',fontSize:10,fontWeight:'900',letterSpacing:1}
+
+function Data({label,value}:{label:string;value:string}){return <View style={s.data}><Text style={s.dataLabel}>{label}</Text><Text style={s.dataValue} numberOfLines={2}>{value}</Text></View>}
+const s=StyleSheet.create({
+ screen:{flex:1,backgroundColor:c.background},content:{paddingHorizontal:18,paddingTop:10,paddingBottom:45,gap:12},kicker:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.5},title:{color:c.text,fontSize:30,fontWeight:'900',marginTop:3},sub:{color:c.muted,fontSize:12,lineHeight:18},hero:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep,borderRadius:19,padding:16},heroTitle:{color:c.text,fontSize:15,fontWeight:'900'},heroSub:{color:c.muted,fontSize:10,lineHeight:16,marginTop:3,maxWidth:'90%'},heroIcon:{color:c.accentBright,fontSize:30},card:{backgroundColor:c.surfaceRaised,borderWidth:1,borderColor:c.border,borderRadius:19,padding:15,gap:10},label:{color:c.textSecondary,fontSize:9,fontWeight:'900',letterSpacing:.7},input:{backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,padding:13,fontSize:13},button:{backgroundColor:c.accent,borderRadius:12,padding:13,alignItems:'center'},buttonText:{color:'#fff',fontSize:10,fontWeight:'900',letterSpacing:1},message:{color:c.accentBright,fontSize:11},sectionHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:4},section:{color:c.muted,fontSize:9,fontWeight:'900',letterSpacing:1.5},count:{color:c.accentBright,fontSize:9,fontWeight:'900'},scan:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:18,padding:14,gap:11},scanTop:{flexDirection:'row',alignItems:'center',gap:10},scanIcon:{width:38,height:38,borderRadius:12,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'},scanIconText:{color:c.accentBright,fontWeight:'900'},scanCopy:{flex:1},scanTitle:{color:c.text,fontSize:14,fontWeight:'800'},url:{color:c.accentBright,fontSize:10,marginTop:2},statusDot:{width:9,height:9,borderRadius:5,backgroundColor:c.success},dataGrid:{flexDirection:'row',flexWrap:'wrap',gap:7},data:{width:'48%',backgroundColor:c.background,borderRadius:10,padding:9},dataLabel:{color:c.muted,fontSize:7,fontWeight:'900',letterSpacing:1},dataValue:{color:c.text,fontSize:10,fontWeight:'700',marginTop:3},change:{color:c.warning,fontSize:10,lineHeight:16},actions:{flexDirection:'row',gap:8},secondary:{flex:1,borderWidth:1,borderColor:c.borderStrong,borderRadius:11,padding:11,alignItems:'center'},secondaryText:{color:c.text,fontSize:9,fontWeight:'900',letterSpacing:.8},deleteButton:{borderWidth:1,borderColor:'#61303A',borderRadius:11,padding:11,alignItems:'center'},deleteText:{color:c.danger,fontSize:9,fontWeight:'900'},meta:{color:c.muted,fontSize:10,lineHeight:16},empty:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:17,padding:18,gap:5},emptyTitle:{color:c.text,fontSize:14,fontWeight:'800'}
 });
