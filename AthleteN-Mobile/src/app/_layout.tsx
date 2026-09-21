@@ -1,13 +1,10 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme, View, ActivityIndicator, Text, Pressable } from 'react-native';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import AuthScreen from '@/components/auth-screen';
 import OnboardingScreen from '@/components/onboarding-screen';
 import AppTabs from '@/components/app-tabs';
 import { Colors } from '@/constants/theme';
-
-SplashScreen.preventAutoHideAsync();
 
 function AppGate() {
   const { session, profile, loading, profileLoading, authError, retry, refreshProfile } = useAuth();
