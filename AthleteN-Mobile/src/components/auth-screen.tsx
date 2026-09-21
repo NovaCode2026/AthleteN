@@ -3,8 +3,10 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
+import { useRouter } from 'expo-router';
 
 export default function AuthScreen() {
+  const router = useRouter();
   const [register, setRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -123,6 +125,8 @@ export default function AuthScreen() {
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{register ? 'CREATE ACCOUNT' : 'SIGN IN'}</Text>}
         </Pressable>
 
+        {!register && <Pressable onPress={() => router.push('/reset-request')} disabled={busy || resending}><Text style={styles.forgot}>Forgot password?</Text></Pressable>}
+
         {!register && /not verified|not confirmed/i.test(error) && (
           <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>
             {resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION</Text>}
@@ -155,6 +159,7 @@ const styles = StyleSheet.create({
   secondary:{backgroundColor:'transparent',borderWidth:1,borderColor:Colors.dark.accent,borderRadius:14,padding:14,alignItems:'center'},
   secondaryText:{color:Colors.dark.accent,fontSize:12,fontWeight:'900',letterSpacing:1},
   switch:{color:Colors.dark.accent,textAlign:'center',fontSize:13,padding:10},
+  forgot:{color:Colors.dark.muted,textAlign:'center',fontSize:12,fontWeight:'700',padding:4},
   error:{color:'#FF9BAA',fontSize:12,lineHeight:18},
   notice:{color:'#9BC3FF',fontSize:12,lineHeight:18},
 });
