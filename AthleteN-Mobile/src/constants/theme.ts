@@ -1,32 +1,34 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import '@/global.css';
 
 import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#08101D',
+    background: '#F7F9FC',
+    backgroundElement: '#E9EEF7',
+    backgroundSelected: '#DDE7F7',
+    textSecondary: '#5D6A7D',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-    surface: '#11151C',
-    border: '#222A36',
-    muted: '#7E899B',
+    text: '#F8FBFF',
+    background: '#05070B',
+    backgroundElement: '#141B26',
+    backgroundSelected: '#1B2B45',
+    textSecondary: '#A7B2C4',
+    surface: '#0E141D',
+    surfaceRaised: '#121A25',
+    border: '#202B3A',
+    borderStrong: '#2D4059',
+    muted: '#7F8CA1',
     accent: '#4D96FF',
-    accentDeep: '#0D2C67',
-    accentSoft: '#162E5A',
+    accentBright: '#69A7FF',
+    accentDeep: '#0B2A5D',
+    accentSoft: '#10244A',
+    success: '#53D6A2',
+    warning: '#F3C76B',
+    danger: '#F08B9B',
+    glow: '#123B7A',
   },
 } as const;
 
@@ -34,13 +36,9 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
