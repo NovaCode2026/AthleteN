@@ -290,9 +290,7 @@ function AdminStat({ label, value }: { label: string; value: number }) {
   return <View style={s.stat}><Text style={s.statLabel}>{label}</Text><Text style={s.statValue}>{value}</Text></View>;
 }
 
-function labelize(key: string) {
-  return key.replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
-}
+
 
 const s = StyleSheet.create({
   screen:{flex:1,backgroundColor:c.background},
