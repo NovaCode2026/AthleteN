@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -17,7 +18,7 @@ export default function ScannerScreen() {
  async function scanNow(id:string,sourceUrl:string){if(!session)return;setScanningId(id);setMessage('');const {data,error}=await supabase.functions.invoke('scan-tournament-source',{body:{scan_id:id,source_url:sourceUrl}});setScanningId(null);if(error){setMessage(error.message||'Scanner could not reach the scan service.');await load();return}if(data?.status==='blocked')setMessage('Source is blocking automated access. Try the official tournament website instead of a login-only/social page.');else if(data?.status==='failed')setMessage('The source could not be scanned. Check the URL and try again.');else setMessage('Scan complete. AthleteN intelligence updated.');await load()}
  async function remove(id:string){setBusy(true);const {error}=await supabase.from('tournament_scans').delete().eq('id',id).eq('user_id',session?.user.id);setBusy(false);if(error)setMessage(error.message);else await load()}
 
- return <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+ return <SafeAreaView style={s.screen} edges={['top']}><ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
   <View><Text style={s.kicker}>ATHLETEN INTELLIGENCE</Text><Text style={s.title}>Scanner</Text><Text style={s.sub}>Track tournament sources and review intelligence returned by your AthleteN backend.</Text></View>
   <View style={s.hero}><View><Text style={s.heroTitle}>Scan a tournament source</Text><Text style={s.heroSub}>Paste an official URL. AthleteN keeps the source attached to your account.</Text></View><Text style={s.heroIcon}>⌁</Text></View>
   <View style={s.card}><Text style={s.label}>SOURCE URL</Text><TextInput value={url} onChangeText={setUrl} placeholder="https://..." placeholderTextColor={c.muted} autoCapitalize="none" keyboardType="url" style={s.input}/><Pressable onPress={saveScan} disabled={busy} style={s.button}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>SAVE SOURCE</Text>}</Pressable>{message?<Text style={s.message}>{message}</Text>:null}</View>
