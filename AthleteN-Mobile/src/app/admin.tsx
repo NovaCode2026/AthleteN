@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -159,7 +159,7 @@ export default function AdminScreen() {
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         <View style={s.topBar}>
           <View style={s.brandRow}>
-            <View style={s.brandMark}><Text style={s.brandMarkText}>A</Text></View>
+            <Image source={require('@/assets/logo.png')} style={s.brandLogo} contentFit="cover" />
             <View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>OWNER COMMAND CENTER</Text></View>
           </View>
           <Pressable style={s.menuButton} onPress={() => setDrawerOpen(true)}><Text style={s.menuIcon}>☰</Text><Text style={s.menuText}>MENU</Text></Pressable>
@@ -299,8 +299,7 @@ const s = StyleSheet.create({
   content:{paddingHorizontal:18,paddingTop:10,paddingBottom:40,gap:12},
   topBar:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
   brandRow:{flexDirection:'row',alignItems:'center',gap:10},
-  brandMark:{width:40,height:40,borderRadius:13,backgroundColor:c.accentDeep,borderWidth:1,borderColor:c.accent,alignItems:'center',justifyContent:'center'},
-  brandMarkText:{color:c.accentBright,fontSize:20,fontWeight:'900'},
+  brandLogo:{width:42,height:42,borderRadius:13},
   brand:{color:c.text,fontSize:15,fontWeight:'900',letterSpacing:3.5},
   brandSub:{color:c.muted,fontSize:7,fontWeight:'800',letterSpacing:1.1,marginTop:2},
   menuButton:{flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:12,paddingVertical:10,borderRadius:12,backgroundColor:c.surface,borderWidth:1,borderColor:c.border},
