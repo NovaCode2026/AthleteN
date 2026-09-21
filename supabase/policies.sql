@@ -228,3 +228,32 @@ grant select, insert, update, delete on public.academy_memberships to authentica
 grant select, insert, update, delete on public.announcements to authenticated;
 grant select, insert, update, delete on public.feature_flags to authenticated;
 grant select, insert on public.audit_logs to authenticated;
+
+
+-- OWNER / SUPER ADMIN ACCESS
+-- The dedicated owner role is intentionally narrower than platform-admin access:
+-- super_admin can operate all safe application tables from the AthleteN admin panel.
+create or replace function private.is_super_admin()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.profiles
+    where user_id = (select auth.uid()) and role = 'super_admin'
+  );
+$$;
+revoke execute on function private.is_super_admin() from public, anon;
+grant execute on function private.is_super_admin() to authenticated;
+
+do $$
+declare table_name text;
+begin
+  foreach table_name in array array[
+    'account_entitlements','age_verifications','academy_coach_seats','coach_approval_requests','coach_athlete_links',
+    'conversations','conversation_members','messages','message_reports','payment_orders','reserved_usernames','user_blocks',
+    'kyorugi_bouts','kyorugi_training_metrics','poomsae_performances','poomsae_training_metrics','taekwondo_belt_history',
+    'taekwondo_kyorugi_bouts','taekwondo_poomsae_performances','taekwondo_training_logs','taekwondo_weight_category_decisions'
+  ] loop
+    execute format('drop policy if exists "super admin full access" on public.%I', table_name);
+    execute format('create policy "super admin full access" on public.%I for all to authenticated using (private.is_super_admin()) with check (private.is_super_admin())', table_name);
+    execute format('grant select, insert, update, delete on public.%I to authenticated', table_name);
+  end loop;
+end $$;
