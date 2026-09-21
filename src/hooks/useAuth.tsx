@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import type { Session, User } from "@supabase/supabase-js";
 import { requireSupabase, supabase } from "../lib/supabase";
 import AccountPlanGate from "../components/account/AccountPlanGate";
@@ -36,28 +35,6 @@ function toSafeAuthError(error: unknown, fallback: string) {
   if (lower.includes("rate limit") || lower.includes("only request this after")) return new Error("Please wait a moment before requesting another email.");
   if (lower.includes("password")) return new Error("Your email or password could not be accepted. Please check the requirements and try again.");
   return new Error(message || fallback);
-}
-
-function GoogleAuthButton() {
-  const auth = useAuth();
-  const [target, setTarget] = useState<HTMLElement | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  useEffect(() => {
-    if (auth.user || !auth.configured) return undefined;
-    const findTarget = () => setTarget(document.querySelector<HTMLElement>(".auth-card"));
-    findTarget();
-    const observer = new MutationObserver(findTarget);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, [auth.user, auth.configured]);
-  if (auth.user || !target) return null;
-  async function handleGoogleSignIn() {
-    setBusy(true); setMessage("");
-    try { await auth.signInWithGoogle(); }
-    catch (error) { setMessage(error instanceof Error ? error.message : "Google sign-in could not be started."); setBusy(false); }
-  }
-  return createPortal(<div className="google-auth" aria-label="Google sign-in"><div className="google-auth-divider"><span>or</span></div><button type="button" className="btn" onClick={() => void handleGoogleSignIn()} disabled={busy}><span aria-hidden="true" style={{ fontWeight: 800, fontSize: 18 }}>G</span>{busy ? "Connecting to Google..." : "Continue with Google"}</button>{message && <p className="notice" role="alert">{message}</p>}</div>, target);
 }
 
 async function ensureProfileForUser(user: User) {
@@ -158,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut: async () => { const { error } = await requireSupabase().auth.signOut(); if (error) throw error; }
   }), [session, loading, profileBootstrapError]);
 
-  return <AuthContext.Provider value={value}>{children}<GoogleAuthButton /><AccountPlanGate user={session?.user ?? null} /></AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}<AccountPlanGate user={session?.user ?? null} /></AuthContext.Provider>;
 }
 
 export function useAuth() {
