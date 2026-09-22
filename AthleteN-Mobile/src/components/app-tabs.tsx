@@ -1,15 +1,9 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
-import { Colors } from '@/constants/theme';
-
-export default function AppTabs(){
- const scheme=useColorScheme();const colors=Colors[scheme==='light'?'light':'dark'];
- return <NativeTabs backgroundColor={colors.background} indicatorColor={colors.accentSoft} disableTransparentOnScrollEdge>
-  <NativeTabs.Trigger name="index"><NativeTabs.Trigger.Icon sf={{default:'house',selected:'house.fill'}} md={{default:'home',selected:'home'}}/><NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label></NativeTabs.Trigger>
-  <NativeTabs.Trigger name="training"><NativeTabs.Trigger.Icon sf={{default:'figure.run',selected:'figure.run'}} md={{default:'fitness_center',selected:'fitness_center'}}/><NativeTabs.Trigger.Label>Train</NativeTabs.Trigger.Label></NativeTabs.Trigger>
-  <NativeTabs.Trigger name="ai"><NativeTabs.Trigger.Icon sf={{default:'sparkles',selected:'sparkles'}} md={{default:'auto_awesome',selected:'auto_awesome'}}/><NativeTabs.Trigger.Label>AI</NativeTabs.Trigger.Label></NativeTabs.Trigger>
-  <NativeTabs.Trigger name="compete"><NativeTabs.Trigger.Icon sf={{default:'trophy',selected:'trophy.fill'}} md={{default:'emoji_events',selected:'emoji_events'}}/><NativeTabs.Trigger.Label>Compete</NativeTabs.Trigger.Label></NativeTabs.Trigger>
-  <NativeTabs.Trigger name="profile"><NativeTabs.Trigger.Icon sf={{default:'person',selected:'person.fill'}} md={{default:'person',selected:'person'}}/><NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label></NativeTabs.Trigger>
-  <NativeTabs.Trigger name="explore"><NativeTabs.Trigger.Icon sf={{default:'square.grid.2x2',selected:'square.grid.2x2.fill'}} md={{default:'apps',selected:'apps'}}/><NativeTabs.Trigger.Label>More</NativeTabs.Trigger.Label></NativeTabs.Trigger>
- </NativeTabs>;
-}
+import {Tabs} from 'expo-router';
+import {Pressable,StyleSheet,Text,View} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import type {BottomTabBarProps} from '@react-navigation/bottom-tabs';
+import {Colors} from '@/constants/theme';
+const c=Colors.dark;const meta:any={index:['Home','⌂'],training:['Train','↗'],ai:['AI Coach','✦'],compete:['Compete','♜'],profile:['Profile','○'],explore:['More','⋮']};
+function Bar({state,navigation}:BottomTabBarProps){const insets=useSafeAreaInsets();return <View style={[s.outer,{paddingBottom:Math.max(insets.bottom,6)}]}><View style={s.bar}>{state.routes.map((r,i)=>{const [label,icon]=meta[r.name]||[r.name,'•'];const active=state.index===i;return <Pressable key={r.key} onPress={()=>navigation.navigate(r.name)} accessibilityRole="button" accessibilityState={active?{selected:true}:{}} style={s.item}><View style={[s.icon,active&&s.active]}><Text style={[s.iconText,active&&s.activeText]}>{icon}</Text></View><Text style={[s.label,active&&s.activeLabel]} numberOfLines={1}>{label}</Text></Pressable>})}</View></View>}
+export default function TabLayout(){return <Tabs tabBar={p=><Bar {...p}/>} screenOptions={{headerShown:false,sceneStyle:{backgroundColor:c.background}}}><Tabs.Screen name="index"/><Tabs.Screen name="training"/><Tabs.Screen name="ai"/><Tabs.Screen name="compete"/><Tabs.Screen name="profile"/><Tabs.Screen name="explore"/></Tabs>}
+const s=StyleSheet.create({outer:{backgroundColor:c.surface,borderTopWidth:1,borderTopColor:c.borderStrong},bar:{height:62,flexDirection:'row',paddingHorizontal:5,paddingTop:5},item:{flex:1,alignItems:'center',gap:2},icon:{width:38,height:30,borderRadius:13,alignItems:'center',justifyContent:'center'},active:{backgroundColor:c.accentSoft},iconText:{color:c.muted,fontSize:20,fontWeight:'700'},activeText:{color:c.accentBright},label:{color:c.muted,fontSize:9,fontWeight:'800'},activeLabel:{color:c.text}});
