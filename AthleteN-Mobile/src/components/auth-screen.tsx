@@ -13,7 +13,7 @@ function authRedirect(next?: string) {
   const path = next ? `auth/callback?next=${encodeURIComponent(next)}` : 'auth/callback';
   return Constants.executionEnvironment === 'storeClient'
     ? Linking.createURL(path)
-    : `athletenmobile:///${path}`;
+    : `athletenmobile://${path}`;
 }
 
 export default function AuthScreen() {
