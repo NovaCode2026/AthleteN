@@ -3,15 +3,16 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
-import { useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 
 export default function AuthScreen() {
-  const router = useRouter();
   const [register, setRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
   const [verificationNotice, setVerificationNotice] = useState('');
@@ -32,7 +33,7 @@ export default function AuthScreen() {
         const result = await supabase.auth.signUp({
           email: cleanEmail,
           password,
-          options: { data: { full_name: name.trim() }, emailRedirectTo: 'athletenmobile:///' },
+          options: { data: { full_name: name.trim() }, emailRedirectTo: Linking.createURL('auth/callback') },
         });
         if (result.error) setError(result.error.message);
         else if (result.data.session) setVerificationNotice('Account created. Your email is already verified or email confirmation is disabled.');
@@ -47,6 +48,38 @@ export default function AuthScreen() {
       }
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function signInWithGoogle() {
+    setError('');
+    setVerificationNotice('');
+    setGoogleBusy(true);
+    try {
+      const redirectTo = Linking.createURL('auth/callback');
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (oauthError) throw oauthError;
+      if (!data?.url) throw new Error('Google sign-in could not start.');
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      if (result.type !== 'success' || !result.url) {
+        if (result.type !== 'cancel') setError('Google sign-in was not completed.');
+        return;
+      }
+
+      const callback = new URL(result.url);
+      const code = callback.searchParams.get('code');
+      if (!code) throw new Error('Google sign-in returned without an authorization code.');
+
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) throw exchangeError;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Google sign-in failed.');
+    } finally {
+      setGoogleBusy(false);
     }
   }
 
@@ -67,12 +100,19 @@ export default function AuthScreen() {
       <View style={styles.topAccent} />
       <View style={styles.content}>
         <View style={styles.brandBlock}>
-          <Image source={require('@/assets/logo.png')} style={styles.logo} contentFit="cover" />
+          <Image source={require('@/assets/logo.png')} style={styles.logo} />
           <View><Text style={styles.brand}>ATHLETEN</Text><Text style={styles.brandSub}>ATHLETE PERFORMANCE PLATFORM</Text></View>
         </View>
+
         <Text style={styles.kicker}>{register ? 'CREATE YOUR ATHLETE PROFILE' : 'WELCOME BACK'}</Text>
         <Text style={styles.title}>{register ? 'Build your AthleteN profile.' : 'Your performance. One place.'}</Text>
         <Text style={styles.subtitle}>Training, competition, weight, goals and athlete intelligence — built around you.</Text>
+
+        <Pressable onPress={signInWithGoogle} disabled={busy || googleBusy || resending} style={styles.google}>
+          {googleBusy ? <ActivityIndicator color={Colors.dark.text} /> : <><View style={styles.googleMark}><Text style={styles.googleG}>G</Text></View><Text style={styles.googleText}>CONTINUE WITH GOOGLE</Text></>}
+        </Pressable>
+
+        <View style={styles.divider}><View style={styles.line} /><Text style={styles.or}>OR</Text><View style={styles.line} /></View>
 
         <View style={styles.form}>
           {register && <TextInput value={name} onChangeText={setName} placeholder="Full name" placeholderTextColor={Colors.dark.muted} style={styles.input} />}
@@ -80,10 +120,10 @@ export default function AuthScreen() {
           <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password" placeholderTextColor={Colors.dark.muted} style={styles.input} />
           {!!error && <Text style={styles.error}>{error}</Text>}
           {!!verificationNotice && <Text style={styles.notice}>{verificationNotice}</Text>}
-          <Pressable onPress={submit} disabled={busy || resending} style={styles.primary}>
+          <Pressable onPress={submit} disabled={busy || googleBusy || resending} style={styles.primary}>
             {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{register ? 'CREATE ACCOUNT' : 'SIGN IN'}</Text>}
           </Pressable>
-          {!register && <Pressable onPress={() => router.push('/reset-request')}><Text style={styles.forgot}>Forgot password?</Text></Pressable>}
+          {!register && <Pressable onPress={() => {}}><Text style={styles.forgot}>Forgot password? Use the recovery option in Account Security.</Text></Pressable>}
           {!register && /not verified|not confirmed/i.test(error) && <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>{resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION</Text>}</Pressable>}
           {register && !!verificationNotice && <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>{resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION EMAIL</Text>}</Pressable>}
         </View>
@@ -107,13 +147,20 @@ const styles = StyleSheet.create({
   kicker:{color:Colors.dark.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.6},
   title:{color:Colors.dark.text,fontSize:31,fontWeight:'900',letterSpacing:-0.6,lineHeight:36},
   subtitle:{color:Colors.dark.muted,fontSize:13,lineHeight:20,marginBottom:4},
+  google:{height:52,borderRadius:14,backgroundColor:Colors.dark.surface,borderWidth:1,borderColor:Colors.dark.borderStrong,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:10},
+  googleMark:{width:25,height:25,borderRadius:8,backgroundColor:'#fff',alignItems:'center',justifyContent:'center'},
+  googleG:{color:'#4285F4',fontSize:15,fontWeight:'900'},
+  googleText:{color:Colors.dark.text,fontSize:10,fontWeight:'900',letterSpacing:1},
+  divider:{flexDirection:'row',alignItems:'center',gap:9},
+  line:{flex:1,height:1,backgroundColor:Colors.dark.border},
+  or:{color:Colors.dark.muted,fontSize:9,fontWeight:'900'},
   form:{backgroundColor:Colors.dark.surface,borderWidth:1,borderColor:Colors.dark.border,borderRadius:22,padding:15,gap:10},
   input:{backgroundColor:Colors.dark.background,borderWidth:1,borderColor:Colors.dark.border,borderRadius:13,color:Colors.dark.text,padding:14,fontSize:14},
   primary:{backgroundColor:Colors.dark.accent,borderRadius:13,padding:15,alignItems:'center'},
   primaryText:{color:'#fff',fontSize:11,fontWeight:'900',letterSpacing:1.2},
   secondary:{borderWidth:1,borderColor:Colors.dark.borderStrong,borderRadius:13,padding:13,alignItems:'center'},
   secondaryText:{color:Colors.dark.accentBright,fontSize:10,fontWeight:'900',letterSpacing:1},
-  forgot:{color:Colors.dark.muted,textAlign:'center',fontSize:11,fontWeight:'800',padding:5},
+  forgot:{color:Colors.dark.muted,textAlign:'center',fontSize:10,fontWeight:'700',padding:5},
   switch:{color:Colors.dark.accentBright,textAlign:'center',fontSize:12,fontWeight:'800',padding:8},
   error:{color:Colors.dark.danger,fontSize:11,lineHeight:17},
   notice:{color:Colors.dark.success,fontSize:11,lineHeight:17},
