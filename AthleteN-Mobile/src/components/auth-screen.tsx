@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -15,7 +15,7 @@ function authRedirect(next?: string) {
   // Expo Go needs the LAN callback that it can hand back to the running
   // development client. Standalone/native builds use the app scheme.
   if (Constants.executionEnvironment === 'storeClient') {
-    const hostUri = Constants.expoConfig?.hostUri;
+    const hostUri = Constants.expoConfig?.hostUri || "192.168.1.3:8081";
     if (hostUri) {
       return `exp://${hostUri}/--/${path}`;
     }
@@ -150,7 +150,7 @@ export default function AuthScreen() {
 
         <Text style={styles.kicker}>{register ? 'CREATE YOUR ATHLETE PROFILE' : 'WELCOME BACK'}</Text>
         <Text style={styles.title}>{register ? 'Build your AthleteN profile.' : 'Your performance. One place.'}</Text>
-        <Text style={styles.subtitle}>Training, competition, weight, goals and athlete intelligence — built around you.</Text>
+        <Text style={styles.subtitle}>Training, competition, weight, goals and athlete intelligence â€” built around you.</Text>
 
         <Pressable onPress={signInWithGoogle} disabled={busy || googleBusy || resending || resetBusy} style={styles.google}>
           {googleBusy ? <ActivityIndicator color={Colors.dark.text} /> : <><View style={styles.googleMark}><Text style={styles.googleG}>G</Text></View><Text style={styles.googleText}>CONTINUE WITH GOOGLE</Text></>}
@@ -167,7 +167,7 @@ export default function AuthScreen() {
           <Pressable onPress={submit} disabled={busy || googleBusy || resending} style={styles.primary}>
             {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{register ? 'CREATE ACCOUNT' : 'SIGN IN'}</Text>}
           </Pressable>
-          {!register && <Pressable onPress={resetPassword} disabled={busy || googleBusy || resending || resetBusy}><Text style={styles.forgot}>{resetBusy ? 'SENDING RESET EMAIL…' : 'Forgot password? Send reset email'}</Text></Pressable>}
+          {!register && <Pressable onPress={resetPassword} disabled={busy || googleBusy || resending || resetBusy}><Text style={styles.forgot}>{resetBusy ? 'SENDING RESET EMAILâ€¦' : 'Forgot password? Send reset email'}</Text></Pressable>}
           {!register && /not verified|not confirmed/i.test(error) && <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>{resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION</Text>}</Pressable>}
           {register && !!verificationNotice && <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>{resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION EMAIL</Text>}</Pressable>}
         </View>
@@ -209,3 +209,4 @@ const styles = StyleSheet.create({
   error:{color:Colors.dark.danger,fontSize:11,lineHeight:17},
   notice:{color:Colors.dark.success,fontSize:11,lineHeight:17},
 });
+
