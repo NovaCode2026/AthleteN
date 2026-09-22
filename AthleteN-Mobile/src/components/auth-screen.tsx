@@ -76,6 +76,7 @@ export default function AuthScreen() {
     setGoogleBusy(true);
     try {
       const redirectTo = authRedirect();
+      Alert.alert('AthleteN OAuth Step 1', redirectTo);
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo, skipBrowserRedirect: true },
