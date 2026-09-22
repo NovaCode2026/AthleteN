@@ -7,14 +7,14 @@ import { AVAILABLE,DEFAULT,KEY } from './(tabs)/_layout';
 
 const c=Colors.dark;
 export default function NavigationSettings(){
- const router=useRouter();const [items,setItems]=useState(DEFAULT);const [message,setMessage]=useState('');
+ const router=useRouter();const [items,setItems]=useState<string[]>([...DEFAULT]);const [message,setMessage]=useState('');
  useEffect(()=>{void (async()=>{const raw=await AsyncStorage.getItem(KEY);if(raw){try{const p=JSON.parse(raw);if(Array.isArray(p))setItems(p)}catch{}}})()},[]);
- function toggle(id:string){setItems(v=>v.includes(id)?v.filter(x=>x!==id):v.length<6?[...v,id]:v)}
+ function toggle(id:string){setItems(v=>{if(id==='explore'&&v.includes(id))return v;return v.includes(id)?v.filter(x=>x!==id):v.length<6?[...v,id]:v})}
  function move(id:string,dir:number){setItems(v=>{const a=[...v],i=a.indexOf(id),j=i+dir;if(i<0||j<0||j>=a.length)return a;[a[i],a[j]]=[a[j],a[i]];return a})}
  async function save(){await AsyncStorage.setItem(KEY,JSON.stringify(items));setMessage('Bottom navigation saved.');setTimeout(()=>router.back(),500)}
  async function reset(){setItems(DEFAULT);await AsyncStorage.setItem(KEY,JSON.stringify(DEFAULT));setMessage('Default navigation restored.')}
  return <ScrollView style={s.screen} contentContainerStyle={s.content}>
-  <Text style={s.kicker}>ATHLETEN PERSONALIZATION</Text><Text style={s.title}>Customize navigation</Text><Text style={s.sub}>Choose the AthleteN features you want directly on your bottom bar. Pick up to 6 and reorder them.</Text>
+  <Text style={s.kicker}>ATHLETEN PERSONALIZATION</Text><Text style={s.title}>Customize navigation</Text><Text style={s.sub}>Choose the AthleteN features you want directly on your bottom bar. Pick up to 6 and reorder them. More stays available so you can always reach the full AthleteN command center.</Text>
   <Text style={s.section}>ACTIVE BOTTOM BAR · {items.length}/6</Text>
   <View style={s.card}>{items.map((id,i)=>{const x=AVAILABLE.find(a=>a.id===id)!;return <View key={id} style={s.row}><View style={s.icon}><Text style={s.iconText}>{x.icon}</Text></View><View style={s.copy}><Text style={s.name}>{x.label}</Text><Text style={s.meta}>Position {i+1}</Text></View><Pressable onPress={()=>move(id,-1)} style={s.small}><Text style={s.smallText}>‹</Text></Pressable><Pressable onPress={()=>move(id,1)} style={s.small}><Text style={s.smallText}>›</Text></Pressable><Pressable onPress={()=>toggle(id)} style={[s.small,s.remove]}><Text style={s.removeText}>×</Text></Pressable></View>})}</View>
   <Text style={s.section}>ADD FEATURES</Text>
