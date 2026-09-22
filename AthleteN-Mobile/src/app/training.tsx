@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { validMinutes } from '@/lib/performance';
 import { PerformanceLine } from '@/components/performance-chart';
 import { PerformanceBars } from '@/components/performance-chart';
 
@@ -19,7 +20,7 @@ export default function TrainingScreen(){
  const recent=(() => {
   const days:string[]=[]; const now=new Date();
   for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);days.push([d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'))}
-  return days.map(day=>({label:day.slice(5).replace('-','/'),value:items.filter(x=>String(x.session_date).slice(0,10)===day).reduce((sum,x)=>sum+Number(x.minutes||0),0)}));
+  return days.map(day=>({label:day.slice(5).replace('-','/'),value:items.filter(x=>String(x.session_date).slice(0,10)===day).reduce((sum,x)=>sum+validMinutes(x.minutes),0)}));
 })();
 
  return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
