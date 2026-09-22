@@ -16,8 +16,8 @@ export default function ResetPasswordScreen(){
   if(error)setError(error.message); else setDone(true);
  }
  return <SafeAreaView style={s.screen}><View style={s.content}>
-  <Text style={s.brand}>ATHLETEN</Text><Text style={s.title}>{done?'Password updated':'Choose a new password'}</Text>
-  {done?<><Text style={s.sub}>Your password has been changed successfully.</Text><Pressable style={s.primary} onPress={()=>router.replace('/')}><Text style={s.primaryText}>CONTINUE</Text></Pressable></>:<>
+  <Text style={s.brand}>AthleteN</Text><Text style={s.title}>{done?'Password updated':'Choose a new password'}</Text>
+  {done?<><Text style={s.sub}>Your AthleteN password has been changed successfully.</Text><Pressable style={s.primary} onPress={()=>router.replace('/')}><Text style={s.primaryText}>CONTINUE</Text></Pressable></>:<>
    <Text style={s.sub}>Use a new password you can remember. Never share it with anyone.</Text>
    <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="New password" placeholderTextColor={c.muted} style={s.input}/>
    <TextInput value={confirm} onChangeText={setConfirm} secureTextEntry placeholder="Confirm new password" placeholderTextColor={c.muted} style={s.input}/>
