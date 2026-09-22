@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import { useRouter } from 'expo-router';
 
 export default function AuthScreen() {
   const [register, setRegister] = useState(false);
@@ -123,7 +124,7 @@ export default function AuthScreen() {
           <Pressable onPress={submit} disabled={busy || googleBusy || resending} style={styles.primary}>
             {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{register ? 'CREATE ACCOUNT' : 'SIGN IN'}</Text>}
           </Pressable>
-          {!register && <Pressable onPress={() => {}}><Text style={styles.forgot}>Forgot password? Use the recovery option in Account Security.</Text></Pressable>}
+          {!register && <Pressable onPress={() => router.push('/reset-request')}><Text style={styles.forgot}>Forgot password?</Text></Pressable>}
           {!register && /not verified|not confirmed/i.test(error) && <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>{resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION</Text>}</Pressable>}
           {register && !!verificationNotice && <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>{resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION EMAIL</Text>}</Pressable>}
         </View>
