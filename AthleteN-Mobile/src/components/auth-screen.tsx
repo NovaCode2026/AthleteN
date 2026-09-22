@@ -3,10 +3,18 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
+import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 
 WebBrowser.maybeCompleteAuthSession();
+
+function authRedirect(next?: string) {
+  const path = next ? `auth/callback?next=${encodeURIComponent(next)}` : 'auth/callback';
+  return Constants.executionEnvironment === 'storeClient'
+    ? Linking.createURL(path)
+    : `athletenmobile:///${path}`;
+}
 
 export default function AuthScreen() {
   const [register, setRegister] = useState(false);
@@ -36,7 +44,7 @@ export default function AuthScreen() {
         const result = await supabase.auth.signUp({
           email: cleanEmail,
           password,
-          options: { data: { full_name: name.trim() }, emailRedirectTo: Linking.createURL('auth/callback') },
+          options: { data: { full_name: name.trim() }, emailRedirectTo: authRedirect() },
         });
         if (result.error) setError(result.error.message);
         else if (result.data.session) setVerificationNotice('Account created. Your email is already verified or email confirmation is disabled.');
@@ -59,7 +67,7 @@ export default function AuthScreen() {
     setVerificationNotice('');
     setGoogleBusy(true);
     try {
-      const redirectTo = 'athletenmobile://auth/callback';
+      const redirectTo = authRedirect();
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo, skipBrowserRedirect: true },
@@ -102,7 +110,7 @@ export default function AuthScreen() {
     setResetBusy(true);
     try {
       const result = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: 'athletenmobile://auth/callback?next=reset-password',
+        redirectTo: authRedirect('reset-password'),
       });
       if (result.error) setError(result.error.message);
       else setVerificationNotice('Password reset email sent to the email entered above. Check your inbox and spam folder.');
