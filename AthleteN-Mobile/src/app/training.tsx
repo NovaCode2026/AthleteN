@@ -16,7 +16,11 @@ export default function TrainingScreen(){
  async function savePlan(){const days=Number(planDays);if(!session||!planTitle.trim()||!Number.isInteger(days)||days<1||days>365){setMessage('Choose a plan name and a duration from 1 to 365 days.');return}const start=new Date();const end=new Date(start);end.setDate(start.getDate()+days-1);setBusy(true);setMessage('');const {error}=await supabase.from('training_plans').insert({user_id:session.user.id,title:planTitle.trim(),starts_at:start.toISOString().slice(0,10),ends_at:end.toISOString().slice(0,10),status:'draft'});setBusy(false);if(error)setMessage(error.message);else{setMessage('Training plan saved.');await load()}}
  async function add(){const mins=Number(minutes);if(!session||!title.trim()||!Number.isFinite(mins)||mins<=0){setMessage('Session title and a duration greater than zero are required.');return}setBusy(true);setMessage('');const {error}=await supabase.from('training_sessions').insert({user_id:session.user.id,title:title.trim(),session_date:new Date().toISOString().slice(0,10),minutes:mins,intensity:intensity.trim()||null,notes:notes.trim()||null});setBusy(false);if(error)setMessage(error.message);else{setTitle('');setMinutes('');setIntensity('');setNotes('');setMessage('Training session saved.');await load()}}
  async function remove(id:string){setBusy(true);const {error}=await supabase.from('training_sessions').delete().eq('id',id).eq('user_id',session?.user.id);setBusy(false);if(error)setMessage(error.message);else await load()}
- const recent=[...items].slice(0,7).reverse().map(x=>({label:String(x.session_date).slice(5).replace('-','/'),value:Number(x.minutes||0)}));
+ const recent=(() => {
+  const days:string[]=[]; const now=new Date();
+  for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);days.push([d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'))}
+  return days.map(day=>({label:day.slice(5).replace('-','/'),value:items.filter(x=>String(x.session_date).slice(0,10)===day).reduce((sum,x)=>sum+Number(x.minutes||0),0)}));
+})();
 
  return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
   <View><Text style={s.kicker}>ATHLETEN PERFORMANCE</Text><Text style={s.title}>Training</Text><Text style={s.sub}>{profile?.discipline||'Taekwondo'} training, measured instead of guessed.</Text></View>
