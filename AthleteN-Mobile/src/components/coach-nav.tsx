@@ -7,9 +7,9 @@ const c = Colors.dark;
 const ITEMS = [
   { key: 'home', label: 'Home', icon: '⌂', route: '/coach' },
   { key: 'athletes', label: 'Athletes', icon: '♙', route: '/coach-athletes' },
-  { key: 'training', label: 'Train', icon: '↗', route: '/coach-training' },
+  { key: 'training', label: 'Training', icon: '▥', route: '/coach-training' },
   { key: 'compete', label: 'Compete', icon: '♜', route: '/coach-tournaments' },
-  { key: 'more', label: 'More', icon: '⋯', route: '/coach-more' },
+  { key: 'more', label: 'More', icon: '•••', route: '/coach-more' },
 ] as const;
 
 export default function CoachNav({ active }: { active?: string }) {
@@ -27,7 +27,7 @@ export default function CoachNav({ active }: { active?: string }) {
               <View style={[s.icon, selected && s.iconActive]}>
                 <Text style={[s.iconText, selected && s.iconTextActive]}>{item.icon}</Text>
               </View>
-              <Text style={[s.label, selected && s.labelActive]}>{item.label}</Text>
+              <Text numberOfLines={1} style={[s.label, selected && s.labelActive]}>{item.label}</Text>
             </Pressable>
           );
         })}
@@ -37,13 +37,13 @@ export default function CoachNav({ active }: { active?: string }) {
 }
 
 const s = StyleSheet.create({
-  outer: { backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.borderStrong },
-  bar: { height: 68, flexDirection: 'row', paddingHorizontal: 6, paddingTop: 6 },
-  item: { flex: 1, alignItems: 'center', gap: 3 },
-  icon: { width: 40, height: 34, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  iconActive: { backgroundColor: c.accentSoft },
-  iconText: { color: c.muted, fontSize: 19, fontWeight: '800' },
+  outer: { backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.borderStrong, paddingBottom: 2 },
+  bar: { minHeight: 72, flexDirection: 'row', paddingHorizontal: 7, paddingTop: 7 },
+  item: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', gap: 3, paddingHorizontal: 1 },
+  icon: { width: 48, height: 36, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  iconActive: { backgroundColor: c.accentSoft, borderWidth: 1, borderColor: c.accentDeep },
+  iconText: { color: c.muted, fontSize: 20, fontWeight: '900' },
   iconTextActive: { color: c.accentBright },
-  label: { color: c.muted, fontSize: 9, fontWeight: '800' },
-  labelActive: { color: c.text },
+  label: { color: c.muted, fontSize: 8, fontWeight: '800', textAlign: 'center' },
+  labelActive: { color: c.text, fontWeight: '900' },
 });
