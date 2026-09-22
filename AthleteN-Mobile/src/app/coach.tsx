@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Screen, Header, Section, Card, Button, Field, c } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import CoachNav from '@/components/coach-nav';
 
 type Athlete = {
   athlete_user_id: string;
@@ -248,11 +249,11 @@ export default function Coach() {
   }
 
   return (
-    <Screen>
+    <Screen bottomBar={<CoachNav active="home" />}>
       <Header
         eyebrow="COACH COMMAND CENTER"
         title="Coach Workspace"
-        subtitle="Your independent coaching command center — roster, training, competitions, scanner, messages and finance."
+        subtitle="Your coaching command center — athletes, training, competitions, messages and finance."
         right={avatar ? <Image source={{ uri: avatar }} style={{ width: 54, height: 54, borderRadius: 18 }} contentFit="cover" /> : <View style={{ width: 54, height: 54, borderRadius: 18, backgroundColor: c.accentSoft, borderWidth: 1, borderColor: c.accentDeep, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: c.accentBright, fontSize: 20, fontWeight: '900' }}>{(profile?.full_name || 'C').slice(0, 1).toUpperCase()}</Text></View>}
       />
 
