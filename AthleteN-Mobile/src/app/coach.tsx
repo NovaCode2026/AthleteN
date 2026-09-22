@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Screen, Header, Section, Card, Button, Field, c } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
@@ -60,10 +61,7 @@ export default function Coach() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [transactions, setTransactions] = useState<Tx[]>([]);
   const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [academyId, setAcademyId] = useState<string | null>(null);
-  const [academyRole, setAcademyRole] = useState<string | null>(null);
-  const [academyName, setAcademyName] = useState('');
-  const [academyCode, setAcademyCode] = useState('');
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showFinance, setShowFinance] = useState(false);
@@ -109,27 +107,11 @@ export default function Coach() {
       .limit(20);
     setApprovals((approvalResult.data || []) as Approval[]);
 
-    const membership = await supabase
-      .from('academy_memberships')
-      .select('academy_id,role,status')
-      .eq('user_id', profile.user_id)
-      .eq('status', 'active')
-      .eq('role', 'coach')
-      .maybeSingle();
-
-    if (membership.data?.academy_id) {
-      setAcademyId(membership.data.academy_id);
-      setAcademyRole(membership.data.role);
-      const academy = await supabase
-        .from('academies')
-        .select('name')
-        .eq('id', membership.data.academy_id)
-        .maybeSingle();
-      setAcademyName(academy.data?.name || 'Academy');
+    if (profile.profile_image_path) {
+      const signed = await supabase.storage.from('avatars').createSignedUrl(profile.profile_image_path, 3600);
+      setAvatar(signed.data?.signedUrl || null);
     } else {
-      setAcademyId(null);
-      setAcademyRole(null);
-      setAcademyName('');
+      setAvatar(null);
     }
 
     const accountRpc = await supabase.rpc('get_or_create_my_coach_finance_account');
@@ -270,7 +252,8 @@ export default function Coach() {
       <Header
         eyebrow="COACH COMMAND CENTER"
         title="Coach Workspace"
-        subtitle="Run your roster, performance oversight, approvals, competitions and coaching finances from one place."
+        subtitle="Your independent coaching command center — roster, training, competitions, scanner, messages and finance."
+        right={avatar ? <Image source={{ uri: avatar }} style={{ width: 54, height: 54, borderRadius: 18 }} contentFit="cover" /> : <View style={{ width: 54, height: 54, borderRadius: 18, backgroundColor: c.accentSoft, borderWidth: 1, borderColor: c.accentDeep, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: c.accentBright, fontSize: 20, fontWeight: '900' }}>{(profile?.full_name || 'C').slice(0, 1).toUpperCase()}</Text></View>}
       />
 
       <Section title="TEAM SNAPSHOT">
@@ -308,22 +291,6 @@ export default function Coach() {
           <Text style={{ color: c.accentBright, fontSize: 25, fontWeight: '900' }}>{saved || 'Not set'}</Text>
           <Field label="NEW CODE" value={code} onChangeText={setCode} placeholder="e.g. COACH-PRATYAKSH" />
           <Button title="SAVE CONNECTION CODE" onPress={() => void saveCode()} busy={busy} />
-        </Card>
-      </Section>
-
-      <Section title="ACADEMY CONNECTION">
-        <Card>
-          {academyId ? <>
-            <Text style={{ color: c.success, fontSize: 10, fontWeight: '900' }}>CONNECTED TO ACADEMY</Text>
-            <Text style={{ color: c.text, fontSize: 17, fontWeight: '900' }}>{academyName}</Text>
-            <Text style={{ color: c.muted, fontSize: 10, lineHeight: 16 }}>Academy affiliation is optional. Your independent Coach Workspace remains fully active.</Text>
-            <Text style={{ color: c.accentBright, fontSize: 10, fontWeight: '900' }}>ROLE: {academyRole?.toUpperCase()}</Text>
-          </> : <>
-            <Text style={{ color: c.text, fontSize: 15, fontWeight: '900' }}>Independent coach</Text>
-            <Text style={{ color: c.muted, fontSize: 10, lineHeight: 16 }}>No Academy is connected. You can run your entire coaching workspace independently.</Text>
-            <Field label="ACADEMY CODE" value={academyCode} onChangeText={setAcademyCode} placeholder="Enter an Academy connection code" />
-            <Button title="CONNECT TO ACADEMY" onPress={async()=>{if(!academyCode.trim())return;setBusy(true);const {error}=await supabase.rpc('connect_coach_to_academy_by_code',{p_code:academyCode.trim()});setBusy(false);if(error)Alert.alert('Academy connection failed',error.message);else{setAcademyCode('');await load();}}} busy={busy} />
-          </>}
         </Card>
       </Section>
 
@@ -397,6 +364,15 @@ export default function Coach() {
             {transactions.slice(0, 8).map(t => <View key={t.id} style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: c.border, paddingTop: 9 }}><View style={{ flex: 1 }}><Text style={{ color: c.text, fontWeight: '800', fontSize: 11 }}>{t.category}</Text><Text style={{ color: c.muted, fontSize: 9 }}>{t.description || t.transaction_date}</Text></View><Text style={{ color: c.text, fontWeight: '900' }}>{t.type === 'income' ? '+' : '-'}{money(Number(t.amount))}</Text></View>)}
           </> : null}
         </Card>
+      </Section>
+
+      <Section title="QUICK ACTIONS">
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9 }}>
+          <Pressable onPress={() => router.push('/coach-training')} style={{ width: '48%' }}><Card accent><Text style={{ color: c.accentBright, fontSize: 18, fontWeight: '900' }}>+</Text><Text style={{ color: c.text, fontWeight: '900', fontSize: 12 }}>Training Plan</Text><Text style={{ color: c.muted, fontSize: 9 }}>Build athlete work</Text></Card></Pressable>
+          <Pressable onPress={() => router.push('/coach-tournaments')} style={{ width: '48%' }}><Card><Text style={{ color: c.accentBright, fontSize: 18, fontWeight: '900' }}>◆</Text><Text style={{ color: c.text, fontWeight: '900', fontSize: 12 }}>Tournament</Text><Text style={{ color: c.muted, fontSize: 9 }}>Add competition</Text></Card></Pressable>
+          <Pressable onPress={() => router.push('/scanner')} style={{ width: '48%' }}><Card><Text style={{ color: c.accentBright, fontSize: 18, fontWeight: '900' }}>✦</Text><Text style={{ color: c.text, fontWeight: '900', fontSize: 12 }}>Tournament Scanner</Text><Text style={{ color: c.muted, fontSize: 9 }}>Track event sources</Text></Card></Pressable>
+          <Pressable onPress={() => router.push('/messages')} style={{ width: '48%' }}><Card><Text style={{ color: c.accentBright, fontSize: 18, fontWeight: '900' }}>•••</Text><Text style={{ color: c.text, fontWeight: '900', fontSize: 12 }}>Messages</Text><Text style={{ color: c.muted, fontSize: 9 }}>Talk to your team</Text></Card></Pressable>
+        </View>
       </Section>
 
       <Section title="COACH CONTROL CENTER">
