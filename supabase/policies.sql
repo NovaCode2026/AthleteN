@@ -268,7 +268,8 @@ alter table public.hydration_logs enable row level security;
 
 create or replace function public.can_manage_athlete_feature(target_user_id uuid)
 returns boolean language sql stable security definer set search_path = public as $$
-  select exists (select 1 from public.training_plans tp where tp.user_id = target_user_id and tp.coach_user_id = (select auth.uid()) and tp.status <> 'archived')
+  select exists (select 1 from public.profiles p where p.user_id = target_user_id and p.coach_user_id = (select auth.uid()))
+  or exists (select 1 from public.training_plans tp where tp.user_id = target_user_id and tp.coach_user_id = (select auth.uid()) and tp.status <> 'archived')
   or exists (select 1 from public.academy_memberships coach_m join public.academy_memberships athlete_m on athlete_m.academy_id = coach_m.academy_id where coach_m.user_id = (select auth.uid()) and coach_m.role = 'coach' and coach_m.status = 'active' and athlete_m.user_id = target_user_id and athlete_m.role = 'athlete' and athlete_m.status = 'active')
   or private.is_super_admin();
 $$;
