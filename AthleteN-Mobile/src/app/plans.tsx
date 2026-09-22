@@ -37,16 +37,10 @@ export default function PlansScreen() {
     if(!session||planId==='free'||trialUsed)return;
     setTrialBusy(true); setMessage('');
     try{
-      const now=new Date(), end=new Date(now.getTime()+7*24*60*60*1000);
-      const {data:existing,error:ee}=await supabase.from('subscriptions').select('id,status,current_period_end').eq('user_id',session.user.id).in('status',['active','trialing']).order('created_at',{ascending:false}).limit(1);
-      if(ee)throw ee;
-      const active=existing?.[0];
-      if(active?.status==='active')throw new Error('You already have an active plan.');
-      if(active?.status==='trialing'&&active.current_period_end&&new Date(active.current_period_end)>now)throw new Error('A trial is already active.');
-      const {error:se}=await supabase.from('subscriptions').insert({user_id:session.user.id,plan_id:planId,provider:'manual',status:'trialing',current_period_end:end.toISOString()});
-      if(se)throw se;
-      const {error:pe}=await supabase.from('profiles').update({plan_id:planId,trial_used:true}).eq('user_id',session.user.id);
-      if(pe)throw pe;
+      const {data,error}=await supabase.rpc('choose_account_plan',{p_plan_id:planId,p_start_trial:true});
+      if(error)throw error;
+      const result=Array.isArray(data)?data[0]:data;
+      if(result?.error)throw new Error(result.error);
       await refreshProfile();
       setMessage('7-day trial started.');
       router.replace('/');
