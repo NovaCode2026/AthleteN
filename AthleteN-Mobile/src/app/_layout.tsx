@@ -6,6 +6,7 @@ import AuthScreen from '@/components/auth-screen';
 import OnboardingScreen from '@/components/onboarding-screen';
 import AppTabs from '@/components/app-tabs';
 import { Colors } from '@/constants/theme';
+import { supabase } from '@/lib/supabase';
 import AgeVerificationScreen from '@/components/age-verification-screen';
 
 function AgeVerificationGate({ profile }: { profile: any }) {
