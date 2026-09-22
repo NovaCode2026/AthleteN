@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
+import { Header } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -17,7 +18,7 @@ export default function ScannerScreen(){
  async function scanNow(id:string,sourceUrl:string){if(!session)return;setScanningId(id);setMessage('Scanning source and extracting tournament details…');const {data,error}=await supabase.functions.invoke('scan-tournament-source',{body:{scan_id:id,source_url:sourceUrl}});setScanningId(null);if(error){await supabase.from('tournament_scans').update({status:'failed',last_checked_at:new Date().toISOString()}).eq('id',id).eq('user_id',session.user.id);setMessage(error.message||'Scanner service unavailable.');await load();return}if(data?.status==='blocked')setMessage('This source blocks automated access. Open it directly instead.');else if(data?.status==='failed')setMessage('Source could not be scanned. Check the URL.');else setMessage('Scan complete. Tournament record updated.');await load()}
  async function remove(id:string){setBusy(true);const {error}=await supabase.from('tournament_scans').delete().eq('id',id).eq('user_id',session?.user.id);setBusy(false);if(error)setMessage(error.message);else await load()}
  return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-  <View style={s.header}><View><Text style={s.kicker}>ATHLETEN INTELLIGENCE</Text><Text style={s.title}>Tournament scanner</Text><Text style={s.sub}>Turn tournament sources into clean competition intelligence.</Text></View><View style={s.aiBadge}><Text style={s.aiBadgeText}>AI</Text></View></View>
+  <Header back eyebrow="ATHLETEN INTELLIGENCE" title="Tournament Scanner" subtitle="Turn tournament sources into clean competition intelligence." right={<View style={s.aiBadge}><Text style={s.aiBadgeText}>AI</Text></View>} />
   <View style={s.hero}><View style={s.heroTop}><View><Text style={s.heroKicker}>SOURCE INTELLIGENCE</Text><Text style={s.heroTitle}>Scan once. Track changes.</Text></View><Text style={s.spark}>✦</Text></View><Text style={s.heroText}>AthleteN extracts the competition name, date, venue, deadline and useful source links.</Text><TextInput value={url} onChangeText={setUrl} placeholder="Paste a tournament URL" placeholderTextColor={c.muted} autoCapitalize="none" keyboardType="url" style={s.input}/><Pressable onPress={saveScan} disabled={busy} style={s.button}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>SAVE & SCAN SOURCE</Text>}</Pressable></View>
   {message?<View style={s.messageBox}><Text style={s.message}>{message}</Text></View>:null}
   <View style={s.sectionHead}><Text style={s.section}>SAVED SOURCES</Text><Text style={s.count}>{scans.length}</Text></View>
