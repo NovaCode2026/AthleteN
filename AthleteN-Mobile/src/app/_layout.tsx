@@ -15,7 +15,23 @@ function AgeVerificationGate({ profile }: { profile: any }) {
   useEffect(() => { void load(); }, [profile?.user_id]);
   if (checking) return <View style={{flex:1,backgroundColor:Colors.dark.background,alignItems:'center',justifyContent:'center'}}><ActivityIndicator color={Colors.dark.accent}/></View>;
   if (status !== 'approved' && status !== 'not_required' && status !== 'qa_verified') return <AgeVerificationScreen />;
-  return <Stack screenOptions={{headerShown:false}} initialRouteName="(tabs)"><Stack.Screen name="(tabs)" options={{headerShown:false}} /></Stack>;
+  return <Stack screenOptions={{headerShown:false}} initialRouteName="(tabs)">
+  <Stack.Screen name="(tabs)" options={{headerShown:false}} />
+  <Stack.Screen name="explore" options={{headerShown:false}} />
+  <Stack.Screen name="taekwondo" options={{headerShown:false}} />
+  <Stack.Screen name="checklist" options={{headerShown:false}} />
+  <Stack.Screen name="weight" options={{headerShown:false}} />
+  <Stack.Screen name="calendar" options={{headerShown:false}} />
+  <Stack.Screen name="medals" options={{headerShown:false}} />
+  <Stack.Screen name="documents" options={{headerShown:false}} />
+  <Stack.Screen name="verification" options={{headerShown:false}} />
+  <Stack.Screen name="messages" options={{headerShown:false}} />
+  <Stack.Screen name="roadmap" options={{headerShown:false}} />
+  <Stack.Screen name="feedback" options={{headerShown:false}} />
+  <Stack.Screen name="notifications" options={{headerShown:false}} />
+  <Stack.Screen name="scanner" options={{headerShown:false}} />
+  <Stack.Screen name="plans" options={{headerShown:false}} />
+</Stack>;
 }
 
 function AppGate() {
