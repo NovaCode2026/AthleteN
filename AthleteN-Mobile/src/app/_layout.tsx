@@ -18,6 +18,7 @@ function RoleGate({ profile }: { profile: any }) {
     <Stack.Screen name="coach-training" options={{headerShown:false}} />
     <Stack.Screen name="coach-tournaments" options={{headerShown:false}} />
     <Stack.Screen name="coach-competition" options={{headerShown:false}} />
+    <Stack.Screen name="scanner" options={{headerShown:false}} />
     <Stack.Screen name="messages" options={{headerShown:false}} />
     <Stack.Screen name="conversation" options={{headerShown:false}} />
   </Stack>;
