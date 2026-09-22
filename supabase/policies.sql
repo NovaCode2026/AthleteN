@@ -46,21 +46,34 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
+create or replace function private.is_super_admin()
+returns boolean language sql stable security definer set search_path = public as $
+  select exists (
+    select 1 from public.profiles
+    where user_id = (select auth.uid()) and role = 'super_admin'
+  );
+$;
+
+revoke execute on function private.is_super_admin() from public, anon;
+grant execute on function private.is_super_admin() to authenticated;
+
 create or replace function public.enforce_profile_entitlement_security()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public as $
 begin
   if auth.uid() is null then
     return new;
   end if;
 
-  if tg_op = 'INSERT' and not public.is_platform_admin() then
+  -- Only the owner/super_admin can assign or change privileged roles.
+  -- Admins may manage athlete records, but cannot promote themselves or anyone else.
+  if tg_op = 'INSERT' and not private.is_super_admin() then
     new.role = 'athlete';
     new.plan_id = 'free';
     new.verified_athlete = false;
     new.founder_badge = false;
   end if;
 
-  if tg_op = 'UPDATE' and not public.is_platform_admin() then
+  if tg_op = 'UPDATE' and not private.is_super_admin() then
     new.role = old.role;
     new.plan_id = old.plan_id;
     new.verified_athlete = old.verified_athlete;
@@ -69,7 +82,7 @@ begin
 
   return new;
 end;
-$$;
+$;
 
 revoke execute on function public.enforce_profile_entitlement_security() from public, anon, authenticated;
 revoke execute on function public.is_platform_admin() from public, anon;
@@ -231,18 +244,7 @@ grant select, insert on public.audit_logs to authenticated;
 
 
 -- OWNER / SUPER ADMIN ACCESS
--- The dedicated owner role is intentionally narrower than platform-admin access:
--- super_admin can operate all safe application tables from the AthleteN admin panel.
-create or replace function private.is_super_admin()
-returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from public.profiles
-    where user_id = (select auth.uid()) and role = 'super_admin'
-  );
-$$;
-revoke execute on function private.is_super_admin() from public, anon;
-grant execute on function private.is_super_admin() to authenticated;
-
+-- Only the owner/super_admin may assign privileged roles.
 do $$
 declare table_name text;
 begin
