@@ -59,7 +59,7 @@ export default function AuthScreen() {
     setVerificationNotice('');
     setGoogleBusy(true);
     try {
-      const redirectTo = Linking.createURL('auth/callback');
+      const redirectTo = 'athletenmobile://auth/callback';
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo, skipBrowserRedirect: true },
@@ -102,7 +102,7 @@ export default function AuthScreen() {
     setResetBusy(true);
     try {
       const result = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: Linking.createURL('auth/callback?next=reset-password'),
+        redirectTo: 'athletenmobile://auth/callback?next=reset-password',
       });
       if (result.error) setError(result.error.message);
       else setVerificationNotice('Password reset email sent to the email entered above. Check your inbox and spam folder.');
