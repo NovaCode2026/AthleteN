@@ -93,6 +93,7 @@ export default function AuthScreen() {
       Alert.alert('AthleteN OAuth Debug', `App redirect:\n${redirectTo}\n\nSupabase redirect_to:\n${oauthRedirect ?? 'MISSING'}`);
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
       if (result.type !== 'success' || !result.url) {
+        Alert.alert('AthleteN OAuth Result', `type: ${result.type}\n\nurl: ${result.url ?? 'NONE'}`);
         if (result.type !== 'cancel') setError('Google sign-in was not completed.');
         return;
       }
