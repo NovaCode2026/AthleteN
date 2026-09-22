@@ -442,3 +442,36 @@ begin
     execute format('create trigger set_%s_updated_at before update on public.%I for each row execute function public.set_updated_at()', table_name, table_name);
   end loop;
 end $$;
+
+
+-- Coach-controlled nutrition and hydration
+alter table public.profiles add column if not exists gender text;
+alter table public.profiles add column if not exists sport text;
+alter table public.profiles add column if not exists club text;
+alter table public.profiles add column if not exists discipline text check (discipline is null or discipline in ('Kyorugi','Poomsae'));
+
+create table if not exists public.athlete_feature_controls (
+  id uuid primary key default gen_random_uuid(),
+  athlete_user_id uuid not null references auth.users(id) on delete cascade,
+  feature_key text not null,
+  enabled boolean not null default false,
+  set_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (athlete_user_id, feature_key)
+);
+create table if not exists public.nutrition_logs (
+  id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade,
+  log_date date not null default current_date, meal_type text not null default 'meal' check (meal_type in ('breakfast','lunch','dinner','snack','meal')),
+  meal_note text, calories integer check (calories is null or calories >= 0), protein_g numeric(6,1) check (protein_g is null or protein_g >= 0),
+  carbs_g numeric(6,1) check (carbs_g is null or carbs_g >= 0), fat_g numeric(6,1) check (fat_g is null or fat_g >= 0),
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+);
+create table if not exists public.hydration_logs (
+  id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade,
+  log_date date not null default current_date, water_ml integer not null check (water_ml > 0), note text,
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+);
+create index if not exists idx_athlete_feature_controls_user_feature on public.athlete_feature_controls(athlete_user_id, feature_key);
+create index if not exists idx_nutrition_logs_user_date on public.nutrition_logs(user_id, log_date);
+create index if not exists idx_hydration_logs_user_date on public.hydration_logs(user_id, log_date);
