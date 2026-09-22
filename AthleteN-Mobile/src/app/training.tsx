@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { PerformanceLine } from '@/components/performance-chart';
 import { PerformanceBars } from '@/components/performance-chart';
 
 const c=Colors.dark;
