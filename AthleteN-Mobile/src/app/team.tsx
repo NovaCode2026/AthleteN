@@ -1,0 +1,23 @@
+import { useCallback,useEffect,useState } from 'react';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Screen,Header,Section,Card,c } from '@/components/mobile-ui';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
+
+export default function TeamScreen(){
+ const {session,profile,refreshProfile}=useAuth(); const router=useRouter(); const [code,setCode]=useState(''); const [current,setCurrent]=useState<any>(null); const [academy,setAcademy]=useState<any>(null); const [busy,setBusy]=useState(false); const [message,setMessage]=useState('');
+ const load=useCallback(async()=>{if(!session)return; const [p,a]=await Promise.all([supabase.from('profiles').select('coach_user_id,coach,academy_id,academy').eq('user_id',session.user.id).maybeSingle(),supabase.from('academies').select('id,name,city,state').eq('id',profile?.academy_id||'00000000-0000-0000-0000-000000000000').maybeSingle()]);setCurrent(p.data);setAcademy(a.data)},[session,profile?.academy_id]);
+ useEffect(()=>{void load()},[load]);
+ async function connect(){if(!code.trim()){setMessage('Enter a Coach or Academy code.');return}setBusy(true);setMessage('');const {data,error}=await supabase.rpc('connect_athlete_by_code',{p_code:code.trim()});setBusy(false);if(error)setMessage(error.message);else{setMessage(data?.type==='coach'?'Coach connected.':'Academy connected.');setCode('');await refreshProfile();await load()}}
+ async function changeConnection(){if(!session)return;Alert.prompt('Password required','Enter your AthleteN password to change your team connection.',async password=>{if(!password)return;setBusy(true);const reauth=await supabase.auth.signInWithPassword({email:session.user.email||'',password});if(reauth.error){setBusy(false);setMessage('Password verification failed.');return}setBusy(false);setCode('');setMessage('Password verified. Enter the new connection code.');});}
+ return <Screen><Header eyebrow="MY TEAM" title="Coach & Academy" subtitle="Connect your AthleteN account to the people and academy managing your training."/>
+ <Section title="CURRENT CONNECTIONS"><Card>
+   <Text style={{color:c.muted,fontSize:9,fontWeight:'900'}}>COACH</Text><Text style={{color:c.text,fontSize:18,fontWeight:'900',marginTop:4}}>{current?.coach||'Not connected'}</Text>
+   <Text style={{color:c.muted,fontSize:9,fontWeight:'900',marginTop:16}}>ACADEMY</Text><Text style={{color:c.text,fontSize:18,fontWeight:'900',marginTop:4}}>{current?.academy||'Not connected'}</Text>
+   {(current?.coach_user_id||current?.academy_id)?<Pressable onPress={changeConnection} style={{marginTop:16,borderWidth:1,borderColor:c.border,borderRadius:12,padding:12}}><Text style={{color:c.text,fontWeight:'900',fontSize:10}}>VERIFY PASSWORD TO CHANGE CONNECTION</Text></Pressable>:null}
+ </Card></Section>
+ <Section title="CONNECT"><Card><Text style={{color:c.text,fontSize:13,fontWeight:'800'}}>Connection code</Text><TextInput value={code} onChangeText={setCode} autoCapitalize="characters" placeholder="Coach or Academy code" placeholderTextColor={c.muted} style={{marginTop:8,backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,padding:12}}/><Pressable disabled={busy} onPress={()=>void connect()} style={{marginTop:10,backgroundColor:c.accent,borderRadius:12,padding:13,alignItems:'center'}}><Text style={{color:'#fff',fontWeight:'900',fontSize:10}}>{busy?'CONNECTING…':'CONNECT'}</Text></Pressable>{message?<Text style={{color:c.accentBright,fontSize:11,marginTop:10}}>{message}</Text>:null}</Card></Section>
+ <Section title="MESSAGING"><Pressable onPress={()=>router.push('/messages')}><Card accent><Text style={{color:c.accentBright,fontSize:9,fontWeight:'900'}}>PRIVATE COMMUNICATION</Text><Text style={{color:c.text,fontSize:17,fontWeight:'900',marginTop:4}}>Open Messages</Text><Text style={{color:c.muted,fontSize:11,marginTop:4}}>Chat privately with your coach, academy and other AthleteN accounts.</Text></Card></Pressable></Section>
+ </Screen>
+}
