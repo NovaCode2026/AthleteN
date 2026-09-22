@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -10,7 +11,7 @@ const c=Colors.dark;
 type Insight={tag:string;title:string;text:string};
 
 export default function AIScreen(){
- const {session,profile}=useAuth();const [refreshing,setRefreshing]=useState(false);const [training,setTraining]=useState<ChartPoint[]>([]);const [weight,setWeight]=useState<ChartPoint[]>([]);const [insights,setInsights]=useState<Insight[]>([]);const [goals,setGoals]=useState({total:0,completed:0});const [upcoming,setUpcoming]=useState(0);const [totalMinutes,setTotalMinutes]=useState(0);
+ const {session,profile}=useAuth(); const router=useRouter();const [refreshing,setRefreshing]=useState(false);const [training,setTraining]=useState<ChartPoint[]>([]);const [weight,setWeight]=useState<ChartPoint[]>([]);const [insights,setInsights]=useState<Insight[]>([]);const [goals,setGoals]=useState({total:0,completed:0});const [upcoming,setUpcoming]=useState(0);const [totalMinutes,setTotalMinutes]=useState(0);
  const load=useCallback(async()=>{
   if(!session)return;setRefreshing(true);const uid=session.user.id;const now=new Date();const days:string[]=[];for(let i=13;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);days.push([d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'))}
   const [t,w,g,e]=await Promise.all([
@@ -33,6 +34,7 @@ export default function AIScreen(){
  useEffect(()=>{void load()},[load]);
  return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
   <View><Text style={s.kicker}>ATHLETEN INTELLIGENCE</Text><Text style={s.title}>Performance, understood.</Text><Text style={s.sub}>Your real training, competition, weight and goals turned into visual signals.</Text></View>
+  <Pressable onPress={()=>router.push('/ai-coach')} style={s.coachCard}><View style={{flex:1}}><Text style={s.coachKicker}>AI COACH</Text><Text style={s.coachTitle}>Talk to your AthleteN coach</Text><Text style={s.coachText}>Ask about training, competitions and goals using the real data in your account.</Text></View><Text style={s.coachArrow}>›</Text></Pressable>
   <View style={s.hero}><View style={s.heroTop}><Text style={s.heroKicker}>{(profile?.discipline||'Taekwondo').toUpperCase()} PERFORMANCE</Text><View style={s.live}><View style={s.dot}/><Text style={s.liveText}>LIVE DATA</Text></View></View><Text style={s.heroTitle}>Your athlete picture</Text><Text style={s.heroText}>No invented numbers. AthleteN only analyzes records saved to your account.</Text><Pressable onPress={()=>void load()} disabled={refreshing} style={s.refresh}>{refreshing?<ActivityIndicator color="#fff"/>:<Text style={s.refreshText}>REFRESH ANALYSIS</Text>}</Pressable></View>
   <View style={s.statRow}><Stat value={String(totalMinutes)} label="14D MINUTES"/><Stat value={String(upcoming)} label="UPCOMING"/><Stat value={goals.total?Math.round(goals.completed/goals.total*100)+'%':'—'} label="GOAL COMPLETION"/></View>
   <PerformanceLine title="Training load" subtitle="Daily minutes · last 14 days" data={training} unit="m"/>
