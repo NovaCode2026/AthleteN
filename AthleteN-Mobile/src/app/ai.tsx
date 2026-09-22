@@ -4,136 +4,82 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { PerformanceBars, ProgressRing, ChartPoint } from '@/components/performance-chart';
 
 const c = Colors.dark;
 
-type Insight = { title: string; text: string; tag: string };
+type Insight = { tag: string; title: string; text: string };
 
 export default function AIScreen() {
   const { session, profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [training, setTraining] = useState<ChartPoint[]>([]);
+  const [weightTrend, setWeightTrend] = useState<ChartPoint[]>([]);
   const [insights, setInsights] = useState<Insight[]>([]);
-  const [stats, setStats] = useState({ sessions: 0, minutes: 0, upcoming: 0, goals: 0, weight: null as number | null });
+  const [goals, setGoals] = useState({ total: 0, completed: 0 });
+  const [upcoming, setUpcoming] = useState(0);
 
   const load = useCallback(async () => {
     if (!session) return;
-    const uid = session.user.id;
     setRefreshing(true);
-    const since = new Date();
-    since.setDate(since.getDate() - 7);
-    const sinceDate = since.toISOString().slice(0, 10);
-
-    const [training, upcoming, goals, weight] = await Promise.all([
-      supabase.from('training_sessions').select('minutes').eq('user_id', uid).gte('session_date', sinceDate),
-      supabase.from('tournaments').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('starts_at', new Date().toISOString()),
-      supabase.from('goals').select('id,progress,status').eq('user_id', uid),
-      supabase.from('weight_logs').select('weight_kg').eq('user_id', uid).order('logged_at', { ascending: false }).limit(1).maybeSingle(),
+    const uid = session.user.id;
+    const days: string[] = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      days.push(d.toISOString().slice(0, 10));
+    }
+    const [t, w, g, e] = await Promise.all([
+      supabase.from('training_sessions').select('minutes,session_date').eq('user_id', uid).gte('session_date', days[0]).lte('session_date', days[6]),
+      supabase.from('weight_logs').select('weight_kg,logged_at').eq('user_id', uid).order('logged_at', { ascending: true }).limit(7),
+      supabase.from('goals').select('progress,status').eq('user_id', uid),
+      supabase.from('tournaments').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('starts_at', now.toISOString()),
     ]);
+    const rows = t.data ?? [];
+    const chart = days.map(day => ({ label: day.slice(5).replace('-', '/'), value: rows.filter(x => x.session_date === day).reduce((sum,x)=>sum+Number(x.minutes||0),0) }));
+    setTraining(chart);
+    setWeightTrend((w.data ?? []).map(x => ({ label: String(x.logged_at).slice(5,10).replace('-', '/'), value: Number(x.weight_kg) })));
+    const goalRows = g.data ?? [];
+    const completed = goalRows.filter(x => x.status === 'completed' || Number(x.progress || 0) >= 100).length;
+    setGoals({ total: goalRows.length, completed });
+    setUpcoming(e.count ?? 0);
 
-    const sessions = training.data ?? [];
-    const goalRows = goals.data ?? [];
-    const minutes = sessions.reduce((sum, row) => sum + Number(row.minutes || 0), 0);
-    const weightValue = weight.data ? Number(weight.data.weight_kg) : null;
-
+    const totalMinutes = rows.reduce((sum,x)=>sum+Number(x.minutes||0),0);
     const next: Insight[] = [];
-    if (!sessions.length) {
-      next.push({ title: 'Training activity', text: 'No training sessions are logged in the last 7 days. Log your next session to build a useful performance picture.', tag: 'TRAINING' });
-    } else if (minutes < 180) {
-      next.push({ title: 'Training volume', text: `You have logged ${minutes} minutes across ${sessions.length} session${sessions.length === 1 ? '' : 's'} this week.`, tag: 'TRAINING' });
-    } else {
-      next.push({ title: 'Training volume', text: `You have logged ${minutes} minutes across ${sessions.length} sessions this week.`, tag: 'TRAINING' });
-    }
-
-    if (upcoming.count) {
-      next.push({ title: 'Competition on the horizon', text: 'You have an upcoming competition saved. Use the Compete area to review the event and checklist.', tag: 'COMPETE' });
-    } else {
-      next.push({ title: 'Competition calendar', text: 'No upcoming competition is currently saved. Add one when your next event is confirmed.', tag: 'COMPETE' });
-    }
-
-    const completed = goalRows.filter(g => g.status === 'completed' || Number(g.progress || 0) >= 100).length;
-    if (goalRows.length) {
-      next.push({ title: 'Goal progress', text: `${completed} of ${goalRows.length} saved goals are complete.`, tag: 'GOALS' });
-    } else {
-      next.push({ title: 'Build your roadmap', text: 'Create your first goal so AthleteN can show meaningful progress here.', tag: 'GOALS' });
-    }
-
-    if (weightValue != null) {
-      next.push({ title: 'Latest weight', text: `Your latest saved measurement is ${weightValue.toFixed(1)} kg. Keep your records consistent for useful trends.`, tag: 'WEIGHT' });
-    }
-
-    setStats({ sessions: sessions.length, minutes, upcoming: upcoming.count ?? 0, goals: goalRows.length, weight: weightValue });
+    if (!rows.length) next.push({tag:'TRAINING',title:'Training signal is empty',text:'No sessions are logged in the last 7 days. Log training to unlock a useful trend.'});
+    else next.push({tag:'TRAINING',title:'Training volume is live',text:totalMinutes+' minutes across '+rows.length+' session'+(rows.length===1?'':'s')+' in the last 7 days.'});
+    if (w.data && w.data.length >= 2) {
+      const first = Number(w.data[0].weight_kg);
+      const last = Number(w.data[w.data.length-1].weight_kg);
+      const change = last - first;
+      next.push({tag:'WEIGHT',title:'Weight trend detected',text:'Your logged weight changed '+(change >= 0 ? '+' : '')+change.toFixed(1)+' kg across the latest records.'});
+    } else next.push({tag:'WEIGHT',title:'Build your weight trend',text:'Add more weight logs and AthleteN will visualize the direction over time.'});
+    if (e.count) next.push({tag:'COMPETE',title:'Competition is on the calendar',text:e.count+' upcoming event'+(e.count===1?'':'s')+' saved. Use Compete to manage preparation and checklist items.'});
+    else next.push({tag:'COMPETE',title:'No upcoming event',text:'Add your next tournament to connect training with a competition timeline.'});
+    next.push({tag:'GOALS',title:'Goal progress is measurable',text:goalRows.length ? completed+' of '+goalRows.length+' goals are complete.' : 'No goals are saved yet. Add one from Profile to start progress tracking.'});
     setInsights(next);
     setLoading(false);
     setRefreshing(false);
-  }, [session]);
+  },[session]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(()=>{void load()},[load]);
 
-  return (
-    <View style={styles.container}>
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.eyebrow}>ATHLETEN INTELLIGENCE</Text>
-              <Text style={styles.title}>Your performance, understood.</Text>
-              <Text style={styles.subtitle}>A single place for your training, competition and progress signals.</Text>
-            </View>
-            <View style={styles.aiBadge}><Text style={styles.aiBadgeText}>AI</Text></View>
-          </View>
-
-          <View style={styles.hero}>
-            <View style={styles.heroTop}><Text style={styles.heroLabel}>ATHLETEN AI PANEL</Text><View style={styles.live}><View style={styles.dot}/><Text style={styles.liveText}>LIVE DATA</Text></View></View>
-            <Text style={styles.heroTitle}>{profile?.discipline || 'Taekwondo'} performance intelligence</Text>
-            <Text style={styles.heroCopy}>Insights are generated from the real information in your AthleteN account. Nothing here is invented.</Text>
-            <Pressable onPress={() => void load()} style={styles.refresh}>
-              {refreshing ? <ActivityIndicator color={c.text}/> : <Text style={styles.refreshText}>REFRESH INTELLIGENCE</Text>}
-            </Pressable>
-          </View>
-
-          <View style={styles.stats}>
-            <MiniStat label="7D SESSIONS" value={loading ? '—' : String(stats.sessions)} />
-            <MiniStat label="7D MINUTES" value={loading ? '—' : String(stats.minutes)} />
-            <MiniStat label="GOALS" value={loading ? '—' : String(stats.goals)} />
-            <MiniStat label="UPCOMING" value={loading ? '—' : String(stats.upcoming)} />
-          </View>
-
-          <Text style={styles.section}>CURRENT SIGNALS</Text>
-          {loading ? <ActivityIndicator color={c.accentBright} style={{ marginTop: 20 }} /> : insights.map((item, index) => (
-            <View key={item.title + index} style={styles.card}>
-              <View style={styles.cardTop}><Text style={styles.tag}>{item.tag}</Text><Text style={styles.index}>0{index + 1}</Text></View>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardText}>{item.text}</Text>
-            </View>
-          ))}
-
-          <View style={styles.note}>
-            <Text style={styles.noteTitle}>AI FOUNDATION</Text>
-            <Text style={styles.noteText}>This panel is already connected to your real AthleteN data. The next AI service layer can turn these signals into deeper coaching analysis without changing the mobile experience.</Text>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </View>
-  );
+  return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+    <View><Text style={s.kicker}>ATHLETEN INTELLIGENCE</Text><Text style={s.title}>Performance, visualized.</Text><Text style={s.sub}>Real AthleteN records turned into trends and actionable signals.</Text></View>
+    <View style={s.hero}><View style={s.live}><View style={s.dot}/><Text style={s.liveText}>LIVE DATA</Text></View><Text style={s.heroTitle}>{profile?.discipline || 'Taekwondo'} intelligence</Text><Text style={s.heroText}>No invented performance numbers. Every chart below is built from your saved records.</Text><Pressable onPress={()=>void load()} style={s.refresh}>{refreshing?<ActivityIndicator color="#fff"/>:<Text style={s.refreshText}>REFRESH ANALYSIS</Text>}</Pressable></View>
+    {loading ? <ActivityIndicator color={c.accentBright} style={{marginTop:20}}/> : <>
+      <PerformanceBars title="Training volume" subtitle="Daily minutes · last 7 days" data={training} unit="m"/>
+      <PerformanceBars title="Weight trend" subtitle="Latest saved measurements" data={weightTrend} unit="kg" accent={c.success}/>
+      <ProgressRing value={goals.total ? goals.completed/goals.total*100 : 0} label="Goal progress" detail={goals.total ? goals.completed+' of '+goals.total+' goals complete' : 'No goals saved yet'}/>
+      <View style={s.section}><Text style={s.sectionTitle}>CURRENT SIGNALS</Text></View>
+      {insights.map((x,i)=><View style={s.signal} key={x.tag+i}><View style={s.signalTop}><Text style={s.tag}>{x.tag}</Text><Text style={s.number}>0{i+1}</Text></View><Text style={s.signalTitle}>{x.title}</Text><Text style={s.signalText}>{x.text}</Text></View>)}
+      <View style={s.footer}><Text style={s.footerTitle}>ATHLETEN AI FOUNDATION</Text><Text style={s.footerText}>The mobile layer now presents measurable signals first. A deeper coaching model can be connected later without replacing this data pipeline.</Text></View>
+    </>}
+  </ScrollView></SafeAreaView>;
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return <View style={styles.mini}><Text style={styles.miniLabel}>{label}</Text><Text style={styles.miniValue}>{value}</Text></View>;
-}
-
-const styles = StyleSheet.create({
-  container:{flex:1,backgroundColor:c.background}, safe:{flex:1}, content:{padding:18,gap:14,paddingBottom:40},
-  header:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',gap:14,paddingTop:8},
-  eyebrow:{color:c.accentBright,fontSize:10,fontWeight:'900',letterSpacing:1.8}, title:{color:c.text,fontSize:29,fontWeight:'900',lineHeight:34,marginTop:7,maxWidth:310},
-  subtitle:{color:c.muted,fontSize:12,lineHeight:18,marginTop:8,maxWidth:330}, aiBadge:{width:52,height:52,borderRadius:18,backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep,alignItems:'center',justifyContent:'center'},
-  aiBadgeText:{color:c.accentBright,fontSize:17,fontWeight:'900',letterSpacing:1}, hero:{backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:24,padding:18,gap:10,overflow:'hidden'},
-  heroTop:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}, heroLabel:{color:c.text,fontSize:10,fontWeight:'900',letterSpacing:1.4}, live:{flexDirection:'row',alignItems:'center',gap:5},
-  dot:{width:7,height:7,borderRadius:4,backgroundColor:c.success}, liveText:{color:c.success,fontSize:8,fontWeight:'900',letterSpacing:1}, heroTitle:{color:c.text,fontSize:20,fontWeight:'900',lineHeight:25},
-  heroCopy:{color:c.muted,fontSize:12,lineHeight:19}, refresh:{height:46,borderRadius:14,backgroundColor:c.accent,borderWidth:1,borderColor:c.accentBright,alignItems:'center',justifyContent:'center'},
-  refreshText:{color:'#fff',fontSize:10,fontWeight:'900',letterSpacing:1.2}, stats:{flexDirection:'row',flexWrap:'wrap',gap:9}, mini:{width:'48.3%',backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:17,padding:14,minHeight:76,justifyContent:'space-between'},
-  miniLabel:{color:c.muted,fontSize:8,fontWeight:'900',letterSpacing:1}, miniValue:{color:c.text,fontSize:22,fontWeight:'900'}, section:{color:c.text,fontSize:10,fontWeight:'900',letterSpacing:1.6,marginTop:5},
-  card:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:19,padding:16,gap:7}, cardTop:{flexDirection:'row',justifyContent:'space-between'}, tag:{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1.1}, index:{color:c.muted,fontSize:9,fontWeight:'900'},
-  cardTitle:{color:c.text,fontSize:16,fontWeight:'800'}, cardText:{color:c.muted,fontSize:12,lineHeight:19}, note:{backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep,borderRadius:19,padding:16,gap:7},
-  noteTitle:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.3}, noteText:{color:'#BBD6FF',fontSize:11,lineHeight:18},
+const s=StyleSheet.create({
+ screen:{flex:1,backgroundColor:c.background},content:{padding:18,gap:14,paddingBottom:45},kicker:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.6},title:{color:c.text,fontSize:30,fontWeight:'900',lineHeight:35,marginTop:6},sub:{color:c.muted,fontSize:12,lineHeight:18,marginTop:4},hero:{backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:22,padding:17,gap:8},live:{flexDirection:'row',alignItems:'center',gap:6},dot:{width:7,height:7,borderRadius:4,backgroundColor:c.success},liveText:{color:c.success,fontSize:8,fontWeight:'900',letterSpacing:1},heroTitle:{color:c.text,fontSize:21,fontWeight:'900'},heroText:{color:c.muted,fontSize:11,lineHeight:17},refresh:{height:46,borderRadius:13,backgroundColor:c.accent,alignItems:'center',justifyContent:'center',marginTop:3},refreshText:{color:'#fff',fontSize:10,fontWeight:'900',letterSpacing:1},section:{marginTop:3},sectionTitle:{color:c.text,fontSize:10,fontWeight:'900',letterSpacing:1.5},signal:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:18,padding:15,gap:6},signalTop:{flexDirection:'row',justifyContent:'space-between'},tag:{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1},number:{color:c.muted,fontSize:8,fontWeight:'900'},signalTitle:{color:c.text,fontSize:15,fontWeight:'900'},signalText:{color:c.muted,fontSize:11,lineHeight:18},footer:{backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep,borderRadius:18,padding:15,gap:5},footerTitle:{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1.2},footerText:{color:'#BBD6FF',fontSize:10,lineHeight:17}
 });
