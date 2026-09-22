@@ -5,12 +5,10 @@ import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
-import { useRouter } from 'expo-router';
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
-  const router = useRouter();
   const [register, setRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,6 +18,7 @@ export default function AuthScreen() {
   const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
   const [verificationNotice, setVerificationNotice] = useState('');
+  const [resetBusy, setResetBusy] = useState(false);
 
   async function submit() {
     setError('');
@@ -92,6 +91,26 @@ export default function AuthScreen() {
     }
   }
 
+  async function resetPassword() {
+    const cleanEmail = email.trim().toLowerCase();
+    setError('');
+    setVerificationNotice('');
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setError('Enter the email linked to your AthleteN account first.');
+      return;
+    }
+    setResetBusy(true);
+    try {
+      const result = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: Linking.createURL('auth/callback?next=reset-password'),
+      });
+      if (result.error) setError(result.error.message);
+      else setVerificationNotice('Password reset email sent to the email entered above. Check your inbox and spam folder.');
+    } finally {
+      setResetBusy(false);
+    }
+  }
+
   async function resendVerification() {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) { setError('Enter the email address you used to register first.'); return; }
@@ -117,7 +136,7 @@ export default function AuthScreen() {
         <Text style={styles.title}>{register ? 'Build your AthleteN profile.' : 'Your performance. One place.'}</Text>
         <Text style={styles.subtitle}>Training, competition, weight, goals and athlete intelligence — built around you.</Text>
 
-        <Pressable onPress={signInWithGoogle} disabled={busy || googleBusy || resending} style={styles.google}>
+        <Pressable onPress={signInWithGoogle} disabled={busy || googleBusy || resending || resetBusy} style={styles.google}>
           {googleBusy ? <ActivityIndicator color={Colors.dark.text} /> : <><View style={styles.googleMark}><Text style={styles.googleG}>G</Text></View><Text style={styles.googleText}>CONTINUE WITH GOOGLE</Text></>}
         </Pressable>
 
@@ -132,7 +151,7 @@ export default function AuthScreen() {
           <Pressable onPress={submit} disabled={busy || googleBusy || resending} style={styles.primary}>
             {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{register ? 'CREATE ACCOUNT' : 'SIGN IN'}</Text>}
           </Pressable>
-          {!register && <Pressable onPress={() => router.push('/reset-request')}><Text style={styles.forgot}>Forgot password?</Text></Pressable>}
+          {!register && <Pressable onPress={resetPassword} disabled={busy || googleBusy || resending || resetBusy}><Text style={styles.forgot}>{resetBusy ? 'SENDING RESET EMAIL…' : 'Forgot password? Send reset email'}</Text></Pressable>}
           {!register && /not verified|not confirmed/i.test(error) && <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>{resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION</Text>}</Pressable>}
           {register && !!verificationNotice && <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>{resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION EMAIL</Text>}</Pressable>}
         </View>
