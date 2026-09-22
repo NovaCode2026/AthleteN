@@ -16,6 +16,9 @@ export default function ExploreScreen(){
  useEffect(()=>{void load()},[load]);
  return <Screen><Header eyebrow="ATHLETEN V2" title="More" subtitle="The rest of the AthleteN command center, rebuilt for mobile."/>
 
+  <Section title="PERSONALIZATION">
+   <FeatureRow title="Customize Navigation" text="Choose and reorder the six features on your bottom bar" onPress={()=>router.push({pathname:'/navigation-settings'})}/>
+  </Section>
   <Section title="TAEKWONDO">
    <FeatureRow title="Taekwondo Hub" text={profile?.discipline?profile.discipline+' performance, bouts and training':'Kyorugi & Poomsae performance'} onPress={()=>router.push({pathname:'/taekwondo'})}/>
    <FeatureRow title="Competition Checklist" text="Gear, documents and pre-event preparation" badge={String(counts.check)} onPress={()=>router.push({pathname:'/checklist'})}/>
