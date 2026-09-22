@@ -76,7 +76,6 @@ export default function AuthScreen() {
     setGoogleBusy(true);
     try {
       const redirectTo = authRedirect();
-      Alert.alert('AthleteN OAuth Step 1', redirectTo);
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo, skipBrowserRedirect: true },
@@ -89,21 +88,10 @@ export default function AuthScreen() {
       }
       if (!data?.url) throw new Error('Google sign-in could not start.');
 
-      const oauthRedirect = (() => { try { return new URL(data.url).searchParams.get('redirect_to'); } catch { return null; } })();
-      Alert.alert('AthleteN OAuth Debug', `App redirect:\n${redirectTo}\n\nSupabase redirect_to:\n${oauthRedirect ?? 'MISSING'}`);
-      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-      if (result.type !== 'success' || !result.url) {
-        Alert.alert('AthleteN OAuth Result', `type: ${result.type}\n\nurl: ${result.url ?? 'NONE'}`);
-        if (result.type !== 'cancel') setError('Google sign-in was not completed.');
-        return;
-      }
-
-      const callback = new URL(result.url);
-      const code = callback.searchParams.get('code');
-      if (!code) throw new Error('Google sign-in returned without an authorization code.');
-
-      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-      if (exchangeError) throw exchangeError;
+      // Expo Go can dismiss WebBrowser auth sessions before handing an exp:// callback
+      // back to JavaScript. Open the OAuth URL normally and let the Expo Router
+      // callback screen receive the deep link and exchange the PKCE code.
+      await WebBrowser.openBrowserAsync(data.url);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Google sign-in failed.');
     } finally {
