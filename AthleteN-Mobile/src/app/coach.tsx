@@ -132,24 +132,18 @@ export default function Coach() {
       setAcademyName('');
     }
 
-    const account = await supabase
-      .from('finance_accounts')
-      .select('id')
-      .eq('owner_user_id', profile.user_id)
-      .eq('owner_type', 'coach')
-      .maybeSingle();
-
-    if (account.data?.id) {
-      setAccountId(account.data.id);
+    const accountRpc = await supabase.rpc('get_or_create_my_coach_finance_account');
+    const financeId = accountRpc.data || null;
+    setAccountId(financeId);
+    if (financeId) {
       const tx = await supabase
         .from('finance_transactions')
         .select('id,type,amount,category,description,transaction_date')
-        .eq('account_id', account.data.id)
+        .eq('account_id', financeId)
         .order('transaction_date', { ascending: false })
         .limit(100);
       setTransactions((tx.data || []) as Tx[]);
     } else {
-      setAccountId(null);
       setTransactions([]);
     }
   };
