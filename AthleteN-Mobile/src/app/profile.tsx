@@ -50,7 +50,7 @@ export default function ProfileScreen() {
     if(!session)return;
     const permission=await ImagePicker.requestMediaLibraryPermissionsAsync();
     if(!permission.granted){setMessage('Photo library permission is required to choose a profile photo.');return}
-    const result=await ImagePicker.launchImageLibraryAsync({mediaTypes:ImagePicker.MediaTypeOptions.Images,allowsEditing:true,aspect:[1,1],quality:.85});
+    const result=await ImagePicker.launchImageLibraryAsync({mediaTypes:['images'],allowsEditing:true,aspect:[1,1],quality:.85});
     if(result.canceled||!result.assets[0]?.uri)return;
     setAvatarBusy(true);setMessage('');
     try{
