@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { PerformanceBars } from '@/components/performance-chart';
 
 const c = Colors.dark;
 
@@ -13,6 +14,7 @@ export default function CompeteScreen() {
  const [opponent,setOpponent]=useState(''); const [round,setRound]=useState(''); const [result,setResult]=useState(''); const [score,setScore]=useState('');
  const [medalEvent,setMedalEvent]=useState(''); const [medalType,setMedalType]=useState(''); const [medalDate,setMedalDate]=useState(''); const [item,setItem]=useState('');
  const [busy,setBusy]=useState(false); const [message,setMessage]=useState('');
+ const medalChart=[{label:'Gold',value:medals.filter(m=>String(m.medal_type).toLowerCase().includes('gold')).length},{label:'Silver',value:medals.filter(m=>String(m.medal_type).toLowerCase().includes('silver')).length},{label:'Bronze',value:medals.filter(m=>String(m.medal_type).toLowerCase().includes('bronze')).length}];
 
  const load=useCallback(async()=>{if(!session)return;const uid=session.user.id;const [t,m,cx]=await Promise.all([
   supabase.from('tournaments').select('id,name,starts_at,location,status,result').eq('user_id',uid).order('starts_at',{ascending:false}),
@@ -33,6 +35,7 @@ export default function CompeteScreen() {
   <View style={s.summary}><View><Text style={s.summaryKicker}>ATHLETE</Text><Text style={s.summaryTitle}>{profile?.discipline||'Taekwondo'} competitor</Text></View><Text style={s.trophy}>🏆</Text></View>
   <Section title="ADD TOURNAMENT"><Field label="TOURNAMENT NAME *" value={name} onChangeText={setName} placeholder="State / National Championship"/><View style={s.row}><View style={s.half}><Field label="DATE" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD"/></View><View style={s.half}><Field label="LOCATION" value={location} onChangeText={setLocation} placeholder="Venue"/></View></View><Button title="SAVE TOURNAMENT" onPress={addTournament} busy={busy}/></Section>
   <SectionHeader title="TOURNAMENTS" count={tournaments.length}/>
+  <PerformanceBars title="Medal record" subtitle="Saved competition results" data={medalChart} unit="" accent={c.accentBright}/>
   {!tournaments.length?<Empty text="No tournaments saved yet."/>:tournaments.map(t=><Pressable key={t.id} onPress={()=>setSelected(t.id)} style={[s.event,t.id===selected&&s.eventActive]}><View style={s.eventTop}><View style={s.eventIcon}><Text style={s.eventIconText}>C</Text></View><View style={s.eventCopy}><Text style={s.eventTitle}>{t.name}</Text><Text style={s.meta}>{t.starts_at||'Date not set'}{t.location?' • '+t.location:''}</Text></View><Text style={s.chevron}>›</Text></View><Text style={s.status}>{(t.status||'planned').toUpperCase()}</Text></Pressable>)}
   {selected&&<Section title="MATCHES"><Field label="OPPONENT *" value={opponent} onChangeText={setOpponent} placeholder="Opponent name"/><View style={s.row}><View style={s.half}><Field label="ROUND" value={round} onChangeText={setRound} placeholder="Final"/></View><View style={s.half}><Field label="SCORE" value={score} onChangeText={setScore} placeholder="12-8"/></View></View><Field label="RESULT" value={result} onChangeText={setResult} placeholder="Win / Loss / Pending"/><Button title="SAVE MATCH" onPress={addMatch} busy={busy}/>{matches.map(m=><View style={s.inner} key={m.id}><View style={s.eventTop}><Text style={s.eventTitle}>{m.opponent_name}</Text><Text style={s.link}>{m.result||'Pending'}</Text></View><Text style={s.meta}>{m.round_name||'Round not set'}{m.score?' • '+m.score:''}</Text><Pressable onPress={()=>remove('matches',m.id)}><Text style={s.delete}>DELETE</Text></Pressable></View>)}{!matches.length&&<Text style={s.meta}>No matches recorded for this tournament.</Text>}</Section>}
   <Section title="MEDALS"><Field label="EVENT *" value={medalEvent} onChangeText={setMedalEvent} placeholder="Event name"/><Field label="MEDAL TYPE *" value={medalType} onChangeText={setMedalType} placeholder="Gold / Silver / Bronze"/><Field label="AWARDED DATE" value={medalDate} onChangeText={setMedalDate} placeholder="YYYY-MM-DD"/><Button title="SAVE MEDAL" onPress={addMedal} busy={busy}/>{medals.map(m=><View style={s.inner} key={m.id}><View style={s.eventTop}><Text style={s.eventTitle}>{m.event_name}</Text><Text style={s.link}>{m.medal_type}</Text></View><Text style={s.meta}>{m.awarded_at||'Date not set'}{m.category?' • '+m.category:''}</Text><Pressable onPress={()=>remove('medals',m.id)}><Text style={s.delete}>DELETE</Text></Pressable></View>)}</Section>
