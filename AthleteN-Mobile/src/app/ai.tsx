@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { validMinutes } from '@/lib/performance';
+import { validMinutes, validWeight } from '@/lib/performance';
 import { PerformanceLine, PerformanceBars, ProgressRing, ChartPoint } from '@/components/performance-chart';
 
 const c=Colors.dark;
@@ -22,12 +22,12 @@ export default function AIScreen(){
    supabase.from('tournaments').select('id',{count:'exact',head:true}).eq('user_id',uid).gte('starts_at',now.toISOString())
   ]);
   const rows=(t.data||[]).map(x=>({...x,_minutes:validMinutes(x.minutes)})).filter(x=>x._minutes>0);const daily=days.map(day=>({label:day.slice(5).replace('-','/'),value:rows.filter(x=>String(x.session_date).slice(0,10)===day).reduce((sum,x)=>sum+x._minutes,0)}));setTraining(daily);const mins=rows.reduce((sum,x)=>sum+x._minutes,0);setTotalMinutes(mins);
-  setWeight((w.data||[]).slice().reverse().map(x=>({label:String(x.logged_at).slice(5,10).replace('-','/'),value:Number(x.weight_kg)})));
+  setWeight((w.data||[]).slice().reverse().map(x=>({label:String(x.logged_at).slice(5,10).replace('-','/'),value:validWeight(x.weight_kg)||0})).filter(x=>x.value>0));
   const gs=g.data||[];const completed=gs.filter(x=>x.status==='completed'||Number(x.progress||0)>=100).length;setGoals({total:gs.length,completed});setUpcoming(e.count||0);
   const next:Insight[]=[];
   const activeDays=daily.filter(x=>x.value>0).length;
   next.push(rows.length?{tag:'TRAINING',title:activeDays+' active days in 14 days',text:mins+' minutes logged across '+rows.length+' sessions. The graph shows where your workload is concentrated.'}:{tag:'TRAINING',title:'No recent training signal',text:'Log sessions to unlock workload and consistency analysis.'});
-  if((w.data||[]).length>=2){const ordered=(w.data||[]).slice().sort((a,b)=>String(a.logged_at).localeCompare(String(b.logged_at))); const first=Number(ordered[0].weight_kg),last=Number(ordered[ordered.length-1].weight_kg),change=last-first;next.push({tag:'WEIGHT',title:'Weight trend is visible',text:'Latest measurements moved '+(change>=0?'+':'')+change.toFixed(1)+' kg across the saved history.'})}else next.push({tag:'WEIGHT',title:'More weight data needed',text:'Add at least two measurements to turn the weight section into a useful trend.'});
+  if((w.data||[]).filter(x=>validWeight(x.weight_kg)!==null).length>=2){const ordered=(w.data||[]).map(x=>({...x,_weight:validWeight(x.weight_kg)})).filter(x=>x._weight!==null).sort((a,b)=>String(a.logged_at).localeCompare(String(b.logged_at))); const first=Number(ordered[0]?._weight||0),last=Number(ordered.at(-1)?._weight||0),change=last-first;next.push({tag:'WEIGHT',title:'Weight trend is visible',text:'Latest measurements moved '+(change>=0?'+':'')+change.toFixed(1)+' kg across the saved history.'})}else next.push({tag:'WEIGHT',title:'More weight data needed',text:'Add at least two measurements to turn the weight section into a useful trend.'});
   next.push(e.count?{tag:'COMPETE',title:'Competition calendar is active',text:e.count+' upcoming event'+(e.count===1?'':'s')+' saved. Keep your preparation linked to the next event.'}:{tag:'COMPETE',title:'Build your competition calendar',text:'Add an upcoming tournament to connect training and competition preparation.'});
   next.push(gs.length?{tag:'GOALS',title:completed+' of '+gs.length+' goals complete',text:'Goal progress is tracked from the real values saved in your AthleteN profile.'}:{tag:'GOALS',title:'No goals yet',text:'Create a goal in Profile and AthleteN will visualize the progress.'});
   setInsights(next);setRefreshing(false);
