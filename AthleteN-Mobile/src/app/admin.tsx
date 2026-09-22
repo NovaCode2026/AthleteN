@@ -25,9 +25,10 @@ function labelize(key: string) {
   return key.replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
 }
 
-function editableFields(row: Row): Field[] {
+function editableFields(row: Row, owner: boolean): Field[] {
   return Object.keys(row)
     .filter(key => !['id', 'user_id', 'created_at', 'updated_at'].includes(key))
+    .filter(key => owner || key !== 'role')
     .map(key => ({ key, value: row[key] == null ? '' : String(row[key]), original: row[key] }));
 }
 
@@ -97,7 +98,7 @@ export default function AdminScreen() {
 
   function openRecord(row: Row) {
     setSelectedRow(row);
-    setFields(editableFields(row));
+    setFields(editableFields(row, owner));
   }
 
   function setField(key: string, value: string) {
@@ -268,6 +269,8 @@ export default function AdminScreen() {
                   <TextInput value={field.value} onChangeText={value => setField(field.key, value)} placeholder={labelize(field.key)} placeholderTextColor={c.muted} style={s.input} multiline={field.value.length > 80} />
                 </View>
               ))}
+              {selected === 'profiles' && !owner ? <View style={s.roleProtected}><Text style={s.roleProtectedTitle}>ACCESS ROLE PROTECTED</Text><Text style={s.roleProtectedText}>Only the owner can assign Admin or Super Admin. Your administrator role can manage athlete data without changing privileged access.</Text></View> : null}
+              {selected === 'profiles' && owner ? <View style={s.rolePanel}><Text style={s.rolePanelTitle}>ACCESS ROLE</Text><Text style={s.rolePanelHint}>Owner-only permission. Choose who can access the Admin Command Center.</Text><View style={s.roleButtons}>{['athlete','coach','academy_admin','support_admin','admin','super_admin'].map(role => <Pressable key={role} onPress={() => setField('role', role)} style={[s.roleButton, fields.find(field => field.key === 'role')?.value === role && s.roleButtonActive]}><Text style={[s.roleButtonText, fields.find(field => field.key === 'role')?.value === role && s.roleButtonTextActive]}>{role.replace('_',' ').toUpperCase()}</Text></Pressable>)}</View></View> : null}
               <Text style={s.advancedHint}>Advanced database fields such as IDs and timestamps are protected from normal editing.</Text>
             </ScrollView>
             <View style={s.editorActions}>
