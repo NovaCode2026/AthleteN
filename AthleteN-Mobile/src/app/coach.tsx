@@ -236,12 +236,13 @@ export default function Coach() {
     setBusy(true);
     let id = accountId;
     if (!id) {
-      const created = await supabase
-        .from('finance_accounts')
-        .insert({ owner_user_id: profile.user_id, owner_type: 'coach', name: 'Coach Finance', currency: 'INR' })
-        .select('id')
-        .single();
-      id = created.data?.id || null;
+      const created = await supabase.rpc('get_or_create_my_coach_finance_account');
+      if (created.error) {
+        setBusy(false);
+        Alert.alert('Finance unavailable', created.error.message);
+        return;
+      }
+      id = created.data || null;
     }
     if (!id) {
       setBusy(false);
