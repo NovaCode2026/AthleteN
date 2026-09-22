@@ -12,7 +12,7 @@ type Insight={tag:string;title:string;text:string};
 export default function AIScreen(){
  const {session,profile}=useAuth();const [refreshing,setRefreshing]=useState(false);const [training,setTraining]=useState<ChartPoint[]>([]);const [weight,setWeight]=useState<ChartPoint[]>([]);const [insights,setInsights]=useState<Insight[]>([]);const [goals,setGoals]=useState({total:0,completed:0});const [upcoming,setUpcoming]=useState(0);const [totalMinutes,setTotalMinutes]=useState(0);
  const load=useCallback(async()=>{
-  if(!session)return;setRefreshing(true);const uid=session.user.id;const now=new Date();const days:string[]=[];for(let i=13;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);days.push(d.toISOString().slice(0,10))}
+  if(!session)return;setRefreshing(true);const uid=session.user.id;const now=new Date();const days:string[]=[];for(let i=13;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);days.push([d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'))}
   const [t,w,g,e]=await Promise.all([
    supabase.from('training_sessions').select('minutes,session_date').eq('user_id',uid).gte('session_date',days[0]).lte('session_date',days[13]),
    supabase.from('weight_logs').select('weight_kg,logged_at').eq('user_id',uid).order('logged_at',{ascending:false}).limit(14),
