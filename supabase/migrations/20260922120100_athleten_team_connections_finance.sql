@@ -1,0 +1,3 @@
+-- Production migration: athleten_team_connections_finance_messaging_privacy_v3
+-- The production database contains the corresponding team connection, unique code, finance, RLS, and support-linked messaging changes.
+-- Kept as a deployment marker because the full migration was applied through the Supabase migration runner.
