@@ -27,15 +27,17 @@ export default function ProfileScreen() {
   const [goalProgress,setGoalProgress]=useState('0');
   const [message,setMessage]=useState('');
   const [busy,setBusy]=useState(false);
+  const [nutritionEnabled,setNutritionEnabled]=useState(false);
 
   const load=useCallback(async()=>{
     if(!session)return;
-    const [w,g]=await Promise.all([
+    const [w,g,n]=await Promise.all([
       supabase.from('weight_logs').select('id,logged_at,weight_kg,target_weight_kg,notes').eq('user_id',session.user.id).order('logged_at',{ascending:false}).limit(30),
-      supabase.from('goals').select('id,title,target_date,status,progress,notes').eq('user_id',session.user.id).order('target_date',{ascending:true})
+      supabase.from('goals').select('id,title,target_date,status,progress,notes').eq('user_id',session.user.id).order('target_date',{ascending:true}),
+      supabase.from('athlete_feature_controls').select('enabled').eq('athlete_user_id',session.user.id).eq('feature_key','nutrition').maybeSingle()
     ]);
-    if(w.error||g.error)setMessage(w.error?.message||g.error?.message||'Could not load profile data.');
-    setWeights(w.data||[]); setGoals(g.data||[]);
+    if(w.error||g.error||n.error)setMessage(w.error?.message||g.error?.message||n.error?.message||'Could not load profile data.');
+    setWeights(w.data||[]); setGoals(g.data||[]); setNutritionEnabled(n.data?.enabled===true);
   },[session]);
   useEffect(()=>{void load()},[load]);
 
@@ -97,7 +99,7 @@ export default function ProfileScreen() {
 
     {message?<Text style={s.message}>{message}</Text>:null}
     <Pressable onPress={()=>router.push('/plans')} style={s.adminCard}><View><Text style={s.adminKicker}>ATHLETEN ACCOUNT</Text><Text style={s.adminTitle}>Plan & Billing</Text><Text style={s.meta}>View your current plan, features and AI usage.</Text></View><Text style={s.adminArrow}>›</Text></Pressable>
-    <Pressable onPress={()=>router.push('/nutrition')} style={s.adminCard}><View><Text style={s.adminKicker}>COACH CONTROLLED</Text><Text style={s.adminTitle}>Nutrition & Hydration</Text><Text style={s.meta}>Available when your coach enables nutrition tracking.</Text></View><Text style={s.adminArrow}>›</Text></Pressable>
+    {nutritionEnabled?<Pressable onPress={()=>router.push('/nutrition')} style={s.adminCard}><View><Text style={s.adminKicker}>COACH CONTROLLED</Text><Text style={s.adminTitle}>Nutrition & Hydration</Text><Text style={s.meta}>Log meals, optional calories and hydration.</Text></View><Text style={s.adminArrow}>›</Text></Pressable>:null}
     <Pressable onPress={()=>router.push('/scanner')} style={s.adminCard}><View><Text style={s.adminKicker}>ATHLETEN INTELLIGENCE</Text><Text style={s.adminTitle}>Tournament Scanner</Text><Text style={s.meta}>Scan and track tournament sources.</Text></View><Text style={s.adminArrow}>›</Text></Pressable>{isAdmin?<Pressable onPress={()=>router.push('/admin')} style={s.adminCard}><View><Text style={s.adminKicker}>OWNER / ADMIN</Text><Text style={s.adminTitle}>Admin Command Center</Text><Text style={s.meta}>Manage AthleteN from a dedicated workspace.</Text></View><Text style={s.adminArrow}>›</Text></Pressable>:null}
     <Pressable onPress={()=>router.push('/reset-request')} style={s.settingsRow}><Text style={s.settingsIcon}>↻</Text><View style={s.settingsCopy}><Text style={s.settingsTitle}>Password & account security</Text><Text style={s.meta}>Reset your password or recover access</Text></View><Text style={s.adminArrow}>›</Text></Pressable>
     <Pressable onPress={signOut} style={s.signOut}><Text style={s.signOutText}>SIGN OUT</Text></Pressable>
