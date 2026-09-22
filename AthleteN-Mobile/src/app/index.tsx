@@ -14,7 +14,7 @@ export default function HomeScreen(){
  const [minutes,setMinutes]=useState(0);const [sessions,setSessions]=useState(0);const [chart,setChart]=useState<ChartPoint[]>([]);const [weight,setWeight]=useState<number|null>(null);const [medals,setMedals]=useState(0);const [next,setNext]=useState<any>(null);
  const load=useCallback(async()=>{
   if(!session)return; const uid=session.user.id; const now=new Date(); const days:string[]=[];
-  for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);days.push(d.toISOString().slice(0,10))}
+  for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);days.push([d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'))}
   const [t,w,m,e]=await Promise.all([
    supabase.from('training_sessions').select('minutes,session_date').eq('user_id',uid).gte('session_date',days[0]).lte('session_date',days[6]),
    supabase.from('weight_logs').select('weight_kg').eq('user_id',uid).order('logged_at',{ascending:false}).limit(1).maybeSingle(),
