@@ -15,6 +15,7 @@ export default function ExploreScreen(){
  ]);setCounts({docs:d.count||0,check:(ch.data||[]).filter((x:any)=>!x.completed).length,roadmap:r.count||0,notices:n.count||0})},[session]);
  useEffect(()=>{void load()},[load]);
  return <Screen><Header eyebrow="ATHLETEN V2" title="More" subtitle="The rest of the AthleteN command center, rebuilt for mobile."/>
+  <Card accent><Text style={{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.2}}>YOUR APP. YOUR LAYOUT.</Text><Text style={{color:c.text,fontSize:18,fontWeight:'900'}}>Customize your bottom bar</Text><Text style={{color:'#BBD6FF',fontSize:11,lineHeight:17}}>Choose the features you use most, then reorder them on the main navigation.</Text><FeatureRow title="Customize Navigation" text="Choose and reorder up to 6 bottom-bar features" onPress={()=>router.push('/navigation-settings')}/></Card>
   <Section title="TAEKWONDO">
    <FeatureRow title="Taekwondo Hub" text={profile?.discipline?profile.discipline+' performance, bouts and training':'Kyorugi & Poomsae performance'} onPress={()=>router.push({pathname:'/taekwondo'})}/>
    <FeatureRow title="Competition Checklist" text="Gear, documents and pre-event preparation" badge={String(counts.check)} onPress={()=>router.push({pathname:'/checklist'})}/>
