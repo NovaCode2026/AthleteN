@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { validMinutes } from '@/lib/performance';
 import { PerformanceLine, PerformanceBars, ProgressRing, ChartPoint } from '@/components/performance-chart';
 
 const c=Colors.dark;
@@ -20,7 +21,7 @@ export default function AIScreen(){
    supabase.from('goals').select('progress,status').eq('user_id',uid),
    supabase.from('tournaments').select('id',{count:'exact',head:true}).eq('user_id',uid).gte('starts_at',now.toISOString())
   ]);
-  const rows=t.data||[];const daily=days.map(day=>({label:day.slice(5).replace('-','/'),value:rows.filter(x=>x.session_date===day).reduce((sum,x)=>sum+Number(x.minutes||0),0)}));setTraining(daily);const mins=rows.reduce((sum,x)=>sum+Number(x.minutes||0),0);setTotalMinutes(mins);
+  const rows=(t.data||[]).map(x=>({...x,_minutes:validMinutes(x.minutes)})).filter(x=>x._minutes>0);const daily=days.map(day=>({label:day.slice(5).replace('-','/'),value:rows.filter(x=>String(x.session_date).slice(0,10)===day).reduce((sum,x)=>sum+x._minutes,0)}));setTraining(daily);const mins=rows.reduce((sum,x)=>sum+x._minutes,0);setTotalMinutes(mins);
   setWeight((w.data||[]).slice().reverse().map(x=>({label:String(x.logged_at).slice(5,10).replace('-','/'),value:Number(x.weight_kg)})));
   const gs=g.data||[];const completed=gs.filter(x=>x.status==='completed'||Number(x.progress||0)>=100).length;setGoals({total:gs.length,completed});setUpcoming(e.count||0);
   const next:Insight[]=[];
