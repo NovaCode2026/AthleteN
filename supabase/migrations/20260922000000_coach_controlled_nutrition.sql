@@ -140,3 +140,8 @@ for each row execute function public.set_updated_at();
 grant select, insert, update, delete on public.athlete_feature_controls to authenticated;
 grant select, insert, update, delete on public.nutrition_logs to authenticated;
 grant select, insert, update, delete on public.hydration_logs to authenticated;
+
+
+-- Age-verification hardening: QA override storage is private and not API-accessible.
+alter table private.qa_age_verification_overrides disable row level security;
+revoke execute on function public.find_athlete_by_username(text) from anon;
