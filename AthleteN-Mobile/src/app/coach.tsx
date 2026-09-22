@@ -401,15 +401,11 @@ export default function Coach() {
 
       <Section title="COACH CONTROL CENTER">
         <View style={{ gap: 9 }}>
-          <Pressable onPress={()=>router.push('/coach-training')}>
-            <Card accent><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1 }}>TRAINING CONTROL</Text><Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>Plans, workload & athlete training</Text><Text style={{ color: c.muted, fontSize: 10 }}>Create managed training plans and review live session history.</Text></Card>
-          </Pressable>
-          <Pressable onPress={()=>router.push('/coach-competition')}>
-            <Card><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1 }}>COMPETITION CENTER</Text><Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>Tournament & performance overview</Text><Text style={{ color: c.muted, fontSize: 10 }}>Review upcoming competitions, match records and medals for connected athletes.</Text></Card>
-          </Pressable>
-          <Pressable onPress={()=>router.push('/messages')}>
-            <Card><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1 }}>COMMUNICATION</Text><Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>Private coach messaging</Text><Text style={{ color: c.muted, fontSize: 10 }}>Open private conversations and coaching communication.</Text></Card>
-          </Pressable>
+          <Pressable onPress={()=>router.push('/coach-profile')}><Card accent><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900' }}>PROFILE & ACCOUNT</Text><Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>Name, photo, account & settings</Text><Text style={{ color: c.muted, fontSize: 10 }}>Manage your Coach identity and connection code.</Text></Card></Pressable>
+          <Pressable onPress={()=>router.push('/coach-training')}><Card><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900' }}>TRAINING CONTROL</Text><Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>Plans, workload & athlete training</Text><Text style={{ color: c.muted, fontSize: 10 }}>Create managed plans and review training history.</Text></Card></Pressable>
+          <Pressable onPress={()=>router.push('/coach-tournaments')}><Card><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900' }}>TOURNAMENT MANAGER</Text><Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>Create & manage competitions</Text><Text style={{ color: c.muted, fontSize: 10 }}>Assign tournaments to connected athletes and track results.</Text></Card></Pressable>
+          <Pressable onPress={()=>router.push('/coach-competition')}><Card><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900' }}>COMPETITION CENTER</Text><Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>Performance overview</Text><Text style={{ color: c.muted, fontSize: 10 }}>Tournaments, matches, medals and upcoming events.</Text></Card></Pressable>
+          <Pressable onPress={()=>router.push('/messages')}><Card><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900' }}>MESSAGES & GROUPS</Text><Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>Private coaching communication</Text><Text style={{ color: c.muted, fontSize: 10 }}>Direct chats and private coaching groups.</Text></Card></Pressable>
         </View>
       </Section>
     </Screen>
