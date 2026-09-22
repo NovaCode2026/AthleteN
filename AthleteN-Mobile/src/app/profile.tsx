@@ -4,7 +4,7 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
-import { PerformanceBars } from '@/components/performance-chart';
+import { PerformanceLine } from '@/components/performance-chart';
 
 const c = Colors.dark;
 
@@ -82,7 +82,7 @@ export default function ProfileScreen() {
 
     <Section title="WEIGHT"><View style={s.card}>
       <View style={s.weightHero}><View><Text style={s.smallKicker}>LATEST</Text><Text style={s.weightValue}>{weights[0]?Number(weights[0].weight_kg).toFixed(1):'—'} <Text style={s.weightUnit}>KG</Text></Text></View><View style={s.weightBadge}><Text style={s.weightBadgeText}>{weights.length} LOGS</Text></View></View>
-      <PerformanceBars title="Weight trend" subtitle="Latest saved measurements" data={weightChart} unit="kg" accent={c.success}/>
+      <PerformanceLine title="Weight trend" subtitle="Latest saved measurements" data={weightChart} unit="kg" accent={c.success}/>
       <View style={s.inlineFields}><Field label="Current weight" value={weight} onChangeText={setWeight} placeholder="50.0" keyboardType="decimal-pad" compact/><Field label="Target" value={target} onChangeText={setTarget} placeholder="Optional" keyboardType="decimal-pad" compact/></View>
       <Button title="LOG WEIGHT" onPress={addWeight} busy={busy}/>
       {weights.slice(0,4).map(w=><View style={s.listRow} key={w.id}><View><Text style={s.listTitle}>{Number(w.weight_kg).toFixed(1)} kg</Text><Text style={s.meta}>{w.logged_at}</Text></View><Pressable onPress={()=>remove('weight_logs',w.id)}><Text style={s.delete}>DELETE</Text></Pressable></View>)}
@@ -96,7 +96,7 @@ export default function ProfileScreen() {
     </View></Section>
 
     {message?<Text style={s.message}>{message}</Text>:null}
-    {isAdmin?<Pressable onPress={()=>router.push('/admin')} style={s.adminCard}><View><Text style={s.adminKicker}>OWNER / ADMIN</Text><Text style={s.adminTitle}>Admin Command Center</Text><Text style={s.meta}>Manage AthleteN from a dedicated workspace.</Text></View><Text style={s.adminArrow}>›</Text></Pressable>:null}
+    <Pressable onPress={()=>router.push('/scanner')} style={s.adminCard}><View><Text style={s.adminKicker}>ATHLETEN INTELLIGENCE</Text><Text style={s.adminTitle}>Tournament Scanner</Text><Text style={s.meta}>Scan and track tournament sources.</Text></View><Text style={s.adminArrow}>›</Text></Pressable>{isAdmin?<Pressable onPress={()=>router.push('/admin')} style={s.adminCard}><View><Text style={s.adminKicker}>OWNER / ADMIN</Text><Text style={s.adminTitle}>Admin Command Center</Text><Text style={s.meta}>Manage AthleteN from a dedicated workspace.</Text></View><Text style={s.adminArrow}>›</Text></Pressable>:null}
     <Pressable onPress={()=>router.push('/reset-request')} style={s.settingsRow}><Text style={s.settingsIcon}>↻</Text><View style={s.settingsCopy}><Text style={s.settingsTitle}>Password & account security</Text><Text style={s.meta}>Reset your password or recover access</Text></View><Text style={s.adminArrow}>›</Text></Pressable>
     <Pressable onPress={signOut} style={s.signOut}><Text style={s.signOutText}>SIGN OUT</Text></Pressable>
   </ScrollView>
