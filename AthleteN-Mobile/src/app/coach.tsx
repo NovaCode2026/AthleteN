@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Screen, Header, Section, Card, Button, Field, c } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -53,6 +54,7 @@ function MiniBar({ value, max, label, suffix = '' }: { value: number; max: numbe
 
 export default function Coach() {
   const { profile } = useAuth();
+  const router = useRouter();
   const [code, setCode] = useState('');
   const [saved, setSaved] = useState('');
   const [athletes, setAthletes] = useState<Athlete[]>([]);
@@ -61,6 +63,7 @@ export default function Coach() {
   const [academyId, setAcademyId] = useState<string | null>(null);
   const [academyRole, setAcademyRole] = useState<string | null>(null);
   const [academyName, setAcademyName] = useState('');
+  const [academyCode, setAcademyCode] = useState('');
   const [accountId, setAccountId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showFinance, setShowFinance] = useState(false);
@@ -319,11 +322,13 @@ export default function Coach() {
           {academyId ? <>
             <Text style={{ color: c.success, fontSize: 10, fontWeight: '900' }}>CONNECTED TO ACADEMY</Text>
             <Text style={{ color: c.text, fontSize: 17, fontWeight: '900' }}>{academyName}</Text>
-            <Text style={{ color: c.muted, fontSize: 10, lineHeight: 16 }}>Your Coach Workspace remains fully usable. Academy affiliation is optional and does not remove your independent coaching tools.</Text>
+            <Text style={{ color: c.muted, fontSize: 10, lineHeight: 16 }}>Academy affiliation is optional. Your independent Coach Workspace remains fully active.</Text>
             <Text style={{ color: c.accentBright, fontSize: 10, fontWeight: '900' }}>ROLE: {academyRole?.toUpperCase()}</Text>
           </> : <>
             <Text style={{ color: c.text, fontSize: 15, fontWeight: '900' }}>Independent coach</Text>
             <Text style={{ color: c.muted, fontSize: 10, lineHeight: 16 }}>No Academy is connected. You can run your entire coaching workspace independently.</Text>
+            <Field label="ACADEMY CODE" value={academyCode} onChangeText={setAcademyCode} placeholder="Enter an Academy connection code" />
+            <Button title="CONNECT TO ACADEMY" onPress={async()=>{if(!academyCode.trim())return;setBusy(true);const {error}=await supabase.rpc('connect_coach_to_academy_by_code',{p_code:academyCode.trim()});setBusy(false);if(error)Alert.alert('Academy connection failed',error.message);else{setAcademyCode('');await load();}}} busy={busy} />
           </>}
         </Card>
       </Section>
@@ -400,17 +405,17 @@ export default function Coach() {
         </Card>
       </Section>
 
-      <Section title="COACH TOOLKIT">
+      <Section title="COACH CONTROL CENTER">
         <View style={{ gap: 9 }}>
-          {[
-            ['TRAINING CONTROL', 'Plan sessions, track workload and review athlete training records.'],
-            ['COMPETITION PREP', 'Prepare athletes for tournaments, categories and match-day decisions.'],
-            ['ATHLETE DEVELOPMENT', 'Use belt history, weight decisions, goals and performance records to track progression.'],
-            ['COMMUNICATION', 'Message athletes and create private coaching groups without exposing private conversations.'],
-          ].map(([title, body]) => <Card key={title}>
-            <Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1 }}>{title}</Text>
-            <Text style={{ color: c.text, fontSize: 13, fontWeight: '900' }}>{body}</Text>
-          </Card>)}
+          <Pressable onPress={()=>router.push('/coach-training')}>
+            <Card accent><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1 }}>TRAINING CONTROL</Text><Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>Plans, workload & athlete training</Text><Text style={{ color: c.muted, fontSize: 10 }}>Create managed training plans and review live session history.</Text></Card>
+          </Pressable>
+          <Pressable onPress={()=>router.push('/coach-competition')}>
+            <Card><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1 }}>COMPETITION CENTER</Text><Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>Tournament & performance overview</Text><Text style={{ color: c.muted, fontSize: 10 }}>Review upcoming competitions, match records and medals for connected athletes.</Text></Card>
+          </Pressable>
+          <Pressable onPress={()=>router.push('/messages')}>
+            <Card><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1 }}>COMMUNICATION</Text><Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>Private coach messaging</Text><Text style={{ color: c.muted, fontSize: 10 }}>Open private conversations and coaching communication.</Text></Card>
+          </Pressable>
         </View>
       </Section>
     </Screen>
