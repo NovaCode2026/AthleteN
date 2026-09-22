@@ -1,5 +1,5 @@
 import { useEffect,useState } from 'react';
-import { Pressable,ScrollView,Text,View,StyleSheet } from 'react-native';
+import { Alert, Pressable,ScrollView,Text,View,StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
@@ -9,7 +9,7 @@ const c=Colors.dark;
 export default function NavigationSettings(){
  const router=useRouter();const [items,setItems]=useState<string[]>([...DEFAULT]);const [message,setMessage]=useState('');
  useEffect(()=>{void (async()=>{const raw=await AsyncStorage.getItem(KEY);if(raw){try{const p=JSON.parse(raw);if(Array.isArray(p))setItems(p)}catch{}}})()},[]);
- function toggle(id:string){setItems(v=>{if(id==='explore'&&v.includes(id))return v;return v.includes(id)?v.filter(x=>x!==id):v.length<6?[...v,id]:v})}
+ function toggle(id:string){setItems(v=>{if(!v.includes(id))return v.length<6?[...v,id]:v;if(id==='explore')return v;const x=AVAILABLE.find(a=>a.id===id);Alert.alert('Remove from navigation?',`${x?.label||'This feature'} will disappear from your bottom bar. You can still add it again later from Customize Navigation.`,[{text:'Cancel',style:'cancel'},{text:'Remove',style:'destructive',onPress:()=>setItems(current=>current.filter(item=>item!==id))}]);return v})}
  function move(id:string,dir:number){setItems(v=>{const a=[...v],i=a.indexOf(id),j=i+dir;if(i<0||j<0||j>=a.length)return a;[a[i],a[j]]=[a[j],a[i]];return a})}
  async function save(){await AsyncStorage.setItem(KEY,JSON.stringify(items));setMessage('Bottom navigation saved.');setTimeout(()=>router.back(),500)}
  async function reset(){setItems(DEFAULT);await AsyncStorage.setItem(KEY,JSON.stringify(DEFAULT));setMessage('Default navigation restored.')}
