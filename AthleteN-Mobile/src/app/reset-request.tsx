@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 
@@ -12,7 +13,7 @@ export default function ResetRequestScreen(){
   const e=email.trim().toLowerCase(); setError(''); setMessage('');
   if(!e||!e.includes('@')){setError('Enter a valid email address.');return}
   setBusy(true);
-  const {error}=await supabase.auth.resetPasswordForEmail(e,{redirectTo:'athletenmobile://reset-password'});
+  const {error}=await supabase.auth.resetPasswordForEmail(e,{redirectTo: Linking.createURL('auth/callback?next=reset-password')});
   setBusy(false);
   if(error)setError(error.message); else setMessage('If an account uses this email, a password reset email has been sent. Check your inbox and spam folder.');
  }
