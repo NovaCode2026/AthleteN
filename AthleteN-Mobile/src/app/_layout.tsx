@@ -12,7 +12,13 @@ function RoleGate({ profile }: { profile: any }) {
   const role = String(profile?.role || 'athlete');
   const isCoach = role === 'coach';
   const isAcademy = role === 'academy_admin' || role === 'academy';
-  if (isCoach) return <Stack screenOptions={{headerShown:false}}><Stack.Screen name="coach" options={{headerShown:false}} /></Stack>;
+  if (isCoach) return <Stack screenOptions={{headerShown:false}}>
+    <Stack.Screen name="coach" options={{headerShown:false}} />
+    <Stack.Screen name="coach-training" options={{headerShown:false}} />
+    <Stack.Screen name="coach-competition" options={{headerShown:false}} />
+    <Stack.Screen name="messages" options={{headerShown:false}} />
+    <Stack.Screen name="conversation" options={{headerShown:false}} />
+  </Stack>;
   if (isAcademy) return <Stack screenOptions={{headerShown:false}}><Stack.Screen name="academy" options={{headerShown:false}} /></Stack>;
   return <AthleteRoutes />;
 }
