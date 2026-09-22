@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -28,6 +30,8 @@ export default function ProfileScreen() {
   const [message,setMessage]=useState('');
   const [busy,setBusy]=useState(false);
   const [nutritionEnabled,setNutritionEnabled]=useState(false);
+  const [avatarUrl,setAvatarUrl]=useState<string|null>(null);
+  const [avatarBusy,setAvatarBusy]=useState(false);
 
   const load=useCallback(async()=>{
     if(!session)return;
@@ -37,9 +41,29 @@ export default function ProfileScreen() {
       supabase.from('athlete_feature_controls').select('enabled').eq('athlete_user_id',session.user.id).eq('feature_key','nutrition').maybeSingle()
     ]);
     if(w.error||g.error||n.error)setMessage(w.error?.message||g.error?.message||n.error?.message||'Could not load profile data.');
+    if(profile?.profile_image_path){const signed=await supabase.storage.from('avatars').createSignedUrl(profile.profile_image_path,3600);setAvatarUrl(signed.data?.signedUrl||null)}else setAvatarUrl(null);
     setWeights(w.data||[]); setGoals(g.data||[]); setNutritionEnabled(n.data?.enabled===true);
   },[session]);
   useEffect(()=>{void load()},[load]);
+
+  async function changePhoto(){
+    if(!session)return;
+    const permission=await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if(!permission.granted){setMessage('Photo library permission is required to choose a profile photo.');return}
+    const result=await ImagePicker.launchImageLibraryAsync({mediaTypes:['images'],allowsEditing:true,aspect:[1,1],quality:.85});
+    if(result.canceled||!result.assets[0]?.uri)return;
+    setAvatarBusy(true);setMessage('');
+    try{
+      const asset=result.assets[0];const response=await fetch(asset.uri);const body=await response.arrayBuffer();
+      const ext=(asset.fileName?.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+      const path=session.user.id+'/'+Date.now()+'.'+ext;
+      const upload=await supabase.storage.from('avatars').upload(path,body,{contentType:asset.mimeType||'image/jpeg',upsert:false,cacheControl:'3600'});
+      if(upload.error)throw upload.error;
+      const update=await supabase.from('profiles').update({profile_image_path:path}).eq('user_id',session.user.id);
+      if(update.error)throw update.error;
+      const signed=await supabase.storage.from('avatars').createSignedUrl(path,3600);setAvatarUrl(signed.data?.signedUrl||null);await refreshProfile();setMessage('Profile photo updated.');
+    }catch(error){setMessage(error instanceof Error?error.message:'Could not update profile photo.')}finally{setAvatarBusy(false)}
+  }
 
   async function saveProfile(){
     if(!session||!name.trim()||!dob.trim()||!gender.trim()||!sport.trim()||!club.trim()||!coach.trim()){setMessage('Complete every required athlete field.');return}
@@ -75,7 +99,7 @@ export default function ProfileScreen() {
 
   return <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
     <View style={s.brandRow}><Image source={require('@/assets/logo.png')} style={s.logo} contentFit="cover"/><View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>ATHLETE PROFILE</Text></View></View>
-    <View style={s.profileHero}><View style={s.avatar}><Text style={s.avatarText}>{(profile?.full_name||'A').slice(0,1).toUpperCase()}</Text></View><View style={s.heroCopy}><Text style={s.name}>{profile?.full_name||'Athlete'}</Text><Text style={s.meta}>{discipline} • {profile?.plan_id||'free'} plan</Text></View><View style={s.liveDot}/></View>
+    <View style={s.profileHero}><Pressable onPress={()=>void changePhoto()} disabled={avatarBusy} style={s.avatarWrap}>{avatarUrl?<Image source={{uri:avatarUrl}} style={s.avatarImage} contentFit="cover"/>:<View style={s.avatar}><Text style={s.avatarText}>{(profile?.full_name||'A').slice(0,1).toUpperCase()}</Text></View>}<View style={s.photoBadge}><Text style={s.photoBadgeText}>{avatarBusy?'…':'+'}</Text></View></Pressable><View style={s.heroCopy}><Text style={s.name}>{profile?.full_name||'Athlete'}</Text><Text style={s.meta}>{discipline} • {profile?.plan_id||'free'} plan</Text><Pressable onPress={()=>void changePhoto()}><Text style={s.changePhoto}>CHANGE PROFILE PHOTO</Text></Pressable></View><View style={s.liveDot}/></View>
 
     <Section title="ATHLETE IDENTITY"><View style={s.card}>
       <Field label="Full name" value={name} onChangeText={setName} placeholder="Your full name"/><Field label="Date of birth" value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD"/><Field label="Gender" value={gender} onChangeText={setGender} placeholder="Gender"/><Field label="Sport" value={sport} onChangeText={setSport} placeholder="Taekwondo"/><Field label="Club / Academy" value={club} onChangeText={setClub} placeholder="Club / Academy"/><Field label="Coach" value={coach} onChangeText={setCoach} placeholder="Coach"/>
