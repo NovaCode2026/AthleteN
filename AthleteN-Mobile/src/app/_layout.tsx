@@ -31,6 +31,8 @@ function AgeVerificationGate({ profile }: { profile: any }) {
   <Stack.Screen name="notifications" options={{headerShown:false}} />
   <Stack.Screen name="scanner" options={{headerShown:false}} />
   <Stack.Screen name="plans" options={{headerShown:false}} />
+  <Stack.Screen name="navigation-settings" options={{headerShown:false}} />
+  <Stack.Screen name="ai-coach" options={{headerShown:false}} />
 </Stack>;
 }
 
