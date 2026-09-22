@@ -11,9 +11,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 function authRedirect(next?: string) {
   const path = next ? `auth/callback?next=${encodeURIComponent(next)}` : 'auth/callback';
-  return Constants.executionEnvironment === 'storeClient'
-    ? Linking.createURL(path)
-    : `athletenmobile://${path}`;
+  return Linking.createURL(path);
 }
 
 export default function AuthScreen() {
