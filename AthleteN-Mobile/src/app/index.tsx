@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { validMinutes } from '@/lib/performance';
 import { PerformanceLine, ChartPoint } from '@/components/performance-chart';
 
 const c=Colors.dark;
@@ -21,7 +22,7 @@ export default function HomeScreen(){
    supabase.from('medals').select('id',{count:'exact',head:true}).eq('user_id',uid),
    supabase.from('tournaments').select('id,name,starts_at,location,status').eq('user_id',uid).gte('starts_at',now.toISOString()).order('starts_at',{ascending:true}).limit(1).maybeSingle()
   ]);
-  const rows=t.data||[];setSessions(rows.length);setMinutes(rows.reduce((sum,r)=>sum+Number(r.minutes||0),0));setChart(days.map(day=>({label:day.slice(5).replace('-','/'),value:rows.filter(r=>r.session_date===day).reduce((sum,r)=>sum+Number(r.minutes||0),0)})));setWeight(w.data?Number(w.data.weight_kg):null);setMedals(m.count||0);setNext(e.data||null);
+  const rows=(t.data||[]).map(r=>({...r,_minutes:validMinutes(r.minutes)})).filter(r=>r._minutes>0);setSessions(rows.length);setMinutes(rows.reduce((sum,r)=>sum+r._minutes,0));setChart(days.map(day=>({label:day.slice(5).replace('-','/'),value:rows.filter(r=>String(r.session_date).slice(0,10)===day).reduce((sum,r)=>sum+r._minutes,0)})));setWeight(w.data?Number(w.data.weight_kg):null);setMedals(m.count||0);setNext(e.data||null);
  },[session]);
  useEffect(()=>{void load()},[load]);
  const first=profile?.full_name?.split(' ')[0]||'Athlete';
