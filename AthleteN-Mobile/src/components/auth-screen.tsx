@@ -1,8 +1,8 @@
-﻿import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '@/lib/supabase';
-import { Colors } from '@/constants/theme';
+﻿import { Alert,  useState } from 'react';
+import { Alert,  ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert,  SafeAreaView } from 'react-native-safe-area-context';
+import { Alert,  supabase } from '@/lib/supabase';
+import { Alert,  Colors } from '@/constants/theme';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
@@ -75,7 +75,7 @@ export default function AuthScreen() {
     setVerificationNotice('');
     setGoogleBusy(true);
     try {
-      const redirectTo = authRedirect(); console.log("[ATHLETEN-OAUTH-REDIRECT]", redirectTo);
+      const redirectTo = authRedirect(); Alert.alert("AthleteN OAuth", "Redirect URL:\n" + redirectTo); console.log("[ATHLETEN-OAUTH-REDIRECT]", redirectTo);
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo, skipBrowserRedirect: true },
@@ -209,5 +209,6 @@ const styles = StyleSheet.create({
   error:{color:Colors.dark.danger,fontSize:11,lineHeight:17},
   notice:{color:Colors.dark.success,fontSize:11,lineHeight:17},
 });
+
 
 
