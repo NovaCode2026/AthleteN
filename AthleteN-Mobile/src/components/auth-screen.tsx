@@ -5,10 +5,6 @@ import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
-import * as WebBrowser from 'expo-web-browser';
-
-WebBrowser.maybeCompleteAuthSession();
-
 function authRedirect(next?: string) {
   const path = next ? `auth/callback?next=${encodeURIComponent(next)}` : 'auth/callback';
 
@@ -88,10 +84,10 @@ export default function AuthScreen() {
       }
       if (!data?.url) throw new Error('Google sign-in could not start.');
 
-      // Expo Go can dismiss WebBrowser auth sessions before handing an exp:// callback
-      // back to JavaScript. Open the OAuth URL normally and let the Expo Router
-      // callback screen receive the deep link and exchange the PKCE code.
-      await WebBrowser.openBrowserAsync(data.url);
+      // Launch the OAuth URL in the system browser. When Supabase finishes,
+      // the exp:// callback is handled by Expo Router and auth/callback.tsx
+      // exchanges the PKCE authorization code for the session.
+      await Linking.openURL(data.url);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Google sign-in failed.');
     } finally {
