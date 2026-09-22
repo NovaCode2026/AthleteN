@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -73,7 +74,7 @@ export default function TrainingScreen() {
     </View>
     <View style={s.sectionHead}><Text style={s.section}>RECENT SESSIONS</Text><Text style={s.count}>{items.length}</Text></View>
     {!items.length ? <View style={s.empty}><Text style={s.emptyTitle}>No sessions yet</Text><Text style={s.meta}>Your first saved workout will appear here.</Text></View> : items.map(item => <View style={s.session} key={item.id}><View style={s.sessionTop}><View style={s.sessionIcon}><Text style={s.sessionIconText}>T</Text></View><View style={s.sessionCopy}><Text style={s.sessionTitle}>{item.title}</Text><Text style={s.meta}>{item.session_date}{item.intensity ? ' • ' + item.intensity : ''}</Text></View><Text style={s.minutes}>{item.minutes}m</Text></View>{item.notes ? <Text style={s.note}>{item.notes}</Text> : null}<Pressable onPress={() => remove(item.id)} disabled={busy}><Text style={s.delete}>DELETE</Text></Pressable></View>)}
-  </ScrollView>;
+  </ScrollView></SafeAreaView>;
 }
 
 function Field({ label, value, onChangeText, placeholder, keyboardType }: { label: string; value: string; onChangeText: (v: string) => void; placeholder: string; keyboardType?: any }) {
