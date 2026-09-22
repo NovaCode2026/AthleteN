@@ -11,6 +11,16 @@ WebBrowser.maybeCompleteAuthSession();
 
 function authRedirect(next?: string) {
   const path = next ? `auth/callback?next=${encodeURIComponent(next)}` : 'auth/callback';
+
+  // Expo Go needs the LAN callback that it can hand back to the running
+  // development client. Standalone/native builds use the app scheme.
+  if (Constants.executionEnvironment === 'storeClient') {
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      return `exp://${hostUri}/--/${path}`;
+    }
+  }
+
   return Linking.createURL(path);
 }
 
