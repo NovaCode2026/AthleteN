@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -7,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
 export default function CoachProfile(){
+ const router=useRouter();
  const {session,profile,refreshProfile,signOut}=useAuth(); const [name,setName]=useState(profile?.full_name||''); const [avatar,setAvatar]=useState<string|null>(null); const [code,setCode]=useState(''); const [busy,setBusy]=useState(false); const [msg,setMsg]=useState('');
  useEffect(()=>{void load()},[profile?.profile_image_path,session?.user.id]);
  async function load(){if(!session)return; if(profile?.profile_image_path){const x=await supabase.storage.from('avatars').createSignedUrl(profile.profile_image_path,3600);setAvatar(x.data?.signedUrl||null)} const x=await supabase.rpc('get_my_connection_code'); if(x.data?.[0]?.code)setCode(x.data[0].code)}
@@ -17,6 +19,6 @@ export default function CoachProfile(){
  <Section title="PROFILE"><Card><View style={{alignItems:'center',gap:9}}><Pressable onPress={()=>void photo()} disabled={busy}>{avatar?<Image source={{uri:avatar}} style={{width:88,height:88,borderRadius:30}} contentFit="cover"/>:<View style={{width:88,height:88,borderRadius:30,backgroundColor:c.accentDeep,alignItems:'center',justifyContent:'center'}}><Text style={{color:c.accentBright,fontSize:34,fontWeight:'900'}}>{(profile?.full_name||'C').slice(0,1).toUpperCase()}</Text></View>}<Text style={{color:c.accentBright,fontSize:9,fontWeight:'900'}}>CHANGE PHOTO</Text></Pressable></View><Text style={{color:c.muted,fontSize:9}}>EMAIL</Text><Text style={{color:c.text,fontWeight:'800'}}>{session?.user.email||'—'}</Text><Text style={{color:c.muted,fontSize:9}}>FULL NAME</Text><TextInput value={name} onChangeText={setName} placeholder="Coach name" placeholderTextColor={c.muted} style={{backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,padding:12}}/><Pressable onPress={()=>void save()} disabled={busy} style={{backgroundColor:c.accent,borderRadius:12,padding:13,alignItems:'center'}}>{busy?<ActivityIndicator color="#fff"/>:<Text style={{color:'#fff',fontWeight:'900'}}>SAVE PROFILE</Text>}</Pressable>{msg?<Text style={{color:c.accentBright,fontSize:10}}>{msg}</Text>:null}</Card></Section>
  <Section title="COACH CONNECTION CODE"><Card><Text style={{color:c.muted,fontSize:10}}>Athletes use this code to connect to you.</Text><TextInput value={code} onChangeText={setCode} autoCapitalize="characters" placeholder="COACH-..." placeholderTextColor={c.muted} style={{backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,padding:12,fontSize:16,fontWeight:'900'}}/><Pressable onPress={()=>void saveCode()} disabled={busy} style={{backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep,borderRadius:12,padding:13,alignItems:'center'}}><Text style={{color:c.accentBright,fontWeight:'900'}}>SAVE CONNECTION CODE</Text></Pressable></Card></Section>
  <Section title="ACCOUNT"><Card><Text style={{color:c.text,fontWeight:'900'}}>Account code</Text><Text style={{color:c.muted,fontSize:10}}>{profile?.account_code||'Generating...'}</Text><Text style={{color:c.muted,fontSize:10,marginTop:8}}>Role: Coach</Text></Card></Section>
- <Pressable onPress={()=>void signOut()} style={{borderWidth:1,borderColor:'#61303A',borderRadius:13,padding:14,alignItems:'center'}}><Text style={{color:c.danger,fontWeight:'900'}}>SIGN OUT</Text></Pressable>
+ <Pressable onPress={async()=>{await signOut(); router.replace('/');}} style={{borderWidth:1,borderColor:'#61303A',borderRadius:13,padding:14,alignItems:'center'}}><Text style={{color:c.danger,fontWeight:'900'}}>SIGN OUT</Text></Pressable>
  </Screen>
 }
