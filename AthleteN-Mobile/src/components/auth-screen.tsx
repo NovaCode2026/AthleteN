@@ -75,7 +75,7 @@ export default function AuthScreen() {
     setVerificationNotice('');
     setGoogleBusy(true);
     try {
-      const redirectTo = authRedirect();
+      const redirectTo = authRedirect(); console.log("[ATHLETEN-OAUTH-REDIRECT]", redirectTo);
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo, skipBrowserRedirect: true },
@@ -209,4 +209,5 @@ const styles = StyleSheet.create({
   error:{color:Colors.dark.danger,fontSize:11,lineHeight:17},
   notice:{color:Colors.dark.success,fontSize:11,lineHeight:17},
 });
+
 
