@@ -1,9 +1,35 @@
 import {Tabs} from 'expo-router';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
+import {useEffect,useState} from 'react';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 import {Colors} from '@/constants/theme';
-const c=Colors.dark;const meta:any={index:['Home','⌂'],training:['Train','↗'],ai:['AI Coach','✦'],compete:['Compete','♜'],profile:['Profile','○'],explore:['More','⋮']};
-function Bar({state,navigation}:BottomTabBarProps){const insets=useSafeAreaInsets();return <View style={[s.outer,{paddingBottom:Math.max(insets.bottom,6)}]}><View style={s.bar}>{state.routes.map((r,i)=>{const [label,icon]=meta[r.name]||[r.name,'•'];const active=state.index===i;return <Pressable key={r.key} onPress={()=>navigation.navigate(r.name)} accessibilityRole="button" accessibilityState={active?{selected:true}:{}} style={s.item}><View style={[s.icon,active&&s.active]}><Text style={[s.iconText,active&&s.activeText]}>{icon}</Text></View><Text style={[s.label,active&&s.activeLabel]} numberOfLines={1}>{label}</Text></Pressable>})}</View></View>}
-export default function TabLayout(){return <Tabs tabBar={p=><Bar {...p}/>} screenOptions={{headerShown:false,sceneStyle:{backgroundColor:c.background}}}><Tabs.Screen name="index"/><Tabs.Screen name="training"/><Tabs.Screen name="ai"/><Tabs.Screen name="compete"/><Tabs.Screen name="profile"/><Tabs.Screen name="explore"/></Tabs>}
+
+const c=Colors.dark;
+export const KEY='athleten.bottom-navigation.v1';
+export const DEFAULT=['index','training','ai','compete','profile','explore'] as const;
+export const AVAILABLE=[
+ {id:'index',label:'Home',icon:'⌂'},
+ {id:'training',label:'Train',icon:'↗'},
+ {id:'ai',label:'AI Coach',icon:'✦'},
+ {id:'compete',label:'Compete',icon:'♜'},
+ {id:'profile',label:'Profile',icon:'○'},
+ {id:'explore',label:'More',icon:'⋮'},
+] as const;
+
+function Bar({state,navigation}:BottomTabBarProps){
+ const insets=useSafeAreaInsets();
+ const [order,setOrder]=useState<string[]>([...DEFAULT]);
+ useEffect(()=>{let alive=true;(async()=>{try{const raw=await AsyncStorage.getItem(KEY);if(!alive||!raw)return;const parsed=JSON.parse(raw);if(Array.isArray(parsed)){const valid=parsed.filter((x:string)=>AVAILABLE.some(a=>a.id===x));const merged=[...valid,...DEFAULT.filter(x=>!valid.includes(x))];setOrder(merged.slice(0,6));}}catch{}})();return()=>{alive=false}},[]);
+ return <View style={[s.outer,{paddingBottom:Math.max(insets.bottom,6)}]}><View style={s.bar}>
+  {order.map(id=>{const meta=AVAILABLE.find(x=>x.id===id)!;const routeIndex=state.routes.findIndex(r=>r.name===id);const active=state.index===routeIndex;return <Pressable key={id} onPress={()=>navigation.navigate(id)} accessibilityRole="button" accessibilityState={active?{selected:true}:{}} style={s.item}><View style={[s.icon,active&&s.active]}><Text style={[s.iconText,active&&s.activeText]}>{meta.icon}</Text></View><Text style={[s.label,active&&s.activeLabel]} numberOfLines={1}>{meta.label}</Text></Pressable>})}
+ </View></View>
+}
+
+export default function TabLayout(){
+ return <Tabs tabBar={p=><Bar {...p}/>} screenOptions={{headerShown:false,sceneStyle:{backgroundColor:c.background}}}>
+  {AVAILABLE.map(x=><Tabs.Screen key={x.id} name={x.id}/>)}
+ </Tabs>
+}
 const s=StyleSheet.create({outer:{backgroundColor:c.surface,borderTopWidth:1,borderTopColor:c.borderStrong},bar:{height:62,flexDirection:'row',paddingHorizontal:5,paddingTop:5},item:{flex:1,alignItems:'center',gap:2},icon:{width:38,height:30,borderRadius:13,alignItems:'center',justifyContent:'center'},active:{backgroundColor:c.accentSoft},iconText:{color:c.muted,fontSize:20,fontWeight:'700'},activeText:{color:c.accentBright},label:{color:c.muted,fontSize:9,fontWeight:'800'},activeLabel:{color:c.text}});
