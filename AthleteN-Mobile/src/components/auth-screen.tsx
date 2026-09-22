@@ -1,8 +1,8 @@
-﻿import { Alert,  useState } from 'react';
-import { Alert,  ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Alert,  SafeAreaView } from 'react-native-safe-area-context';
-import { Alert,  supabase } from '@/lib/supabase';
-import { Alert,  Colors } from '@/constants/theme';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { supabase } from '@/lib/supabase';
+import { Colors } from '@/constants/theme';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
