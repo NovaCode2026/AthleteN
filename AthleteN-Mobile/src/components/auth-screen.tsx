@@ -88,6 +88,8 @@ export default function AuthScreen() {
       }
       if (!data?.url) throw new Error('Google sign-in could not start.');
 
+      const oauthRedirect = (() => { try { return new URL(data.url).searchParams.get('redirect_to'); } catch { return null; } })();
+      Alert.alert('AthleteN OAuth Debug', `App redirect:\n${redirectTo}\n\nSupabase redirect_to:\n${oauthRedirect ?? 'MISSING'}`);
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
       if (result.type !== 'success' || !result.url) {
         if (result.type !== 'cancel') setError('Google sign-in was not completed.');
