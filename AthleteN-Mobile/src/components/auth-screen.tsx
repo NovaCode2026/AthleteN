@@ -7,7 +7,10 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
 
+WebBrowser.maybeCompleteAuthSession();
+
 export default function AuthScreen() {
+  const router = useRouter();
   const [register, setRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,7 +65,12 @@ export default function AuthScreen() {
         provider: 'google',
         options: { redirectTo, skipBrowserRedirect: true },
       });
-      if (oauthError) throw oauthError;
+      if (oauthError) {
+        if (/provider.*not.*enabled|unsupported provider/i.test(oauthError.message)) {
+          throw new Error('Google sign-in is not enabled in the AthleteN Supabase Auth provider settings yet.');
+        }
+        throw oauthError;
+      }
       if (!data?.url) throw new Error('Google sign-in could not start.');
 
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
