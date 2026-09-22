@@ -14,7 +14,9 @@ function RoleGate({ profile }: { profile: any }) {
   const isAcademy = role === 'academy_admin' || role === 'academy';
   if (isCoach) return <Stack screenOptions={{headerShown:false}}>
     <Stack.Screen name="coach" options={{headerShown:false}} />
+    <Stack.Screen name="coach-profile" options={{headerShown:false}} />
     <Stack.Screen name="coach-training" options={{headerShown:false}} />
+    <Stack.Screen name="coach-tournaments" options={{headerShown:false}} />
     <Stack.Screen name="coach-competition" options={{headerShown:false}} />
     <Stack.Screen name="messages" options={{headerShown:false}} />
     <Stack.Screen name="conversation" options={{headerShown:false}} />
