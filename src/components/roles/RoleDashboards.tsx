@@ -48,20 +48,23 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [nutritionEnabled, setNutritionEnabled] = useState<Record<string, boolean>>({});
 
   async function load() {
     if (!supabase || !userId) return;
     setLoading(true); setError("");
-    const [profileResult, linkResult, planResult] = await Promise.all([
+    const [profileResult, linkResult, planResult, nutritionResult] = await Promise.all([
       supabase.from("profiles").select("user_id,full_name,username,belt,discipline,academy_id,coach_user_id").eq("coach_user_id", userId).order("full_name"),
       supabase.from("coach_athlete_links").select("id,coach_user_id,athlete_user_id,academy_id,status").eq("coach_user_id", userId).order("created_at", { ascending: false }),
-      supabase.from("training_plans").select("id,user_id,coach_user_id,title,focus_area,starts_at,ends_at,status,notes").eq("coach_user_id", userId).order("created_at", { ascending: false }).limit(50)
+      supabase.from("training_plans").select("id,user_id,coach_user_id,title,focus_area,starts_at,ends_at,status,notes").eq("coach_user_id", userId).order("created_at", { ascending: false }).limit(50),
+      supabase.from("athlete_feature_controls").select("athlete_user_id,enabled").eq("feature_key", "nutrition")
     ]);
-    const firstError = profileResult.error || linkResult.error || planResult.error;
+    const firstError = profileResult.error || linkResult.error || planResult.error || nutritionResult.error;
     if (firstError) setError(firstError.message);
     setAthletes((profileResult.data || []) as Athlete[]);
     setLinks((linkResult.data || []) as LinkRow[]);
     setPlans((planResult.data || []) as PlanRow[]);
+    setNutritionEnabled(Object.fromEntries(((nutritionResult.data || []) as any[]).map((row) => [row.athlete_user_id, row.enabled === true])));
     setLoading(false);
   }
   useEffect(() => { void load(); }, [userId]);
@@ -96,6 +99,22 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   }
 
   const activeLinks = links.filter((item) => item.status === "active").length;
+  async function toggleNutrition(athleteUserId: string) {
+    if (!supabase || !userId) return;
+    setBusy(true); setError("");
+    try {
+      const next = !nutritionEnabled[athleteUserId];
+      const { error: e } = await supabase.from("athlete_feature_controls").upsert(
+        { athlete_user_id: athleteUserId, feature_key: "nutrition", enabled: next, set_by: userId },
+        { onConflict: "athlete_user_id,feature_key" }
+      );
+      if (e) throw e;
+      setNutritionEnabled((current) => ({ ...current, [athleteUserId]: next }));
+      setToast({ type: "success", message: next ? "Nutrition tracking enabled for the athlete." : "Nutrition tracking disabled for the athlete." });
+    } catch (e) { setError(e instanceof Error ? e.message : "Nutrition access could not be changed."); }
+    finally { setBusy(false); }
+  }
+
   return <div className="role-dashboard">
     <div className="page-head"><div><p className="eyebrow">Individual Coach</p><h2>Coach Command Center</h2><p>Manage your athletes, assign Taekwondo training plans, and keep coaching data separate from the athlete workspace.</p></div><button className="btn" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> {loading ? "Refreshing…" : "Refresh"}</button></div>
     <section className="metrics"><article className="metric card"><div className="metric-icon"><Users size={18}/></div><div><p>Athletes</p><strong>{athletes.length}</strong><small>Linked athlete profiles</small></div></article><article className="metric card"><div className="metric-icon"><UserPlus size={18}/></div><div><p>Active links</p><strong>{activeLinks}</strong><small>Coach relationships</small></div></article><article className="metric card"><div className="metric-icon"><ClipboardList size={18}/></div><div><p>Plans</p><strong>{plans.length}</strong><small>Assigned training plans</small></div></article></section>
@@ -104,6 +123,7 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
       <Card><div className="panel-head"><div><p className="eyebrow">Roster</p><h3>Link an athlete</h3><p className="muted">Search by the athlete's username or paste their user ID from their profile.</p></div><UserPlus size={20}/></div><div className="inline-form"><input value={athleteQuery} onChange={(e) => { setAthleteQuery(e.target.value); setFoundAthlete(null); }} placeholder="@athlete_username or user ID"/><button className="btn" onClick={() => void findAthlete()} disabled={busy || !athleteQuery.trim()}><Search size={15}/> Find</button></div>{foundAthlete && <div className="detail-row"><div><strong>{foundAthlete.full_name || foundAthlete.username}</strong><small>@{foundAthlete.username || "username not set"} · {foundAthlete.discipline?.toUpperCase() || "Taekwondo"} · {foundAthlete.belt || "Belt not set"}</small></div><button className="btn primary" onClick={() => void connectAthlete()} disabled={busy}><UserPlus size={15}/> Link athlete</button></div>}{athletes.length ? <DataList rows={athletes} empty="No athletes linked yet." render={(athlete) => <div><strong>{athlete.full_name || athlete.username || athlete.user_id}</strong><small>{athlete.discipline ? athlete.discipline.toUpperCase() : "Taekwondo"} · {athlete.belt || "Belt not set"}</small></div>}/> : <p className="muted">No athletes linked yet.</p>}</Card>
       <Card><div className="panel-head"><div><p className="eyebrow">Training plans</p><h3>Assign a plan</h3></div><ClipboardList size={20}/></div><label className="field"><span>Athlete</span><select value={selectedAthlete} onChange={(e) => setSelectedAthlete(e.target.value)}><option value="">Choose athlete</option>{athletes.map((athlete) => <option key={athlete.user_id} value={athlete.user_id}>{athlete.full_name || athlete.username || athlete.user_id}</option>)}</select></label><label className="field"><span>Plan title</span><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Competition preparation"/></label><label className="field"><span>Focus</span><input value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="Kyorugi performance"/></label><label className="field"><span>Coach notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}/></label><button className="btn primary" onClick={() => void createPlan()} disabled={busy || !selectedAthlete || !title.trim()}><Plus size={15}/> Assign plan</button></Card>
     </div>
+    <Card><div className="panel-head"><div><p className="eyebrow">Nutrition</p><h3>Coach-controlled nutrition</h3><p className="muted">Enable nutrition, hydration and optional calorie logging only for athletes you choose.</p></div></div>{athletes.length ? <DataList rows={athletes} empty="No athletes linked yet." render={(athlete) => <div className="membership-row"><div><strong>{athlete.full_name || athlete.username || athlete.user_id}</strong><small>{nutritionEnabled[athlete.user_id] ? "Nutrition enabled" : "Nutrition not enabled"}</small></div><button className="btn" onClick={() => void toggleNutrition(athlete.user_id)} disabled={busy}>{nutritionEnabled[athlete.user_id] ? "Disable" : "Enable"}</button></div>}/> : <p className="muted">Link athletes first.</p>}</Card>
     <Card><h3>Assigned plans</h3>{plans.length ? <DataList rows={plans} empty="No plans yet." render={(plan) => <div><strong>{plan.title}</strong><small>{athletes.find((a) => a.user_id === plan.user_id)?.full_name || plan.user_id} · {plan.focus_area || "General"} · {plan.status || "active"}</small></div>}/> : <p className="muted">Your assigned plans will appear here.</p>}</Card>
   </div>;
 }
