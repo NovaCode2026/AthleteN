@@ -30,23 +30,24 @@ function ActionCard({ icon, tone, title, subtitle, onPress }: { icon: string; to
 }
 
 function TrainingChart({ points }: { points: DayPoint[] }) {
+  const [chartWidth, setChartWidth] = useState(0);
   const max = Math.max(1, ...points.flatMap(p => [p.sessions, p.attended]));
   return <View style={{ gap: 8 }}>
-    <View style={{ height: 150, position: 'relative', paddingTop: 8 }}>
+    <View onLayout={e => setChartWidth(e.nativeEvent.layout.width)} style={{ height: 150, position: 'relative', paddingTop: 8 }}>
       {[34,76,118].map(y => <View key={y} style={{ position:'absolute', left:0, right:0, top:y, height:1, backgroundColor:c.border }} />)}
       <View style={{ position:'absolute', left:0, right:0, bottom:8, height:1, backgroundColor:c.borderStrong }} />
       {points.map((p, i) => {
-        const x = points.length === 1 ? 50 : (i / (points.length - 1)) * 100;
+        const x = points.length === 1 ? 0.5 : i / (points.length - 1);
         const y1 = 142 - (p.sessions / max) * 124;
         const y2 = 142 - (p.attended / max) * 124;
         const prev = points[i - 1];
         const segment = (fromX:number, fromY:number, toX:number, toY:number, color:string, key:string) => {
-          const dx = (toX-fromX) * 2.65; const dy = toY-fromY; const length = Math.sqrt(dx*dx+dy*dy); const angle = Math.atan2(dy,dx)*180/Math.PI;
-          return <View key={key} style={{ position:'absolute', left: fromX + '%', top: Math.min(fromY,toY), width:length, height:3, borderRadius:2, backgroundColor:color, transform:[{rotate:angle+'deg'}], transformOrigin:'left center' as any }} />;
+          const dx = chartWidth * (toX-fromX); const dy = toY-fromY; const length = Math.sqrt(dx*dx+dy*dy); const angle = Math.atan2(dy,dx)*180/Math.PI;
+          return <View key={key} style={{ position:'absolute', left: chartWidth * fromX, top: Math.min(fromY,toY), width:length, height:3, borderRadius:2, backgroundColor:color, transform:[{rotate:angle+'deg'}], transformOrigin:'left center' as any }} />;
         };
-        const px = points.length === 1 ? 50 : ((i-1) / (points.length-1)) * 100;
+        const px = points.length === 1 ? 0.5 : (i-1) / (points.length-1);
         const py1 = prev ? 142-(prev.sessions/max)*124 : y1; const py2 = prev ? 142-(prev.attended/max)*124 : y2;
-        return <View key={p.label+i} style={{ position:'absolute', left:(x-4)+'%', top:0, bottom:0, width:'8%', alignItems:'center' }}>
+        return <View key={p.label+i} style={{ position:'absolute', left: chartWidth ? chartWidth*x-16 : 0, top:0, bottom:0, width:32, alignItems:'center' }}>
           {prev ? segment(px,py1,x,y1,c.accentBright,'s'+i) : null}
           {prev ? segment(px,py2,x,y2,c.success,'a'+i) : null}
           <View style={{ position:'absolute', left:'50%', marginLeft:-4, top:y1-4, width:8,height:8,borderRadius:4,backgroundColor:c.accentBright }} />
