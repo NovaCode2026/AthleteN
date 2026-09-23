@@ -1,56 +1,78 @@
-# Welcome to your Expo app 👋
+# AthleteN Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+AthleteN is a Taekwondo-focused athlete, coach, and academy mobile workspace built with Expo and React Native.
 
-## Get started
+## Development
 
-1. Install dependencies
+From the repository root:
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```powershell
+cd ".\AthleteN-Mobile"
+npm install
+npx expo start --clear
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+The app uses Expo Router and Supabase for authentication, profiles, subscriptions, usage limits, academy/coach data, and server-side entitlements.
 
-### Other setup steps
+## Plans
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Current public plans:
 
-## Learn more
+| Plan | Monthly | Yearly | AI allowance |
+|---|---:|---:|---:|
+| Free | ₹0 | ₹0 | 0/month |
+| Student | ₹99 | ₹999 | 50/month |
+| Pro | ₹199 | ₹1,999 | 200/month |
+| Elite | ₹399 | ₹3,999 | 500/month |
+| Coach | ₹499 | ₹4,999 | 750/month |
+| Academy | ₹799 | ₹7,999 | 1,000/month |
 
-To learn more about developing your project with Expo, look at the following resources:
+Yearly billing is displayed as the default option in the app, while monthly billing remains available.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Academy plan
 
-## Join the community
+The public Academy plan is ₹799/month or ₹7,999/year and includes:
 
-Join our community of developers creating universal apps.
+- 2 Coach-plan accounts
+- Both included coaches receive the full Coach-plan feature set
+- Additional coaches: ₹50/month each
+- Additional coach onboarding: ₹100 one-time per coach
+- Unlimited academy athletes
+- Academy-wide analytics, attendance, training and competition management
+- Finance, reports, announcements and academy calendar
+- Academy AI: 1,000 messages/month
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Additional coach charges are intended to be added to the Academy subscription payment. Payment-provider checkout still needs to be connected before real charges are taken.
+
+## Dashboard plan management
+
+The Athlete, Coach, and Academy dashboards include a **Plan** section.
+
+It shows:
+
+- Current server-side plan
+- Subscription status
+- Monthly price
+- Yearly price
+- AI allowance
+- A **Manage / Change Plan** action
+
+The action opens the shared Plans screen. Paid plan changes must only take effect after successful payment; the app does not fake a successful subscription.
+
+## Sponsored Academy access — later
+
+A special sponsored Academy entitlement is planned for the user's coach:
+
+- Full Academy plan
+- ₹0/month
+- Full Academy and Coach-plan features
+
+This is intentionally a **later implementation** and does not change the public Academy price. The normal Academy pricing and dashboard plan-management work are being implemented first.
+
+## AI limits
+
+AI allowances are enforced server-side. The mobile app displays the allowance from the subscription/usage data and must never be treated as the security boundary.
+
+## Important
+
+Do not change the Supabase Site URL to the mobile app URL. Mobile deep links and OAuth/reset flows use their configured redirect URLs separately.
