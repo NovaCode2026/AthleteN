@@ -15,7 +15,7 @@ const clean=(v:any)=>String(v??'').replace(/&quot;/gi,'"').replace(/&#39;|&apos;
 const isInstagram=(u:string)=>/instagram\.com/i.test(u);
 const labelize=(v:string)=>v.replace(/_/g,' ').replace(/\\b\\w/g,x=>x.toUpperCase());
 const fmt=(v?:string|null)=>{if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?v:d.toLocaleString();};
-const validInstagram=(u:string)=>{try{const x=new URL(u);const p=x.pathname.split('/').filter(Boolean);return /(^|\\.)instagram\.com$/i.test(x.hostname)&&!!p[1]&&(p[0]==='p'||p[0]==='reel'||p[0]==='reels')}catch{return false}};
+const validInstagram=(u:string)=>{try{const x=new URL(u);const p=x.pathname.split('/').filter(Boolean);if(!/(^|\\.)instagram\\.com$/i.test(x.hostname)||!p.length)return false;if((p[0]==='p'||p[0]==='reel'||p[0]==='reels')&&p[1])return true;return p.length===1&&/^[a-zA-Z0-9._]{1,30}$/.test(p[0])}catch{return false}};
 
 export default function ScannerScreen(){
  const {session}=useAuth();
@@ -37,7 +37,7 @@ export default function ScannerScreen(){
 
  async function runScan(sourceUrl:string,id?:string|null){
   if(!session)return;
-  if(isInstagram(sourceUrl)&&!validInstagram(sourceUrl)){setMessage('Paste a public Instagram tournament post or reel URL.');return}
+  if(isInstagram(sourceUrl)&&!validInstagram(sourceUrl)){setMessage('Paste a public Instagram tournament post, reel, or organizer account URL.');return}
   setScanning(id||'new');setMessage('Scanning with the full AthleteN tournament scanner…');
   try{
    const endpoint=isInstagram(sourceUrl)?'https://athleten.netlify.app/.netlify/functions/instagram-tournament-scan':'https://athleten.netlify.app/.netlify/functions/tournament-scan';
@@ -68,9 +68,9 @@ export default function ScannerScreen(){
   <Header back eyebrow="ATHLETEN INTELLIGENCE" title="Tournament Scanner" subtitle="Scan tournament websites, notices, schedules, results, PDFs and public Instagram tournament posts." right={<View style={s.aiBadge}><Text style={s.aiBadgeText}>AI</Text></View>}/>
   <View style={s.tabs}>
    <Pressable onPress={()=>setKind('website')} style={[s.tab,kind==='website'&&s.activeTab]}><Text style={[s.tabTitle,kind==='website'&&s.activeText]}>WEBSITE</Text><Text style={s.tabSub}>Site, notice, schedule or PDF</Text></Pressable>
-   <Pressable onPress={()=>setKind('instagram')} style={[s.tab,kind==='instagram'&&s.activeTab]}><Text style={[s.tabTitle,kind==='instagram'&&s.activeText]}>INSTAGRAM</Text><Text style={s.tabSub}>Public tournament post or reel</Text></Pressable>
+   <Pressable onPress={()=>setKind('instagram')} style={[s.tab,kind==='instagram'&&s.activeTab]}><Text style={[s.tabTitle,kind==='instagram'&&s.activeText]}>INSTAGRAM</Text><Text style={s.tabSub}>Post, reel, or organizer account</Text></Pressable>
   </View>
-  <View style={s.hero}><Text style={s.kicker}>SOURCE INTELLIGENCE</Text><Text style={s.heroTitle}>Scan once. Track changes.</Text><Text style={s.heroText}>{kind==='website'?'The scanner follows relevant same-site pages, notices, schedules, results, rules, equipment, registration pages and linked PDFs.':'The scanner extracts tournament evidence from the public post/reel and preserves poster intelligence when available.'}</Text><TextInput value={url} onChangeText={setUrl} placeholder={kind==='website'?'https://example.com/tournament':'https://instagram.com/p/... or /reel/...'} placeholderTextColor={c.muted} autoCapitalize="none" keyboardType="url" style={s.input}/><Pressable onPress={()=>void saveAndScan()} disabled={busy||!!scanning} style={s.button}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>SCAN</Text>}</Pressable></View>
+  <View style={s.hero}><Text style={s.kicker}>SOURCE INTELLIGENCE</Text><Text style={s.heroTitle}>Scan once. Track changes.</Text><Text style={s.heroText}>{kind==='website'?'The scanner follows relevant same-site pages, notices, schedules, results, rules, equipment, registration pages and linked PDFs.':'The scanner extracts tournament evidence from the public post/reel and preserves poster intelligence when available.'}</Text><TextInput value={url} onChangeText={setUrl} placeholder={kind==='website'?'https://example.com/tournament':'https://instagram.com/p/..., /reel/..., or /account'} placeholderTextColor={c.muted} autoCapitalize="none" keyboardType="url" style={s.input}/><Pressable onPress={()=>void saveAndScan()} disabled={busy||!!scanning} style={s.button}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>SCAN</Text>}</Pressable></View>
   {message?<View style={s.messageBox}><Text style={s.message}>{message}</Text></View>:null}
 
   {selected?<><View style={s.panel}><View style={s.panelHead}><View style={{flex:1}}><Text style={s.eyebrow}>LATEST INTELLIGENCE</Text><Text style={s.panelTitle}>{clean(isInstagram(selected.source_url)?facts.tournament_name:selected.tournament_name)||'Tournament information'}</Text><Text style={s.panelSub}>{clean(details.description)||'Information extracted from the source and relevant pages.'}</Text></View><Text style={s.status}>{String(selected.status||'checked').toUpperCase()}</Text></View>
