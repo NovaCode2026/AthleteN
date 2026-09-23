@@ -30,14 +30,15 @@ function LineGraph({values,labels,suffix='' }:{values:number[];labels:string[];s
  </View>;
 }
 
-function Stat({icon,label,value,sub,accent=c.accent}:{icon:string;label:string;value:string|number;sub:string;accent?:string}){
- return <Card style={{flex:1,minWidth:0,padding:14}}>
+function Stat({icon,label,value,sub,accent=c.accent,onPress}:{icon:string;label:string;value:string|number;sub:string;accent?:string;onPress?:()=>void}){
+ const content=<Card style={{flex:1,minWidth:0,padding:14}}>
   <View style={{flexDirection:'row',alignItems:'center',gap:10}}>
    <View style={{width:40,height:40,borderRadius:13,backgroundColor:accent+'20',alignItems:'center',justifyContent:'center'}}><Icon name={icon} color={accent} size={21}/></View>
    <View style={{flex:1,minWidth:0}}><Text numberOfLines={1} adjustsFontSizeToFit style={{color:c.muted,fontSize:8,fontWeight:'900',letterSpacing:.5}}>{label.toUpperCase()}</Text><Text style={{color:c.text,fontSize:23,fontWeight:'900',marginTop:2}}>{value}</Text></View>
   </View>
   <Text style={{color:c.accentBright,fontSize:8,fontWeight:'800',marginTop:9}}>{sub}</Text>
  </Card>;
+ return onPress?<Pressable onPress={onPress} style={({pressed})=>({flex:1,opacity:pressed?.72:1})}>{content}</Pressable>:content;
 }
 
 export default function Academy(){
@@ -187,10 +188,10 @@ export default function Academy(){
    <View style={{marginTop:4,marginBottom:12}}><Text style={{color:c.muted,fontSize:10}}>ACADEMY CONTROL CENTER</Text><Text style={{color:c.text,fontSize:27,fontWeight:'900',marginTop:3}}>Run your academy.</Text><Text style={{color:c.muted,fontSize:11,marginTop:3}}>People, training, competitions, finance and AI in one place.</Text></View>
 
    <View style={{flexDirection:'row',flexWrap:'wrap',gap:9}}>
-    <Stat icon="athletes" label="Athletes" value={athletes} sub="Active members" accent="#2186ff"/>
-    <Stat icon="coaches" label="Coaches" value={coaches} sub="Active coaches" accent="#1bb6c9"/>
-    <Stat icon="training" label="Training" value={activeGroups} sub="Active groups" accent="#8a5cff"/>
-    <Stat icon="events" label="Competitions" value={events.length} sub="Upcoming events" accent="#ff9b2f"/>
+    <Stat icon="athletes" label="Athletes" value={athletes} sub="Active members" accent="#2186ff" onPress={()=>setTab("People")}/>
+    <Stat icon="coaches" label="Coaches" value={coaches} sub="Active coaches" accent="#1bb6c9" onPress={()=>setTab("People")}/>
+    <Stat icon="training" label="Training" value={activeGroups} sub="Active groups" accent="#8a5cff" onPress={()=>setTab("Training")}/>
+    <Stat icon="events" label="Competitions" value={events.length} sub="Upcoming events" accent="#ff9b2f" onPress={()=>setTab("Events")}/>
    </View>
 
    <Card style={{marginTop:2,padding:17,backgroundColor:'#061A2B',borderColor:'#164B73'}}>
