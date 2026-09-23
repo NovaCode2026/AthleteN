@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { validMinutes, validWeight } from '@/lib/performance';
 import { PerformanceLine, ChartPoint } from '@/components/performance-chart';
 import PlanSection from '@/components/plan-section';
+import { Icon } from '@/components/mobile-ui';
 
 const c=Colors.dark;
 
@@ -28,7 +29,7 @@ export default function HomeScreen(){
  useEffect(()=>{void load()},[load]);
  const first=profile?.full_name?.split(' ')[0]||'Athlete';
  return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-  <View style={s.header}><View style={s.brandRow}><Image source={require('@/assets/logo.png')} style={s.logo}/><View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>ATHLETE PERFORMANCE</Text></View></View><Pressable onPress={()=>router.push('/profile')} style={s.settings}><Text style={s.settingsText}>⚙</Text></Pressable></View>
+  <View style={s.header}><View style={s.brandRow}><Image source={require('@/assets/logo.png')} style={s.logo}/><View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>ATHLETE PERFORMANCE</Text></View></View><Pressable onPress={()=>router.push('/profile')} style={s.settings}><Icon name="settings" size={19} color={c.text}/></Pressable></View>
   <View style={s.hero}><View><Text style={s.kicker}>YOUR PERFORMANCE HUB</Text><Text style={s.greeting}>Good morning,</Text><Text style={s.name}>{first}</Text><View style={s.pill}><View style={s.dot}/><Text style={s.pillText}>{(profile?.discipline||'TAEKWONDO').toUpperCase()} • LIVE</Text></View></View><View style={s.heroOrb}><Text style={s.heroMark}>A</Text></View></View>
   <View style={s.grid}><Metric label="7D SESSIONS" value={sessions}/><Metric label="7D MINUTES" value={minutes} suffix=" min"/><Metric label="MEDALS" value={medals}/><Metric label="LATEST WEIGHT" value={weight==null?'—':weight} suffix={weight==null?'':' kg'}/></View>
   <PlanSection />
@@ -40,7 +41,7 @@ export default function HomeScreen(){
  </ScrollView></SafeAreaView>
 }
 function Metric({label,value,suffix='' }:{label:string;value:number|string;suffix?:string}){return <View style={s.metric}><Text style={s.metricLabel}>{label}</Text><Text style={s.metricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>{value}{suffix}</Text></View>}
-function Action({title,text,onPress}:{title:string;text:string;onPress:()=>void}){return <Pressable onPress={onPress} style={s.action}><View style={s.actionIcon}><Text style={s.actionIconText}>{title.slice(0,1)}</Text></View><View style={s.actionCopy}><Text style={s.actionTitle}>{title}</Text><Text style={s.actionText}>{text}</Text></View><Text style={s.chevron}>›</Text></Pressable>}
+function Action({title,text,onPress}:{title:string;text:string;onPress:()=>void}){return <Pressable onPress={onPress} style={s.action}><View style={s.actionIcon}><Icon name={title==="Training"?"training":title==="AI"?"ai":title==="Compete"?"event":"search"} size={18}/></View><View style={s.actionCopy}><Text style={s.actionTitle}>{title}</Text><Text style={s.actionText}>{text}</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>}
 const s=StyleSheet.create({
  screen:{flex:1,backgroundColor:c.background},content:{paddingHorizontal:18,paddingTop:8,paddingBottom:48,gap:13},header:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},brandRow:{flexDirection:'row',alignItems:'center',gap:10},logo:{width:42,height:42,borderRadius:13},brand:{color:c.text,fontSize:16,fontWeight:'900',letterSpacing:3.3},brandSub:{color:c.muted,fontSize:7,fontWeight:'800',letterSpacing:1.1,marginTop:2},settings:{width:46,height:46,borderRadius:15,backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,alignItems:'center',justifyContent:'center'},settingsText:{color:c.text,fontSize:18},
  hero:{minHeight:178,backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:26,padding:20,overflow:'hidden',flexDirection:'row',justifyContent:'space-between',alignItems:'center'},kicker:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.5},greeting:{color:c.text,fontSize:25,fontWeight:'900',marginTop:8},name:{color:c.text,fontSize:34,fontWeight:'900',lineHeight:37},pill:{flexDirection:'row',alignItems:'center',gap:6,alignSelf:'flex-start',backgroundColor:c.accentSoft,borderRadius:999,paddingHorizontal:11,paddingVertical:7,marginTop:12},dot:{width:7,height:7,borderRadius:4,backgroundColor:c.success},pillText:{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1},heroOrb:{width:100,height:100,borderRadius:50,backgroundColor:c.accentDeep,borderWidth:1,borderColor:c.accent,alignItems:'center',justifyContent:'center',opacity:.95},heroMark:{color:c.accentBright,fontSize:42,fontWeight:'900'},
