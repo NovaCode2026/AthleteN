@@ -6,7 +6,7 @@ import CoachNav from '@/components/coach-nav';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
-type Notice = { id: string; title: string; text: string; route: string; tone: 'blue' | 'red' | 'green' };
+type Notice = { id: string; title: string; text: string; route: string; tone: 'blue' | 'red' | 'green'; requestId?: string };
 
 export default function CoachNotifications() {
   const { profile } = useAuth();
@@ -16,7 +16,7 @@ export default function CoachNotifications() {
   const load = useCallback(async () => {
     if (!profile?.user_id) return;
     const next: Notice[] = []; const app = await supabase.from('notifications').select('id,title,body,notification_type,read_at,created_at').eq('user_id',profile.user_id).order('created_at',{ascending:false}).limit(30); setUnread((app.data||[]).filter((n:any)=>!n.read_at).length); for(const n of app.data||[]){ next.push({id:'n-'+n.id,title:String(n.title||'Notification'),text:String(n.body||''),route:String(n.notification_type||'').includes('training')?'/coach-training':'/coach',tone:String(n.notification_type||'').includes('training')?'green':'blue'}); }
-    const approval = await supabase.from('coach_approval_requests').select('id', { count: 'exact', head: true }).eq('coach_user_id', profile.user_id).eq('status', 'pending');
+    const approvalRows = await supabase.from('coach_approval_requests').select('id,athlete_user_id,request_type,current_value,requested_value,created_at').eq('coach_user_id', profile.user_id).eq('status', 'pending').order('created_at',{ascending:false}).limit(20); const approval = {count:(approvalRows.data||[]).length}; const reqIds=[...(approvalRows.data||[]).map((r:any)=>r.athlete_user_id)]; const reqProfiles=reqIds.length?await supabase.from('profiles').select('user_id,full_name').in('user_id',reqIds):{data:[],error:null} as any; const reqNames=new Map((reqProfiles.data||[]).map((p:any)=>[p.user_id,p.full_name])); for(const r of approvalRows.data||[]){ next.push({id:'request-'+r.id,title:`${reqNames.get(r.athlete_user_id)||'Athlete'} · ${String(r.request_type||'request').replace(/_/g,' ')}`,text:`${r.current_value||'—'} → ${r.requested_value||'—'}`,route:'/coach-athletes',tone:'red',requestId:r.id}); }
     if ((approval.count || 0) > 0) {
       next.push({ id: 'approvals', title: 'Athlete connection requests', text: String(approval.count) + ' request' + ((approval.count || 0) === 1 ? '' : 's') + ' need your review.', route: '/coach-athletes', tone: 'red' });
     }
@@ -28,6 +28,7 @@ export default function CoachNotifications() {
   }, [profile?.user_id]);
 
   useEffect(() => { void load(); }, [load]);
+  async function reviewRequest(requestId:string,status:'approved'|'rejected'){ const {error}=await supabase.rpc('review_coach_approval',{p_request_id:requestId,p_status:status}); if(error){return} await load(); }
   async function openNotice(n:Notice){ if(n.id.startsWith('n-')) await supabase.from('notifications').update({read_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',n.id.slice(2)).eq('user_id',profile?.user_id); await load(); router.push(n.route as any); }
 
   return <Screen bottomBar={<CoachNav active="more" />}>
@@ -44,7 +45,7 @@ export default function CoachNotifications() {
                 <Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>{n.title}</Text>
                 <Text style={{ color: c.muted, fontSize: 10, lineHeight: 16, marginTop: 3 }}>{n.text}</Text>
               </View>
-              <Text style={{ color: c.muted, fontSize: 24 }}>›</Text>
+              {n.requestId ? <View style={{gap:6}}><Pressable onPress={()=>void reviewRequest(n.requestId!,'approved')} style={{backgroundColor:c.accent,borderRadius:9,padding:8}}><Text style={{color:'#fff',fontSize:8,fontWeight:'900'}}>APPROVE</Text></Pressable><Pressable onPress={()=>void reviewRequest(n.requestId!,'rejected')} style={{borderWidth:1,borderColor:c.borderStrong,borderRadius:9,padding:8}}><Text style={{color:c.danger,fontSize:8,fontWeight:'900'}}>REJECT</Text></Pressable></View> : <Text style={{ color: c.muted, fontSize: 24 }}>›</Text>}
             </View>
           </Card>
         </Pressable>
