@@ -11,7 +11,7 @@ const c=Colors.dark;
 export const KEY='athleten.bottom-navigation.v1';
 export const DEFAULT=['index','training','ai','compete','profile','explore'] as const;
 export const AVAILABLE=[
- {id:'index',label:'Home',icon:'home'},
+ {id:'index',label:'Home',icon:'dashboard'},
  {id:'training',label:'Train',icon:'training'},
  {id:'ai',label:'AI Coach',icon:'ai'},
  {id:'compete',label:'Compete',icon:'event'},
