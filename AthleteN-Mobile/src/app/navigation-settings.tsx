@@ -1,26 +1,28 @@
 import { useEffect,useState } from 'react';
 import { Alert, Pressable,ScrollView,Text,View,StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams,useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { AVAILABLE,DEFAULT,KEY } from './(tabs)/_layout';
+import { ACADEMY_NAV_AVAILABLE,ACADEMY_NAV_DEFAULT,ACADEMY_NAV_KEY } from './academy';
+import { Icon } from '@/components/mobile-ui';
 
 const c=Colors.dark;
 export default function NavigationSettings(){
- const router=useRouter();const [items,setItems]=useState<string[]>([...DEFAULT]);const [message,setMessage]=useState('');
- useEffect(()=>{void (async()=>{const raw=await AsyncStorage.getItem(KEY);if(raw){try{const p=JSON.parse(raw);if(Array.isArray(p))setItems(p)}catch{}}})()},[]);
- function toggle(id:string){setItems(v=>{if(!v.includes(id))return v.length<6?[...v,id]:v;if(id==='explore')return v;const x=AVAILABLE.find(a=>a.id===id);Alert.alert('Remove from navigation?',`${x?.label||'This feature'} will disappear from your bottom bar. You can still add it again later from Customize Navigation.`,[{text:'Cancel',style:'cancel'},{text:'Remove',style:'destructive',onPress:()=>setItems(current=>current.filter(item=>item!==id))}]);return v})}
+ const router=useRouter();const params=useLocalSearchParams<{mode?:string}>();const academyMode=params.mode==='academy';const available:any[]=academyMode?ACADEMY_NAV_AVAILABLE:AVAILABLE;const defaultItems:string[]=academyMode?[...ACADEMY_NAV_DEFAULT]:[...DEFAULT];const storageKey=academyMode?ACADEMY_NAV_KEY:KEY;const [items,setItems]=useState<string[]>(defaultItems);const [message,setMessage]=useState('');
+ useEffect(()=>{void (async()=>{const raw=await AsyncStorage.getItem(storageKey);if(raw){try{const p=JSON.parse(raw);if(Array.isArray(p))setItems(p)}catch{}}})()},[]);
+ function toggle(id:string){setItems(v=>{if(!v.includes(id))return v.length<6?[...v,id]:v;if(academyMode&&id==='Dashboard')return v;if(!academyMode&&id==='explore')return v;const x=available.find(a=>a.id===id);Alert.alert('Remove from navigation?',`${x?.label||'This feature'} will disappear from your bottom bar. You can still add it again later from Customize Navigation.`,[{text:'Cancel',style:'cancel'},{text:'Remove',style:'destructive',onPress:()=>setItems(current=>current.filter(item=>item!==id))}]);return v})}
  function move(id:string,dir:number){setItems(v=>{const a=[...v],i=a.indexOf(id),j=i+dir;if(i<0||j<0||j>=a.length)return a;[a[i],a[j]]=[a[j],a[i]];return a})}
- async function save(){await AsyncStorage.setItem(KEY,JSON.stringify(items));setMessage('Bottom navigation saved.');setTimeout(()=>router.back(),500)}
- async function reset(){setItems(DEFAULT);await AsyncStorage.setItem(KEY,JSON.stringify(DEFAULT));setMessage('Default navigation restored.')}
+ async function save(){await AsyncStorage.setItem(storageKey,JSON.stringify(items));setMessage('Bottom navigation saved.');setTimeout(()=>router.back(),500)}
+ async function reset(){setItems(defaultItems);await AsyncStorage.setItem(storageKey,JSON.stringify(defaultItems));setMessage('Default navigation restored.')}
  return <ScrollView style={s.screen} contentContainerStyle={s.content}>
-  <Text style={s.kicker}>ATHLETEN PERSONALIZATION</Text><Text style={s.title}>Customize navigation</Text><Text style={s.sub}>Choose the AthleteN features you want directly on your bottom bar. Pick up to 6 and reorder them. More stays available so you can always reach the full AthleteN command center.</Text>
+  <Text style={s.kicker}>ATHLETEN PERSONALIZATION</Text><Text style={s.title}>Customize {academyMode?'academy':'AthleteN'} navigation</Text><Text style={s.sub}>Choose the features you want directly on your bottom bar. Pick up to 6 and reorder them.</Text>
   <Text style={s.section}>ACTIVE BOTTOM BAR · {items.length}/6</Text>
-  <View style={s.card}>{items.map((id,i)=>{const x=AVAILABLE.find(a=>a.id===id)!;return <View key={id} style={s.row}><View style={s.icon}><Text style={s.iconText}>{x.icon}</Text></View><View style={s.copy}><Text style={s.name}>{x.label}</Text><Text style={s.meta}>Position {i+1}</Text></View><Pressable onPress={()=>move(id,-1)} style={s.small}><Text style={s.smallText}>‹</Text></Pressable><Pressable onPress={()=>move(id,1)} style={s.small}><Text style={s.smallText}>›</Text></Pressable><Pressable onPress={()=>toggle(id)} style={[s.small,s.remove]}><Text style={s.removeText}>×</Text></Pressable></View>})}</View>
+  <View style={s.card}>{items.map((id,i)=>{const x=AVAILABLE.find(a=>a.id===id)!;return <View key={id} style={s.row}><View style={s.icon}><Icon name={x.icon} size={18}/></View><View style={s.copy}><Text style={s.name}>{x.label}</Text><Text style={s.meta}>Position {i+1}</Text></View><Pressable onPress={()=>move(id,-1)} style={s.small}><Icon name="back" size={14}/></Pressable><Pressable onPress={()=>move(id,1)} style={s.small}><Icon name="arrow" size={14}/></Pressable><Pressable onPress={()=>toggle(id)} style={[s.small,s.remove]}><Icon name="close" size={14} color={c.danger}/></Pressable></View>})}</View>
   <Text style={s.section}>ADD FEATURES</Text>
-  <View style={s.card}>{AVAILABLE.filter(x=>!items.includes(x.id)).map(x=><Pressable key={x.id} onPress={()=>toggle(x.id)} style={s.addRow}><View style={s.icon}><Text style={s.iconText}>{x.icon}</Text></View><View style={s.copy}><Text style={s.name}>{x.label}</Text><Text style={s.meta}>Add to bottom bar</Text></View><Text style={s.plus}>+</Text></Pressable>)}</View>
+  <View style={s.card}>{AVAILABLE.filter(x=>!items.includes(x.id)).map(x=><Pressable key={x.id} onPress={()=>toggle(x.id)} style={s.addRow}><View style={s.icon}><Text style={s.iconText}>{x.icon}</Text></View><View style={s.copy}><Text style={s.name}>{x.label}</Text><Text style={s.meta}>Add to bottom bar</Text></View><Icon name="add" size={20}/></Pressable>)}</View>
   <Pressable onPress={save} style={s.primary}><Text style={s.primaryText}>SAVE NAVIGATION</Text></Pressable>
-  <Pressable onPress={()=>void reset()} style={s.secondary}><Text style={s.secondaryText}>RESET TO ATHLETEN DEFAULT</Text></Pressable>
+  <Pressable onPress={()=>void reset()} style={s.secondary}><Text style={s.secondaryText}>RESET TO DEFAULT</Text></Pressable>
   {message?<Text style={s.message}>{message}</Text>:null}
  </ScrollView>
 }
