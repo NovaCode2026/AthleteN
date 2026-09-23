@@ -30,7 +30,8 @@ export default function ExploreScreen(){
    <FeatureRow title="Documents" text="Private athlete documents" badge={String(counts.docs)} onPress={()=>router.push({pathname:'/documents'})}/>
    <FeatureRow title="Verification" text="Athlete/student verification status" onPress={()=>router.push({pathname:'/verification'})}/>
   </Section>
-  <Section title="TEAM"><FeatureRow title="My Team" text="Connect or change your Coach and Academy" onPress={()=>router.push({pathname:'/team'})}/></Section>\n  <Section title="ATHLETEN COMMUNITY">
+  <Section title="TEAM"><FeatureRow title="My Team" text="Connect or change your Coach and Academy" onPress={()=>router.push({pathname:'/team'})}/></Section>
+  <Section title="ATHLETEN COMMUNITY">
    <FeatureRow title="Messages" text="Secure athlete, coach and team messaging" onPress={()=>router.push({pathname:'/messages'})}/>
    <FeatureRow title="Roadmap" text="Vote on what AthleteN should build next" badge={String(counts.roadmap)} onPress={()=>router.push({pathname:'/roadmap'})}/>
    <FeatureRow title="Feedback" text="Report a problem or suggest an improvement" onPress={()=>router.push({pathname:'/feedback'})}/>
