@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { Screen, Card, Button, Field, c } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { getAiLimit } from '@/lib/entitlements';
 
 type Tab='Dashboard'|'People'|'Training'|'Events'|'Finance';
 type Member={user_id:string;role:string;status:string;full_name?:string|null;belt?:string|null;discipline?:string|null;username?:string|null};
@@ -42,19 +43,27 @@ export default function Academy(){
  const [aiQuestion,setAiQuestion]=useState('');
  const [aiAnswer,setAiAnswer]=useState('');
  const [aiBusy,setAiBusy]=useState(false);
+ const [aiOpen,setAiOpen]=useState(false);
+ const [aiUsed,setAiUsed]=useState(0);
+ const [aiLimit,setAiLimit]=useState(1000);
 
  const load=async()=>{
   if(!profile?.academy_id)return;
   const today=new Date().toISOString().slice(0,10);
   const start=new Date(Date.now()-6*86400000).toISOString().slice(0,10);
-  const [a,m,t,cc]=await Promise.all([
+  const monthStart=new Date(); monthStart.setDate(1);
+  const [a,m,t,cc,usage]=await Promise.all([
    supabase.from('academies').select('id,name,city,state,country,status').eq('id',profile.academy_id).maybeSingle(),
    supabase.from('academy_memberships').select('user_id,role,status').eq('academy_id',profile.academy_id).eq('status','active'),
    supabase.from('tournaments').select('id,name,starts_at,location,status').eq('sport','Taekwondo').gte('starts_at',today).order('starts_at').limit(6),
-   supabase.rpc('get_my_connection_code')
+   supabase.rpc('get_my_connection_code'),
+   supabase.from('subscription_usage').select('ai_requests_used,ai_requests_limit').eq('user_id',session?.user?.id||'').eq('usage_month',monthStart.toISOString().slice(0,10)).maybeSingle()
   ]);
   setAcademy(a.data);
   setSavedCode(cc.data?.code||'');
+  const fallbackLimit=getAiLimit((profile as any)?.plan_id || (profile as any)?.plan || 'academy');
+  setAiUsed(Number(usage.data?.ai_requests_used||0));
+  setAiLimit(Number(usage.data?.ai_requests_limit||fallbackLimit));
   const base=(m.data||[]) as any[];
   const ids=base.map(x=>x.user_id);
   if(ids.length){
@@ -101,7 +110,11 @@ export default function Academy(){
  }
  async function askAI(prompt?:string){
   const q=(prompt||aiQuestion).trim();if(!q||!session)return;
+  if(aiUsed>=aiLimit){setAiAnswer('You have reached this month’s Academy AI limit. Your allowance resets at the start of next month.');setAiOpen(true);return;}
   setAiBusy(true);setAiAnswer('');
+  const {data:reservation,error:reserveError}=await supabase.rpc('reserve_ai_usage',{p_user_id:session.user.id,p_plan_id:(profile as any)?.plan_id || (profile as any)?.plan || 'academy',p_topic:'Academy AI',p_monthly_limit:aiLimit});
+  if(reserveError||!reservation){setAiBusy(false);setAiAnswer('AI limit reached or your Academy AI entitlement is not active.');setAiOpen(true);return;}
+  setAiUsed(v=>v+1);setAiOpen(true);
   const context='Academy: '+(academy?.name||'AthleteN Academy')+'; active athletes: '+athletes+'; active coaches: '+coaches+'; active training groups: '+activeGroups+'; upcoming competitions: '+events.length+'; average attendance last 7 days: '+avgAttendance+'%.';
   try{
    const response=await fetch('https://athleten.netlify.app/.netlify/functions/ai-coach',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({topic:'Performance Reports',prompt:context+'\nAcademy admin question: '+q})});
@@ -112,16 +125,23 @@ export default function Academy(){
  }
 
  const quick=(next:Tab)=>setTab(next);
+ const remaining=Math.max(0,aiLimit-aiUsed);
+ const aiPanel=<View style={{gap:11}}>
+  <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}><View><Text style={{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1.2}}>ATHLETEN AI</Text><Text style={{color:c.text,fontSize:20,fontWeight:'900',marginTop:3}}>Academy AI</Text></View><Pressable onPress={()=>setAiOpen(false)} style={{width:36,height:36,borderRadius:12,backgroundColor:c.surface,alignItems:'center',justifyContent:'center'}}><Text style={{color:c.muted,fontSize:20}}>×</Text></Pressable></View>
+  <View style={{backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep,borderRadius:14,padding:12}}><Text style={{color:c.accentBright,fontSize:10,fontWeight:'900'}}>{remaining.toLocaleString('en-IN')} / {aiLimit.toLocaleString('en-IN')} AI messages remaining</Text><View style={{height:6,borderRadius:4,backgroundColor:c.background,marginTop:8,overflow:'hidden'}}><View style={{height:6,width:(aiLimit?Math.min(100,(aiUsed/aiLimit)*100):100)+'%',backgroundColor:c.accent}}/></View><Text style={{color:c.muted,fontSize:8,marginTop:6}}>Usage is enforced by the server for your Academy plan.</Text></View>
+  <Text style={{color:c.muted,fontSize:10,lineHeight:16}}>Ask about athletes, coaches, training, attendance, competitions, or academy operations.</Text>
+  <View style={{flexDirection:'row',gap:7}}>{['Academy status?','Attendance trend?','Competition prep?'].map(x=><Pressable key={x} onPress={()=>void askAI(x)} style={{flex:1,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:11,padding:9}}><Text style={{color:c.text,fontSize:8,fontWeight:'800'}}>{x}</Text></Pressable>)}</View>
+  <View style={{backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:13,flexDirection:'row',alignItems:'center'}}><TextInput value={aiQuestion} onChangeText={setAiQuestion} onSubmitEditing={()=>void askAI()} placeholder="Ask AthleteN AI…" placeholderTextColor={c.muted} style={{flex:1,color:c.text,paddingHorizontal:12,paddingVertical:12,fontSize:11}}/><Pressable onPress={()=>void askAI()} disabled={aiBusy||remaining<=0} style={{width:45,height:42,marginRight:4,borderRadius:10,backgroundColor:remaining>0?c.accent:c.border,alignItems:'center',justifyContent:'center'}}>{aiBusy?<ActivityIndicator color="#fff"/>:<Icon name="chevron" size={18} color="#fff"/>}</Pressable></View>
+  {aiAnswer?<View style={{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:13,padding:12}}><Text style={{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1}}>ATHLETEN AI</Text><Text style={{color:c.text,fontSize:10,lineHeight:17,marginTop:5}}>{aiAnswer}</Text></View>:null}
+ </View>;
+ const bottomBar=<View style={{position:'absolute',left:10,right:10,bottom:10,backgroundColor:'#0B1019',borderWidth:1,borderColor:c.borderStrong,borderRadius:22,padding:7,shadowOpacity:.35,shadowRadius:14,elevation:12}}><View style={{flexDirection:'row',alignItems:'center',gap:5}}>{tabs.map(x=><Pressable key={x.key} onPress={()=>setTab(x.key)} style={{flex:1,alignItems:'center',justifyContent:'center',paddingVertical:8,borderRadius:15,backgroundColor:tab===x.key?c.accent:'transparent'}}><Icon name={x.icon} size={17} color={tab===x.key?'#fff':c.muted}/><Text style={{color:tab===x.key?'#fff':c.muted,fontSize:7,fontWeight:'900',marginTop:3}}>{x.label}</Text></Pressable>)}<Pressable onPress={()=>setAiOpen(true)} style={{width:48,alignItems:'center',justifyContent:'center',paddingVertical:8,borderRadius:15,backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep}}><Icon name="ai" size={19}/><Text style={{color:c.accentBright,fontSize:7,fontWeight:'900',marginTop:3}}>AI</Text></Pressable></View></View>;
 
- return <Screen>
+ return <Screen bottomBar={bottomBar}>
   <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
    <View><Text style={{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1.5}}>ATHLETEN ACADEMY</Text><Text style={{color:c.text,fontSize:25,fontWeight:'900',marginTop:3}}>{academy?.name||'Academy'}</Text></View>
    <Pressable onPress={()=>void load()} style={{width:40,height:40,borderRadius:13,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,alignItems:'center',justifyContent:'center'}}><Icon name="refresh" size={18}/></Pressable>
   </View>
 
-  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom:8}} contentContainerStyle={{gap:7}}>
-   {tabs.map(x=><Pressable key={x.key} onPress={()=>setTab(x.key)} style={{flex:1,minWidth:62,paddingHorizontal:10,paddingVertical:9,borderRadius:16,backgroundColor:tab===x.key?c.accent:c.surface,borderWidth:1,borderColor:tab===x.key?c.accent:c.border,alignItems:'center',gap:3}}><Icon name={x.icon} size={15} color={tab===x.key?'#fff':c.muted}/><Text style={{color:tab===x.key?'#fff':c.muted,fontSize:8,fontWeight:'900'}}>{x.label}</Text></Pressable>)}
-  </ScrollView>
 
   {tab==='Dashboard'?<>
    <View style={{marginTop:4,marginBottom:12}}><Text style={{color:c.muted,fontSize:10}}>ACADEMY CONTROL CENTER</Text><Text style={{color:c.text,fontSize:27,fontWeight:'900',marginTop:3}}>Run your academy.</Text><Text style={{color:c.muted,fontSize:11,marginTop:3}}>People, training, competitions, finance and AI in one place.</Text></View>
@@ -185,6 +205,9 @@ export default function Academy(){
 
   {tab==='Events'?<View style={{gap:9}}><Text style={{color:c.text,fontSize:23,fontWeight:'900'}}>Competitions</Text><Text style={{color:c.muted,fontSize:10}}>Upcoming Taekwondo events.</Text>{events.length?events.map(e=><Card key={e.id}><View style={{flexDirection:'row',gap:10,alignItems:'center'}}><View style={{width:40,height:40,borderRadius:12,backgroundColor:'#ff9b2f20',alignItems:'center',justifyContent:'center'}}><Icon name="events" size={18} color="#ff9b2f"/></View><View style={{flex:1}}><Text style={{color:c.text,fontWeight:'900'}}>{e.name}</Text><Text style={{color:c.muted,fontSize:9,marginTop:4}}>{new Date(e.starts_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · {e.location||'Location TBD'}</Text></View></View></Card>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No upcoming competitions</Text></Card>}</View>:null}
 
+  {tab!=='Dashboard'?<View style={{marginTop:2,marginBottom:2}}><Card style={{padding:14,borderColor:c.accentDeep,backgroundColor:'#071523'}}><View style={{flexDirection:'row',alignItems:'center',gap:10}}><View style={{width:38,height:38,borderRadius:12,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'}}><Icon name="ai" size={20}/></View><View style={{flex:1}}><Text style={{color:c.text,fontSize:13,fontWeight:'900'}}>AthleteN AI</Text><Text style={{color:c.muted,fontSize:8,marginTop:2}}>{remaining.toLocaleString('en-IN')} / {aiLimit.toLocaleString('en-IN')} messages remaining</Text></View><Pressable onPress={()=>setAiOpen(true)} style={{backgroundColor:c.accent,borderRadius:11,paddingHorizontal:12,paddingVertical:9}}><Text style={{color:'#fff',fontSize:8,fontWeight:'900'}}>ASK AI</Text></Pressable></View></Card></View>:null}
+
   {tab==='Finance'?<View style={{gap:10}}><Text style={{color:c.text,fontSize:23,fontWeight:'900'}}>Finance</Text><Text style={{color:c.muted,fontSize:10}}>Academy money in one place.</Text><Card accent><Text style={{color:c.muted,fontSize:8,fontWeight:'900'}}>ACADEMY PLAN</Text><Text style={{color:c.text,fontSize:25,fontWeight:'900',marginTop:4}}>₹799 / month</Text><Text style={{color:c.accentBright,fontSize:9,fontWeight:'900',marginTop:4}}>1,000 AI messages / month</Text></Card><Card><Text style={{color:c.text,fontWeight:'900'}}>Finance workspace</Text><Text style={{color:c.muted,fontSize:10,lineHeight:17,marginTop:5}}>Revenue, expenses, pending fees and transactions will be connected to the academy finance records.</Text></Card></View>:null}
+  <Modal visible={aiOpen} transparent animationType="slide" onRequestClose={()=>setAiOpen(false)}><View style={{flex:1,backgroundColor:'#000000B8',justifyContent:'flex-end'}}><View style={{backgroundColor:c.background,borderTopLeftRadius:28,borderTopRightRadius:28,borderWidth:1,borderColor:c.borderStrong,padding:18,paddingBottom:28,maxHeight:'82%'}}><ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>{aiPanel}</ScrollView></View></View></Modal>
  </Screen>;
 }
