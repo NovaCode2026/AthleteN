@@ -127,7 +127,9 @@ export default function Academy(){
  async function createEvent(){
   if(!eventName.trim()||!eventDate.trim()||!eventAthlete.trim())return alert('Enter competition name, date and athlete account code/username.');
   const athlete=members.find(m=>m.user_id===eventAthlete.trim()||m.username?.toLowerCase()===eventAthlete.trim().toLowerCase()||m.full_name?.toLowerCase()===eventAthlete.trim().toLowerCase()); if(!athlete||athlete.role!=='athlete')return alert('Choose an active academy athlete.');
-  setBusy(true); const {error}=await supabase.rpc('academy_create_tournament',{p_name:eventName.trim(),p_starts_at:eventDate.trim(),p_location:eventLocation.trim(),p_athlete_user_id:athlete.user_id,p_discipline:athlete.discipline||null,p_coach_user_id:eventCoach||null}); setBusy(false); if(error){alert(error.message);return} setEventName('');setEventDate('');setEventLocation('');setEventAthlete('');setEventCoach('');await load();
+  const coach=eventCoach.trim()?members.find(m=>m.role==='coach'&&(m.user_id===eventCoach.trim()||m.username?.toLowerCase()===eventCoach.trim().toLowerCase()||m.full_name?.toLowerCase()===eventCoach.trim().toLowerCase())):undefined; if(eventCoach.trim()&&!coach)return alert('Choose an active academy coach.');
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(eventDate.trim()))return alert('Date must use YYYY-MM-DD.');
+  setBusy(true); const {error}=await supabase.rpc('academy_create_tournament',{p_name:eventName.trim(),p_starts_at:eventDate.trim(),p_location:eventLocation.trim(),p_athlete_user_id:athlete.user_id,p_discipline:athlete.discipline||null,p_coach_user_id:coach?.user_id||null}); setBusy(false); if(error){alert(error.message);return} setEventName('');setEventDate('');setEventLocation('');setEventAthlete('');setEventCoach('');await load();
  }
  async function askAI(prompt?:string){
   const q=(prompt||aiQuestion).trim();if(!q||!session)return;
