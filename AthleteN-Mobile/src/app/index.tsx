@@ -53,8 +53,15 @@ export default function EntryGate() {
       role === 'admin' || role === 'super_admin' || role === 'support_admin' ? '/admin' :
       '/(tabs)';
 
-    void router.replace(target);
-  }, [session?.user.id, profile?.user_id, profile?.role, ageChecking, ageStatus]);
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (!cancelled) void router.replace(target);
+    }, 50);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [session?.user.id, profile?.user_id, profile?.role, ageChecking, ageStatus, router]);
 
   if (loading || (session && profileLoading) || ageChecking) return <Loading />;
 
