@@ -45,7 +45,7 @@ export default function Academy(){
  const [tab,setTab]=useState<Tab>('Dashboard');
  const [academy,setAcademy]=useState<any>(null);
  const [members,setMembers]=useState<Member[]>([]);
- const [sessions,setSessions]=useState<Session[]>([]);
+ const [sessions,setSessions]=useState<Session[]>([]); const [activeGroupCount,setActiveGroupCount]=useState(0);
  const [events,setEvents]=useState<Event[]>([]);
  const [attendance,setAttendance]=useState<number[]>(Array(7).fill(0));
  const [savedCode,setSavedCode]=useState('');
@@ -96,7 +96,7 @@ export default function Academy(){
   const coachIds=base.filter(x=>x.role==='coach').map(x=>x.user_id);
   if(coachIds.length){
    const g=await supabase.from('training_groups').select('id').in('coach_user_id',coachIds).eq('active',true);
-   const groupIds=(g.data||[]).map((x:any)=>x.id);
+   const groupIds=(g.data||[]).map((x:any)=>x.id); setActiveGroupCount(groupIds.length);
    if(groupIds.length){
     const s=await supabase.from('training_group_sessions').select('id,session_date,start_time,title').in('group_id',groupIds).gte('session_date',today).order('session_date').order('start_time').limit(12);
     setSessions((s.data||[]) as Session[]);
@@ -106,15 +106,15 @@ export default function Academy(){
      const ar=await supabase.from('training_group_attendance').select('session_id,status').in('session_id',ids2);
      setAttendance(Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));const day=d.toISOString().slice(0,10);const sessionIds=new Set((past.data||[]).filter((x:any)=>x.session_date===day).map((x:any)=>x.id));return (ar.data||[]).filter((x:any)=>sessionIds.has(x.session_id)&&['present','late'].includes(x.status)).length}));
     }else setAttendance(Array(7).fill(0));
-   }else setSessions([]);
-  }else setSessions([]);
+   }else {setSessions([]);setActiveGroupCount(0);}
+  }else {setSessions([]);setActiveGroupCount(0);}
  };
 
  useEffect(()=>{void load()},[profile?.academy_id]);
 
  const athletes=members.filter(x=>x.role==='athlete').length;
  const coaches=members.filter(x=>x.role==='coach').length;
- const activeGroups=new Set(sessions.map(x=>x.title)).size;
+ const activeGroups=activeGroupCount;
  const maxAttendance=Math.max(1,...attendance);
  const avgAttendance=athletes?Math.min(100,Math.round((attendance.reduce((a,b)=>a+b,0)/(7*athletes))*100)):0;
 
