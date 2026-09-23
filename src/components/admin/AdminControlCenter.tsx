@@ -32,12 +32,9 @@ const rowHasKey = (s: Section, row: Row | null) => Boolean(row && rowKeyColumns(
 const isDateEditorKey = (key: string) => /(^|_)(date|dob|birth|started|ended|expires|published|scheduled|period_end)($|_)/i.test(key);
 const isLongEditorKey = (key: string) => /(^|_)(description|body|message|notes|reason|comment|bio|achievements)($|_)/i.test(key);
 const isNumericEditorKey = (key: string) => /(^|_)(age|weight|height|score|placing|rank|amount|count|limit|used|points|duration|reps|rounds)($|_)/i.test(key);
-const arrayEditorText = (value: unknown) => Array.isArray(value) ? value.map(v => String(v ?? "")).join("
-") : "";
-const objectEditorText = (value: unknown) => value && typeof value === "object" && !Array.isArray(value) ? Object.entries(value as Record<string, unknown>).map(([k, v]) => `${k}=${v ?? ""}`).join("
-") : "";
-const parseObjectEditorText = (value: string) => Object.fromEntries(value.split("
-").map(line => line.trim()).filter(Boolean).map(line => { const i = line.indexOf("="); return i < 0 ? [line, ""] : [line.slice(0, i).trim(), line.slice(i + 1).trim()]; }));
+const arrayEditorText = (value: unknown) => Array.isArray(value) ? value.map(v => String(v ?? "")).join("\n") : "";
+const objectEditorText = (value: unknown) => value && typeof value === "object" && !Array.isArray(value) ? Object.entries(value as Record<string, unknown>).map(([k, v]) => `${k}=${v ?? ""}`).join("\n") : "";
+const parseObjectEditorText = (value: string) => Object.fromEntries(value.split("\n").map(line => line.trim()).filter(Boolean).map(line => { const i = line.indexOf("="); return i < 0 ? [line, ""] : [line.slice(0, i).trim(), line.slice(i + 1).trim()]; }));
 
 export default function AdminControlCenter({ userId, role }: Props) {
   const [selected, setSelected] = useState("profiles"); const [rows, setRows] = useState<Row[]>([]); const [summaries, setSummaries] = useState<{ key: string; label: string; count: number }[]>([]);
@@ -83,8 +80,7 @@ export default function AdminControlCenter({ userId, role }: Props) {
             if (key === "role") return <label key={key}>{label}<select value={text(value)} onChange={e=>setEditorDraft(d=>({...d,[key]:e.target.value}))} disabled={readOnly}><option value="athlete">Athlete</option><option value="coach">Coach</option><option value="academy">Academy</option><option value="admin">Admin</option><option value="super_admin">Super Admin</option></select></label>;
             if (key === "plan_id") return <label key={key}>{label}<select value={text(value)||"free"} onChange={e=>setEditorDraft(d=>({...d,[key]:e.target.value}))} disabled={readOnly}>{plans.map(p=><option key={p.id} value={p.id}>{p.name} ({p.id})</option>)}</select></label>;
             if (typeof value === "boolean") return <label key={key} style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={value} onChange={e=>setEditorDraft(d=>({...d,[key]:e.target.checked}))} disabled={readOnly}/><span>{label}</span></label>;
-            if (Array.isArray(value)) return <label key={key}>{label}<textarea rows={4} value={arrayEditorText(value)} onChange={e=>setEditorDraft(d=>({...d,[key]:e.target.value.split("
-").map(v=>v.trim()).filter(Boolean)}))} disabled={readOnly} placeholder="One item per line"/></label>;
+            if (Array.isArray(value)) return <label key={key}>{label}<textarea rows={4} value={arrayEditorText(value)} onChange={e=>setEditorDraft(d=>({...d,[key]:e.target.value.split("\n").map(v=>v.trim()).filter(Boolean)}))} disabled={readOnly} placeholder="One item per line"/></label>;
             if (value && typeof value === "object") return <label key={key}>{label}<textarea rows={4} value={objectEditorText(value)} onChange={e=>setEditorDraft(d=>({...d,[key]:parseObjectEditorText(e.target.value)}))} disabled={readOnly} placeholder="One field per line: key=value"/></label>;
             if (isLongEditorKey(key)) return <label key={key}>{label}<textarea rows={4} value={text(value)} onChange={e=>setEditorDraft(d=>({...d,[key]:e.target.value}))} disabled={readOnly}/></label>;
             if (isDateEditorKey(key)) return <label key={key}>{label}<input type={key.includes("at")||key.includes("time")||key.includes("period_end")?"datetime-local":"date"} value={text(value).slice(0,key.includes("at")||key.includes("time")||key.includes("period_end")?16:10)} onChange={e=>setEditorDraft(d=>({...d,[key]:e.target.value||null}))} disabled={readOnly}/></label>;
