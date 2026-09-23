@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Screen, Card, c } from '@/components/mobile-ui';
+import { Screen, Card, c, Icon } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import CoachNav from '@/components/coach-nav';
@@ -11,23 +11,24 @@ import PlanSection from '@/components/plan-section';
 type Athlete = { athlete_user_id: string; full_name?: string | null; discipline?: string | null; belt?: string | null; weight_kg?: number | null };
 type DayPoint = { label: string; sessions: number; attended: number };
 
-function BellIcon() {
+function BellIcon() { return <Icon name="notifications" size={22} color={c.text}/>; }
+/*
   return <View style={{ width: 28, height: 30, alignItems: 'center', justifyContent: 'center' }}>
     <View style={{ width: 17, height: 18, borderWidth: 2, borderColor: c.text, borderRadius: 10, borderBottomLeftRadius: 5, borderBottomRightRadius: 5, marginTop: -2 }} />
     <View style={{ width: 22, height: 2, borderRadius: 1, backgroundColor: c.text, position: 'absolute', bottom: 6 }} />
     <View style={{ width: 5, height: 3, borderRadius: 2, backgroundColor: c.text, position: 'absolute', bottom: 2 }} />
     <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: c.accentBright, borderWidth: 2, borderColor: c.background, position: 'absolute', right: 1, top: 1 }} />
   </View>;
-}
+} */
 
 function IconTile({ icon, tone }: { icon: string; tone: 'blue' | 'green' | 'red' | 'purple' | 'slate' }) {
   const bg = tone === 'green' ? '#073d24' : tone === 'red' ? '#451522' : tone === 'purple' ? '#2c174f' : tone === 'slate' ? '#152033' : '#0b274c';
   const color = tone === 'green' ? '#39e878' : tone === 'red' ? '#ff7082' : tone === 'purple' ? '#c16cff' : '#69a9ff';
-  return <View style={{ width: 54, height: 54, borderRadius: 17, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color, fontSize: 23, fontWeight: '900' }}>{icon}</Text></View>;
+  return <View style={{ width: 54, height: 54, borderRadius: 17, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}><Icon name={icon} size={23} color={color}/></View>;
 }
 
 function ActionCard({ icon, tone, title, subtitle, onPress }: { icon: string; tone: 'blue' | 'green' | 'red' | 'purple'; title: string; subtitle: string; onPress: () => void }) {
-  return <Pressable onPress={onPress} style={({ pressed }) => [{ width: '48.5%' }, pressed && { opacity: 0.72 }]}><Card><View style={{ minHeight: 108, justifyContent: 'space-between', gap: 10 }}><IconTile icon={icon} tone={tone}/><View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}><View style={{ flex: 1 }}><Text style={{ color: c.text, fontSize: 16, fontWeight: '900' }}>{title}</Text><Text style={{ color: c.muted, fontSize: 10, lineHeight: 15, marginTop: 3 }}>{subtitle}</Text></View><Text style={{ color: c.muted, fontSize: 25 }}>›</Text></View></View></Card></Pressable>;
+  return <Pressable onPress={onPress} style={({ pressed }) => [{ width: '48.5%' }, pressed && { opacity: 0.72 }]}><Card><View style={{ minHeight: 108, justifyContent: 'space-between', gap: 10 }}><IconTile icon={icon} tone={tone}/><View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}><View style={{ flex: 1 }}><Text style={{ color: c.text, fontSize: 16, fontWeight: '900' }}>{title}</Text><Text style={{ color: c.muted, fontSize: 10, lineHeight: 15, marginTop: 3 }}>{subtitle}</Text></View><Icon name="arrow" size={16} color={c.muted}/></View></View></Card></Pressable>;
 }
 
 function TrainingChart({ points }: { points: DayPoint[] }) {
