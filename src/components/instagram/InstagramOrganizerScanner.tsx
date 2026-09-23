@@ -11,7 +11,7 @@ type ScanDetails = { description?: string | null; fields?: Record<string, string
 type ScanRow = { id: string; source_url: string; tournament_name?: string | null; tournament_date?: string | null; venue?: string | null; registration_deadline?: string | null; weigh_in_information?: string | null; categories?: string | null; notices?: string | null; schedules_results?: string | null; pdfs?: Array<{ href: string; label: string }> | null; details?: ScanDetails | null; status?: string | null; detected_changes?: string | null; last_checked_at?: string | null; next_check_at?: string | null };
 type InstagramPost = { id: string; caption?: string; timestamp?: string | null; permalink?: string | null; media_type?: string | null; media_product_type?: string | null };
 type InstagramResult = { organizer?: { username?: string; name?: string | null; biography?: string | null; followers_count?: number | null }; relevant_posts?: InstagramPost[]; other_posts?: InstagramPost[]; related_accounts?: Array<{ username: string; url: string; relevant?: boolean; title?: string | null; posts?: InstagramPost[] }>; posts_scanned?: number; scan_limit?: number; more_posts_available?: boolean; scan?: ScanRow };
-type InstagramInput = { kind: "post" | "reel"; url: string };
+type InstagramInput = { kind: "post" | "reel" | "account"; url: string };
 
 function parseInstagramInput(value: string): InstagramInput | null {
   const trimmed = value.trim();
@@ -25,6 +25,7 @@ function parseInstagramInput(value: string): InstagramInput | null {
     const first = parts[0].toLowerCase();
     if (first === "p" && parts[1]) return { kind: "post", url: `https://www.instagram.com/p/${parts[1]}/` };
     if ((first === "reel" || first === "reels") && parts[1]) return { kind: "reel", url: `https://www.instagram.com/reel/${parts[1]}/` };
+    if (parts.length === 1 && /^[a-zA-Z0-9._]{1,30}$/.test(parts[0])) return { kind: "account", url: `https://www.instagram.com/${parts[0]}/` };
     return null;
   } catch {
     return null;
@@ -127,7 +128,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
 
   async function scanInstagram(value: string) {
     const input = parseInstagramInput(value);
-    if (!input) throw new Error("Paste an Instagram tournament post or reel URL.");
+    if (!input) throw new Error("Paste an Instagram tournament post, reel, or public organizer account URL.");
     const response = await fetch("/.netlify/functions/instagram-tournament-scan", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
@@ -214,9 +215,9 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
     <section className="card panel">
       <div className="scanner-source-picker" role="tablist" aria-label="Tournament source type">
         <button type="button" className={`source-option ${sourceType === "website" ? "active" : ""}`} onClick={() => setSourceType("website")} aria-selected={sourceType === "website"}><Globe size={20}/><span><strong>Website</strong><small>Tournament site, notice, schedule or PDF</small></span></button>
-        <button type="button" className={`source-option ${sourceType === "instagram" ? "active" : ""}`} onClick={() => setSourceType("instagram")} aria-selected={sourceType === "instagram"}><Instagram size={20}/><span><strong>Instagram</strong><small>Public tournament post or reel</small></span></button>
+        <button type="button" className={`source-option ${sourceType === "instagram" ? "active" : ""}`} onClick={() => setSourceType("instagram")} aria-selected={sourceType === "instagram"}><Instagram size={20}/><span><strong>Instagram</strong><small>Post, reel, or organizer account</small></span></button>
       </div>
-      <form className="scan-form" onSubmit={(event) => void scan(event)}><input value={source} onChange={(event) => setSource(event.target.value)} placeholder={sourceType === "website" ? "https://example.com/tournament" : "https://instagram.com/p/... or /reel/..."} aria-label="Tournament scan source" required/><button className="btn primary" type="submit" disabled={scanning}>{scanning ? <Loader2 className="spin" size={16}/> : <RefreshCw size={16}/>} {scanning ? "Scanning..." : "Scan"}</button></form>
+      <form className="scan-form" onSubmit={(event) => void scan(event)}><input value={source} onChange={(event) => setSource(event.target.value)} placeholder={sourceType === "website" ? "https://example.com/tournament" : "https://instagram.com/p/..., /reel/..., or /account"} aria-label="Tournament scan source" required/><button className="btn primary" type="submit" disabled={scanning}>{scanning ? <Loader2 className="spin" size={16}/> : <RefreshCw size={16}/>} {scanning ? "Scanning..." : "Scan"}</button></form>
       {sourceType === "website" ? <p className="scanner-help"><Globe size={16}/> The scanner follows relevant same-site pages, notices, schedules, results, rules, equipment, registration pages and linked PDFs.</p> : <p className="scanner-help"><ShieldCheck size={16}/> The scanner automatically follows accessible tournament-related accounts and posts/reels it can discover from the source. Unrelated Instagram content is filtered out.</p>}\n      <div className="scanner-merge-bar" aria-label="Tournament merge and grouping controls"><div><strong>Merge & group scans</strong><span>{mergeSelection.length ? `${mergeSelection.length} scan${mergeSelection.length===1?"":"s"} selected` : "Select saved scans below to combine related evidence."}</span></div><div className="scanner-group-actions"><input value={groupName} onChange={(event) => setGroupName(event.target.value)} placeholder="Tournament group name" aria-label="Tournament group name"/><button className="btn secondary" type="button" onClick={() => void mergeSelectedScans()} disabled={merging || mergeSelection.length < 2}>{merging ? "Merging..." : "Merge selected"}</button><button className="btn secondary" type="button" onClick={() => void createTournamentGroup()} disabled={grouping || mergeSelection.length < 2}>{grouping ? "Creating..." : "Create group"}</button></div></div>
     </section>
 
