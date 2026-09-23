@@ -1,0 +1,14 @@
+drop policy if exists "Academy staff can view linked training groups" on public.training_groups;
+create policy "Academy staff can view linked training groups" on public.training_groups for select using (exists (select 1 from public.academy_memberships am where am.academy_id=(select academy_id from public.profiles where user_id=training_groups.coach_user_id limit 1) and am.user_id=auth.uid() and am.status='active' and am.role='academy_admin'));
+
+drop policy if exists "Academy staff can view linked training group members" on public.training_group_members;
+create policy "Academy staff can view linked training group members" on public.training_group_members for select using (exists (select 1 from public.training_groups g join public.academy_memberships am on am.academy_id=(select academy_id from public.profiles where user_id=g.coach_user_id limit 1) where g.id=training_group_members.group_id and am.user_id=auth.uid() and am.status='active' and am.role='academy_admin'));
+
+drop policy if exists "Academy staff can view linked training sessions" on public.training_group_sessions;
+create policy "Academy staff can view linked training sessions" on public.training_group_sessions for select using (exists (select 1 from public.training_groups g join public.academy_memberships am on am.academy_id=(select academy_id from public.profiles where user_id=g.coach_user_id limit 1) where g.id=training_group_sessions.group_id and am.user_id=auth.uid() and am.status='active' and am.role='academy_admin'));
+
+drop policy if exists "Academy staff can view linked attendance" on public.training_group_attendance;
+create policy "Academy staff can view linked attendance" on public.training_group_attendance for select using (exists (select 1 from public.training_group_sessions s join public.training_groups g on g.id=s.group_id join public.academy_memberships am on am.academy_id=(select academy_id from public.profiles where user_id=g.coach_user_id limit 1) where s.id=training_group_attendance.session_id and am.user_id=auth.uid() and am.status='active' and am.role='academy_admin'));
+
+drop policy if exists "Academy staff can view academy competitions" on public.tournaments;
+create policy "Academy staff can view academy competitions" on public.tournaments for select using (exists (select 1 from public.academy_memberships am where am.user_id=tournaments.user_id and am.status='active' and am.academy_id=(select academy_id from public.profiles where user_id=auth.uid() limit 1)) or exists (select 1 from public.academy_memberships am where am.user_id=tournaments.coach_user_id and am.status='active' and am.academy_id=(select academy_id from public.profiles where user_id=auth.uid() limit 1)));
