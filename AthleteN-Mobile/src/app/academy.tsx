@@ -5,6 +5,7 @@ import { Screen, Card, Button, Field, c } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { getAiLimit } from '@/lib/entitlements';
+import PlanSection from '@/components/plan-section';
 
 type Tab='Dashboard'|'People'|'Training'|'Events'|'Finance';
 type Member={user_id:string;role:string;status:string;full_name?:string|null;belt?:string|null;discipline?:string|null;username?:string|null};
@@ -160,6 +161,7 @@ export default function Academy(){
  const bottomBar=<View style={{position:'absolute',left:10,right:10,bottom:10,backgroundColor:'#0B1019',borderWidth:1,borderColor:c.borderStrong,borderRadius:22,padding:7,shadowOpacity:.35,shadowRadius:14,elevation:12}}><View style={{flexDirection:'row',alignItems:'center',gap:5}}>{tabs.map(x=><Pressable key={x.key} onPress={()=>setTab(x.key)} style={{flex:1,alignItems:'center',justifyContent:'center',paddingVertical:8,borderRadius:15,backgroundColor:tab===x.key?c.accent:'transparent'}}><Icon name={x.icon} size={17} color={tab===x.key?'#fff':c.muted}/><Text style={{color:tab===x.key?'#fff':c.muted,fontSize:7,fontWeight:'900',marginTop:3}}>{x.label}</Text></Pressable>)}<Pressable onPress={()=>setAiOpen(true)} style={{width:48,alignItems:'center',justifyContent:'center',paddingVertical:8,borderRadius:15,backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep}}><Icon name="ai" size={19}/><Text style={{color:c.accentBright,fontSize:7,fontWeight:'900',marginTop:3}}>AI</Text></Pressable></View></View>;
 
  return <Screen bottomBar={bottomBar}>
+    <PlanSection />
   <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
    <View><Text style={{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1.5}}>ATHLETEN ACADEMY</Text><Text style={{color:c.text,fontSize:25,fontWeight:'900',marginTop:3}}>{academy?.name||'Academy'}</Text></View>
    <Pressable onPress={()=>void load()} style={{width:40,height:40,borderRadius:13,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,alignItems:'center',justifyContent:'center'}}><Icon name="refresh" size={18}/></Pressable>
