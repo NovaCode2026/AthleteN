@@ -19,7 +19,7 @@ export default function CoachAthletes() {
   const { profile } = useAuth();
   const router = useRouter();
   const [athletes, setAthletes] = useState<Athlete[]>([]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(''); const [accountCode,setAccountCode]=useState(''); const [connectBusy,setConnectBusy]=useState(false); const [message,setMessage]=useState('');
 
   const load = useCallback(async () => {
     if (!profile?.user_id) return;
@@ -32,6 +32,7 @@ export default function CoachAthletes() {
   }, [profile?.user_id]);
 
   useEffect(() => { void load(); }, [load]);
+  async function addByCode(){if(!accountCode.trim())return;setConnectBusy(true);setMessage('');const {data,error}=await supabase.rpc('coach_add_athlete_by_account_code',{p_code:accountCode.trim()});setConnectBusy(false);if(error){setMessage(error.message);return}setAccountCode('');setMessage(`${data?.full_name||'Athlete'} connected successfully.`);await load();}
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -42,7 +43,7 @@ export default function CoachAthletes() {
   return (
     <Screen bottomBar={<CoachNav active="athletes" />}>
       <Header eyebrow="TEAM" title="My Athletes" subtitle="Your active roster, athlete details and competition categories." />
-      <TextInput value={search} onChangeText={setSearch} placeholder="Search athletes..." placeholderTextColor={c.muted} style={{ backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderRadius: 14, color: c.text, padding: 13, fontSize: 13 }} />
+      <View style={{gap:8}}><View style={{flexDirection:'row',gap:8}}><TextInput value={accountCode} onChangeText={setAccountCode} placeholder="Athlete account code" placeholderTextColor={c.muted} autoCapitalize="characters" style={{flex:1,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:14,color:c.text,padding:13,fontSize:13}}/><Pressable disabled={connectBusy} onPress={()=>void addByCode()} style={{backgroundColor:c.accent,borderRadius:14,paddingHorizontal:16,justifyContent:'center'}}><Text style={{color:'#fff',fontWeight:'900',fontSize:10}}>{connectBusy?'…':'ADD'}</Text></Pressable></View>{message?<Text style={{color:message.includes('successfully')?c.success:c.danger,fontSize:10}}>{message}</Text>:null}<TextInput value={search} onChangeText={setSearch} placeholder="Search athletes..." placeholderTextColor={c.muted} style={{ backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderRadius: 14, color: c.text, padding: 13, fontSize: 13 }} /></View>
       <Section title="ROSTER">
         {filtered.length ? filtered.map(a => (
           <Pressable key={a.athlete_user_id} onPress={() => router.push({ pathname: '/coach-athlete-detail', params: { athleteId: a.athlete_user_id } })} style={{ marginBottom: 8 }}>
