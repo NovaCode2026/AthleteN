@@ -5,7 +5,7 @@ import { Colors } from '@/constants/theme';
 import { SymbolView } from 'expo-symbols';
 
 export const c=Colors.dark;
-const icons:Record<string,string>={back:'chevron.left',arrow:'chevron.right',add:'plus',close:'xmark',check:'checkmark',settings:'gearshape.fill',empty:'square.dashed',search:'magnifyingglass',refresh:'arrow.clockwise',edit:'pencil',delete:'trash',calendar:'calendar',person:'person.fill',people:'person.2.fill',coach:'figure.run',athlete:'figure.run',training:'figure.run',event:'trophy.fill',finance:'indianrupeesign.circle.fill',ai:'sparkles'};
+const icons:Record<string,string>={back:'chevron.left',arrow:'chevron.right',add:'plus',close:'xmark',check:'checkmark',settings:'gearshape.fill',empty:'square.dashed',search:'magnifyingglass',refresh:'arrow.clockwise',edit:'pencil',delete:'trash',calendar:'calendar',bell:'bell.fill',menu:'line.3.horizontal',more:'ellipsis',searchCircle:'magnifyingglass.circle.fill',closeCircle:'xmark.circle.fill',person:'person.fill',people:'person.2.fill',coach:'figure.run',athlete:'figure.run',training:'figure.run',event:'trophy.fill',finance:'indianrupeesign.circle.fill',ai:'sparkles',shield:'checkmark.shield.fill',lock:'lock.fill',warning:'exclamationmark.triangle.fill',info:'info.circle.fill',chart:'chart.xyaxis.line',medal:'medal.fill',message:'bubble.left.and.bubble.right.fill'};
 export function Icon({name,size=18,color=c.accentBright}:{name:string;size?:number;color?:string}){return <SymbolView name={icons[name]||name} size={size} tintColor={color}/>}
 export function Screen({children,scroll=true,bottomBar}:{children:React.ReactNode;scroll?:boolean;bottomBar?:React.ReactNode}){
  const body=<View style={s.wrap}>{children}</View>;
