@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { SymbolView } from 'expo-symbols';
+import { Icon as AppIcon } from '@/components/mobile-ui';
 import { Screen, Card, Button, Field, c } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -12,8 +12,8 @@ type Member={user_id:string;role:string;status:string;full_name?:string|null;bel
 type Session={id:string;session_date:string;start_time:string;title:string};
 type Event={id:string;name:string;starts_at:string;location?:string|null;status?:string|null};
 
-const iconNames:any={athletes:'person.2.fill',coaches:'person.crop.rectangle.stack.fill',training:'figure.run',events:'trophy.fill',people:'person.2.fill',finance:'indianrupeesign.circle.fill',calendar:'calendar',ai:'sparkles',settings:'gearshape.fill',code:'qrcode',refresh:'arrow.clockwise',chevron:'chevron.right'};
-function Icon({name,size=20,color=c.accentBright}:{name:string;size?:number;color?:string}){return <SymbolView name={iconNames[name]||name} size={size} tintColor={color}/>}
+const academyIconMap:any={athletes:'people',coaches:'coach',training:'training',events:'event',people:'people',finance:'finance',calendar:'calendar',ai:'ai',settings:'settings',code:'searchCircle',refresh:'refresh',chevron:'arrow'};
+function Icon({name,size=20,color=c.accentBright}:{name:string;size?:number;color?:string}){return <AppIcon name={academyIconMap[name]||name} size={size} color={color}/>} 
 
 const tabs:{key:Tab;label:string;icon:string}[]=[
  {key:'Dashboard',label:'Dashboard',icon:'sparkles'},{key:'People',label:'People',icon:'people'},{key:'Training',label:'Training',icon:'training'},{key:'Events',label:'Events',icon:'events'},{key:'Finance',label:'Finance',icon:'finance'}
