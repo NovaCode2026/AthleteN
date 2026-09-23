@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { validMinutes } from '@/lib/performance';
 import { PerformanceLine } from '@/components/performance-chart';
 import { PerformanceBars } from '@/components/performance-chart';
+import { Icon } from '@/components/mobile-ui';
 
 const c=Colors.dark;
 
@@ -31,7 +32,7 @@ export default function TrainingScreen(){
   <View style={s.hero}><Text style={s.heroTitle}>LOG TODAY'S WORK</Text><Text style={s.heroSub}>Keep every session in your athlete record.</Text></View>
   <View style={s.card}><Field label="SESSION TITLE *" value={title} onChangeText={setTitle} placeholder={profile?.discipline==='Poomsae'?'Poomsae technique':'Kyorugi sparring'}/><View style={s.row}><View style={s.half}><Field label="MINUTES *" value={minutes} onChangeText={setMinutes} keyboardType="number-pad" placeholder="60"/></View><View style={s.half}><Field label="INTENSITY" value={intensity} onChangeText={setIntensity} placeholder="Moderate"/></View></View><Field label="NOTES" value={notes} onChangeText={setNotes} placeholder="What did you work on?"/>{message?<Text style={s.message}>{message}</Text>:null}<Pressable onPress={add} disabled={busy} style={s.button}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>SAVE SESSION</Text>}</Pressable></View>
   <View style={s.sectionHead}><Text style={s.section}>RECENT SESSIONS</Text><Text style={s.count}>{items.length}</Text></View>
-  {!items.length?<View style={s.empty}><Text style={s.emptyTitle}>No sessions yet</Text><Text style={s.meta}>Your first saved workout will appear here.</Text></View>:items.map(item=><View style={s.session} key={item.id}><View style={s.sessionTop}><View style={s.sessionIcon}><Text style={s.sessionIconText}>T</Text></View><View style={s.sessionCopy}><Text style={s.sessionTitle}>{item.title}</Text><Text style={s.meta}>{item.session_date}{item.intensity?' • '+item.intensity:''}</Text></View><Text style={s.minutes}>{item.minutes}m</Text></View>{item.notes?<Text style={s.note}>{item.notes}</Text>:null}<Pressable onPress={()=>remove(item.id,item.title)} disabled={busy}><Text style={s.delete}>DELETE</Text></Pressable></View>)}
+  {!items.length?<View style={s.empty}><Text style={s.emptyTitle}>No sessions yet</Text><Text style={s.meta}>Your first saved workout will appear here.</Text></View>:items.map(item=><View style={s.session} key={item.id}><View style={s.sessionTop}><View style={s.sessionIcon}><Icon name="training" size={17} color={c.accentBright}/></View><View style={s.sessionCopy}><Text style={s.sessionTitle}>{item.title}</Text><Text style={s.meta}>{item.session_date}{item.intensity?' • '+item.intensity:''}</Text></View><Text style={s.minutes}>{item.minutes}m</Text></View>{item.notes?<Text style={s.note}>{item.notes}</Text>:null}<Pressable onPress={()=>remove(item.id,item.title)} disabled={busy}><Text style={s.delete}>DELETE</Text></Pressable></View>)}
  </ScrollView></SafeAreaView>
 }
 function Field({label,value,onChangeText,placeholder,keyboardType}:{label:string;value:string;onChangeText:(v:string)=>void;placeholder:string;keyboardType?:any}){return <View style={s.field}><Text style={s.label}>{label}</Text><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={c.muted} keyboardType={keyboardType} style={s.input}/></View>}
