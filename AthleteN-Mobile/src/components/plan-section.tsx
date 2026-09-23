@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { AI_LIMITS, PLAN_NAMES, PLAN_PRICING, PlanId } from '@/lib/entitlements';
-import { Card, c } from '@/components/mobile-ui';
+import { Card, c, Icon } from '@/components/mobile-ui';
 
 export default function PlanSection() {
   const { session, profile } = useAuth();
@@ -38,7 +38,7 @@ export default function PlanSection() {
     <Card style={{ gap: 11, borderColor: plan === 'free' ? c.border : c.accent }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: c.muted, fontSize: 8, fontWeight: '900', letterSpacing: 1.4 }}>YOUR PLAN</Text>
+          <View style={{flexDirection:"row",alignItems:"center",gap:7}}><Icon name="settings" size={14}/><Text style={{ color: c.muted, fontSize: 8, fontWeight: '900', letterSpacing: 1.4 }}>YOUR PLAN</Text></View>
           <Text style={{ color: c.text, fontSize: 20, fontWeight: '900', marginTop: 3 }}>{PLAN_NAMES[plan]}</Text>
           <Text style={{ color: c.muted, fontSize: 10, marginTop: 2 }}>
             {status === 'active' ? 'Active subscription' : status}
