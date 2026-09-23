@@ -9,6 +9,7 @@ const MAX_RELATED_POSTS = 30;
 function json(payload, status = 200) { return Response.json(payload, { status }); }
 const MAX_SCAN_MS = 110000;
 const MAX_PROFILE_ACCOUNTS = 8;
+const MAX_ACCOUNT_POSTS = 12;
 
 // Shared date evidence patterns used by both poster and source extraction.
 const eventDatePatterns = [
@@ -1037,6 +1038,19 @@ function extractFacts(caption, title, sourceUrl) {
   };
 }
 
+function instagramPostUrls(html) {
+  const urls = [];
+  const seen = new Set();
+  for (const m of html.matchAll(/https?:\\/\\/(?:www\\.)?instagram\\.com\\/(?:p|reel)\\/([A-Za-z0-9_-]+)[^"\\s<]*/gi)) {
+    const raw = m[0].split(/[?#]/)[0];
+    const parts = raw.match(/instagram\\.com\\/(p|reel)\\/([A-Za-z0-9_-]+)/i);
+    if (!parts) continue;
+    const url = `https://www.instagram.com/${parts[1].toLowerCase()}/${parts[2]}/`;
+    if (!seen.has(url)) { seen.add(url); urls.push(url); }
+  }
+  return urls;
+}
+
 function mediaFromHtml(html, fallbackUrl) {
   const posts = [];
   const seen = new Set();
@@ -1222,13 +1236,16 @@ async function scanPublicSource(sourceUrl) {
   else if (posterFallbackFacts.categories) facts.categories = clean(posterFallbackFacts.categories);      const accounts = instagramAccounts(root.html, root.finalUrl, caption);
   const accountResults = [];
   const relatedPosts = mediaFromHtml(root.html, root.finalUrl);
+  const deepAccountPosts = [];
 
-  // Check discovered accounts in parallel instead of serially. This is the
-  // "other things" pass: mentions, source account, tagged Instagram URLs and
-  // accessible profile pages are inspected within the hard time budget.
+  // Deep account pass: when the source exposes an Instagram profile, actually
+  // inspect public posts/reels from that account instead of only reading the
+  // profile shell. This lets one tournament post lead to registration updates,
+  // weigh-in notices, schedules, results and later announcements from the same
+  // organizer account.
   const profileTargets = accounts.slice(0, MAX_PROFILE_ACCOUNTS);
   const profileResults = await Promise.allSettled(profileTargets.map(async (username) => {
-    if (Date.now() >= deadline - 10000) return null;
+    if (Date.now() >= deadline - 15000) return null;
     const profileUrl = `https://www.instagram.com/${username}/`;
     try {
       const page = await fetchBounded(profileUrl, { headers: {
@@ -1241,8 +1258,35 @@ async function scanPublicSource(sourceUrl) {
       const html = await page.text();
       const profileCaption = extractCaption(html);
       const profileTitle = extractTitle(html);
-      const profilePosts = mediaFromHtml(html, profileUrl);
-      return { username, url: profileUrl, posts: profilePosts.slice(0, 10), relevant: profilePosts.length > 0, title: profileTitle || null };
+      const postUrls = instagramPostUrls(html).slice(0, MAX_ACCOUNT_POSTS);
+      const posts = [];
+      for (const postUrl of postUrls) {
+        if (Date.now() >= deadline - 12000) break;
+        try {
+          const post = await fetchInstagram(postUrl);
+          const postCaption = extractCaption(post.html);
+          const postTitle = extractTitle(post.html);
+          const postImage = extractImageUrls(post.html)[0] || "";
+          const postReel = extractReelVideoEvidence(post.html);
+          if (!TOURNAMENT_WORDS.test(postCaption + " " + postTitle + " " + postReel.transcript)) continue;
+          posts.push({
+            id: createHash("sha1").update(postUrl).digest("hex"),
+            caption: clean(postCaption || postTitle || postReel.transcript).slice(0, 4000),
+            permalink: postUrl,
+            timestamp: null,
+            media_product_type: /\\/reel\\//i.test(postUrl) ? "REELS" : "FEED",
+            image_url: postImage || null
+          });
+        } catch {}
+      }
+      return {
+        username,
+        url: profileUrl,
+        title: profileTitle || null,
+        profile_caption: profileCaption || null,
+        posts,
+        relevant: posts.length > 0
+      };
     } catch {
       return null;
     }
@@ -1251,6 +1295,7 @@ async function scanPublicSource(sourceUrl) {
     if (result.status === "fulfilled" && result.value) {
       accountResults.push(result.value);
       relatedPosts.push(...result.value.posts);
+      deepAccountPosts.push(...result.value.posts);
     }
   }
 
@@ -1258,7 +1303,7 @@ async function scanPublicSource(sourceUrl) {
     .filter((p) => TOURNAMENT_WORDS.test(p.caption)).slice(0, MAX_RELATED_POSTS);
 
   const allText = [title, caption, reelEvidence.transcript, rawVisibleText, posterFactsText, posterText, ...uniquePosts.map((p) => p.caption)].filter(Boolean).join("\n");
-  const allFacts = extractFacts(caption, title, canonicalSourceUrl);
+  const allFacts = extractFacts([caption, ...deepAccountPosts.map((p) => p.caption)].filter(Boolean).join("\n"), title, canonicalSourceUrl);
   if (poster?.tournament_name) allFacts.tournament_name = clean(poster.tournament_name);
   else if (posterFallbackFacts.tournament_name) allFacts.tournament_name = clean(posterFallbackFacts.tournament_name);
   if (!allFacts.tournament_date_text && (poster?.date_text || posterFallbackFacts.tournament_date_text)) {
