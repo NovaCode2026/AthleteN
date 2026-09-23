@@ -19,12 +19,13 @@ export const AVAILABLE=[
  {id:'explore',label:'More',icon:'more'},
 ] as const;
 
+function DashboardGlyph({color,size=19}:{color:string;size?:number}){const cell=Math.max(4,Math.round(size*.34));const gap=Math.max(2,Math.round(size*.1));return <View style={{width:size,height:size,flexDirection:'row',flexWrap:'wrap',gap,alignContent:'center',justifyContent:'center'}}><View style={{width:cell,height:cell,borderRadius:2,backgroundColor:color}}/><View style={{width:cell,height:cell,borderRadius:2,backgroundColor:color}}/><View style={{width:cell,height:cell,borderRadius:2,backgroundColor:color}}/><View style={{width:cell,height:cell,borderRadius:2,backgroundColor:color}}/></View>}
 function Bar({state,navigation}:BottomTabBarProps){
  const insets=useSafeAreaInsets();
  const [order,setOrder]=useState<string[]>([...DEFAULT]);
  useEffect(()=>{let alive=true;(async()=>{try{const raw=await AsyncStorage.getItem(KEY);if(!alive||!raw)return;const parsed=JSON.parse(raw);if(Array.isArray(parsed)){const valid=parsed.filter((x:string)=>AVAILABLE.some(a=>a.id===x));const merged=[...valid,...DEFAULT.filter(x=>!valid.includes(x))];setOrder(merged.slice(0,6));}}catch{}})();return()=>{alive=false}},[]);
  return <View style={[s.outer,{paddingBottom:Math.max(insets.bottom,6)}]}><View style={s.bar}>
-  {order.map(id=>{const meta=AVAILABLE.find(x=>x.id===id)!;const routeIndex=state.routes.findIndex(r=>r.name===id);const active=state.index===routeIndex;return <Pressable key={id} onPress={()=>navigation.navigate(id)} accessibilityRole="button" accessibilityState={active?{selected:true}:{}} style={s.item}><View style={[s.icon,active&&s.active]}><Icon name={meta.icon} size={19} color={active?c.accentBright:c.muted} /></View><Text style={[s.label,active&&s.activeLabel]} numberOfLines={1}>{meta.label}</Text></Pressable>})}
+  {order.map(id=>{const meta=AVAILABLE.find(x=>x.id===id)!;const routeIndex=state.routes.findIndex(r=>r.name===id);const active=state.index===routeIndex;return <Pressable key={id} onPress={()=>navigation.navigate(id)} accessibilityRole="button" accessibilityState={active?{selected:true}:{}} style={s.item}><View style={[s.icon,active&&s.active]}>{id==='index'?<DashboardGlyph color={active?c.accentBright:c.muted} size={19}/>:<Icon name={meta.icon} size={19} color={active?c.accentBright:c.muted} />}</View><Text style={[s.label,active&&s.activeLabel]} numberOfLines={1}>{meta.label}</Text></Pressable>})}
  </View></View>
 }
 
