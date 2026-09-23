@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
+import { Icon } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { AI_LIMITS, PLAN_NAMES, PLAN_PRICING, PlanId, getAiRemaining } from '@/lib/entitlements';
@@ -139,7 +140,7 @@ export default function PlansScreen() {
           <Text style={s.aiText}>{p.ai === 0 ? 'No AI requests' : p.ai + ' AI requests every month'}</Text>
         </View>
 
-        {p.features.map((feature) => <View key={feature} style={s.feature}><Text style={s.check}>✓</Text><Text style={s.featureText}>{feature}</Text></View>)}
+        {p.features.map((feature) => <View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
 
         <Pressable disabled={active || !!busyPlan || p.id === 'free'} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => void handleUpgrade(p.id)}>
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : 'CHANGE PLAN'}</Text>}
