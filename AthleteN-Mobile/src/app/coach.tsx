@@ -11,15 +11,7 @@ import PlanSection from '@/components/plan-section';
 type Athlete = { athlete_user_id: string; full_name?: string | null; discipline?: string | null; belt?: string | null; weight_kg?: number | null };
 type DayPoint = { label: string; sessions: number; attended: number };
 
-function BellIcon() { return <Icon name="notifications" size={22} color={c.text}/>; }
-/*
-  return <View style={{ width: 28, height: 30, alignItems: 'center', justifyContent: 'center' }}>
-    <View style={{ width: 17, height: 18, borderWidth: 2, borderColor: c.text, borderRadius: 10, borderBottomLeftRadius: 5, borderBottomRightRadius: 5, marginTop: -2 }} />
-    <View style={{ width: 22, height: 2, borderRadius: 1, backgroundColor: c.text, position: 'absolute', bottom: 6 }} />
-    <View style={{ width: 5, height: 3, borderRadius: 2, backgroundColor: c.text, position: 'absolute', bottom: 2 }} />
-    <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: c.accentBright, borderWidth: 2, borderColor: c.background, position: 'absolute', right: 1, top: 1 }} />
-  </View>;
-} */
+function BellIcon() { return <Icon name="bell.fill" size={22} color={c.text}/>; }
 
 function IconTile({ icon, tone }: { icon: string; tone: 'blue' | 'green' | 'red' | 'purple' | 'slate' }) {
   const bg = tone === 'green' ? '#073d24' : tone === 'red' ? '#451522' : tone === 'purple' ? '#2c174f' : tone === 'slate' ? '#152033' : '#0b274c';
