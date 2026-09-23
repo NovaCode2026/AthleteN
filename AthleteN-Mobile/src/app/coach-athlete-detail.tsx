@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { Pressable, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen, Header, Section, Card, c } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 export default function CoachAthleteDetail() {
   const { athleteId } = useLocalSearchParams<{ athleteId?: string }>();
   const { profile } = useAuth();
+  const router = useRouter();
   const [athlete, setAthlete] = useState<any>(null);
   const [sessions, setSessions] = useState<any[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
@@ -43,6 +44,7 @@ export default function CoachAthleteDetail() {
         </View>
       </Card>
     </Section>
+    <Section title="COACHING ACTIONS"><Card><View style={{flexDirection:'row',gap:8}}><Pressable onPress={async()=>{if(!athleteId)return;const r=await supabase.rpc('create_direct_conversation_by_user',{p_recipient_id:athleteId});if(!r.error&&r.data)router.push({pathname:'/conversation',params:{id:String(r.data)}});}} style={{flex:1,backgroundColor:c.accent,borderRadius:12,padding:12,alignItems:'center'}}><Text style={{color:'#fff',fontWeight:'900'}}>MESSAGE ATHLETE</Text></Pressable><Pressable onPress={()=>router.push('/coach-training')} style={{flex:1,borderWidth:1,borderColor:c.accent,borderRadius:12,padding:12,alignItems:'center'}}><Text style={{color:c.accentBright,fontWeight:'900'}}>ADD TO TRAINING</Text></Pressable></View></Card></Section>
     <Section title="RECENT TRAINING">
       {sessions.length ? sessions.map((s, i) => <Card key={String(s.session_date) + i}><View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><View style={{ flex: 1 }}><Text style={{ color: c.text, fontWeight: '900' }}>{s.title || 'Training session'}</Text><Text style={{ color: c.muted, fontSize: 9, marginTop: 3 }}>{s.session_date || 'Date not set'}</Text></View><Text style={{ color: c.accentBright, fontWeight: '900' }}>{Number(s.minutes || 0)}m</Text></View>{s.notes ? <Text style={{ color: c.muted, fontSize: 9, marginTop: 5 }}>{s.notes}</Text> : null}</Card>) : <Card><Text style={{ color: c.muted }}>No training records yet.</Text></Card>}
     </Section>
