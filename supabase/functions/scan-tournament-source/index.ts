@@ -82,20 +82,42 @@ function normalizeDate(raw:string){
   return d.toISOString().slice(0,10);
 }
 function findDate(text:string){
-  const focused=(text.match(/(?:tournament|championship|cup|open|games|taekwondo)[\s\S]{0,350}/i)?.[0]||text.slice(0,12000));
-  const patterns=[
+  const focused=(text.match(/(?:tournament|championship|cup|open|games|taekwondo)[\s\S]{0,600}/i)?.[0]||text.slice(0,16000));
+  const fullPatterns=[
+    /\b(?:[0-3]?\d)(?:st|nd|rd|th)?[\s,&-]+(?:[0-3]?\d)?(?:st|nd|rd|th)?[\s,&-]+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)[\s,]+20(?:2[6-9]|30)\b/i,
     /\b(?:[0-3]?\d)(?:st|nd|rd|th)?[\s,]+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)[\s,]+20(?:2[6-9]|30)\b/i,
     /\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+[0-3]?\d(?:st|nd|rd|th)?(?:,?\s+)20(?:2[6-9]|30)\b/i,
     /\b20(?:2[6-9]|30)[-\/]\d{1,2}[-\/]\d{1,2}\b/
   ];
-  for(const p of patterns){const m=focused.match(p);if(m){const d=normalizeDate(m[0]);if(d)return d;}}
+  for(const p of fullPatterns){const m=focused.match(p);if(m){const d=normalizeDate(m[0]);if(d)return d;}}
+
+  // Instagram captions commonly omit the year: "3rd & 4th October".
+  const noYear=focused.match(/\b([0-3]?\d)(?:st|nd|rd|th)?(?:\s*&\s*[0-3]?\d(?:st|nd|rd|th)?)?\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b/i);
+  if(noYear){
+    const day=Number(noYear[1]);
+    const monthName=noYear[2];
+    const months=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+    const month=months.findIndex(m=>monthName.toLowerCase().startsWith(m))+1;
+    if(day>=1&&day<=31&&month>=1){
+      const explicitYear=focused.match(/\b20(?:2[6-9]|30)\b/);
+      let year=explicitYear?Number(explicitYear[0]):new Date().getUTCFullYear();
+      const candidate=new Date(Date.UTC(year,month-1,day));
+      if(!explicitYear && candidate.getTime()+86400000*30 < Date.now()) year++;
+      if(candidate.getUTCFullYear()===year)return candidate.toISOString().slice(0,10);
+      return new Date(Date.UTC(year,month-1,day)).toISOString().slice(0,10);
+    }
+  }
   return "";
 }
 function findVenue(text:string){
-  const m=text.match(/(?:venue|location|held at|hosted at)[\s:,-]{0,30}([A-Z][A-Za-z .'-]{2,80})/i);
-  if(m)return clean(m[1]);
   const fallback=text.match(/\b(Ranikhet|Delhi|Noida|Kanpur|Lucknow|Jaipur|Mumbai|Pune|Chandigarh|Bengaluru|Hyderabad|Kolkata|Gurugram|Gurgaon|Dehradun|Uttarakhand|Uttar Pradesh|Rajasthan|Maharashtra|Punjab|Haryana)\b(?:,\s*[A-Z][A-Za-z .'-]+)?/i);
-  return fallback?clean(fallback[0]):"";
+  if(fallback)return clean(fallback[0]);
+  const m=text.match(/(?:venue|location|held at|hosted at)[\s:,-]{0,30}([A-Z][A-Za-z .'-]{2,80})/i);
+  if(m){
+    const candidate=clean(m[1]);
+    if(candidate && !/popular instagram|instagram lite|meta ai|threads|contact|uploading/i.test(candidate))return candidate;
+  }
+  return "";
 }
 function findDeadline(text:string){
   const m=text.match(/(?:registration|entry|last date|deadline)[^.!?]{0,120}?((?:[0-3]?\d)(?:st|nd|rd|th)?\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+20(?:2[6-9]|30))/i);
@@ -151,18 +173,22 @@ Deno.serve(async(req)=>{
     const isInstagram=/instagram\.com/i.test(sourceUrl);
     let monitoredUrls=[sourceUrl];
     let accountUrl="";
+    const pages:{url:string,html:string}[]=[{url:sourceUrl,html:firstHtml}];
     if(isInstagram){
       accountUrl=instagramProfileFromHtml(firstHtml,sourceUrl);
-      if(accountUrl){
-        monitoredUrls=[accountUrl,...instagramPostLinks(firstHtml,sourceUrl)].filter((v,i,a)=>a.indexOf(v)===i).slice(0,13);
-        const profileAlready=monitoredUrls.includes(accountUrl);
-        if(!profileAlready)monitoredUrls.unshift(accountUrl);
+      if(accountUrl && accountUrl!==sourceUrl){
+        const profileFetch=await fetchPage(accountUrl);
+        if(profileFetch.res?.ok)pages.push({url:accountUrl,html:await profileFetch.res.text()});
       }
+      const discoveryHtml=pages.map(p=>p.html).join("\n");
+      const discoveredPosts=instagramPostLinks(discoveryHtml,sourceUrl);
+      monitoredUrls=[sourceUrl,...(accountUrl?[accountUrl]:[]),...discoveredPosts]
+        .map(u=>u.split("?")[0])
+        .filter((v,i,a)=>a.indexOf(v)===i)
+        .slice(0,13);
     }
-
-    const pages:{url:string,html:string}[]=[{url:sourceUrl,html:firstHtml}];
     for(const u of monitoredUrls){
-      if(u===sourceUrl)continue;
+      if(pages.some(p=>p.url===u))continue;
       const fetched=await fetchPage(u);
       if(fetched.res?.ok)pages.push({url:u,html:await fetched.res.text()});
     }
