@@ -853,6 +853,36 @@ function instagramAccounts(html, sourceUrl, caption) {
     .map((item) => item.username);
 }
 
+function sameTournamentPost(postText, postFacts, identity = {}) {
+  const text = clean(postText);
+  if (!text || !TOURNAMENT_WORDS.test(text)) return false;
+  const nameTokens = [...mergeTokenSet(identity.name || "")];
+  const postTokens = mergeTokenSet(text);
+  const sharedName = nameTokens.filter(token => postTokens.has(token)).length;
+  const date = clean(identity.date || "");
+  const venue = clean(identity.venue || "");
+  const organizer = clean(identity.organizer || "");
+  const location = clean(identity.location || "");
+  const normalized = normalizeMergeKey(text);
+  const dateKey = date ? normalizeMergeKey(date) : "";
+  const venueKey = venue ? normalizeMergeKey(venue) : "";
+  const organizerKey = organizer ? normalizeMergeKey(organizer) : "";
+  const locationKey = location ? normalizeMergeKey(location) : "";
+  const hasDate = dateKey && normalized.includes(dateKey);
+  const hasVenue = venueKey && normalized.includes(venueKey);
+  const hasOrganizer = organizerKey && normalized.includes(organizerKey);
+  const hasLocation = locationKey && normalized.includes(locationKey);
+  const postDate = clean(postFacts?.tournament_date_text || postFacts?.tournament_date || "");
+  const sameDate = date && postDate && semanticDateKey(date) && semanticDateKey(date) === semanticDateKey(postDate);
+  const nameMatch = nameTokens.length >= 2 ? sharedName >= Math.min(2, nameTokens.length) : sharedName >= 1;
+  return Boolean(
+    nameMatch ||
+    (sameDate && (hasVenue || hasOrganizer || sharedName >= 1)) ||
+    (hasVenue && (hasOrganizer || sharedName >= 1)) ||
+    (hasOrganizer && hasLocation && sharedName >= 1)
+  );
+}
+
 function captionFromInstagramShell(value) {
   let text = clean(value);
   text = text.replace(/^[^:]{0,180}\s+on\s+Instagram:\s*/i, "");
@@ -1233,7 +1263,15 @@ async function scanPublicSource(sourceUrl) {
   else if (posterFallbackFacts.fees) facts.fees = clean(posterFallbackFacts.fees);
   if (Array.isArray(poster?.events) && poster.events.length) facts.categories = poster.events.filter(Boolean).join(", ");
   else if (Array.isArray(poster?.categories) && poster.categories.length) facts.categories = poster.categories.filter(Boolean).join(", ");
-  else if (posterFallbackFacts.categories) facts.categories = clean(posterFallbackFacts.categories);      const accounts = instagramAccounts(root.html, root.finalUrl, caption);
+  else if (posterFallbackFacts.categories) facts.categories = clean(posterFallbackFacts.categories);      const sourceIdentity = {
+    name: facts.tournament_name || poster?.tournament_name || posterFallbackFacts.tournament_name || title,
+    date: facts.tournament_date_text || poster?.date_text || posterFallbackFacts.tournament_date_text || "",
+    venue: facts.venue || poster?.venue || posterFallbackFacts.venue || "",
+    organizer: facts.organizer || poster?.organizer || posterFallbackFacts.organizer || "",
+    location: facts.location_hint || [poster?.city, poster?.state].filter(Boolean).join(", ") || ""
+  };
+
+  const accounts = instagramAccounts(root.html, root.finalUrl, caption);
   const accountResults = [];
   const relatedPosts = mediaFromHtml(root.html, root.finalUrl);
   const deepAccountPosts = [];
@@ -1268,7 +1306,8 @@ async function scanPublicSource(sourceUrl) {
           const postTitle = extractTitle(post.html);
           const postImage = extractImageUrls(post.html)[0] || "";
           const postReel = extractReelVideoEvidence(post.html);
-          if (!TOURNAMENT_WORDS.test(postCaption + " " + postTitle + " " + postReel.transcript)) continue;
+          const postText = postCaption + " " + postTitle + " " + postReel.transcript;
+          if (!sameTournamentPost(postText, extractFacts(postText, postTitle, postUrl), sourceIdentity)) continue;
           posts.push({
             id: createHash("sha1").update(postUrl).digest("hex"),
             caption: clean(postCaption || postTitle || postReel.transcript).slice(0, 4000),
@@ -1300,7 +1339,8 @@ async function scanPublicSource(sourceUrl) {
   }
 
   const uniquePosts = [...new Map(relatedPosts.map((p) => [p.id, p])).values()]
-    .filter((p) => TOURNAMENT_WORDS.test(p.caption)).slice(0, MAX_RELATED_POSTS);
+    .filter((p) => p.permalink === canonicalSourceUrl || sameTournamentPost(p.caption, extractFacts(p.caption, p.caption, p.permalink), sourceIdentity))
+    .slice(0, MAX_RELATED_POSTS);
 
   const allText = [title, caption, reelEvidence.transcript, rawVisibleText, posterFactsText, posterText, ...uniquePosts.map((p) => p.caption)].filter(Boolean).join("\n");
   const allFacts = extractFacts([caption, ...deepAccountPosts.map((p) => p.caption)].filter(Boolean).join("\n"), title, canonicalSourceUrl);
