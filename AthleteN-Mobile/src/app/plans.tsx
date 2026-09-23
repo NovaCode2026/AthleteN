@@ -25,7 +25,7 @@ const plans: Array<{
   { id: 'pro', name: 'Pro', monthly: 199, yearly: 1999, saving: 389, ai: 200, audience: 'Competitive athletes', features: ['Advanced performance analytics', 'Competition preparation insights', 'Advanced training analysis', 'Priority support'] },
   { id: 'elite', name: 'Elite', monthly: 399, yearly: 3999, saving: 789, ai: 500, audience: 'Advanced athletes', features: ['Advanced competition analysis', 'Long-term performance trends', 'Advanced training planning', 'Exportable athlete reports'] },
   { id: 'coach', name: 'Coach', monthly: 499, yearly: 4999, saving: 989, ai: 750, audience: 'Coaches', features: ['Coach dashboard', 'Athlete management', 'Training monitoring', 'AI athlete summaries and reports'] },
-  { id: 'academy', name: 'Academy', monthly: 799, yearly: 7999, saving: 1589, ai: 1000, audience: 'Academies', features: ['Multiple coaches', 'Large athlete roster', 'Academy-wide analytics', 'Admin controls and reports'] },
+  { id: 'academy', name: 'Academy', monthly: 799, yearly: 7999, saving: 1589, ai: 1000, audience: 'Academies', features: ['2 Coach-plan accounts included', 'Additional coaches: ₹50/month each + ₹100 one-time onboarding', 'Unlimited academy athletes', 'Academy-wide analytics, attendance and training', 'Competition, finance, reports and announcements', 'Academy AI — 1,000 messages/month'] },
 ];
 
 export default function PlansScreen() {
@@ -71,7 +71,7 @@ export default function PlansScreen() {
           'This plan is not available for the current account.'
         );
       }
-      setMessage('Payment checkout is not connected yet. No subscription was changed.');
+      setMessage('Payment checkout is not connected yet. No subscription was changed. Once payment is connected, this screen will be used to change the active plan.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Upgrade could not be started.');
     } finally {
@@ -142,7 +142,7 @@ export default function PlansScreen() {
         {p.features.map((feature) => <View key={feature} style={s.feature}><Text style={s.check}>✓</Text><Text style={s.featureText}>{feature}</Text></View>)}
 
         <Pressable disabled={active || !!busyPlan || p.id === 'free'} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => void handleUpgrade(p.id)}>
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : 'UPGRADE'}</Text>}
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : 'CHANGE PLAN'}</Text>}
         </Pressable>
       </View>;
     })}
@@ -150,6 +150,8 @@ export default function PlansScreen() {
     {message ? <Text style={s.message}>{message}</Text> : null}
 
     <View style={s.note}>
+      <Text style={s.noteTitle}>Plan changes & billing</Text>
+      <Text style={s.meta}>Paid plan changes are completed only after successful payment. The dashboard Plan section always shows the current server subscription and opens this screen to manage or change it.</Text>
       <Text style={s.noteTitle}>AI usage</Text>
       <Text style={s.meta}>AI requests are monthly allowances. A yearly subscription does not receive the full year's requests upfront. For example, Student yearly still provides 50 AI requests each month. Token usage and API cost remain backend metrics, and the allowance is enforced server-side.</Text>
     </View>
