@@ -5,17 +5,18 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 import {Colors} from '@/constants/theme';
+import {SymbolView} from 'expo-symbols';
 
 const c=Colors.dark;
 export const KEY='athleten.bottom-navigation.v1';
 export const DEFAULT=['index','training','ai','compete','profile','explore'] as const;
 export const AVAILABLE=[
- {id:'index',label:'Home',icon:'⌂'},
- {id:'training',label:'Train',icon:'↗'},
- {id:'ai',label:'AI Coach',icon:'✦'},
- {id:'compete',label:'Compete',icon:'♜'},
- {id:'profile',label:'Profile',icon:'○'},
- {id:'explore',label:'More',icon:'⋮'},
+ {id:'index',label:'Home',icon:'house.fill'},
+ {id:'training',label:'Train',icon:'figure.run'},
+ {id:'ai',label:'AI Coach',icon:'sparkles'},
+ {id:'compete',label:'Compete',icon:'trophy.fill'},
+ {id:'profile',label:'Profile',icon:'person.fill'},
+ {id:'explore',label:'More',icon:'ellipsis'},
 ] as const;
 
 function Bar({state,navigation}:BottomTabBarProps){
@@ -23,7 +24,7 @@ function Bar({state,navigation}:BottomTabBarProps){
  const [order,setOrder]=useState<string[]>([...DEFAULT]);
  useEffect(()=>{let alive=true;(async()=>{try{const raw=await AsyncStorage.getItem(KEY);if(!alive||!raw)return;const parsed=JSON.parse(raw);if(Array.isArray(parsed)){const valid=parsed.filter((x:string)=>AVAILABLE.some(a=>a.id===x));const merged=[...valid,...DEFAULT.filter(x=>!valid.includes(x))];setOrder(merged.slice(0,6));}}catch{}})();return()=>{alive=false}},[]);
  return <View style={[s.outer,{paddingBottom:Math.max(insets.bottom,6)}]}><View style={s.bar}>
-  {order.map(id=>{const meta=AVAILABLE.find(x=>x.id===id)!;const routeIndex=state.routes.findIndex(r=>r.name===id);const active=state.index===routeIndex;return <Pressable key={id} onPress={()=>navigation.navigate(id)} accessibilityRole="button" accessibilityState={active?{selected:true}:{}} style={s.item}><View style={[s.icon,active&&s.active]}><Text style={[s.iconText,active&&s.activeText]}>{meta.icon}</Text></View><Text style={[s.label,active&&s.activeLabel]} numberOfLines={1}>{meta.label}</Text></Pressable>})}
+  {order.map(id=>{const meta=AVAILABLE.find(x=>x.id===id)!;const routeIndex=state.routes.findIndex(r=>r.name===id);const active=state.index===routeIndex;return <Pressable key={id} onPress={()=>navigation.navigate(id)} accessibilityRole="button" accessibilityState={active?{selected:true}:{}} style={s.item}><View style={[s.icon,active&&s.active]}><SymbolView name={meta.icon} size={19} tintColor={active?c.accentBright:c.muted} /></View><Text style={[s.label,active&&s.activeLabel]} numberOfLines={1}>{meta.label}</Text></Pressable>})}
  </View></View>
 }
 
