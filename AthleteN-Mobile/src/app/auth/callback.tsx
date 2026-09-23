@@ -24,8 +24,10 @@ export default function AuthCallbackScreen() {
         const parsed = callbackUrl ? Linking.parse(callbackUrl) : { queryParams: {} as Record<string, string> };
         const query = parsed.queryParams || {};
         const code = typeof params.code === 'string' ? params.code : typeof query.code === 'string' ? query.code : null;
-        const accessToken = typeof query.access_token === 'string' ? query.access_token : null;
-        const refreshToken = typeof query.refresh_token === 'string' ? query.refresh_token : null;
+        const hash = callbackUrl.includes('#') ? callbackUrl.split('#')[1] : '';
+        const hashParams = new URLSearchParams(hash);
+        const accessToken = typeof query.access_token === 'string' ? query.access_token : hashParams.get('access_token');
+        const refreshToken = typeof query.refresh_token === 'string' ? query.refresh_token : hashParams.get('refresh_token');
 
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -40,7 +42,8 @@ export default function AuthCallbackScreen() {
         if (!alive) return;
         setMessage('Success. Opening AthleteN…');
 
-        const next = params.next === 'reset-password' || query.next === 'reset-password' ? '/reset-password' : '/';
+        const nextValue = params.next === 'reset-password' || query.next === 'reset-password' ? 'reset-password' : hashParams.get('next');
+        const next = nextValue === 'reset-password' ? '/reset-password' : '/';
         setTimeout(() => { if (alive) void router.replace(next); }, 250);
       } catch (error) {
         if (!alive) return;
