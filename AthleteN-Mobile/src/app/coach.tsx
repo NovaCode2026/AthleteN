@@ -93,9 +93,9 @@ export default function Coach() {
       since.setDate(since.getDate() - 6);
       const groupRows = await supabase.from('training_groups').select('id').eq('coach_user_id', profile.user_id).eq('active', true);
       const groupIds = (groupRows.data || []).map((g:any)=>g.id);
-      const sessionRows = groupIds.length ? await supabase.from('training_group_sessions').select('id,session_date').in('group_id',groupIds).gte('session_date',since.toISOString().slice(0,10)).order('session_date',{ascending:true}) : {data:[],error:null} as any;
+      const sessionRows = groupIds.length ? await supabase.from('training_group_sessions').select('id,session_date').in('group_id',groupIds).gte('session_date',since.toISOString().slice(0,10)).neq('status','cancelled').order('session_date',{ascending:true}) : {data:[],error:null} as any;
       const sessionIds = (sessionRows.data || []).map((s:any)=>s.id);
-      const attendanceRows = sessionIds.length ? await supabase.from('training_group_attendance').select('session_id,athlete_user_id,status').in('session_id',sessionIds).eq('status','present') : {data:[],error:null} as any;
+      const attendanceRows = sessionIds.length ? await supabase.from('training_group_attendance').select('session_id,athlete_user_id,status').in('session_id',sessionIds).in('status',['present','late']) : {data:[],error:null} as any;
       const attendedBySession = new Map<string,number>();
       for (const a of attendanceRows.data || []) attendedBySession.set(a.session_id,(attendedBySession.get(a.session_id)||0)+1);
       const points: DayPoint[] = [];
@@ -109,7 +109,7 @@ export default function Coach() {
     } else {
       setAthletes([]);
       setWins(0); setLosses(0); setDraws(0);
-      setTrainingPoints(['M','T','W','T','F','S','S'].map(label => ({ label, minutes: 0 })));
+      setTrainingPoints(['M','T','W','T','F','S','S'].map(label => ({ label, sessions: 0, attended: 0 })));
     }
 
     const approval = await supabase.from('coach_approval_requests').select('id', { count: 'exact', head: true }).eq('coach_user_id', profile.user_id).eq('status', 'pending');
