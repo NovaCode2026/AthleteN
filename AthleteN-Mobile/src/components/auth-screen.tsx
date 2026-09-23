@@ -7,6 +7,10 @@ import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
+
+// Required so Expo Go/native browser sessions can hand the OAuth callback back
+// to the running app instead of leaving the flow in the browser.
+WebBrowser.maybeCompleteAuthSession();
 function authRedirect(next?: string) {
   const path = next ? `auth/callback?next=${encodeURIComponent(next)}` : 'auth/callback';
 
@@ -75,6 +79,7 @@ export default function AuthScreen() {
     setGoogleBusy(true);
     try {
       const redirectTo = authRedirect();
+      console.log('[AthleteN OAuth] redirectTo:', redirectTo);
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo, skipBrowserRedirect: true },
@@ -86,6 +91,7 @@ export default function AuthScreen() {
         throw oauthError;
       }
       if (!data?.url) throw new Error('Google sign-in could not start.');
+      console.log('[AthleteN OAuth] authorize URL:', data.url);
 
       // Keep the OAuth browser session attached to the app. Expo Go can
       // dismiss the browser when the exp:// callback fires, so also listen
