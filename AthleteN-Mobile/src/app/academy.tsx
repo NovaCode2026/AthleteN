@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Icon as AppIcon } from '@/components/mobile-ui';
 import { Screen, Card, Button, Field, c } from '@/components/mobile-ui';
@@ -15,9 +17,16 @@ type Event={id:string;name:string;starts_at:string;location?:string|null;status?
 const academyIconMap:any={athletes:'people',coaches:'coach',training:'training',events:'event',people:'people',finance:'finance',calendar:'calendar',ai:'ai',settings:'settings',code:'searchCircle',refresh:'refresh',chevron:'arrow'};
 function Icon({name,size=20,color=c.accentBright}:{name:string;size?:number;color?:string}){return <AppIcon name={academyIconMap[name]||name} size={size} color={color}/>} 
 
-const tabs:{key:Tab;label:string;icon:string}[]=[
- {key:'Dashboard',label:'Dashboard',icon:'sparkles'},{key:'People',label:'People',icon:'people'},{key:'Training',label:'Training',icon:'training'},{key:'Events',label:'Events',icon:'events'},{key:'Finance',label:'Finance',icon:'finance'}
-];
+export const ACADEMY_NAV_KEY='athleten.academy-navigation.v1';
+export const ACADEMY_NAV_DEFAULT=['Dashboard','People','Training','Events','Finance','AI'] as const;
+export const ACADEMY_NAV_AVAILABLE=[
+ {id:'Dashboard',label:'Dashboard',icon:'dashboard'},
+ {id:'People',label:'People',icon:'people'},
+ {id:'Training',label:'Training',icon:'training'},
+ {id:'Events',label:'Events',icon:'event'},
+ {id:'Finance',label:'Finance',icon:'finance'},
+ {id:'AI',label:'AI',icon:'ai'},
+] as const;
 
 function LineGraph({values,labels,suffix='' }:{values:number[];labels:string[];suffix?:string}){
  const [width,setWidth]=useState(0);
@@ -44,6 +53,8 @@ function Stat({icon,label,value,sub,accent=c.accent,onPress}:{icon:string;label:
 export default function Academy(){
  const {session,profile}=useAuth();
  const [tab,setTab]=useState<Tab>('Dashboard');
+ const router=useRouter();
+ const [navOrder,setNavOrder]=useState<string[]>([...ACADEMY_NAV_DEFAULT]);
  const [academy,setAcademy]=useState<any>(null);
  const [members,setMembers]=useState<Member[]>([]);
  const [sessions,setSessions]=useState<Session[]>([]); const [activeGroupCount,setActiveGroupCount]=useState(0);
@@ -111,6 +122,7 @@ export default function Academy(){
   }else {setSessions([]);setActiveGroupCount(0);}
  };
 
+ useEffect(()=>{void (async()=>{try{const raw=await AsyncStorage.getItem(ACADEMY_NAV_KEY);if(raw){const p=JSON.parse(raw);if(Array.isArray(p)){const valid=p.filter((x:string)=>ACADEMY_NAV_AVAILABLE.some(a=>a.id===x));setNavOrder([...valid,...ACADEMY_NAV_DEFAULT.filter(x=>!valid.includes(x))].slice(0,6));}}}catch{}})()},[]);
  useEffect(()=>{void load()},[profile?.academy_id]);
 
  const athletes=members.filter(x=>x.role==='athlete').length;
@@ -172,7 +184,7 @@ export default function Academy(){
   <View style={{backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:13,flexDirection:'row',alignItems:'center'}}><TextInput value={aiQuestion} onChangeText={setAiQuestion} onSubmitEditing={()=>void askAI()} placeholder="Ask AthleteN AI…" placeholderTextColor={c.muted} style={{flex:1,color:c.text,paddingHorizontal:12,paddingVertical:12,fontSize:11}}/><Pressable onPress={()=>void askAI()} disabled={aiBusy||remaining<=0} style={{width:45,height:42,marginRight:4,borderRadius:10,backgroundColor:remaining>0?c.accent:c.border,alignItems:'center',justifyContent:'center'}}>{aiBusy?<ActivityIndicator color="#fff"/>:<Icon name="chevron" size={18} color="#fff"/>}</Pressable></View>
   {aiAnswer?<View style={{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:13,padding:12}}><Text style={{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1}}>ATHLETEN AI</Text><Text style={{color:c.text,fontSize:10,lineHeight:17,marginTop:5}}>{aiAnswer}</Text></View>:null}
  </View>;
- const bottomBar=<View style={{position:'absolute',left:10,right:10,bottom:10,backgroundColor:'#0B1019',borderWidth:1,borderColor:c.borderStrong,borderRadius:22,padding:7,shadowOpacity:.35,shadowRadius:14,elevation:12}}><View style={{flexDirection:'row',alignItems:'center',gap:5}}>{tabs.map(x=><Pressable key={x.key} onPress={()=>setTab(x.key)} style={{flex:1,alignItems:'center',justifyContent:'center',paddingVertical:8,borderRadius:15,backgroundColor:tab===x.key?c.accent:'transparent'}}><Icon name={x.icon} size={17} color={tab===x.key?'#fff':c.muted}/><Text style={{color:tab===x.key?'#fff':c.muted,fontSize:7,fontWeight:'900',marginTop:3}}>{x.label}</Text></Pressable>)}<Pressable onPress={()=>setAiOpen(true)} style={{width:48,alignItems:'center',justifyContent:'center',paddingVertical:8,borderRadius:15,backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep}}><Icon name="ai" size={19}/><Text style={{color:c.accentBright,fontSize:7,fontWeight:'900',marginTop:3}}>AI</Text></Pressable></View></View>;
+ const bottomBar=<View style={{position:'absolute',left:10,right:10,bottom:10,backgroundColor:'#0B1019',borderWidth:1,borderColor:c.borderStrong,borderRadius:22,padding:7,shadowOpacity:.35,shadowRadius:14,elevation:12}}><View style={{flexDirection:'row',alignItems:'center',gap:5}}>{navOrder.map(id=>{const meta=ACADEMY_NAV_AVAILABLE.find(x=>x.id===id)!;const active=id===tab;return <Pressable key={id} onPress={()=>id==='AI'?setAiOpen(true):setTab(id as Tab)} style={{flex:1,alignItems:'center',justifyContent:'center',paddingVertical:8,borderRadius:15,backgroundColor:active?c.accent:'transparent'}}><Icon name={meta.icon} size={17} color={active?'#fff':c.muted}/><Text style={{color:active?'#fff':c.muted,fontSize:7,fontWeight:'900',marginTop:3}}>{meta.label}</Text></Pressable>})}</View></View>;
 
  return <Screen bottomBar={bottomBar}>
     <PlanSection />
