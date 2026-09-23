@@ -35,7 +35,7 @@ export default function CoachNotifications() {
     <Header back eyebrow="COACH / ALERTS" title="Notifications" subtitle={`Requests, upcoming competitions and coaching alerts.${unread ? ` · ${unread} unread` : ''}`} />
     <Section title="ALERTS">
       {notices.length ? notices.map(n => (
-        <Pressable key={n.id} onPress={() => void openNotice(n)}>
+        <Pressable key={n.id} onPress={n.requestId ? undefined : () => void openNotice(n)}>
           <Card>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: n.tone === 'red' ? '#451522' : n.tone === 'green' ? '#073d24' : c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
