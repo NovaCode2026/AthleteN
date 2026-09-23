@@ -39,6 +39,8 @@ export default function Academy(){
  const [savedCode,setSavedCode]=useState('');
  const [code,setCode]=useState('');
  const [coachUsername,setCoachUsername]=useState('');
+ const [eventName,setEventName]=useState(''); const [eventDate,setEventDate]=useState(''); const [eventLocation,setEventLocation]=useState(''); const [eventAthlete,setEventAthlete]=useState(''); const [eventCoach,setEventCoach]=useState('');
+ const [financeAccount,setFinanceAccount]=useState<any>(null); const [financeTx,setFinanceTx]=useState<any[]>([]); const [financeType,setFinanceType]=useState<'income'|'expense'>('income'); const [financeAmount,setFinanceAmount]=useState(''); const [financeCategory,setFinanceCategory]=useState('Training fees'); const [financeDescription,setFinanceDescription]=useState('');
  const [busy,setBusy]=useState(false);
  const [aiQuestion,setAiQuestion]=useState('');
  const [aiAnswer,setAiAnswer]=useState('');
@@ -46,12 +48,14 @@ export default function Academy(){
  const [aiOpen,setAiOpen]=useState(false);
  const [aiUsed,setAiUsed]=useState(0);
  const [aiLimit,setAiLimit]=useState(1000);
+ const [dataError,setDataError]=useState('');
 
  const load=async()=>{
   if(!profile?.academy_id)return;
   const today=new Date().toISOString().slice(0,10);
   const start=new Date(Date.now()-6*86400000).toISOString().slice(0,10);
   const monthStart=new Date(); monthStart.setDate(1);
+  setDataError('');
   const [a,m,t,cc,usage]=await Promise.all([
    supabase.from('academies').select('id,name,city,state,country,status').eq('id',profile.academy_id).maybeSingle(),
    supabase.from('academy_memberships').select('user_id,role,status').eq('academy_id',profile.academy_id).eq('status','active'),
@@ -59,6 +63,7 @@ export default function Academy(){
    supabase.rpc('get_my_connection_code'),
    supabase.from('subscription_usage').select('ai_requests_used,ai_requests_limit').eq('user_id',session?.user?.id||'').eq('usage_month',monthStart.toISOString().slice(0,10)).maybeSingle()
   ]);
+  if(a.error||m.error||t.error){setDataError(a.error?.message||m.error?.message||t.error?.message||'Could not load academy data.');}
   setAcademy(a.data);
   setSavedCode(cc.data?.code||'');
   const fallbackLimit=getAiLimit((profile as any)?.plan_id || (profile as any)?.plan || 'academy');
@@ -72,6 +77,8 @@ export default function Academy(){
    setMembers(base.map(x=>({...x,...(map.get(x.user_id)||{})})));
   }else setMembers([]);
   setEvents((t.data||[]) as Event[]);
+  const fa=await supabase.from('finance_accounts').select('id,name,currency').eq('academy_id',profile.academy_id).eq('owner_type','academy').maybeSingle();
+  if(fa.data){setFinanceAccount(fa.data); const tx=await supabase.from('finance_transactions').select('id,type,amount,category,description,transaction_date').eq('account_id',fa.data.id).order('transaction_date',{ascending:false}).limit(20); setFinanceTx(tx.data||[]);} else setFinanceTx([]);
 
   const coachIds=base.filter(x=>x.role==='coach').map(x=>x.user_id);
   if(coachIds.length){
@@ -103,10 +110,24 @@ export default function Academy(){
   setBusy(true); const {data,error}=await supabase.rpc('set_connection_code',{p_code:value}); setBusy(false);
   if(error){alert(error.message);return} setSavedCode(String(data?.code||value));setCode('');
  }
+ async function removeMember(userId:string){
+  setBusy(true); const {error}=await supabase.from('academy_memberships').delete().eq('academy_id',profile?.academy_id).eq('user_id',userId); setBusy(false); if(error){alert(error.message);return} await load();
+ }
  async function addCoach(){
   const value=coachUsername.trim();if(!value)return;
   setBusy(true);const {error}=await supabase.rpc('academy_add_coach',{p_username:value});setBusy(false);
   if(error){alert(error.message);return}setCoachUsername('');await load();
+ }
+ async function createFinanceAccount(){
+  if(financeAccount||!profile?.academy_id)return; setBusy(true); const {data,error}=await supabase.from('finance_accounts').insert({owner_user_id:session?.user?.id,academy_id:profile.academy_id,owner_type:'academy',name:(academy?.name||'AthleteN Academy')+' Finance',currency:'INR'}).select('id,name,currency').single(); setBusy(false); if(error){alert(error.message);return} setFinanceAccount(data); setFinanceTx([]);
+ }
+ async function addFinanceTransaction(){
+  if(!financeAccount)return; const amount=Number(financeAmount); if(!Number.isFinite(amount)||amount<=0||!financeCategory.trim())return alert('Enter a valid amount and category.'); setBusy(true); const {error}=await supabase.from('finance_transactions').insert({account_id:financeAccount.id,user_id:session?.user?.id,type:financeType,amount,category:financeCategory.trim(),description:financeDescription.trim()||null}); setBusy(false); if(error){alert(error.message);return} setFinanceAmount('');setFinanceDescription(''); await load();
+ }
+ async function createEvent(){
+  if(!eventName.trim()||!eventDate.trim()||!eventAthlete.trim())return alert('Enter competition name, date and athlete account code/username.');
+  const athlete=members.find(m=>m.user_id===eventAthlete.trim()||m.username?.toLowerCase()===eventAthlete.trim().toLowerCase()||m.full_name?.toLowerCase()===eventAthlete.trim().toLowerCase()); if(!athlete||athlete.role!=='athlete')return alert('Choose an active academy athlete.');
+  setBusy(true); const {error}=await supabase.rpc('academy_create_tournament',{p_name:eventName.trim(),p_starts_at:eventDate.trim(),p_location:eventLocation.trim(),p_athlete_user_id:athlete.user_id,p_discipline:athlete.discipline||null,p_coach_user_id:eventCoach||null}); setBusy(false); if(error){alert(error.message);return} setEventName('');setEventDate('');setEventLocation('');setEventAthlete('');setEventCoach('');await load();
  }
  async function askAI(prompt?:string){
   const q=(prompt||aiQuestion).trim();if(!q||!session)return;
@@ -142,6 +163,8 @@ export default function Academy(){
    <Pressable onPress={()=>void load()} style={{width:40,height:40,borderRadius:13,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,alignItems:'center',justifyContent:'center'}}><Icon name="refresh" size={18}/></Pressable>
   </View>
 
+
+  {dataError?<Card style={{borderColor:'#8b3a45'}}><Text style={{color:'#ff8f9f',fontSize:10,fontWeight:'900'}}>DATA ERROR</Text><Text style={{color:c.text,fontSize:9,marginTop:4}}>{dataError}</Text><Button title="RETRY" onPress={()=>void load()} secondary/></Card>:null}
 
   {tab==='Dashboard'?<>
    <View style={{marginTop:4,marginBottom:12}}><Text style={{color:c.muted,fontSize:10}}>ACADEMY CONTROL CENTER</Text><Text style={{color:c.text,fontSize:27,fontWeight:'900',marginTop:3}}>Run your academy.</Text><Text style={{color:c.muted,fontSize:11,marginTop:3}}>People, training, competitions, finance and AI in one place.</Text></View>
@@ -198,16 +221,16 @@ export default function Academy(){
    <Text style={{color:c.text,fontSize:23,fontWeight:'900'}}>People</Text>
    <Text style={{color:c.muted,fontSize:10}}>Manage academy athletes and coaches.</Text>
    <Card><Text style={{color:c.text,fontSize:14,fontWeight:'900'}}>Add a coach</Text><Text style={{color:c.muted,fontSize:9,marginTop:3}}>Use the coach's AthleteN username.</Text><Field label="COACH USERNAME" value={coachUsername} onChangeText={setCoachUsername} autoCorrect={false} placeholder="coach_username"/><Button title="ADD COACH" onPress={()=>void addCoach()} busy={busy}/></Card>
-   {members.length?members.map(m=><Card key={m.user_id} style={{padding:13}}><View style={{flexDirection:'row',alignItems:'center',gap:11}}><View style={{width:40,height:40,borderRadius:12,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'}}><Icon name={m.role==='coach'?'coaches':'athletes'} size={18}/></View><View style={{flex:1}}><Text style={{color:c.text,fontSize:12,fontWeight:'900'}}>{m.full_name||m.username||'Member'}</Text><Text style={{color:c.muted,fontSize:9,marginTop:3}}>{m.role.toUpperCase()} · {m.discipline||'Taekwondo'}{m.belt?' · '+m.belt:''}</Text></View><Text style={{color:c.accentBright,fontSize:8,fontWeight:'900'}}>ACTIVE</Text></View></Card>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No connected people yet</Text><Text style={{color:c.muted,fontSize:10,marginTop:4}}>Add coaches here or share the academy code with athletes.</Text></Card>}
+   {members.length?members.map(m=><Card key={m.user_id} style={{padding:13}}><View style={{flexDirection:'row',alignItems:'center',gap:11}}><View style={{width:40,height:40,borderRadius:12,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'}}><Icon name={m.role==='coach'?'coaches':'athletes'} size={18}/></View><View style={{flex:1}}><Text style={{color:c.text,fontSize:12,fontWeight:'900'}}>{m.full_name||m.username||'Member'}</Text><Text style={{color:c.muted,fontSize:9,marginTop:3}}>{m.role.toUpperCase()} · {m.discipline||'Taekwondo'}{m.belt?' · '+m.belt:''}</Text></View><Pressable disabled={busy} onPress={()=>void removeMember(m.user_id)} style={{borderWidth:1,borderColor:'#8b3a45',borderRadius:9,paddingHorizontal:8,paddingVertical:6}}><Text style={{color:'#ff8f9f',fontSize:7,fontWeight:'900'}}>REMOVE</Text></Pressable></View></Card>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No connected people yet</Text><Text style={{color:c.muted,fontSize:10,marginTop:4}}>Add coaches here or share the academy code with athletes.</Text></Card>}
   </View>:null}
 
   {tab==='Training'?<View style={{gap:9}}><Text style={{color:c.text,fontSize:23,fontWeight:'900'}}>Training</Text><Text style={{color:c.muted,fontSize:10}}>Live sessions created by academy coaches.</Text>{sessions.length?sessions.map(s=><Card key={s.id}><Text style={{color:c.text,fontWeight:'900'}}>{s.title}</Text><Text style={{color:c.muted,fontSize:9,marginTop:4}}>{new Date(s.session_date).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})} · {s.start_time?.slice(0,5)}</Text></Card>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No sessions yet</Text><Text style={{color:c.muted,fontSize:10,marginTop:4}}>Once a coach creates a regular training group, it appears here.</Text></Card>}</View>:null}
 
-  {tab==='Events'?<View style={{gap:9}}><Text style={{color:c.text,fontSize:23,fontWeight:'900'}}>Competitions</Text><Text style={{color:c.muted,fontSize:10}}>Upcoming Taekwondo events.</Text>{events.length?events.map(e=><Card key={e.id}><View style={{flexDirection:'row',gap:10,alignItems:'center'}}><View style={{width:40,height:40,borderRadius:12,backgroundColor:'#ff9b2f20',alignItems:'center',justifyContent:'center'}}><Icon name="events" size={18} color="#ff9b2f"/></View><View style={{flex:1}}><Text style={{color:c.text,fontWeight:'900'}}>{e.name}</Text><Text style={{color:c.muted,fontSize:9,marginTop:4}}>{new Date(e.starts_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · {e.location||'Location TBD'}</Text></View></View></Card>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No upcoming competitions</Text></Card>}</View>:null}
+  {tab==='Events'?<View style={{gap:9}}><Text style={{color:c.text,fontSize:23,fontWeight:'900'}}>Competitions</Text><Text style={{color:c.muted,fontSize:10}}>Create and view academy competitions.</Text><Card><Text style={{color:c.text,fontSize:14,fontWeight:'900'}}>Create competition</Text><Field label="NAME" value={eventName} onChangeText={setEventName} placeholder="Delhi Open 2026"/><Field label="DATE (YYYY-MM-DD)" value={eventDate} onChangeText={setEventDate} placeholder="2026-10-25" autoCorrect={false}/><Field label="LOCATION" value={eventLocation} onChangeText={setEventLocation} placeholder="Noida"/><Field label="ATHLETE USERNAME / NAME" value={eventAthlete} onChangeText={setEventAthlete} placeholder="Select an academy athlete"/><Field label="COACH USERNAME (OPTIONAL)" value={eventCoach} onChangeText={setEventCoach} placeholder="Coach username"/><Button title="CREATE COMPETITION" onPress={()=>void createEvent()} busy={busy}/></Card>{events.length?events.map(e=><Card key={e.id}><View style={{flexDirection:'row',gap:10,alignItems:'center'}}><View style={{width:40,height:40,borderRadius:12,backgroundColor:'#ff9b2f20',alignItems:'center',justifyContent:'center'}}><Icon name="events" size={18} color="#ff9b2f"/></View><View style={{flex:1}}><Text style={{color:c.text,fontWeight:'900'}}>{e.name}</Text><Text style={{color:c.muted,fontSize:9,marginTop:4}}>{new Date(e.starts_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · {e.location||'Location TBD'}</Text></View></View></Card>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No upcoming competitions</Text></Card>}</View>:null}
 
   {tab!=='Dashboard'?<View style={{marginTop:2,marginBottom:2}}><Card style={{padding:14,borderColor:c.accentDeep,backgroundColor:'#071523'}}><View style={{flexDirection:'row',alignItems:'center',gap:10}}><View style={{width:38,height:38,borderRadius:12,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'}}><Icon name="ai" size={20}/></View><View style={{flex:1}}><Text style={{color:c.text,fontSize:13,fontWeight:'900'}}>AthleteN AI</Text><Text style={{color:c.muted,fontSize:8,marginTop:2}}>{remaining.toLocaleString('en-IN')} / {aiLimit.toLocaleString('en-IN')} messages remaining</Text></View><Pressable onPress={()=>setAiOpen(true)} style={{backgroundColor:c.accent,borderRadius:11,paddingHorizontal:12,paddingVertical:9}}><Text style={{color:'#fff',fontSize:8,fontWeight:'900'}}>ASK AI</Text></Pressable></View></Card></View>:null}
 
-  {tab==='Finance'?<View style={{gap:10}}><Text style={{color:c.text,fontSize:23,fontWeight:'900'}}>Finance</Text><Text style={{color:c.muted,fontSize:10}}>Academy money in one place.</Text><Card accent><Text style={{color:c.muted,fontSize:8,fontWeight:'900'}}>ACADEMY PLAN</Text><Text style={{color:c.text,fontSize:25,fontWeight:'900',marginTop:4}}>₹799 / month</Text><Text style={{color:c.accentBright,fontSize:9,fontWeight:'900',marginTop:4}}>1,000 AI messages / month</Text></Card><Card><Text style={{color:c.text,fontWeight:'900'}}>Finance workspace</Text><Text style={{color:c.muted,fontSize:10,lineHeight:17,marginTop:5}}>Revenue, expenses, pending fees and transactions will be connected to the academy finance records.</Text></Card></View>:null}
+  {tab==='Finance'?<View style={{gap:10}}><Text style={{color:c.text,fontSize:23,fontWeight:'900'}}>Finance</Text><Text style={{color:c.muted,fontSize:10}}>Real academy income and expenses.</Text>{financeAccount?<><Card accent><Text style={{color:c.muted,fontSize:8,fontWeight:'900'}}>ACADEMY FINANCE ACCOUNT</Text><Text style={{color:c.text,fontSize:18,fontWeight:'900',marginTop:3}}>{financeAccount.name}</Text><Text style={{color:c.accentBright,fontSize:9,fontWeight:'900',marginTop:3}}>INR · {financeTx.length} recent transactions</Text></Card><Card><Text style={{color:c.text,fontSize:14,fontWeight:'900'}}>Add transaction</Text><View style={{flexDirection:'row',gap:7}}><Pressable onPress={()=>setFinanceType('income')} style={{flex:1,padding:10,borderRadius:11,backgroundColor:financeType==='income'?c.accent:c.surface,borderWidth:1,borderColor:c.border}}><Text style={{color:financeType==='income'?'#fff':c.muted,textAlign:'center',fontSize:9,fontWeight:'900'}}>INCOME</Text></Pressable><Pressable onPress={()=>setFinanceType('expense')} style={{flex:1,padding:10,borderRadius:11,backgroundColor:financeType==='expense'?'#8b3a45':c.surface,borderWidth:1,borderColor:c.border}}><Text style={{color:financeType==='expense'?'#fff':c.muted,textAlign:'center',fontSize:9,fontWeight:'900'}}>EXPENSE</Text></Pressable></View><Field label="AMOUNT (INR)" value={financeAmount} onChangeText={setFinanceAmount} keyboardType="decimal-pad" placeholder="0"/><Field label="CATEGORY" value={financeCategory} onChangeText={setFinanceCategory} placeholder="Training fees"/><Field label="DESCRIPTION" value={financeDescription} onChangeText={setFinanceDescription} placeholder="Monthly academy fee"/><Button title="ADD TRANSACTION" onPress={()=>void addFinanceTransaction()} busy={busy}/></Card>{financeTx.map(tx=><Card key={tx.id} style={{padding:12}}><View style={{flexDirection:'row',alignItems:'center'}}><View style={{flex:1}}><Text style={{color:c.text,fontWeight:'900',fontSize:11}}>{tx.category}</Text><Text style={{color:c.muted,fontSize:8,marginTop:3}}>{tx.description||'No description'} · {tx.transaction_date}</Text></View><Text style={{color:tx.type==='income'?c.accentBright:'#ff8f9f',fontSize:13,fontWeight:'900'}}>{tx.type==='income'?'+':'-'} ₹{Number(tx.amount).toLocaleString('en-IN')}</Text></View></Card>)}</>:<Card><Text style={{color:c.text,fontWeight:'900'}}>Create academy finance account</Text><Text style={{color:c.muted,fontSize:10,marginTop:4}}>This creates the real finance ledger for this academy.</Text><Button title="CREATE FINANCE ACCOUNT" onPress={()=>void createFinanceAccount()} busy={busy}/></Card>}</View>:null}
   <Modal visible={aiOpen} transparent animationType="slide" onRequestClose={()=>setAiOpen(false)}><View style={{flex:1,backgroundColor:'#000000B8',justifyContent:'flex-end'}}><View style={{backgroundColor:c.background,borderTopLeftRadius:28,borderTopRightRadius:28,borderWidth:1,borderColor:c.borderStrong,padding:18,paddingBottom:28,maxHeight:'82%'}}><ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>{aiPanel}</ScrollView></View></View></Modal>
  </Screen>;
 }
