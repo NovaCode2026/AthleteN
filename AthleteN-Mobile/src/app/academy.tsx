@@ -19,6 +19,17 @@ const tabs:{key:Tab;label:string;icon:string}[]=[
  {key:'Dashboard',label:'Dashboard',icon:'sparkles'},{key:'People',label:'People',icon:'people'},{key:'Training',label:'Training',icon:'training'},{key:'Events',label:'Events',icon:'events'},{key:'Finance',label:'Finance',icon:'finance'}
 ];
 
+function LineGraph({values,labels,suffix='' }:{values:number[];labels:string[];suffix?:string}){
+ const [width,setWidth]=useState(0);
+ const max=Math.max(1,...values); const min=Math.min(...values); const range=Math.max(1,max-min);
+ const points=values.map((v,i)=>({x:values.length>1?(i/(values.length-1))*Math.max(0,width-12):width/2,y:8+((max-v)/range)*84}));
+ return <View onLayout={e=>setWidth(e.nativeEvent.layout.width)} style={{height:126,position:'relative',marginTop:8}}>
+  {width>0?points.slice(0,-1).map((p,i)=>{const n=points[i+1];const dx=n.x-p.x,dy=n.y-p.y;const len=Math.sqrt(dx*dx+dy*dy);const angle=Math.atan2(dy,dx)+'rad';return <View key={i} style={{position:'absolute',left:p.x+6,top:p.y,width:len,height:2,borderRadius:2,backgroundColor:c.accent,transform:[{rotate:angle}],transformOrigin:'left center'}}/>}):null}
+  {points.map((p,i)=><View key={'p'+i} style={{position:'absolute',left:p.x,top:p.y-3,width:8,height:8,borderRadius:4,backgroundColor:c.accent,borderWidth:2,borderColor:c.background}}><View style={{position:'absolute',left:-12,top:-20,width:34}}><Text style={{color:c.muted,fontSize:7,textAlign:'center'}}>{Math.round(values[i])}{suffix}</Text></View></View>)}
+  <View style={{position:'absolute',left:0,right:0,bottom:0,flexDirection:'row',justifyContent:'space-between'}}>{labels.map((label,i)=><Text key={i} style={{color:c.muted,fontSize:7}}>{label}</Text>)}</View>
+ </View>;
+}
+
 function Stat({icon,label,value,sub,accent=c.accent}:{icon:string;label:string;value:string|number;sub:string;accent?:string}){
  return <Card style={{flex:1,minWidth:0,padding:14}}>
   <View style={{flexDirection:'row',alignItems:'center',gap:10}}>
@@ -207,7 +218,7 @@ export default function Academy(){
 
    <View style={{marginTop:2}}><Text style={{color:c.text,fontSize:14,fontWeight:'900',marginBottom:8}}>Upcoming Schedule</Text>{sessions.length?sessions.slice(0,4).map(s=><Card key={s.id} style={{padding:12,marginBottom:7}}><View style={{flexDirection:'row',alignItems:'center',gap:11}}><View style={{width:45,alignItems:'center'}}><Text style={{color:c.accentBright,fontSize:10,fontWeight:'900'}}>{new Date(s.session_date).toLocaleDateString('en-IN',{day:'2-digit'})}</Text><Text style={{color:c.muted,fontSize:7}}>{new Date(s.session_date).toLocaleDateString('en-IN',{month:'short'}).toUpperCase()}</Text></View><View style={{flex:1}}><Text style={{color:c.text,fontWeight:'900',fontSize:11}}>{s.title}</Text><Text style={{color:c.muted,fontSize:9,marginTop:3}}>{s.start_time?.slice(0,5)} · Training session</Text></View><Icon name="chevron" size={15} color={c.muted}/></View></Card>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No upcoming training</Text><Text style={{color:c.muted,fontSize:10,marginTop:4}}>Connect a coach to see academy training here.</Text></Card>}</View>
 
-   <View><Text style={{color:c.text,fontSize:14,fontWeight:'900',marginBottom:8}}>Attendance · Last 7 Days</Text><Card><View style={{height:130,flexDirection:'row',alignItems:'flex-end',gap:6}}>{attendance.map((n,i)=><View key={i} style={{flex:1,alignItems:'center',justifyContent:'flex-end',height:'100%'}}><Text style={{color:c.muted,fontSize:7,marginBottom:3}}>{n}</Text><View style={{width:'62%',height:Math.max(4,(n/maxAttendance)*92),borderRadius:5,backgroundColor:c.accent}}/><Text style={{color:c.muted,fontSize:7,marginTop:4}}>{['M','T','W','T','F','S','S'][i]}</Text></View>)}</View><View style={{flexDirection:'row',justifyContent:'space-between',marginTop:11}}><Text style={{color:c.muted,fontSize:9}}>Average attendance</Text><Text style={{color:c.accentBright,fontSize:16,fontWeight:'900'}}>{avgAttendance}%</Text></View></Card></View>
+   <View><Text style={{color:c.text,fontSize:14,fontWeight:'900',marginBottom:8}}>Attendance · Last 7 Days</Text><Card><View style={{flexDirection:'row',alignItems:'center',gap:8}}><View style={{width:34,height:34,borderRadius:11,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'}}><Icon name="calendar" size={17}/></View><View><Text style={{color:c.text,fontSize:11,fontWeight:'900'}}>Attendance trend</Text><Text style={{color:c.muted,fontSize:8,marginTop:2}}>Present + late sessions</Text></View></View><LineGraph values={attendance} labels={['M','T','W','T','F','S','S']} /><View style={{flexDirection:'row',justifyContent:'space-between',marginTop:5}}><Text style={{color:c.muted,fontSize:9}}>Average attendance</Text><Text style={{color:c.accentBright,fontSize:16,fontWeight:'900'}}>{avgAttendance}%</Text></View></Card></View>
 
    <View><Text style={{color:c.text,fontSize:14,fontWeight:'900',marginBottom:8}}>Quick Actions</Text><View style={{gap:7}}>
     {[
