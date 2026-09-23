@@ -2,11 +2,11 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
-import { SymbolView } from 'expo-symbols';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export const c=Colors.dark;
-const icons:Record<string,string>={back:'chevron.left',arrow:'chevron.right',add:'plus',close:'xmark',check:'checkmark',settings:'gearshape.fill',empty:'square.dashed',search:'magnifyingglass',refresh:'arrow.clockwise',edit:'pencil',delete:'trash',calendar:'calendar',bell:'bell.fill',menu:'line.3.horizontal',more:'ellipsis',searchCircle:'magnifyingglass.circle.fill',closeCircle:'xmark.circle.fill',person:'person.fill',people:'person.2.fill',coach:'figure.run',athlete:'figure.run',training:'figure.run',event:'trophy.fill',finance:'indianrupeesign.circle.fill',ai:'sparkles',shield:'checkmark.shield.fill',lock:'lock.fill',warning:'exclamationmark.triangle.fill',info:'info.circle.fill',chart:'chart.xyaxis.line',medal:'medal.fill',message:'bubble.left.and.bubble.right.fill'};
-export function Icon({name,size=18,color=c.accentBright}:{name:string;size?:number;color?:string}){return <SymbolView name={icons[name]||name} size={size} tintColor={color}/>}
+const icons:Record<string,string>={back:'chevron-left',arrow:'arrow-right',add:'plus',close:'close',check:'check',settings:'cog',empty:'square-outline',search:'magnify',refresh:'refresh',edit:'pencil',delete:'trash-can',calendar:'calendar',bell:'bell',menu:'menu',more:'dots-horizontal',searchCircle:'magnify-plus',closeCircle:'close-circle',person:'account',people:'account-group',coach:'run',athlete:'run-fast',training:'run',event:'trophy',finance:'currency-inr',ai:'creation',shield:'shield-check',lock:'lock',warning:'alert',info:'information',chart:'chart-line',medal:'medal',message:'message-text','bell.fill':'bell'};
+export function Icon({name,size=18,color=c.accentBright}:{name:string;size?:number;color?:string}){return <MaterialCommunityIcons name={(icons[name]||name) as any} size={size} color={color}/>}
 export function Screen({children,scroll=true,bottomBar}:{children:React.ReactNode;scroll?:boolean;bottomBar?:React.ReactNode}){
  const body=<View style={s.wrap}>{children}</View>;
  return <SafeAreaView style={s.screen} edges={['top','bottom']}>{scroll?<View style={{flex:1}}><ScrollView contentContainerStyle={[s.content,bottomBar&&{paddingBottom:190}]} showsVerticalScrollIndicator={false}>{body}</ScrollView>{bottomBar}</View>:<View style={{flex:1}}>{body}{bottomBar}</View>}</SafeAreaView>;
