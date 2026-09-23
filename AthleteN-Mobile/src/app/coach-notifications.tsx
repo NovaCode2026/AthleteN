@@ -11,11 +11,11 @@ type Notice = { id: string; title: string; text: string; route: string; tone: 'b
 export default function CoachNotifications() {
   const { profile } = useAuth();
   const router = useRouter();
-  const [notices, setNotices] = useState<Notice[]>([]);
+  const [notices, setNotices] = useState<Notice[]>([]); const [unread,setUnread]=useState(0);
 
   const load = useCallback(async () => {
     if (!profile?.user_id) return;
-    const next: Notice[] = [];
+    const next: Notice[] = []; const app = await supabase.from('notifications').select('id,title,body,notification_type,read_at,created_at').eq('user_id',profile.user_id).order('created_at',{ascending:false}).limit(30); setUnread((app.data||[]).filter((n:any)=>!n.read_at).length); for(const n of app.data||[]){ next.push({id:'n-'+n.id,title:String(n.title||'Notification'),text:String(n.body||''),route:String(n.notification_type||'').includes('training')?'/coach-training':'/coach',tone:String(n.notification_type||'').includes('training')?'green':'blue'}); }
     const approval = await supabase.from('coach_approval_requests').select('id', { count: 'exact', head: true }).eq('coach_user_id', profile.user_id).eq('status', 'pending');
     if ((approval.count || 0) > 0) {
       next.push({ id: 'approvals', title: 'Athlete connection requests', text: String(approval.count) + ' request' + ((approval.count || 0) === 1 ? '' : 's') + ' need your review.', route: '/coach-athletes', tone: 'red' });
@@ -30,7 +30,7 @@ export default function CoachNotifications() {
   useEffect(() => { void load(); }, [load]);
 
   return <Screen bottomBar={<CoachNav active="more" />}>
-    <Header back eyebrow="COACH / ALERTS" title="Notifications" subtitle="Requests, upcoming competitions and coaching alerts." />
+    <Header back eyebrow="COACH / ALERTS" title="Notifications" subtitle={`Requests, upcoming competitions and coaching alerts.${unread ? ` · ${unread} unread` : ''}`} />
     <Section title="ALERTS">
       {notices.length ? notices.map(n => (
         <Pressable key={n.id} onPress={() => router.push(n.route)}>
