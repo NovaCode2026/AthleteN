@@ -33,6 +33,19 @@ export const PLAN_NAMES: Record<PlanId, string> = {
   academy: 'Academy',
 };
 
+export const PLAN_PRICING: Record<PlanId, {
+  monthly: number;
+  yearly: number;
+  yearlySaving: number;
+}> = {
+  free: { monthly: 0, yearly: 0, yearlySaving: 0 },
+  student: { monthly: 99, yearly: 999, yearlySaving: 189 },
+  pro: { monthly: 199, yearly: 1999, yearlySaving: 389 },
+  elite: { monthly: 399, yearly: 3999, yearlySaving: 789 },
+  coach: { monthly: 499, yearly: 4999, yearlySaving: 989 },
+  academy: { monthly: 799, yearly: 7999, yearlySaving: 1589 },
+};
+
 export function getAiLimit(plan: string | null | undefined): number {
   return AI_LIMITS[(plan || 'free') as PlanId] ?? 0;
 }
