@@ -146,7 +146,7 @@ export default function Academy(){
    const response=await fetch('https://athleten.netlify.app/.netlify/functions/ai-coach',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({topic:'Performance Reports',prompt:context+'\nAcademy admin question: '+q})});
    const data=await response.json().catch(()=>({}));
    setAiAnswer(response.ok?String(data.answer||'No response returned.'):String(data.error||'AI Coach is unavailable right now.'));
-  }catch(e){setAiAnswer('AI Coach connection failed. Please try again.')}
+  }catch(e){ await supabase.rpc('cancel_ai_usage',{p_usage_id:reservation,p_user_id:session.user.id}); setAiUsed(v=>Math.max(0,v-1)); setAiAnswer('AI Coach connection failed. Your AI message was returned. Please try again.'); }
   setAiBusy(false);setAiQuestion('');
  }
 
