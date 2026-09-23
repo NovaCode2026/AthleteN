@@ -113,9 +113,11 @@ export function PerformanceLine({
                   style={[
                     s.segment,
                     {
-                      left: a.x,
-                      top: a.y,
+                      left: (a.x + b.x) / 2,
+                      top: (a.y + b.y) / 2,
                       width: length,
+                      marginLeft: -length / 2,
+                      marginTop: -1.5,
                       backgroundColor: accent,
                       transform: [{ rotate: angle }],
                     },
