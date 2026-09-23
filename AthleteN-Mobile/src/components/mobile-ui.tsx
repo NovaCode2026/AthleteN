@@ -6,7 +6,7 @@ import { Colors } from '@/constants/theme';
 export const c=Colors.dark;
 export function Screen({children,scroll=true,bottomBar}:{children:React.ReactNode;scroll?:boolean;bottomBar?:React.ReactNode}){
  const body=<View style={s.wrap}>{children}</View>;
- return <SafeAreaView style={s.screen} edges={['top','bottom']}>{scroll?<View style={{flex:1}}><ScrollView contentContainerStyle={[s.content,bottomBar&&{paddingBottom:150}]} showsVerticalScrollIndicator={false}>{body}</ScrollView>{bottomBar}</View>:<View style={{flex:1}}>{body}{bottomBar}</View>}</SafeAreaView>;
+ return <SafeAreaView style={s.screen} edges={['top','bottom']}>{scroll?<View style={{flex:1}}><ScrollView contentContainerStyle={[s.content,bottomBar&&{paddingBottom:190}]} showsVerticalScrollIndicator={false}>{body}</ScrollView>{bottomBar}</View>:<View style={{flex:1}}>{body}{bottomBar}</View>}</SafeAreaView>;
 }
 export function Header({eyebrow,title,subtitle,right,back=false}:{eyebrow:string;title:string;subtitle?:string;right?:React.ReactNode;back?:boolean}){const router=useRouter();return <View style={s.header}>{back?<Pressable onPress={()=>router.back()} style={s.back}><Text style={s.backText}>‹  BACK</Text></Pressable>:null}<View style={s.headerRow}><View style={{flex:1,gap:4}}><Text style={s.eyebrow}>{eyebrow}</Text><Text style={s.title}>{title}</Text>{subtitle?<Text style={s.subtitle}>{subtitle}</Text>:null}</View>{right}</View></View>}
 export function Section({title,action,children}:{title:string;action?:React.ReactNode;children:React.ReactNode}){return <View style={s.sectionWrap}><View style={s.sectionHead}><Text style={s.section}>{title}</Text>{action}</View>{children}</View>}
