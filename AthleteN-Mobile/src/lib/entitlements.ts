@@ -21,7 +21,7 @@ export const AI_LIMITS: Record<PlanId, number> = {
   pro: 200,
   elite: 500,
   coach: 750,
-  academy: 2000,
+  academy: 1000,
 };
 
 export const PLAN_NAMES: Record<PlanId, string> = {
