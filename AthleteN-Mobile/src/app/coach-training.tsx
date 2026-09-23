@@ -16,13 +16,13 @@ export default function CoachTraining(){
  const [sessions,setSessions]=useState<Session[]>([]);
  const [selectedAthletes,setSelectedAthletes]=useState<string[]>([]);
  const [selectedSession,setSelectedSession]=useState<Session|null>(null);
- const [attendance,setAttendance]=useState<Record<string,boolean>>({});
+ const [attendance,setAttendance]=useState<Record<string,string>>({});
  const [name,setName]=useState('Regular Kyorugi Training');
  const [focus,setFocus]=useState('Kyorugi');
  const [duration,setDuration]=useState('90');
  const [startTime,setStartTime]=useState('17:00');
  const [days,setDays]=useState<string[]>(['Mon','Wed','Fri']);
- const [busy,setBusy]=useState(false);
+ const [busy,setBusy]=useState(false); const [extraDate,setExtraDate]=useState(new Date().toISOString().slice(0,10)); const [extraType,setExtraType]=useState('sparring'); const [extraTitle,setExtraTitle]=useState('Extra Sparring'); const [extraTime,setExtraTime]=useState('19:00'); const [extraVenue,setExtraVenue]=useState(''); const [extraNotes,setExtraNotes]=useState(''); const [holidayDate,setHolidayDate]=useState(new Date().toISOString().slice(0,10)); const [holidayReason,setHolidayReason]=useState('Academy holiday'); const [holidayGroup,setHolidayGroup]=useState<string>('');
 
  const load=useCallback(async()=>{
   if(!profile?.user_id)return;
@@ -36,7 +36,7 @@ export default function CoachTraining(){
   setGroups((g.data||[]) as Group[]);
   const gids=(g.data||[]).map((x:any)=>x.id);
   if(gids.length){
-   const s=await supabase.from('training_group_sessions').select('id,group_id,session_date,start_time,title,status').in('group_id',gids).gte('session_date',new Date().toISOString().slice(0,10)).order('session_date',{ascending:true}).limit(30);
+   const s=await supabase.from('training_group_sessions').select('id,group_id,session_date,start_time,title,status,training_type,venue,notes,locked').in('group_id',gids).gte('session_date',new Date().toISOString().slice(0,10)).order('session_date',{ascending:true}).limit(30);
    setSessions((s.data||[]) as Session[]);
   } else setSessions([]);
  },[profile?.user_id]);
@@ -55,22 +55,21 @@ export default function CoachTraining(){
   else{setSelectedAthletes([]);await load();Alert.alert('Training group created','AthleteN generated the next 8 weeks of regular sessions.');}
  }
 
+ async function createExtra(){ const gid=holidayGroup||groups[0]?.id; if(!gid)return Alert.alert('No training group','Create a regular group first.'); const {error}=await supabase.rpc('create_coach_extra_training',{p_group_id:gid,p_session_date:extraDate,p_start_time:extraTime,p_duration_minutes:Number(duration)||90,p_training_type:extraType,p_title:extraTitle.trim()||'Extra training',p_focus:null,p_venue:extraVenue.trim()||null,p_notes:extraNotes.trim()||null}); if(error)Alert.alert('Could not add extra training',error.message); else {await load();Alert.alert('Extra training added','The session is now on the group schedule.');} }
+ async function cancelDate(){ const {data,error}=await supabase.rpc('cancel_coach_training_date',{p_date:holidayDate,p_group_id:holidayGroup||null,p_reason:holidayReason.trim()||'Academy holiday'}); if(error)Alert.alert('Could not cancel training',error.message); else {await load();Alert.alert('Training cancelled',String(data||0)+' session(s) cancelled. The group chat and notifications were updated automatically.');} }
+ async function markAllPresent(){ if(!selectedSession||selectedSession.status==='cancelled'||selectedSession.locked)return; const ids=Object.keys(attendance); const {error}=await supabase.from('training_group_attendance').upsert(ids.map(id=>({session_id:selectedSession.id,athlete_user_id:id,status:'present',updated_at:new Date().toISOString()})),{onConflict:'session_id,athlete_user_id'}); if(error)Alert.alert('Attendance not saved',error.message); else setAttendance(Object.fromEntries(ids.map(id=>[id,'present']))); }
+ async function lockAttendance(){ if(!selectedSession)return; const {error}=await supabase.from('training_group_sessions').update({locked:true,updated_at:new Date().toISOString()}).eq('id',selectedSession.id).eq('locked',false); if(error)Alert.alert('Could not lock attendance',error.message); else {setSelectedSession({...selectedSession,locked:true});Alert.alert('Attendance locked','This session can no longer be edited.');} }
  async function openAttendance(s:Session){
   setSelectedSession(s);
   const {data}=await supabase.from('training_group_attendance').select('athlete_user_id,status').eq('session_id',s.id);
-  const map:Record<string,boolean>={}; for(const a of data||[])map[a.athlete_user_id]=a.status==='present'; setAttendance(map);
+  const map:Record<string,string>={}; for(const a of data||[])map[a.athlete_user_id]=a.status||'absent'; setAttendance(map);
   const m=await supabase.from('training_group_members').select('athlete_user_id').eq('group_id',s.group_id).eq('status','active');
   setSelectedAthletes((m.data||[]).map((x:any)=>x.athlete_user_id));
  }
 
- async function toggleAttendance(id:string){
-  if(!selectedSession)return;
-  const next=!attendance[id]; setAttendance(v=>({...v,[id]:next}));
-  if(next) await supabase.from('training_group_attendance').upsert({session_id:selectedSession.id,athlete_user_id:id,status:'present'},{onConflict:'session_id,athlete_user_id'});
-  else await supabase.from('training_group_attendance').delete().eq('session_id',selectedSession.id).eq('athlete_user_id',id);
- }
+ async function toggleAttendance(id:string){ const next=attendance[id]==='present'?'absent':'present'; setAttendance(v=>({...v,[id]:next})); const {error}=await supabase.from('training_group_attendance').upsert({session_id:selectedSession?.id,athlete_user_id:id,status:next,updated_at:new Date().toISOString()},{onConflict:'session_id,athlete_user_id'}); if(error)Alert.alert('Attendance not saved',error.message); }
 
- const selectedGroupName=useMemo(()=>selectedSession?groups.find(g=>g.id===selectedSession.group_id)?.name:'', [selectedSession,groups]);
+ const selectedGroupName=useMemo(()=>selectedSession?groups.find(g=>g.id===selectedSession.group_id)?.name:'', [selectedSession,groups]); const TYPES=['sparring','poomsae','technique','kicking','footwork','defense','pads','strength','endurance','mobility','tactics','tournament','grading','camp','recovery','other'];
 
  return <Screen>
   <Header back eyebrow="COACH / TRAINING" title="Training Control" subtitle="Build regular weekly training, assign athletes, and mark attendance session by session."/>
@@ -86,14 +85,16 @@ export default function CoachTraining(){
     <Button title="CREATE WEEKLY TRAINING GROUP" onPress={()=>void createGroup()} busy={busy}/>
    </Card>
   </Section>
+  <Section title="EXTRA / SPECIAL TRAINING"><Card><Text style={label}>GROUP</Text><View style={{flexDirection:'row',flexWrap:'wrap',gap:7,marginBottom:8}}>{groups.map(g=><Pressable key={g.id} onPress={()=>setHolidayGroup(g.id)} style={{padding:9,borderRadius:10,borderWidth:1,borderColor:(holidayGroup||groups[0]?.id)===g.id?c.accent:c.border}}><Text style={{color:(holidayGroup||groups[0]?.id)===g.id?c.accentBright:c.muted,fontWeight:'900',fontSize:10}}>{g.name}</Text></Pressable>)}</View><TextInput value={extraDate} onChangeText={setExtraDate} placeholder="YYYY-MM-DD" placeholderTextColor={c.muted} style={input}/><View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:8}}>{TYPES.map(t=><Pressable key={t} onPress={()=>{setExtraType(t);setExtraTitle(t[0].toUpperCase()+t.slice(1)+' Training')}} style={{paddingVertical:7,paddingHorizontal:9,borderRadius:9,borderWidth:1,borderColor:extraType===t?c.accent:c.border}}><Text style={{color:extraType===t?c.accentBright:c.muted,fontSize:9,fontWeight:'900'}}>{t.toUpperCase()}</Text></Pressable>)}</View><View style={{flexDirection:'row',gap:8}}><TextInput value={extraTime} onChangeText={setExtraTime} placeholder="19:00" placeholderTextColor={c.muted} style={[input,{flex:1}]}/><TextInput value={duration} onChangeText={setDuration} placeholder="90" keyboardType="number-pad" placeholderTextColor={c.muted} style={[input,{flex:1}]}/></View><TextInput value={extraTitle} onChangeText={setExtraTitle} placeholder="Session title" placeholderTextColor={c.muted} style={input}/><TextInput value={extraVenue} onChangeText={setExtraVenue} placeholder="Venue (optional)" placeholderTextColor={c.muted} style={input}/><TextInput value={extraNotes} onChangeText={setExtraNotes} placeholder="Session notes" placeholderTextColor={c.muted} style={[input,{minHeight:60,textAlignVertical:'top'}]}/><Button title="ADD EXTRA TRAINING" onPress={()=>void createExtra()} busy={busy}/></Card></Section>
+  <Section title="HOLIDAY / CANCEL TRAINING"><Card><Text style={{color:c.text,fontWeight:'900'}}>Mark a day off</Text><Text style={{color:c.muted,fontSize:10,marginTop:3,marginBottom:8}}>Cancelled sessions do not count as absences. AthleteN automatically posts the update to the affected group chat and creates notifications.</Text><TextInput value={holidayDate} onChangeText={setHolidayDate} placeholder="YYYY-MM-DD" placeholderTextColor={c.muted} style={input}/><TextInput value={holidayReason} onChangeText={setHolidayReason} placeholder="Reason" placeholderTextColor={c.muted} style={input}/><Button title={holidayGroup?'CANCEL SELECTED GROUP DAY':'CANCEL ALL GROUPS THAT DAY'} onPress={()=>void cancelDate()} busy={busy}/></Card></Section>
   <Section title="ACTIVE TRAINING GROUPS">
    {groups.length?groups.map(g=><Card key={g.id}><View style={{flexDirection:'row',justifyContent:'space-between',gap:10}}><View style={{flex:1}}><Text style={{color:c.text,fontSize:15,fontWeight:'900'}}>{g.name}</Text><Text style={{color:c.muted,fontSize:10,marginTop:3}}>{g.focus_area||'Training'} · {g.recurrence_days.join(' · ')} · {g.start_time||'Time not set'}</Text></View><Text style={{color:c.accentBright,fontWeight:'900'}}>{g.duration_minutes}m</Text></View></Card>):<Card accent><Text style={{color:c.text,fontWeight:'900'}}>No regular groups yet</Text><Text style={{color:c.muted,fontSize:10,marginTop:3}}>Create one above and AthleteN will generate recurring sessions.</Text></Card>}
   </Section>
   <Section title="UPCOMING SESSIONS">
-   {sessions.length?sessions.map(s=><Pressable key={s.id} onPress={()=>void openAttendance(s)}><Card><View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><View style={{flex:1}}><Text style={{color:c.text,fontWeight:'900'}}>{s.title}</Text><Text style={{color:c.muted,fontSize:10,marginTop:3}}>{s.session_date} · {s.start_time||'Time not set'}</Text></View><Text style={{color:c.accentBright,fontWeight:'900'}}>ATTEND ›</Text></View></Card></Pressable>):<Card><Text style={{color:c.muted}}>No upcoming sessions.</Text></Card>}
+   {sessions.length?sessions.map(s=><Pressable key={s.id} onPress={()=>void openAttendance(s)}><Card><View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><View style={{flex:1}}><Text style={{color:c.text,fontWeight:'900'}}>{s.title}</Text><Text style={{color:c.muted,fontSize:10,marginTop:3}}>{s.session_date} · {s.start_time||'Time not set'} · {(s.training_type||'regular').toUpperCase()}</Text></View><Text style={{color:s.status==='cancelled'?'#ff7082':c.accentBright,fontWeight:'900'}}>{s.status==='cancelled'?'OFF':'ATTEND ›'}</Text></View></Card></Pressable>):<Card><Text style={{color:c.muted}}>No upcoming sessions.</Text></Card>}
   </Section>
-  {selectedSession?<Section title={'ATTENDANCE · '+selectedGroupName}><Card><Text style={{color:c.text,fontWeight:'900'}}>{selectedSession.title}</Text><Text style={{color:c.muted,fontSize:10,marginBottom:8}}>{selectedSession.session_date} · Tap each athlete to mark present.</Text>{athletes.filter(a=>selectedAthletes.includes(a.user_id)).map(a=><Pressable key={a.user_id} onPress={()=>void toggleAttendance(a.user_id)} style={{padding:11,borderRadius:11,borderWidth:1,borderColor:attendance[a.user_id]?c.success:c.border,backgroundColor:attendance[a.user_id]?'#073d24':c.surface,marginBottom:6}}><Text style={{color:attendance[a.user_id]?c.success:c.text,fontWeight:'900'}}>{attendance[a.user_id]?'✓ PRESENT':'○ ABSENT'} · {a.full_name||'Athlete'}</Text></Pressable>)}</Card></Section>:null}
+  {selectedSession?<Section title={'ATTENDANCE · '+selectedGroupName}><Card><Text style={{color:c.text,fontWeight:'900'}}>{selectedSession.title}</Text><Text style={{color:c.muted,fontSize:10,marginBottom:8}}>{selectedSession.session_date} · Tap each athlete to mark attendance.</Text><Pressable onPress={()=>void markAllPresent()}><Text style={{color:c.accentBright,fontWeight:'900',fontSize:10,marginBottom:8}}>MARK ALL PRESENT</Text></Pressable>{athletes.filter(a=>selectedAthletes.includes(a.user_id)).map(a=><Pressable key={a.user_id} onPress={()=>void toggleAttendance(a.user_id)} style={{padding:11,borderRadius:11,borderWidth:1,borderColor:attendance[a.user_id]?c.success:c.border,backgroundColor:attendance[a.user_id]?'#073d24':c.surface,marginBottom:6}}><Text style={{color:attendance[a.user_id]?c.success:c.text,fontWeight:'900'}}>{(attendance[a.user_id]||'absent').toUpperCase()} · {a.full_name||'Athlete'}</Text></Pressable>)}</Card></Section>:null}
  </Screen>;
 }
-const input={backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,padding:12,fontSize:12,marginBottom:8} as any;
+const input=backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,padding:12,fontSize:12,marginBottom:8} as any;
 const label={color:c.muted,fontSize:9,fontWeight:'900',letterSpacing:1,marginTop:4,marginBottom:7} as any;
