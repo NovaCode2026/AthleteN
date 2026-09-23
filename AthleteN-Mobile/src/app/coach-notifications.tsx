@@ -28,12 +28,13 @@ export default function CoachNotifications() {
   }, [profile?.user_id]);
 
   useEffect(() => { void load(); }, [load]);
+  async function openNotice(n:Notice){ if(n.id.startsWith('n-')) await supabase.from('notifications').update({read_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',n.id.slice(2)).eq('user_id',profile?.user_id); await load(); router.push(n.route as any); }
 
   return <Screen bottomBar={<CoachNav active="more" />}>
     <Header back eyebrow="COACH / ALERTS" title="Notifications" subtitle={`Requests, upcoming competitions and coaching alerts.${unread ? ` · ${unread} unread` : ''}`} />
     <Section title="ALERTS">
       {notices.length ? notices.map(n => (
-        <Pressable key={n.id} onPress={() => router.push(n.route)}>
+        <Pressable key={n.id} onPress={() => void openNotice(n)}>
           <Card>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: n.tone === 'red' ? '#451522' : n.tone === 'green' ? '#073d24' : c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
