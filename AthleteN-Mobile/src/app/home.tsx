@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { validMinutes, validWeight } from '@/lib/performance';
 import { PerformanceLine, ChartPoint } from '@/components/performance-chart';
+import PlanSection from '@/components/plan-section';
 
 const c=Colors.dark;
 
@@ -30,6 +31,7 @@ export default function HomeScreen(){
   <View style={s.header}><View style={s.brandRow}><Image source={require('@/assets/logo.png')} style={s.logo}/><View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>ATHLETE PERFORMANCE</Text></View></View><Pressable onPress={()=>router.push('/profile')} style={s.settings}><Text style={s.settingsText}>⚙</Text></Pressable></View>
   <View style={s.hero}><View><Text style={s.kicker}>YOUR PERFORMANCE HUB</Text><Text style={s.greeting}>Good morning,</Text><Text style={s.name}>{first}</Text><View style={s.pill}><View style={s.dot}/><Text style={s.pillText}>{(profile?.discipline||'TAEKWONDO').toUpperCase()} • LIVE</Text></View></View><View style={s.heroOrb}><Text style={s.heroMark}>A</Text></View></View>
   <View style={s.grid}><Metric label="7D SESSIONS" value={sessions}/><Metric label="7D MINUTES" value={minutes} suffix=" min"/><Metric label="MEDALS" value={medals}/><Metric label="LATEST WEIGHT" value={weight==null?'—':weight} suffix={weight==null?'':' kg'}/></View>
+  <PlanSection />
   <PerformanceLine title="Training rhythm" subtitle="Minutes logged across the last 7 days" data={chart} unit="m"/>
   <View style={s.sectionHead}><Text style={s.section}>NEXT COMPETITION</Text><Pressable onPress={()=>router.push('/compete')}><Text style={s.link}>VIEW ALL</Text></Pressable></View>
   {next?<View style={s.competition}><View style={s.competitionBadge}><Text style={s.competitionDay}>{new Date(next.starts_at).getDate()}</Text><Text style={s.competitionMonth}>{new Date(next.starts_at).toLocaleString(undefined,{month:'short'}).toUpperCase()}</Text></View><View style={s.competitionCopy}><Text style={s.competitionTitle} numberOfLines={2}>{next.name}</Text><Text style={s.meta}>{next.location||'Location not set'} • {(next.status||'planned').toUpperCase()}</Text></View></View>:<View style={s.empty}><Text style={s.emptyTitle}>No upcoming competition</Text><Text style={s.meta}>Add your next tournament in Compete to build your preparation view.</Text></View>}
