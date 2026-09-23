@@ -45,7 +45,7 @@ export default function CoachAthletes() {
       <TextInput value={search} onChangeText={setSearch} placeholder="Search athletes..." placeholderTextColor={c.muted} style={{ backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderRadius: 14, color: c.text, padding: 13, fontSize: 13 }} />
       <Section title="ROSTER">
         {filtered.length ? filtered.map(a => (
-          <Pressable key={a.athlete_user_id} onPress={() => router.push('/coach-competition')} style={{ marginBottom: 8 }}>
+          <Pressable key={a.athlete_user_id} onPress={() => router.push({ pathname: '/coach-athlete-detail', params: { athleteId: a.athlete_user_id } })} style={{ marginBottom: 8 }}>
             <Card>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={{ width: 44, height: 44, borderRadius: 15, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
