@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import CoachNav from '@/components/coach-nav';
 
 type Athlete = { athlete_user_id: string; full_name?: string | null; discipline?: string | null; belt?: string | null; weight_kg?: number | null };
-type DayPoint = { label: string; minutes: number };
+type DayPoint = { label: string; sessions: number; attended: number };
 
 function BellIcon() {
   return <View style={{ width: 28, height: 30, alignItems: 'center', justifyContent: 'center' }}>
@@ -30,20 +30,39 @@ function ActionCard({ icon, tone, title, subtitle, onPress }: { icon: string; to
 }
 
 function TrainingChart({ points }: { points: DayPoint[] }) {
-  const max = Math.max(30, ...points.map(p => p.minutes));
-  return <View style={{ gap: 10 }}>
-    <View style={{ height: 126, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 2 }}>
-      {points.map((point, index) => {
-        const height = point.minutes ? Math.max(8, Math.round((point.minutes / max) * 96)) : 5;
-        return <View key={point.label + index} style={{ width: 30, alignItems: 'center', justifyContent: 'flex-end', height: 118 }}>
-          <Text style={{ color: point.minutes ? c.textSecondary : c.muted, fontSize: 8, fontWeight: '800', marginBottom: 4 }}>{point.minutes || ''}</Text>
-          <View style={{ width: 22, height, borderRadius: 7, backgroundColor: point.minutes ? c.accent : c.border }} />
-          <Text style={{ color: c.muted, fontSize: 8, marginTop: 6 }}>{point.label}</Text>
+  const max = Math.max(1, ...points.flatMap(p => [p.sessions, p.attended]));
+  return <View style={{ gap: 8 }}>
+    <View style={{ height: 150, position: 'relative', paddingTop: 8 }}>
+      <View style={{ position: 'absolute', left: 0, right: 0, top: 34, height: 1, backgroundColor: c.border }} />
+      <View style={{ position: 'absolute', left: 0, right: 0, top: 76, height: 1, backgroundColor: c.border }} />
+      <View style={{ position: 'absolute', left: 0, right: 0, top: 118, height: 1, backgroundColor: c.border }} />
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 8, height: 1, backgroundColor: c.borderStrong }} />
+      {points.map((p, i) => {
+        const x = points.length === 1 ? 50 : (i / (points.length - 1)) * 100;
+        const y1 = 142 - (p.sessions / max) * 124;
+        const y2 = 142 - (p.attended / max) * 124;
+        const prev = points[i - 1];
+        const makeSegment = (from:number, to:number, fromY:number, toY:number, key:string) => {
+          const dx = (100 / Math.max(1, points.length - 1)) * (to - from) * 2.65;
+          const dy = toY - fromY;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+          return <View key={key} style={{ position:'absolute', left: \`${Math.min(x, (from / Math.max(1, points.length - 1))*100)}%\`, top: Math.min(fromY,toY), width: length, height: 3, borderRadius: 2, backgroundColor: key.startsWith('s') ? c.accentBright : c.success, transform:[{rotate:\`${angle}'}], transformOrigin:'left center' as any }} />;
+        };
+        return <View key={p.label+i} style={{ position:'absolute', left:\`${x}%\`, top:0, bottom:0, width:38, marginLeft:-19, alignItems:'center' }}>
+          {prev ? makeSegment(i-1,i,142-(prev.sessions/max)*124,y1,'s'+i) : null}
+          {prev ? makeSegment(i-1,i,142-(prev.attended/max)*124,y2,'a'+i) : null}
+          <View style={{ position:'absolute', top:y1-4, width:9, height:9, borderRadius:5, backgroundColor:c.accentBright }} />
+          <View style={{ position:'absolute', top:y2-4, width:8, height:8, borderRadius:4, backgroundColor:c.success }} />
+          <Text style={{ position:'absolute', bottom:0, color:c.muted, fontSize:8 }}>{p.label}</Text>
         </View>;
       })}
     </View>
-    <View style={{ height: 1, backgroundColor: c.border }} />
-    <Text style={{ color: c.muted, fontSize: 9 }}>Training minutes logged across your connected athletes.</Text>
+    <View style={{ flexDirection:'row', gap:14 }}>
+      <View style={{ flexDirection:'row', alignItems:'center', gap:5 }}><View style={{ width:8,height:8,borderRadius:4,backgroundColor:c.accentBright }}/><Text style={{color:c.muted,fontSize:9}}>Sessions</Text></View>
+      <View style={{ flexDirection:'row', alignItems:'center', gap:5 }}><View style={{ width:8,height:8,borderRadius:4,backgroundColor:c.success }}/><Text style={{color:c.muted,fontSize:9}}>Athletes attended</Text></View>
+    </View>
+    <Text style={{ color:c.muted,fontSize:9 }}>Last 7 days · actual scheduled group sessions and attendance.</Text>
   </View>;
 }
 
@@ -77,17 +96,19 @@ export default function Coach() {
 
       const since = new Date();
       since.setDate(since.getDate() - 6);
-      const sessions = await supabase.from('training_sessions').select('session_date,minutes').in('user_id', ids).gte('session_date', since.toISOString().slice(0, 10)).limit(1000);
-      const map = new Map<string, number>();
-      for (const s of sessions.data || []) {
-        const day = String((s as any).session_date || '').slice(0, 10);
-        map.set(day, (map.get(day) || 0) + Number((s as any).minutes || 0));
-      }
+      const groupRows = await supabase.from('training_groups').select('id').eq('coach_user_id', profile.user_id).eq('active', true);
+      const groupIds = (groupRows.data || []).map((g:any)=>g.id);
+      const sessionRows = groupIds.length ? await supabase.from('training_group_sessions').select('id,session_date').in('group_id',groupIds).gte('session_date',since.toISOString().slice(0,10)).order('session_date',{ascending:true}) : {data:[],error:null} as any;
+      const sessionIds = (sessionRows.data || []).map((s:any)=>s.id);
+      const attendanceRows = sessionIds.length ? await supabase.from('training_group_attendance').select('session_id,athlete_user_id,status').in('session_id',sessionIds).eq('status','present') : {data:[],error:null} as any;
+      const attendedBySession = new Map<string,number>();
+      for (const a of attendanceRows.data || []) attendedBySession.set(a.session_id,(attendedBySession.get(a.session_id)||0)+1);
       const points: DayPoint[] = [];
       for (let i = 6; i >= 0; i -= 1) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        points.push({ label: d.toLocaleDateString(undefined, { weekday: 'short' }).slice(0, 2), minutes: map.get(d.toISOString().slice(0, 10)) || 0 });
+        const d = new Date(); d.setDate(d.getDate()-i);
+        const key=d.toISOString().slice(0,10);
+        const todays=(sessionRows.data||[]).filter((s:any)=>String(s.session_date).slice(0,10)===key);
+        points.push({label:d.toLocaleDateString(undefined,{weekday:'short'}).slice(0,2),sessions:todays.length,attended:todays.reduce((n:number,s:any)=>n+(attendedBySession.get(s.id)||0),0)});
       }
       setTrainingPoints(points);
     } else {
@@ -113,7 +134,8 @@ export default function Coach() {
   const recordText = totalMatches ? String(wins) + 'W · ' + String(losses) + 'L' + (draws ? ' · ' + String(draws) + 'D' : '') : 'No match data yet';
   const firstName = (profile?.full_name || 'Coach').split(' ')[0];
   const initial = (profile?.full_name || 'C').slice(0, 1).toUpperCase();
-  const totalTraining = useMemo(() => trainingPoints.reduce((sum, p) => sum + p.minutes, 0), [trainingPoints]);
+  const totalTraining = useMemo(() => trainingPoints.reduce((sum, p) => sum + p.sessions, 0), [trainingPoints]);
+  const totalAttended = useMemo(() => trainingPoints.reduce((sum, p) => sum + p.attended, 0), [trainingPoints]);
 
   return <Screen bottomBar={<CoachNav active="home" />}>
     <View style={{ gap: 18 }}>
@@ -151,7 +173,7 @@ export default function Coach() {
 
       <View style={{ gap: 10 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={{ color: c.text, fontSize: 20, fontWeight: '900' }}>Performance</Text><Pressable onPress={() => router.push('/coach-competition')}><Text style={{ color: c.accentBright, fontSize: 13, fontWeight: '900' }}>Competition ›</Text></Pressable></View>
-        <Card><View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><View><Text style={{ color: c.text, fontSize: 15, fontWeight: '900' }}>Training load</Text><Text style={{ color: c.muted, fontSize: 10, marginTop: 2 }}>Last 7 days</Text></View><Text style={{ color: c.accentBright, fontSize: 18, fontWeight: '900' }}>{totalTraining} min</Text></View><TrainingChart points={trainingPoints} /></Card>
+        <Card><View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><View><Text style={{ color: c.text, fontSize: 15, fontWeight: '900' }}>Training attendance</Text><Text style={{ color: c.muted, fontSize: 10, marginTop: 2 }}>Last 7 days · {totalAttended} athlete attendances</Text></View><Text style={{ color: c.accentBright, fontSize: 18, fontWeight: '900' }}>{totalTraining} sessions</Text></View><TrainingChart points={trainingPoints} /></Card>
         <View style={{ flexDirection: 'row', gap: 8 }}><Card><Text style={{ color: c.accentBright, fontSize: 20, fontWeight: '900' }}>{wins}</Text><Text style={{ color: c.muted, fontSize: 9 }}>Wins</Text></Card><Card><Text style={{ color: c.text, fontSize: 20, fontWeight: '900' }}>{losses}</Text><Text style={{ color: c.muted, fontSize: 9 }}>Losses</Text></Card><Card><Text style={{ color: c.text, fontSize: 13, fontWeight: '900' }}>{recordText}</Text><Text style={{ color: c.muted, fontSize: 9 }}>Record</Text></Card></View>
       </View>
 
