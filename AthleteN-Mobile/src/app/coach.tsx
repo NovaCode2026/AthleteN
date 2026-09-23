@@ -148,9 +148,9 @@ export default function Coach() {
 
       <View style={{ gap: 6 }}>
         <Text style={{ color: c.muted, fontSize: 11, fontWeight: '900', letterSpacing: 2 }}>GOOD EVENING,</Text>
-      <PlanSection />
         <Text style={{ color: c.text, fontSize: 38, lineHeight: 43, fontWeight: '900' }}>{firstName}<Text style={{ color: c.accentBright }}>.</Text></Text>
         <Text style={{ color: c.muted, fontSize: 15, lineHeight: 22, fontWeight: '700' }}>Train. Compete. Develop. <Text style={{ color: c.textSecondary }}>All in one place.</Text></Text>
+      <PlanSection />
       </View>
 
       <Pressable onPress={() => router.push('/coach-athletes')}>
