@@ -33,36 +33,30 @@ function TrainingChart({ points }: { points: DayPoint[] }) {
   const max = Math.max(1, ...points.flatMap(p => [p.sessions, p.attended]));
   return <View style={{ gap: 8 }}>
     <View style={{ height: 150, position: 'relative', paddingTop: 8 }}>
-      <View style={{ position: 'absolute', left: 0, right: 0, top: 34, height: 1, backgroundColor: c.border }} />
-      <View style={{ position: 'absolute', left: 0, right: 0, top: 76, height: 1, backgroundColor: c.border }} />
-      <View style={{ position: 'absolute', left: 0, right: 0, top: 118, height: 1, backgroundColor: c.border }} />
-      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 8, height: 1, backgroundColor: c.borderStrong }} />
+      {[34,76,118].map(y => <View key={y} style={{ position:'absolute', left:0, right:0, top:y, height:1, backgroundColor:c.border }} />)}
+      <View style={{ position:'absolute', left:0, right:0, bottom:8, height:1, backgroundColor:c.borderStrong }} />
       {points.map((p, i) => {
         const x = points.length === 1 ? 50 : (i / (points.length - 1)) * 100;
         const y1 = 142 - (p.sessions / max) * 124;
         const y2 = 142 - (p.attended / max) * 124;
         const prev = points[i - 1];
-        const makeSegment = (from:number, to:number, fromY:number, toY:number, key:string) => {
-          const dx = (100 / Math.max(1, points.length - 1)) * (to - from) * 2.65;
-          const dy = toY - fromY;
-          const length = Math.sqrt(dx * dx + dy * dy);
-          const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-          return <View key={key} style={{ position:'absolute', left: \`${Math.min(x, (from / Math.max(1, points.length - 1))*100)}%\`, top: Math.min(fromY,toY), width: length, height: 3, borderRadius: 2, backgroundColor: key.startsWith('s') ? c.accentBright : c.success, transform:[{rotate:\`${angle}'}], transformOrigin:'left center' as any }} />;
+        const segment = (fromX:number, fromY:number, toX:number, toY:number, color:string, key:string) => {
+          const dx = (toX-fromX) * 2.65; const dy = toY-fromY; const length = Math.sqrt(dx*dx+dy*dy); const angle = Math.atan2(dy,dx)*180/Math.PI;
+          return <View key={key} style={{ position:'absolute', left: fromX + '%', top: Math.min(fromY,toY), width:length, height:3, borderRadius:2, backgroundColor:color, transform:[{rotate:angle+'deg'}], transformOrigin:'left center' as any }} />;
         };
-        return <View key={p.label+i} style={{ position:'absolute', left:\`${x}%\`, top:0, bottom:0, width:38, marginLeft:-19, alignItems:'center' }}>
-          {prev ? makeSegment(i-1,i,142-(prev.sessions/max)*124,y1,'s'+i) : null}
-          {prev ? makeSegment(i-1,i,142-(prev.attended/max)*124,y2,'a'+i) : null}
-          <View style={{ position:'absolute', top:y1-4, width:9, height:9, borderRadius:5, backgroundColor:c.accentBright }} />
-          <View style={{ position:'absolute', top:y2-4, width:8, height:8, borderRadius:4, backgroundColor:c.success }} />
+        const px = points.length === 1 ? 50 : ((i-1) / (points.length-1)) * 100;
+        const py1 = prev ? 142-(prev.sessions/max)*124 : y1; const py2 = prev ? 142-(prev.attended/max)*124 : y2;
+        return <View key={p.label+i} style={{ position:'absolute', left:(x-4)+'%', top:0, bottom:0, width:'8%', alignItems:'center' }}>
+          {prev ? segment(px,py1,x,y1,c.accentBright,'s'+i) : null}
+          {prev ? segment(px,py2,x,y2,c.success,'a'+i) : null}
+          <View style={{ position:'absolute', left:'50%', marginLeft:-4, top:y1-4, width:8,height:8,borderRadius:4,backgroundColor:c.accentBright }} />
+          <View style={{ position:'absolute', left:'50%', marginLeft:-4, top:y2-4, width:8,height:8,borderRadius:4,backgroundColor:c.success }} />
           <Text style={{ position:'absolute', bottom:0, color:c.muted, fontSize:8 }}>{p.label}</Text>
         </View>;
       })}
     </View>
-    <View style={{ flexDirection:'row', gap:14 }}>
-      <View style={{ flexDirection:'row', alignItems:'center', gap:5 }}><View style={{ width:8,height:8,borderRadius:4,backgroundColor:c.accentBright }}/><Text style={{color:c.muted,fontSize:9}}>Sessions</Text></View>
-      <View style={{ flexDirection:'row', alignItems:'center', gap:5 }}><View style={{ width:8,height:8,borderRadius:4,backgroundColor:c.success }}/><Text style={{color:c.muted,fontSize:9}}>Athletes attended</Text></View>
-    </View>
-    <Text style={{ color:c.muted,fontSize:9 }}>Last 7 days · actual scheduled group sessions and attendance.</Text>
+    <View style={{ flexDirection:'row', gap:14 }}><View style={{flexDirection:'row',alignItems:'center',gap:5}}><View style={{width:8,height:8,borderRadius:4,backgroundColor:c.accentBright}}/><Text style={{color:c.muted,fontSize:9}}>Sessions</Text></View><View style={{flexDirection:'row',alignItems:'center',gap:5}}><View style={{width:8,height:8,borderRadius:4,backgroundColor:c.success}}/><Text style={{color:c.muted,fontSize:9}}>Athletes attended</Text></View></View>
+    <Text style={{ color:c.muted,fontSize:9 }}>Last 7 days · scheduled group sessions and attendance.</Text>
   </View>;
 }
 
