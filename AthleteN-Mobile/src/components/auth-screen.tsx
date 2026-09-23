@@ -1,10 +1,12 @@
 ﻿import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
+import { useRouter } from 'expo-router';
 function authRedirect(next?: string) {
   const path = next ? `auth/callback?next=${encodeURIComponent(next)}` : 'auth/callback';
 
@@ -21,6 +23,7 @@ function authRedirect(next?: string) {
 }
 
 export default function AuthScreen() {
+  const router = useRouter();
   const [register, setRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -84,10 +87,38 @@ export default function AuthScreen() {
       }
       if (!data?.url) throw new Error('Google sign-in could not start.');
 
-      // Launch the OAuth URL in the system browser. When Supabase finishes,
-      // the exp:// callback is handled by Expo Router and auth/callback.tsx
-      // exchanges the PKCE authorization code for the session.
-      await Linking.openURL(data.url);
+      // Keep the OAuth browser session attached to the app. Expo Go can
+      // dismiss the browser when the exp:// callback fires, so also listen
+      // for the deep-link event and complete the PKCE exchange ourselves.
+      let handled = false;
+      const complete = async (callbackUrl: string) => {
+        if (handled) return;
+        const parsed = Linking.parse(callbackUrl);
+        const query = parsed.queryParams || {};
+        if (typeof query.error === 'string') {
+          handled = true;
+          throw new Error(typeof query.error_description === 'string' ? query.error_description : query.error);
+        }
+        const code = typeof query.code === 'string' ? query.code : null;
+        if (!code) return;
+        handled = true;
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+        router.replace('/');
+      };
+
+      const subscription = Linking.addEventListener('url', ({ url }) => {
+        void complete(url).catch((e) => setError(e instanceof Error ? e.message : 'Google sign-in failed.'));
+      });
+
+      try {
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        if (result.type === 'success' && result.url) {
+          await complete(result.url);
+        }
+      } finally {
+        subscription.remove();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Google sign-in failed.');
     } finally {
