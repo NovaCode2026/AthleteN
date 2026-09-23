@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { Icon } from '@/components/mobile-ui';
 
 const c = Colors.dark;
 
@@ -164,7 +165,7 @@ export default function AdminScreen() {
             <Image source={require('@/assets/logo.png')} style={s.brandLogo} contentFit="cover" />
             <View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>OWNER COMMAND CENTER</Text></View>
           </View>
-          <Pressable style={s.menuButton} onPress={() => setDrawerOpen(true)}><Text style={s.menuIcon}>☰</Text><Text style={s.menuText}>MENU</Text></Pressable>
+          <Pressable style={s.menuButton} onPress={() => setDrawerOpen(true)}><Icon name="menu" size={17} color={c.text} /><Text style={s.menuText}>MENU</Text></Pressable>
         </View>
 
         <View style={s.hero}>
@@ -185,7 +186,7 @@ export default function AdminScreen() {
 
         <View style={s.toolbar}>
           <TextInput value={query} onChangeText={setQuery} placeholder={`Search ${currentLabel.toLowerCase()}...`} placeholderTextColor={c.muted} style={s.search} />
-          <Pressable style={s.addButton} onPress={() => setCreateOpen(!createOpen)}><Text style={s.addText}>＋ ADD</Text></Pressable>
+          <Pressable style={s.addButton} onPress={() => setCreateOpen(!createOpen)}><View style={{flexDirection:"row",alignItems:"center",gap:5}}><Icon name="add" size={14} color={c.text}/><Text style={s.addText}>ADD</Text></View></Pressable>
         </View>
 
         {announcementOpen && (
@@ -207,12 +208,12 @@ export default function AdminScreen() {
                 <TextInput value={field.value} onChangeText={value => setNewFields(all => all.map((item, i) => i === index ? { ...item, value } : item))} placeholder="Value" placeholderTextColor={c.muted} style={[s.input, s.valueInput]} />
               </View>
             ))}
-            <Pressable onPress={() => setNewFields([...newFields, { key: '', value: '' }])}><Text style={s.addField}>＋ Add another field</Text></Pressable>
+            <Pressable onPress={() => setNewFields([...newFields, { key: '', value: '' }])}><View style={{flexDirection:"row",alignItems:"center",gap:5}}><Icon name="add" size={14} color={c.accentBright}/><Text style={s.addField}>Add another field</Text></View></Pressable>
             <View style={s.buttonRow}><Pressable style={s.primary} onPress={createRecord} disabled={busy}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>CREATE</Text>}</Pressable><Pressable style={s.secondary} onPress={() => setCreateOpen(false)}><Text style={s.secondaryText}>CANCEL</Text></Pressable></View>
           </View>
         )}
 
-        {selected === 'announcements' && !announcementOpen && <Pressable style={s.featureButton} onPress={() => setAnnouncementOpen(true)}><Text style={s.featureIcon}>＋</Text><View><Text style={s.featureTitle}>Publish announcement</Text><Text style={s.featureMeta}>Send an AthleteN update to users</Text></View></Pressable>}
+        {selected === 'announcements' && !announcementOpen && <Pressable style={s.featureButton} onPress={() => setAnnouncementOpen(true)}><Icon name="add" size={18} color={c.accentBright} /><View><Text style={s.featureTitle}>Publish announcement</Text><Text style={s.featureMeta}>Send an AthleteN update to users</Text></View></Pressable>}
 
         {message ? <Text style={s.message}>{message}</Text> : null}
 
@@ -221,11 +222,11 @@ export default function AdminScreen() {
         ) : filtered.map(row => (
           <Pressable key={String(row.id || JSON.stringify(row))} onPress={() => openRecord(row)} style={({ pressed }) => [s.record, pressed && s.pressed]}>
             <View style={s.recordTop}>
-              <View style={s.recordIcon}><Text style={s.recordIconText}>{currentLabel.slice(0, 1).toUpperCase()}</Text></View>
+              <View style={s.recordIcon}><Icon name={selected==="profiles"?"people":selected.includes("training")?"training":selected.includes("tournament")||selected==="matches"||selected==="medals"?"event":selected.includes("support")||selected.includes("feedback")?"message":"info"} size={18} color={c.accentBright}/></View>
               <View style={s.recordInfo}><Text style={s.recordTitle}>{String(row.full_name || row.name || row.title || row.email || row.username || row.id || 'Record')}</Text><Text style={s.recordMeta}>{selected === 'profiles' ? [row.sport, row.discipline, row.club].filter(Boolean).join(' • ') : `ID • ${String(row.id || '').slice(0, 8)}`}</Text></View>
-              <Text style={s.chevron}>›</Text>
+              <Icon name="arrow" size={16} color={c.muted}/>
             </View>
-            <View style={s.recordBottom}><Text style={s.preview}>{preview(row)}</Text><Text style={s.editHint}>EDIT →</Text></View>
+            <View style={s.recordBottom}><Text style={s.preview}>{preview(row)}</Text><View style={{flexDirection:"row",alignItems:"center",gap:4}}><Text style={s.editHint}>EDIT</Text><Icon name="edit" size={12} color={c.accentBright}/></View></View>
           </Pressable>
         ))}
       </ScrollView>
@@ -234,7 +235,7 @@ export default function AdminScreen() {
         <View style={s.drawerLayer}>
           <Pressable style={s.drawerBackdrop} onPress={() => setDrawerOpen(false)} />
           <View style={s.drawer}>
-            <View style={s.drawerHeader}><View><Text style={s.drawerKicker}>ATHLETEN</Text><Text style={s.drawerTitle}>Admin Menu</Text></View><Pressable onPress={() => setDrawerOpen(false)} style={s.close}><Text style={s.closeText}>×</Text></Pressable></View>
+            <View style={s.drawerHeader}><View><Text style={s.drawerKicker}>ATHLETEN</Text><Text style={s.drawerTitle}>Admin Menu</Text></View><Pressable onPress={() => setDrawerOpen(false)} style={s.close}><Icon name="close" size={18} color={c.text}/></Pressable></View>
             <ScrollView showsVerticalScrollIndicator={false}>
               {[
                 ['ATHLETES', ['profiles', 'student_verifications', 'documents']],
