@@ -6,6 +6,7 @@ import { Screen, Card, c } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import CoachNav from '@/components/coach-nav';
+import PlanSection from '@/components/plan-section';
 
 type Athlete = { athlete_user_id: string; full_name?: string | null; discipline?: string | null; belt?: string | null; weight_kg?: number | null };
 type DayPoint = { label: string; sessions: number; attended: number };
@@ -147,6 +148,7 @@ export default function Coach() {
 
       <View style={{ gap: 6 }}>
         <Text style={{ color: c.muted, fontSize: 11, fontWeight: '900', letterSpacing: 2 }}>GOOD EVENING,</Text>
+      <PlanSection />
         <Text style={{ color: c.text, fontSize: 38, lineHeight: 43, fontWeight: '900' }}>{firstName}<Text style={{ color: c.accentBright }}>.</Text></Text>
         <Text style={{ color: c.muted, fontSize: 15, lineHeight: 22, fontWeight: '700' }}>Train. Compete. Develop. <Text style={{ color: c.textSecondary }}>All in one place.</Text></Text>
       </View>
