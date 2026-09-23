@@ -25,7 +25,7 @@ const plans: Array<{
   { id: 'pro', name: 'Pro', monthly: 199, yearly: 1999, saving: 389, ai: 200, audience: 'Competitive athletes', features: ['Advanced performance analytics', 'Competition preparation insights', 'Advanced training analysis', 'Priority support'] },
   { id: 'elite', name: 'Elite', monthly: 399, yearly: 3999, saving: 789, ai: 500, audience: 'Advanced athletes', features: ['Advanced competition analysis', 'Long-term performance trends', 'Advanced training planning', 'Exportable athlete reports'] },
   { id: 'coach', name: 'Coach', monthly: 499, yearly: 4999, saving: 989, ai: 750, audience: 'Coaches', features: ['Coach dashboard', 'Athlete management', 'Training monitoring', 'AI athlete summaries and reports'] },
-  { id: 'academy', name: 'Academy', monthly: 799, yearly: 7999, saving: 1589, ai: 2000, audience: 'Academies', features: ['Multiple coaches', 'Large athlete roster', 'Academy-wide analytics', 'Admin controls and reports'] },
+  { id: 'academy', name: 'Academy', monthly: 799, yearly: 7999, saving: 1589, ai: 1000, audience: 'Academies', features: ['Multiple coaches', 'Large athlete roster', 'Academy-wide analytics', 'Admin controls and reports'] },
 ];
 
 export default function PlansScreen() {
