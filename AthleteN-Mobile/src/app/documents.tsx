@@ -8,7 +8,7 @@ import { Screen,Header,Section,Card,Empty,c } from '@/components/mobile-ui';
 
 export default function DocumentsScreen(){
  const {session}=useAuth();const [rows,setRows]=useState<any[]>([]);const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');const [title,setTitle]=useState('');const [type,setType]=useState('certificate');
- const load=useCallback(async()=>{if(!session)return;const {data,error}=await supabase.from('documents').select('id,title,document_type,issued_at,expires_at,file_path,notes').eq('user_id',session.user.id).order('created_at',{ascending:false});if(error)setMessage(error.message);setRows(data||[])},[session]);
+ const load=useCallback(async()=>{if(!session)return;const {data,error}=await supabase.from('documents').select('id,title,document_type,expires_at,file_path,created_at').eq('user_id',session.user.id).order('created_at',{ascending:false});if(error)setMessage(error.message);setRows(data||[])},[session]);
  useEffect(()=>{void load()},[load]);
  async function uploadAsset(asset:any){
   if(!session||!asset?.uri)return;setBusy(true);setMessage('');
