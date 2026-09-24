@@ -20,20 +20,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  typecheck:
+  mobile-health:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: AthleteN-Mobile
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: AthleteN-Mobile/package-lock.json
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Expo doctor
+        run: npx expo-doctor
+
       - name: TypeScript check
         run: npx tsc --noEmit
+
+      - name: ESLint check
+        run: npm run lint
+
+      - name: Android bundle check
+        run: npx expo export --platform android --output-dir .expo/ci-export
+
+      - name: Remove CI export
+        if: always()
+        run: rm -rf .expo/ci-export
