@@ -9,6 +9,8 @@ import { validMinutes, validWeight } from '@/lib/performance';
 import { PerformanceLine, ChartPoint } from '@/components/performance-chart';
 import PlanSection from '@/components/plan-section';
 import { Icon } from '@/components/mobile-ui';
+import { requestWidgetUpdate } from 'react-native-android-widget';
+import { AthleteWidget } from '@/widgets/AthleteWidget';
 
 const c=Colors.dark;
 
@@ -26,6 +28,12 @@ export default function HomeScreen(){
    supabase.from('notifications').select('id',{count:'exact',head:true}).eq('user_id',uid).is('read_at',null)
   ]);
   const rows=(t.data||[]).map(r=>({...r,_minutes:validMinutes(r.minutes)})).filter(r=>r._minutes>0);setSessions(rows.length);setMinutes(rows.reduce((sum,r)=>sum+r._minutes,0));setChart(days.map(day=>({label:day.slice(5).replace('-','/'),value:rows.filter(r=>String(r.session_date).slice(0,10)===day).reduce((sum,r)=>sum+r._minutes,0)})));setWeight(w.data?validWeight(w.data.weight_kg):null);setMedals(m.count||0);setNext(e.data||null);setUnread(n.count||0);let run=0;for(let i=days.length-1;i>=0;i--){if(rows.some(r=>String(r.session_date).slice(0,10)===days[i]))run++;else break}setStreak(run);
+  try {
+   await requestWidgetUpdate({
+    widgetName:'AthleteN',
+    renderWidget:()=> <AthleteWidget streak={run} sessions={rows.length} nextCompetition={e.data?.name||null}/>,
+   });
+  } catch {}
  },[session]);
  useEffect(()=>{void load()},[load]);
  const first=profile?.full_name?.split(' ')[0]||'Athlete';
