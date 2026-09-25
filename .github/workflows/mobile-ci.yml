@@ -1,0 +1,29 @@
+name: AthleteN Mobile CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "AthleteN-Mobile/**"
+      - ".github/workflows/mobile-ci.yml"
+  pull_request:
+    paths:
+      - "AthleteN-Mobile/**"
+      - ".github/workflows/mobile-ci.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: AthleteN-Mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: AthleteN-Mobile/package-lock.json
+      - run: npm install
+      - run: npx tsc --noEmit
+      - run: npx expo-doctor
