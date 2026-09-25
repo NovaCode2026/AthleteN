@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { attachNotificationListeners, registerForNotifications } from '@/lib/notifications';
 
 type Profile = { id: string; user_id: string; full_name: string; discipline: 'Kyorugi' | 'Poomsae' | null; [key: string]: unknown };
 type AuthValue = {
@@ -16,9 +17,9 @@ type AuthValue = {
 
 const AuthContext = createContext<AuthValue | null>(null);
 
-const withTimeout = <T,>(promise: Promise<T>, ms: number, message: string) =>
+const withTimeout = <T,>(promise: PromiseLike<T>, ms: number, message: string): Promise<T> =>
   Promise.race([
-    promise,
+    Promise.resolve(promise),
     new Promise<T>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
   ]);
 
@@ -89,6 +90,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => data.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!session?.user.id) return;
+    void registerForNotifications(session.user.id).catch(() => undefined);
+    return attachNotificationListeners();
+  }, [session?.user.id]);
 
   return (
     <AuthContext.Provider value={{
