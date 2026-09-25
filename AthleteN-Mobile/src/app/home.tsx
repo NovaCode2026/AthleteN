@@ -32,7 +32,7 @@ export default function HomeScreen(){
   try {
    await requestWidgetUpdate({
     widgetName:'AthleteN',
-    renderWidget:()=> <AthleteWidget streak={streak} sessions={rows.length} nextCompetition={e.data?.name||null}/>,
+    renderWidget:()=> <AthleteWidget streak={summary} sessions={rows.length} nextCompetition={e.data?.name||null}/>,
    });
   } catch {}
  },[session]);
