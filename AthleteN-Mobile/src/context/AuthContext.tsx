@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { attachNotificationListeners, registerForNotifications } from '@/lib/notifications';
+import { attachNotificationListeners, registerForPushNotifications } from '@/lib/push-notifications';
 
 type Profile = { id: string; user_id: string; full_name: string; discipline: 'Kyorugi' | 'Poomsae' | null; [key: string]: unknown };
 type AuthValue = {
@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!session?.user.id) return;
-    void registerForNotifications(session.user.id).catch(() => undefined);
+    void registerForPushNotifications(session.user.id).catch(() => undefined);
     return attachNotificationListeners();
   }, [session?.user.id]);
 
