@@ -36,7 +36,7 @@ export default function CoachTraining(){
   setGroups((g.data||[]) as Group[]);
   const gids=(g.data||[]).map((x:any)=>x.id);
   if(gids.length){
-   const s=await supabase.from('training_group_sessions').select('id,group_id,session_date,start_time,title,status,training_type,venue,notes,locked').in('group_id',gids).gte('session_date',new Date().toISOString().slice(0,10)).order('session_date',{ascending:true}).limit(30);
+   const s=await supabase.from('training_group_sessions').select('id,group_id,session_date,start_time,title,status,training_type,venue,notes,locked').in('group_id',gids).order('session_date',{ascending:false}).limit(100);
    setSessions((s.data||[]) as Session[]);
   } else setSessions([]);
  },[profile?.user_id]);
