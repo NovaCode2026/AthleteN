@@ -4,6 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { supabase } from './supabase';
+import { ATHLETEN_NOTIFICATION_CHANNEL_ID } from './push-notifications';
 
 Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: true }) });
 
@@ -11,7 +12,7 @@ const tokenKey = 'athleten.push-token';
 
 export async function registerForNotifications(userId: string) {
   if (Platform.OS === 'web' || !Constants.isDevice) return null;
-  if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync('athleten-default', { name: 'AthleteN updates', importance: Notifications.AndroidImportance.DEFAULT, vibrationPattern: [0, 250, 250, 250], lightColor: '#4D96FF' });
+  if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync(ATHLETEN_NOTIFICATION_CHANNEL_ID, { name: 'AthleteN updates', importance: Notifications.AndroidImportance.DEFAULT, vibrationPattern: [0, 250, 250, 250], lightColor: '#4D96FF' });
   const current = await Notifications.getPermissionsAsync();
   let status = current.status;
   if (status !== 'granted') status = (await Notifications.requestPermissionsAsync()).status;

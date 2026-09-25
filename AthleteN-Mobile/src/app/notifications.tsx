@@ -3,7 +3,7 @@ import { Pressable, Text } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { registerForPushNotifications } from '@/lib/push-notifications';
+import { ATHLETEN_NOTIFICATION_CHANNEL_ID, registerForPushNotifications } from '@/lib/push-notifications';
 import { Screen, Header, Card, Empty, c } from '@/components/mobile-ui';
 
 export default function NotificationsScreen() {
@@ -58,7 +58,7 @@ export default function NotificationsScreen() {
               type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
               seconds: 1,
               repeats: false,
-              channelId: 'athleten-default',
+              channelId: ATHLETEN_NOTIFICATION_CHANNEL_ID,
             },
           });
         }

@@ -4,6 +4,8 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
 
+export const ATHLETEN_NOTIFICATION_CHANNEL_ID = 'athleten-default-v2';
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
@@ -17,11 +19,10 @@ export async function registerForPushNotifications(userId: string) {
   if (!Device.isDevice) return { token: null, reason: 'physical-device-required' as const };
 
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('athleten-default', {
+    await Notifications.setNotificationChannelAsync(ATHLETEN_NOTIFICATION_CHANNEL_ID, {
       name: 'AthleteN',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
-      sound: 'default',
     });
   }
 
