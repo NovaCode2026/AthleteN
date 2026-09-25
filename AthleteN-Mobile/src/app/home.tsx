@@ -6,6 +6,7 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { validMinutes, validWeight } from '@/lib/performance';
+import { calculateStreak } from '@/lib/streak';
 import { PerformanceLine, ChartPoint } from '@/components/performance-chart';
 import PlanSection from '@/components/plan-section';
 import { Icon } from '@/components/mobile-ui';
@@ -16,7 +17,7 @@ const c=Colors.dark;
 
 export default function HomeScreen(){
  const {session,profile}=useAuth(); const router=useRouter();
- const [minutes,setMinutes]=useState(0);const [sessions,setSessions]=useState(0);const [chart,setChart]=useState<ChartPoint[]>([]);const [weight,setWeight]=useState<number|null>(null);const [medals,setMedals]=useState(0);const [next,setNext]=useState<any>(null);const [streak,setStreak]=useState(0);const [unread,setUnread]=useState(0);
+ const [minutes,setMinutes]=useState(0);const [sessions,setSessions]=useState(0);const [chart,setChart]=useState<ChartPoint[]>([]);const [weight,setWeight]=useState<number|null>(null);const [medals,setMedals]=useState(0);const [next,setNext]=useState<any>(null);const [streak,setStreak]=useState(calculateStreak([]));const [unread,setUnread]=useState(0);
  const load=useCallback(async()=>{
   if(!session)return; const uid=session.user.id; const now=new Date(); const days:string[]=[];
   for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);days.push([d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'))}
@@ -27,7 +28,7 @@ export default function HomeScreen(){
    supabase.from('tournaments').select('id,name,starts_at,location,status').eq('user_id',uid).gte('starts_at',now.toISOString()).order('starts_at',{ascending:true}).limit(1).maybeSingle(),
    supabase.from('notifications').select('id',{count:'exact',head:true}).eq('user_id',uid).is('read_at',null)
   ]);
-  const rows=(t.data||[]).map(r=>({...r,_minutes:validMinutes(r.minutes)})).filter(r=>r._minutes>0);setSessions(rows.length);setMinutes(rows.reduce((sum,r)=>sum+r._minutes,0));setChart(days.map(day=>({label:day.slice(5).replace('-','/'),value:rows.filter(r=>String(r.session_date).slice(0,10)===day).reduce((sum,r)=>sum+r._minutes,0)})));setWeight(w.data?validWeight(w.data.weight_kg):null);setMedals(m.count||0);setNext(e.data||null);setUnread(n.count||0);let run=0;for(let i=days.length-1;i>=0;i--){if(rows.some(r=>String(r.session_date).slice(0,10)===days[i]))run++;else break}setStreak(run);
+  const rows=(t.data||[]).map(r=>({...r,_minutes:validMinutes(r.minutes)})).filter(r=>r._minutes>0);const summary=calculateStreak(rows);setStreak(summary);setSessions(rows.length);setMinutes(rows.reduce((sum,r)=>sum+r._minutes,0));setChart(days.map(day=>({label:day.slice(5).replace('-','/'),value:rows.filter(r=>String(r.session_date).slice(0,10)===day).reduce((sum,r)=>sum+r._minutes,0)})));setWeight(w.data?validWeight(w.data.weight_kg):null);setMedals(m.count||0);setNext(e.data||null);setUnread(n.count||0);
   try {
    await requestWidgetUpdate({
     widgetName:'AthleteN',
@@ -42,7 +43,7 @@ export default function HomeScreen(){
   <View style={s.hero}><View><Text style={s.kicker}>YOUR PERFORMANCE HUB</Text><Text style={s.greeting}>Good morning,</Text><Text style={s.name}>{first}</Text><View style={s.pill}><View style={s.dot}/><Text style={s.pillText}>{(profile?.discipline||'TAEKWONDO').toUpperCase()} • LIVE</Text></View></View><View style={s.heroOrb}><Text style={s.heroMark}>A</Text></View></View>
   <View style={s.grid}><Metric label="7D SESSIONS" value={sessions}/><Metric label="7D MINUTES" value={minutes} suffix=" min"/><Metric label="MEDALS" value={medals}/><Metric label="LATEST WEIGHT" value={weight==null?'—':weight} suffix={weight==null?'':' kg'}/></View>
   <PlanSection />
-  <Pressable onPress={()=>router.push('/training')} style={s.streakCard}><View style={s.streakIcon}><Text style={s.streakFire}>★</Text></View><View style={s.streakCopy}><Text style={s.streakKicker}>TRAINING STREAK</Text><Text style={s.streakValue}>{streak} {streak===1?'DAY':'DAYS'}</Text><Text style={s.meta}>{streak>0?'Keep training to extend your streak.':'Log a training session today to start your streak.'}</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>
+  <Pressable onPress={()=>router.push('/training')} style={s.streakCard}><View style={s.streakIcon}><Icon name="training" size={21}/></View><View style={s.streakCopy}><Text style={s.streakKicker}>ATHLETEN STREAK</Text><Text style={s.streakValue}>{streak.current} {streak.current===1?'DAY':'DAYS'} <Text style={{fontSize:12,color:c.muted}}>CURRENT</Text></Text><Text style={s.meta}>{streak.todayActive?'Training complete today.':streak.lastActiveDate?`Last active ${streak.lastActiveDate}. Log today to keep momentum.`:'Log a training session today to start your streak.'}</Text><Text style={{color:c.accentBright,fontSize:10,fontWeight:'800',marginTop:4}}>LONGEST {streak.longest} DAYS</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>
   <PerformanceLine title="Training rhythm" subtitle="Minutes logged across the last 7 days" data={chart} unit="m"/>
   <View style={s.sectionHead}><Text style={s.section}>NEXT COMPETITION</Text><Pressable onPress={()=>router.push('/compete')}><Text style={s.link}>VIEW ALL</Text></Pressable></View>
   {next?<View style={s.competition}><View style={s.competitionBadge}><Text style={s.competitionDay}>{new Date(next.starts_at).getDate()}</Text><Text style={s.competitionMonth}>{new Date(next.starts_at).toLocaleString(undefined,{month:'short'}).toUpperCase()}</Text></View><View style={s.competitionCopy}><Text style={s.competitionTitle} numberOfLines={2}>{next.name}</Text><Text style={s.meta}>{next.location||'Location not set'} • {(next.status||'planned').toUpperCase()}</Text></View></View>:<View style={s.empty}><Text style={s.emptyTitle}>No upcoming competition</Text><Text style={s.meta}>Add your next tournament in Compete to build your preparation view.</Text></View>}
