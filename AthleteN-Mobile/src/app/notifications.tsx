@@ -53,9 +53,13 @@ export default function NotificationsScreen() {
             content: {
               title: n?.title || 'AthleteN',
               body: n?.body || 'You have a new notification.',
-              sound: 'default',
             },
-            trigger: null,
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+              seconds: 1,
+              repeats: false,
+              channelId: 'athleten-default',
+            },
           });
         }
       )
