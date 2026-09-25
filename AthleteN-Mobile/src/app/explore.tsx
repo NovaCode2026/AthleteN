@@ -25,6 +25,7 @@ export default function ExploreScreen(){
    <FeatureRow title="Weight & Category" text="Weight history and competition context" onPress={()=>router.push({pathname:'/weight'})}/>
   </Section>
   <Section title="ATHLETE CENTER">
+   <FeatureRow title="Attendance" text="Your attendance percentage and session history" onPress={()=>router.push({pathname:'/attendance'})}/>
    <FeatureRow title="Calendar" text="Training and competition timeline" onPress={()=>router.push({pathname:'/calendar'})}/>
    <FeatureRow title="Medals" text="Full medal record" onPress={()=>router.push({pathname:'/medals'})}/>
    <FeatureRow title="Documents" text="Private athlete documents" badge={String(counts.docs)} onPress={()=>router.push({pathname:'/documents'})}/>
