@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 
@@ -36,7 +36,8 @@ const termSections = [
 
 export default function PoliciesScreen() {
   const router = useRouter();
-  const [tab, setTab] = useState<'privacy' | 'terms'>('privacy');
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<'privacy' | 'terms'>(params.tab === 'terms' ? 'terms' : 'privacy');
   const sections = tab === 'privacy' ? privacySections : termSections;
 
   return (
