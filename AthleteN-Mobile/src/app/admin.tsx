@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Icon } from '@/components/mobile-ui';
@@ -42,6 +43,7 @@ function coerce(value: string, original: any) {
 
 export default function AdminScreen() {
   const { profile } = useAuth();
+  const router = useRouter();
   const role = String(profile?.role || 'athlete');
   const canManage = role === 'admin' || role === 'super_admin';
   const owner = role === 'super_admin';
@@ -145,16 +147,13 @@ export default function AdminScreen() {
   async function publishAnnouncement() {
     if (!announcementTitle.trim() || !announcementBody.trim()) return;
     setBusy(true);
-    const { error } = await supabase.from('announcements').insert({
-      title: announcementTitle.trim(),
-      body: announcementBody.trim(),
-      audience: 'all',
-      published_at: new Date().toISOString(),
-      created_by: profile?.user_id,
+    const { error } = await supabase.rpc('publish_announcement', {
+      p_title: announcementTitle.trim(),
+      p_body: announcementBody.trim(),
     });
     setBusy(false);
     if (error) setMessage(error.message);
-    else { setAnnouncementTitle(''); setAnnouncementBody(''); setAnnouncementOpen(false); setMessage('Announcement published.'); await load(); await loadCounts(); }
+    else { setAnnouncementTitle(''); setAnnouncementBody(''); setAnnouncementOpen(false); setMessage('Announcement published to all users and notification history.'); await load(); await loadCounts(); }
   }
 
   return (
@@ -213,6 +212,7 @@ export default function AdminScreen() {
           </View>
         )}
 
+        {selected === 'support_tickets' && <Pressable style={s.featureButton} onPress={() => router.push('/admin-support')}><Icon name="message" size={18} color={c.accentBright} /><View><Text style={s.featureTitle}>Open Support Workspace</Text><Text style={s.featureMeta}>Reply, assign, resolve and close support tickets</Text></View></Pressable>}
         {selected === 'announcements' && !announcementOpen && <Pressable style={s.featureButton} onPress={() => setAnnouncementOpen(true)}><Icon name="add" size={18} color={c.accentBright} /><View><Text style={s.featureTitle}>Publish announcement</Text><Text style={s.featureMeta}>Send an AthleteN update to users</Text></View></Pressable>}
 
         {message ? <Text style={s.message}>{message}</Text> : null}
