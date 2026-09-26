@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 type Athlete={user_id:string;full_name?:string|null};
 type Group={id:string;name:string;focus_area?:string|null;recurrence_days:string[];start_time?:string|null;duration_minutes:number;active:boolean};
-type Session={id:string;group_id:string;session_date:string;start_time?:string|null;title:string;status:string};
+type Session={id:string;group_id:string;session_date:string;start_time?:string|null;title:string;status:string;training_type?:string|null;locked?:boolean};
 
 export default function CoachTraining(){
  const {profile}=useAuth();
