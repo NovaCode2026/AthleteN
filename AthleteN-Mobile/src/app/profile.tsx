@@ -42,7 +42,7 @@ export default function ProfileScreen() {
       supabase.from('profiles').select('role').eq('user_id',session.user.id).maybeSingle()
     ]);
     if(w.error||g.error||n.error)setMessage(w.error?.message||g.error?.message||n.error?.message||'Could not load profile data.');
-    if(profile?.profile_image_path){const signed=await supabase.storage.from('avatars').createSignedUrl(profile.profile_image_path,3600);setAvatarUrl(signed.data?.signedUrl||null)}else setAvatarUrl(null);
+    if(profile?.profile_image_path){const signed=await supabase.storage.from('avatars').createSignedUrl(String(profile.profile_image_path),3600);setAvatarUrl(signed.data?.signedUrl||null)}else setAvatarUrl(null);
     setWeights(w.data||[]); setGoals(g.data||[]); setNutritionEnabled((n.data?.role||profile?.role)==='athlete');
   },[session]);
   useEffect(()=>{void load()},[load]);
@@ -100,7 +100,7 @@ export default function ProfileScreen() {
 
   return <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
     <View style={s.brandRow}><Image source={require('@/assets/logo.png')} style={s.logo} contentFit="cover"/><View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>ATHLETE PROFILE</Text></View></View>
-    <View style={s.profileHero}><Pressable onPress={()=>void changePhoto()} disabled={avatarBusy} style={s.avatarWrap}>{avatarUrl?<Image source={{uri:avatarUrl}} style={s.avatarImage} contentFit="cover"/>:<View style={s.avatar}><Text style={s.avatarText}>{(profile?.full_name||'A').slice(0,1).toUpperCase()}</Text></View>}<View style={s.photoBadge}><Text style={s.photoBadgeText}>{avatarBusy?'…':'+'}</Text></View></Pressable><View style={s.heroCopy}><Text style={s.name}>{profile?.full_name||'Athlete'}</Text><Text style={s.meta}>{discipline} • {profile?.plan_id||'free'} plan</Text><Pressable onPress={()=>void changePhoto()}><Text style={s.changePhoto}>CHANGE PROFILE PHOTO</Text></Pressable></View><View style={s.liveDot}/></View>
+    <View style={s.profileHero}><Pressable onPress={()=>void changePhoto()} disabled={avatarBusy} style={s.profileHero}>{avatarUrl?<Image source={{uri:avatarUrl}} style={s.avatar} contentFit="cover"/>:<View style={s.avatar}><Text style={s.avatarText}>{(profile?.full_name||'A').slice(0,1).toUpperCase()}</Text></View>}<View style={s.liveDot}><Text style={s.avatarText}>{avatarBusy?'…':'+'}</Text></View></Pressable><View style={s.heroCopy}><Text style={s.name}>{profile?.full_name||'Athlete'}</Text><Text style={s.meta}>{discipline} • {profile?.plan_id||'free'} plan</Text><Pressable onPress={()=>void changePhoto()}><Text style={s.meta}>CHANGE PROFILE PHOTO</Text></Pressable></View><View style={s.liveDot}/></View>
 
     <Section title="ATHLETE IDENTITY"><View style={s.card}>
       <Field label="Full name" value={name} onChangeText={setName} placeholder="Your full name"/><Field label="Date of birth" value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD"/><Field label="Gender" value={gender} onChangeText={setGender} placeholder="Gender"/><Field label="Sport" value={sport} onChangeText={setSport} placeholder="Taekwondo"/><Field label="Club / Academy" value={club} onChangeText={setClub} placeholder="Club / Academy"/><Field label="Coach" value={coach} onChangeText={setCoach} placeholder="Coach"/>
