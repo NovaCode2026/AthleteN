@@ -3,7 +3,6 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Header, Section, Card, c } from '@/components/mobile-ui';
 import CoachNav from '@/components/coach-nav';
-import CoachSupportFooter from '@/components/coach-support-footer';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -76,8 +75,8 @@ export default function CoachAthletes() {
         <Pressable onPress={() => router.push('/coach-training')}><Card><Text style={{ color: c.text, fontWeight: '900' }}>Training plans</Text><Text style={{ color: c.muted, fontSize: 10 }}>Create and manage athlete training blocks.</Text></Card></Pressable>
         <Pressable onPress={() => router.push('/coach-competition')}><Card><Text style={{ color: c.text, fontWeight: '900' }}>Competition center</Text><Text style={{ color: c.muted, fontSize: 10 }}>Review wins, losses, medals and upcoming events.</Text></Card></Pressable>
       </Section>
-    <CoachSupportFooter />
-    <CoachSupportFooter />
+    
+    
 </Screen>;
   );
 }
