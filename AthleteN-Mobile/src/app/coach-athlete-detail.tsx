@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import CoachSupportFooter from '@/components/coach-support-footer';
 import { Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen, Header, Section, Card, c } from '@/components/mobile-ui';
@@ -55,6 +54,6 @@ export default function CoachAthleteDetail() {
     <Section title="MEDALS">
       {medals.length ? medals.map((m, i) => <Card key={String(m.awarded_at) + i}><Text style={{ color: c.accentBright, fontWeight: '900' }}>{String(m.medal_type || 'Medal').toUpperCase()}</Text><Text style={{ color: c.text, fontWeight: '900', marginTop: 3 }}>{m.event_name || 'Competition'}</Text><Text style={{ color: c.muted, fontSize: 9, marginTop: 2 }}>{m.category || 'Category not set'} · {m.awarded_at || 'Date not set'}</Text></Card>) : <Card><Text style={{ color: c.muted }}>No medals recorded yet.</Text></Card>}
     </Section>
-  <CoachSupportFooter />
+  
 </Screen>;
 }
