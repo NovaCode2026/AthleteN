@@ -39,8 +39,8 @@ export default function CoachMore() {
       </Section>
       <Section title="ACCOUNT">
         <Card>
-          <Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>{profile?.full_name || 'Coach'}</Text>
-          <Text style={{ color: c.muted, fontSize: 10, marginTop: 3 }}>Coach account · {profile?.account_code || 'Account code unavailable'}</Text>
+          <Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>{String(profile?.full_name || 'Coach')}</Text>
+          <Text style={{ color: c.muted, fontSize: 10, marginTop: 3 }}>Coach account · {String(profile?.account_code || 'Account code unavailable')}</Text>
           <Pressable onPress={() => router.push('/coach-profile')} style={{ marginTop: 10, backgroundColor: c.accent, borderRadius: 12, padding: 12, alignItems: 'center' }}>
             <Text style={{ color: '#fff', fontWeight: '900', fontSize: 10 }}>OPEN PROFILE</Text>
           </Pressable>
