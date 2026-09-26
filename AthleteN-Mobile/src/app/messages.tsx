@@ -1,12 +1,30 @@
 import { useCallback,useEffect,useState } from 'react';
 import { Pressable,Text,TextInput,View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Screen,Header,Section,Card,c } from '@/components/mobile-ui';
 
 export default function MessagesScreen(){
+ const { support } = useLocalSearchParams<{support?: string}>();
  const {session,profile,refreshProfile}=useAuth();const [conversations,setConversations]=useState<any[]>([]);const [selected,setSelected]=useState<any>(null);const [messages,setMessages]=useState<any[]>([]);const [body,setBody]=useState('');const [search,setSearch]=useState('');const [users,setUsers]=useState<any[]>([]);const [error,setError]=useState(''); const [personNames,setPersonNames]=useState<Record<string,string>>({});const [groupName,setGroupName]=useState('');const [groupCodes,setGroupCodes]=useState('');const [showGroup,setShowGroup]=useState(false); const [myCode,setMyCode]=useState(''); const [codeBusy,setCodeBusy]=useState(false);
  const load=useCallback(async()=>{if(!session)return;const {data,error:e}=await supabase.from('conversations').select('id,kind,name,created_by,created_at').order('created_at',{ascending:false});if(e){setError(e.message);setConversations([]);return}const rows=data||[];const ids=rows.map((x:any)=>x.id);if(!ids.length){setConversations([]);return}const {data:members,error:me}=await supabase.from('conversation_members').select('conversation_id,user_id').in('conversation_id',ids);if(me)setError(me.message);const userIds=[...new Set((members||[]).map((m:any)=>m.user_id).filter((id:string)=>id!==session.user.id))];const {data:profiles,error:pe}=userIds.length?await supabase.from('profiles').select('user_id,full_name,username,account_code').in('user_id',userIds):{data:[],error:null} as any;if(pe)setError(pe.message);const byId=new Map((profiles||[]).map((p:any)=>[p.user_id,p]));const enriched=rows.map((row:any)=>{if(row.kind==='group')return row;const member=(members||[]).find((m:any)=>m.conversation_id===row.id&&m.user_id!==session.user.id);const person=member?byId.get(member.user_id):null;return {...row,display_name:person?.full_name||person?.username||person?.account_code||'Direct conversation'}});setConversations(enriched);setPersonNames(Object.fromEntries((profiles||[]).map((p:any)=>[p.user_id,p.full_name||p.username||p.account_code||'Member'])));},[session]);useEffect(()=>{void load(); if(profile?.account_code)setMyCode(profile.account_code)},[load,profile?.account_code]);
+ useEffect(()=>{
+  if(!session || support !== 'novacode.admin') return;
+  let cancelled=false;
+  const openSupportChat=async()=>{
+   const found=await supabase.rpc('search_messaging_users',{p_query:'novacode.admin'});
+   if(cancelled || found.error || !found.data?.length) return;
+   const admin=found.data.find((u:any)=>u.username==='novacode.admin') || found.data[0];
+   if(!admin?.user_id || admin.user_id===session.user.id) return;
+   const direct=await supabase.rpc('create_direct_conversation_by_user',{p_recipient_id:admin.user_id});
+   if(cancelled || direct.error || !direct.data) return;
+   await load();
+   if(!cancelled) await open(String(direct.data));
+  };
+  void openSupportChat();
+  return ()=>{cancelled=true};
+ },[session,support]);
  async function regenerateCode(){setCodeBusy(true);const {data,error:e}=await supabase.rpc('regenerate_my_account_code');setCodeBusy(false);if(e){setError(e.message);return}setMyCode(String(data||''));await refreshProfile();}
  const open=async(id:string)=>{const c0=conversations.find(x=>x.id===id);setSelected(c0||null);const {data}=await supabase.from('messages').select('id,sender_id,body,message_type,created_at').eq('conversation_id',id).order('created_at',{ascending:true});setMessages(data||[])};
  async function find(){if(search.trim().length<2){setUsers([]);return}const {data,error:e}=await supabase.rpc('search_messaging_users',{p_query:search.trim()});if(e)setError(e.message);setUsers(data||[])}
