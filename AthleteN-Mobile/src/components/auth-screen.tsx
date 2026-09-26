@@ -8,6 +8,8 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
 
+const POLICY_VERSION = '2026-09-17';
+
 // Required so Expo Go/native browser sessions can hand the OAuth callback back
 // to the running app instead of leaving the flow in the browser.
 WebBrowser.maybeCompleteAuthSession();
@@ -38,11 +40,17 @@ export default function AuthScreen() {
   const [error, setError] = useState('');
   const [verificationNotice, setVerificationNotice] = useState('');
   const [resetBusy, setResetBusy] = useState(false);
+  const [policiesAccepted, setPoliciesAccepted] = useState(false);
 
   async function submit() {
     setError('');
     setVerificationNotice('');
     const cleanEmail = email.trim().toLowerCase();
+
+    if (register && !policiesAccepted) {
+      setError('Please review and accept the AthleteN Privacy Policy and Terms of Service to create an account.');
+      return;
+    }
 
     if (!cleanEmail || !cleanEmail.includes('@') || password.length < 6 || (register && !name.trim())) {
       setError(register ? 'Enter your name, a valid email and a 6+ character password.' : 'Enter your email and password.');
@@ -55,7 +63,15 @@ export default function AuthScreen() {
         const result = await supabase.auth.signUp({
           email: cleanEmail,
           password,
-          options: { data: { full_name: name.trim() }, emailRedirectTo: authRedirect() },
+          options: {
+            data: {
+              full_name: name.trim(),
+              athleten_terms_accepted_version: POLICY_VERSION,
+              athleten_privacy_accepted_version: POLICY_VERSION,
+              athleten_policies_accepted_at: new Date().toISOString(),
+            },
+            emailRedirectTo: authRedirect(),
+          },
         });
         if (result.error) setError(result.error.message);
         else if (result.data.session) setVerificationNotice('Account created. Your email is already verified or email confirmation is disabled.');
@@ -74,6 +90,10 @@ export default function AuthScreen() {
   }
 
   async function signInWithGoogle() {
+    if (register && !policiesAccepted) {
+      setError('Please review and accept the AthleteN Privacy Policy and Terms of Service to continue with Google sign-up.');
+      return;
+    }
     setError('');
     setVerificationNotice('');
     setGoogleBusy(true);
@@ -108,8 +128,21 @@ export default function AuthScreen() {
         const code = typeof query.code === 'string' ? query.code : null;
         if (!code) return;
         handled = true;
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) throw error;
+        if (register && sessionData.session?.user?.id) {
+          const { error: acceptanceError } = await supabase.from('policy_acceptances').upsert({
+            user_id: sessionData.session.user.id,
+            terms_version: POLICY_VERSION,
+            privacy_version: POLICY_VERSION,
+            accepted_at: new Date().toISOString(),
+            source: 'mobile_google_signup',
+          }, { onConflict: 'user_id' });
+          if (acceptanceError) {
+            await supabase.auth.signOut();
+            throw new Error('We could not record your policy acceptance. Please try again.');
+          }
+        }
         router.replace('/');
       };
 
@@ -187,6 +220,27 @@ export default function AuthScreen() {
           {register && <TextInput value={name} onChangeText={setName} placeholder="Full name" placeholderTextColor={Colors.dark.muted} style={styles.input} />}
           <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" placeholder="Email" placeholderTextColor={Colors.dark.muted} style={styles.input} />
           <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password" placeholderTextColor={Colors.dark.muted} style={styles.input} />
+          {register && (
+            <View style={styles.policyBox}>
+              <Pressable
+                onPress={() => setPoliciesAccepted((value) => !value)}
+                style={styles.checkboxRow}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: policiesAccepted }}
+              >
+                <View style={[styles.checkbox, policiesAccepted && styles.checkboxChecked]}>
+                  {policiesAccepted ? <Text style={styles.checkmark}>✓</Text> : null}
+                </View>
+                <Text style={styles.policyText}>
+                  I accept the AthleteN{' '}
+                  <Text style={styles.policyLink} onPress={() => router.push('/policies')}>Privacy Policy</Text>
+                  {' '}and{' '}
+                  <Text style={styles.policyLink} onPress={() => router.push('/policies?tab=terms')}>Terms of Service</Text>.
+                </Text>
+              </Pressable>
+              <Text style={styles.policyVersion}>Policy version {POLICY_VERSION}</Text>
+            </View>
+          )}
           {!!error && <Text style={styles.error}>{error}</Text>}
           {!!verificationNotice && <Text style={styles.notice}>{verificationNotice}</Text>}
           <Pressable onPress={submit} disabled={busy || googleBusy || resending} style={styles.primary}>
@@ -197,7 +251,11 @@ export default function AuthScreen() {
           {register && !!verificationNotice && <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>{resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION EMAIL</Text>}</Pressable>}
         </View>
 
-        <Pressable onPress={() => { setRegister(!register); setError(''); setVerificationNotice(''); }}>
+        <Pressable onPress={() => router.push('/policies')} style={styles.policiesButton}>
+          <Text style={styles.policiesButtonText}>VIEW ATHLETEN POLICIES</Text>
+        </Pressable>
+
+        <Pressable onPress={() => { setRegister(!register); setPoliciesAccepted(false); setError(''); setVerificationNotice(''); }}>
           <Text style={styles.switch}>{register ? 'Already have an account? Sign in' : 'New to AthleteN? Create an account'}</Text>
         </Pressable>
       </View>
@@ -233,6 +291,16 @@ const styles = StyleSheet.create({
   switch:{color:Colors.dark.accentBright,textAlign:'center',fontSize:12,fontWeight:'800',padding:8},
   error:{color:Colors.dark.danger,fontSize:11,lineHeight:17},
   notice:{color:Colors.dark.success,fontSize:11,lineHeight:17},
+  policyBox:{backgroundColor:Colors.dark.background,borderWidth:1,borderColor:Colors.dark.border,borderRadius:13,padding:11,gap:6},
+  checkboxRow:{flexDirection:'row',alignItems:'flex-start',gap:10},
+  checkbox:{width:22,height:22,borderRadius:6,borderWidth:1.5,borderColor:Colors.dark.borderStrong,alignItems:'center',justifyContent:'center',marginTop:1},
+  checkboxChecked:{backgroundColor:Colors.dark.accent,borderColor:Colors.dark.accent},
+  checkmark:{color:'#fff',fontSize:14,fontWeight:'900',lineHeight:18},
+  policyText:{flex:1,color:Colors.dark.muted,fontSize:10,lineHeight:16},
+  policyLink:{color:Colors.dark.accentBright,fontWeight:'900'},
+  policyVersion:{color:Colors.dark.muted,fontSize:8,fontWeight:'700',marginLeft:32},
+  policiesButton:{alignItems:'center',paddingVertical:4},
+  policiesButtonText:{color:Colors.dark.muted,fontSize:9,fontWeight:'900',letterSpacing:1},
 });
 
 
