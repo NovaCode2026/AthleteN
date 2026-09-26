@@ -3,7 +3,6 @@ import {Pressable,StyleSheet,Text,View} from 'react-native';
 import {useEffect,useState} from 'react';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 import {Colors} from '@/constants/theme';
 import {Icon} from '@/components/mobile-ui';
 
@@ -20,7 +19,7 @@ export const AVAILABLE=[
 ] as const;
 
 function DashboardGlyph({color,size=19}:{color:string;size?:number}){const cell=Math.max(4,Math.round(size*.34));const gap=Math.max(2,Math.round(size*.1));return <View style={{width:size,height:size,flexDirection:'row',flexWrap:'wrap',gap,alignContent:'center',justifyContent:'center'}}><View style={{width:cell,height:cell,borderRadius:2,backgroundColor:color}}/><View style={{width:cell,height:cell,borderRadius:2,backgroundColor:color}}/><View style={{width:cell,height:cell,borderRadius:2,backgroundColor:color}}/><View style={{width:cell,height:cell,borderRadius:2,backgroundColor:color}}/></View>}
-function Bar({state,navigation}:BottomTabBarProps){
+function Bar({state,navigation}:{state:any;navigation:any}){
  const insets=useSafeAreaInsets();
  const [order,setOrder]=useState<string[]>([...DEFAULT]);
  useEffect(()=>{let alive=true;(async()=>{try{const raw=await AsyncStorage.getItem(KEY);if(!alive||!raw)return;const parsed=JSON.parse(raw);if(Array.isArray(parsed)){const valid=parsed.filter((x:string)=>AVAILABLE.some(a=>a.id===x));const merged=[...valid,...DEFAULT.filter(x=>!valid.includes(x))];setOrder(merged.slice(0,6));}}catch{}})();return()=>{alive=false}},[]);
