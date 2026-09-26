@@ -129,7 +129,10 @@ export default function Coach() {
   return <Screen bottomBar={<CoachNav active="home" />}>
     <View style={{ gap: 18 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 }}>
-        <Image source={require('../../assets/images/logo-glow.png')} style={{ width: 166, height: 52 }} contentFit="contain" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+          <Image source={require('@/assets/logo.png')} style={{ width: 42, height: 42, borderRadius: 13 }} contentFit="cover" />
+          <View><Text style={{ color: c.text, fontSize: 15, fontWeight: '900', letterSpacing: 2.2 }}>ATHLETEN</Text><Text style={{ color: c.muted, fontSize: 7, fontWeight: '800', letterSpacing: 1 }}>COACH PERFORMANCE</Text></View>
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Pressable onPress={() => router.push('/coach-notifications')} hitSlop={8} style={{ width: 34, height: 40, alignItems: 'center', justifyContent: 'center' }}><BellIcon /></Pressable>
           <Pressable onPress={() => router.push('/coach-profile')} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -148,17 +151,17 @@ export default function Coach() {
 
       <Pressable onPress={() => router.push('/coach-athletes')}>
         <Card><View style={{ flexDirection: 'row', minHeight: 92 }}>
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}><IconTile icon="♙" tone="blue" /><View><Text style={{ color: c.muted, fontSize: 11 }}>Your Athletes</Text><Text style={{ color: c.text, fontSize: 26, fontWeight: '900', marginTop: 2 }}>{athletes.length}</Text><Text style={{ color: c.muted, fontSize: 10 }}>Active athletes</Text></View></View>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}><IconTile icon="athlete" tone="blue" /><View><Text style={{ color: c.muted, fontSize: 11 }}>Your Athletes</Text><Text style={{ color: c.text, fontSize: 26, fontWeight: '900', marginTop: 2 }}>{athletes.length}</Text><Text style={{ color: c.muted, fontSize: 10 }}>Active athletes</Text></View></View>
           <View style={{ width: 1, backgroundColor: c.borderStrong, marginVertical: 5 }} />
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 14 }}><IconTile icon="▣" tone="blue" /><View><Text style={{ color: c.muted, fontSize: 11 }}>Upcoming Events</Text><Text style={{ color: c.text, fontSize: 26, fontWeight: '900', marginTop: 2 }}>{events}</Text><Text style={{ color: c.muted, fontSize: 10 }}>Scheduled</Text></View></View>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 14 }}><IconTile icon="calendar" tone="blue" /><View><Text style={{ color: c.muted, fontSize: 11 }}>Upcoming Events</Text><Text style={{ color: c.text, fontSize: 26, fontWeight: '900', marginTop: 2 }}>{events}</Text><Text style={{ color: c.muted, fontSize: 10 }}>Scheduled</Text></View></View>
         </View></Card>
       </Pressable>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 }}>
-        <ActionCard icon="▥" tone="blue" title="Athletes" subtitle="Manage your team" onPress={() => router.push('/coach-athletes')} />
-        <ActionCard icon="⌁" tone="green" title="Training" subtitle="Plans & progress" onPress={() => router.push('/coach-training')} />
-        <ActionCard icon="♜" tone="red" title="Competitions" subtitle="Tournaments & results" onPress={() => router.push('/coach-competition')} />
-        <ActionCard icon="•••" tone="purple" title="Messages" subtitle="Chat with your team" onPress={() => router.push('/messages')} />
+        <ActionCard icon="people" tone="blue" title="Athletes" subtitle="Manage your team" onPress={() => router.push('/coach-athletes')} />
+        <ActionCard icon="training" tone="green" title="Training" subtitle="Plans & progress" onPress={() => router.push('/coach-training')} />
+        <ActionCard icon="event" tone="red" title="Competitions" subtitle="Tournaments & results" onPress={() => router.push('/coach-competition')} />
+        <ActionCard icon="message" tone="purple" title="Messages" subtitle="Chat with your team" onPress={() => router.push('/messages')} />
       </View>
 
       <View style={{ gap: 10 }}>
@@ -169,12 +172,12 @@ export default function Coach() {
 
       <View style={{ gap: 10 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={{ color: c.text, fontSize: 20, fontWeight: '900' }}>Recent Activity</Text><Pressable onPress={() => router.push('/coach-notifications')}><Text style={{ color: c.accentBright, fontSize: 13, fontWeight: '900' }}>View all ›</Text></Pressable></View>
-        <Pressable onPress={() => router.push('/coach-notifications')}><Card><View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, minHeight: 72 }}><IconTile icon="!" tone={approvals ? 'red' : 'slate'} /><View style={{ flex: 1 }}><Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>{approvals ? String(approvals) + ' athlete request' + (approvals === 1 ? '' : 's') + ' waiting' : 'Everything is up to date'}</Text><Text style={{ color: c.muted, fontSize: 10, lineHeight: 16, marginTop: 3 }}>{approvals ? 'Open notifications to review pending connections.' : 'New coaching activity and alerts will appear here.'}</Text></View><Text style={{ color: c.muted, fontSize: 24 }}>›</Text></View></Card></Pressable>
+        <Pressable onPress={() => router.push('/coach-notifications')}><Card><View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, minHeight: 72 }}><IconTile icon="warning" tone={approvals ? 'red' : 'slate'} /><View style={{ flex: 1 }}><Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>{approvals ? String(approvals) + ' athlete request' + (approvals === 1 ? '' : 's') + ' waiting' : 'Everything is up to date'}</Text><Text style={{ color: c.muted, fontSize: 10, lineHeight: 16, marginTop: 3 }}>{approvals ? 'Open notifications to review pending connections.' : 'New coaching activity and alerts will appear here.'}</Text></View><Text style={{ color: c.muted, fontSize: 24 }}>›</Text></View></Card></Pressable>
       </View>
 
       <View style={{ gap: 10 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={{ color: c.text, fontSize: 20, fontWeight: '900' }}>Quick tools</Text><Pressable onPress={() => router.push('/coach-more')}><Text style={{ color: c.accentBright, fontSize: 13, fontWeight: '900' }}>More ›</Text></Pressable></View>
-        <Pressable onPress={() => router.push('/scanner')}><Card accent><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><IconTile icon="AI" tone="blue" /><View style={{ flex: 1 }}><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1 }}>COACH TOOL</Text><Text style={{ color: c.text, fontSize: 15, fontWeight: '900', marginTop: 3 }}>Tournament Scanner</Text><Text style={{ color: c.muted, fontSize: 10, lineHeight: 15, marginTop: 2 }}>Scan an official event source and track changes.</Text></View><Text style={{ color: c.accentBright, fontSize: 24 }}>›</Text></View></Card></Pressable>
+        <Pressable onPress={() => router.push('/scanner')}><Card accent><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><IconTile icon="ai" tone="blue" /><View style={{ flex: 1 }}><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1 }}>COACH TOOL</Text><Text style={{ color: c.text, fontSize: 15, fontWeight: '900', marginTop: 3 }}>Tournament Scanner</Text><Text style={{ color: c.muted, fontSize: 10, lineHeight: 15, marginTop: 2 }}>Scan an official event source and track changes.</Text></View><Text style={{ color: c.accentBright, fontSize: 24 }}>›</Text></View></Card></Pressable>
       </View>
     </View>
   </Screen>;
