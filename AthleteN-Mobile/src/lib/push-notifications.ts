@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 
 export const ATHLETEN_NOTIFICATION_CHANNEL_ID = 'athleten-default-v2';
@@ -55,4 +56,19 @@ export async function registerForPushNotifications(userId: string) {
 
   if (error) throw error;
   return { token, reason: 'registered' as const };
+}
+
+export function attachNotificationListeners() {
+  const received = Notifications.addNotificationReceivedListener(() => undefined);
+  const response = Notifications.addNotificationResponseReceivedListener((event) => {
+    const route = event.notification.request.content.data?.route;
+    if (typeof route === 'string' && route.startsWith('/')) {
+      router.push(route as never);
+    }
+  });
+
+  return () => {
+    received.remove();
+    response.remove();
+  };
 }
