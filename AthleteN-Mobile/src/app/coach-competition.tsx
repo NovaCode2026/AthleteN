@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Text, View, Pressable } from 'react-native';
 import { Screen, Header, Section, Card, c } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
+import CoachSupportFooter from '@/components/coach-support-footer';
 import { supabase } from '@/lib/supabase';
 type Athlete={athlete_user_id:string;full_name?:string|null;discipline?:string|null};
 export default function CoachCompetition(){
@@ -16,5 +17,7 @@ return <Screen><Header back eyebrow="COACH / COMPETITION" title="Competition Cen
 <Section title="UPCOMING TOURNAMENTS">{tournaments.filter(t=>!t.starts_at||new Date(t.starts_at)>=new Date(new Date().toISOString().slice(0,10))).filter(mine).map(t=><Card key={t.id}><Text style={{color:c.text,fontWeight:'900'}}>{t.name}</Text><Text style={{color:c.accentBright,fontSize:10}}>{athleteName(t.user_id)} · {t.starts_at||'Date not set'}</Text><Text style={{color:c.muted,fontSize:10}}>{t.location||'Location not set'} · {t.status||'planned'}</Text></Card>)}{!tournaments.filter(t=>!t.starts_at||new Date(t.starts_at)>=new Date(new Date().toISOString().slice(0,10))).filter(mine).length?<Card><Text style={{color:c.muted}}>No upcoming tournaments for this athlete.</Text></Card>:null}</Section>
 <Section title="MATCH HISTORY">{matches.filter(mine).slice(0,30).map(m=><Card key={m.id}><View style={{flexDirection:'row',justifyContent:'space-between'}}><View style={{flex:1}}><Text style={{color:c.text,fontWeight:'900'}}>{athleteName(m.user_id)} vs {m.opponent_name||'Opponent'}</Text><Text style={{color:c.muted,fontSize:9}}>{m.division||'Division'} · {m.round_name||'Round'}</Text></View><Text style={{color:c.accentBright,fontWeight:'900'}}>{m.result||'—'}</Text></View>{m.score?<Text style={{color:c.muted,fontSize:9}}>Score: {m.score}</Text>:null}</Card>)}</Section>
 <Section title="MEDALS">{medals.filter(mine).slice(0,30).map(m=><Card key={m.id}><Text style={{color:c.accentBright,fontWeight:'900'}}>{m.medal_type.toUpperCase()}</Text><Text style={{color:c.text,fontWeight:'900'}}>{m.event_name}</Text><Text style={{color:c.muted,fontSize:9}}>{athleteName(m.user_id)} · {m.category||'Category not set'} · {m.awarded_at||'Date not set'}</Text></Card>)}</Section>
+<CoachSupportFooter />
+  <CoachSupportFooter />
 </Screen>;
 }
