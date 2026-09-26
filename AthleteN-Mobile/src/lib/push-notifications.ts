@@ -38,7 +38,8 @@ export async function registerForPushNotifications(userId: string) {
 
   const projectId =
     Constants.expoConfig?.extra?.eas?.projectId ??
-    Constants.easConfig?.projectId;
+    Constants.easConfig?.projectId ??
+    process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
 
   if (!projectId) return { token: null, reason: 'expo-project-id-missing' as const };
 
