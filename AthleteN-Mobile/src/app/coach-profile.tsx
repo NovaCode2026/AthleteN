@@ -5,7 +5,6 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Screen, Header, Section, Card, c } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
-import CoachSupportFooter from '@/components/coach-support-footer';
 import { supabase } from '@/lib/supabase';
 
 export default function CoachProfile(){
@@ -23,6 +22,6 @@ export default function CoachProfile(){
  <Section title="ACADEMY CONNECTION"><Card><Text style={{color:c.muted,fontSize:10}}>Current academy</Text><Text style={{color:c.text,fontSize:16,fontWeight:'900',marginTop:4}}>{academyName||'Not connected'}</Text><Text style={{color:c.muted,fontSize:10,lineHeight:16,marginTop:7}}>Enter an Academy connection code to join that academy as a coach. The academy admin can provide the code.</Text><TextInput value={academyCode} onChangeText={v=>setAcademyCode(v.toUpperCase())} autoCapitalize="characters" autoCorrect={false} maxLength={30} placeholder="ACADEMY-..." placeholderTextColor={c.muted} style={{marginTop:10,backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,padding:12,fontSize:15,fontWeight:'900'}}/><Pressable onPress={()=>void connectAcademy()} disabled={busy} style={{marginTop:9,backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep,borderRadius:12,padding:13,alignItems:'center'}}><Text style={{color:c.accentBright,fontWeight:'900'}}>CONNECT TO ACADEMY</Text></Pressable></Card></Section>
  <Section title="ACCOUNT"><Card><Text style={{color:c.text,fontWeight:'900'}}>Account code</Text><Text style={{color:c.muted,fontSize:10}}>{profile?.account_code||'Generating...'}</Text><Text style={{color:c.muted,fontSize:10,marginTop:8}}>Role: Coach</Text></Card></Section>
  <Pressable onPress={async()=>{await signOut(); router.replace('/');}} style={{borderWidth:1,borderColor:'#61303A',borderRadius:13,padding:14,alignItems:'center'}}><Text style={{color:c.danger,fontWeight:'900'}}>SIGN OUT</Text></Pressable>
- <CoachSupportFooter />
+ 
 </Screen>;
 }
