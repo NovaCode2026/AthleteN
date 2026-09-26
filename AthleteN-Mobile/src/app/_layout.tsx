@@ -3,6 +3,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import { Pressable, Text, View, useColorScheme } from 'react-native';
 import { AuthProvider } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
+import AnnouncementOverlay from '@/components/announcement-overlay';
 
 type ErrorBoundaryState = { error: Error | null };
 
@@ -44,6 +45,7 @@ export default function RootLayout() {
     <AppErrorBoundary>
       <AuthProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <AnnouncementOverlay />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.dark.background } }}>
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="reset-request" options={{ headerShown: false }} />
