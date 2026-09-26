@@ -77,6 +77,6 @@ export default function CoachAthletes() {
       </Section>
     
     
-</Screen>;
+</Screen>
   );
 }
