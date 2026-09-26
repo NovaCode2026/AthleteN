@@ -21,7 +21,14 @@ export default function AnnouncementOverlay(){
   setItem(announcements.find((a:any)=>!readSet.has(a.id))||null);
  },[session]);
 
- useEffect(()=>{void load()},[load]);
+ useEffect(()=>{
+  void load();
+  if(!session)return;
+  const channel=supabase.channel('global-announcements-'+session.user.id)
+   .on('postgres_changes',{event:'INSERT',schema:'public',table:'announcements'},()=>{void load()})
+   .subscribe();
+  return ()=>{void supabase.removeChannel(channel)};
+ },[load,session]);
 
  async function close(){
   if(!session||!item||busy)return;
