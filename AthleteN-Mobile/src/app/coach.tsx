@@ -160,6 +160,7 @@ export default function Coach() {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 }}>
         <ActionCard icon="people" tone="blue" title="Athletes" subtitle="Manage your team" onPress={() => router.push('/coach-athletes')} />
         <ActionCard icon="training" tone="green" title="Training" subtitle="Plans & progress" onPress={() => router.push('/coach-training')} />
+        <ActionCard icon="calendar" tone="blue" title="Attendance" subtitle="Mark & review attendance" onPress={() => router.push('/coach-training')} />
         <ActionCard icon="event" tone="red" title="Competitions" subtitle="Tournaments & results" onPress={() => router.push('/coach-competition')} />
         <ActionCard icon="message" tone="purple" title="Messages" subtitle="Chat with your team" onPress={() => router.push('/messages')} />
       </View>
