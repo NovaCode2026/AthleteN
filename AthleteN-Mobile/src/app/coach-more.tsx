@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { Screen, Header, Section, Card, c } from '@/components/mobile-ui';
 import CoachNav from '@/components/coach-nav';
 import { useAuth } from '@/context/AuthContext';
+import CoachSupportFooter from '@/components/coach-support-footer';
 
 export default function CoachMore() {
   const router = useRouter();
@@ -12,6 +13,8 @@ export default function CoachMore() {
     ['Competition Center', 'Review competition results and medals.', '/coach-competition'],
     ['Messages', 'Private athlete, coach and group communication.', '/messages'],
     ['Coach Profile', 'Photo, name, coach code, account and security.', '/coach-profile'],
+    ['Feedback', 'Report a problem or request an improvement.', '/feedback'],
+    ['Roadmap', 'See planned features and vote on what comes next.', '/roadmap'],
   ] as const;
 
   return (
@@ -44,6 +47,16 @@ export default function CoachMore() {
           </Pressable>
         </Card>
       </Section>
+      <Section title="SUPPORT">
+        <Card>
+          <Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>Need help?</Text>
+          <Text style={{ color: c.muted, fontSize: 10, lineHeight: 15, marginTop: 3 }}>Contact AthleteN support for account, feature or technical help.</Text>
+          <Pressable onPress={() => router.push('/feedback')} style={{ marginTop: 10, backgroundColor: c.accent, borderRadius: 12, padding: 12, alignItems: 'center' }}>
+            <Text style={{ color: '#fff', fontWeight: '900', fontSize: 10 }}>SEND FEEDBACK</Text>
+          </Pressable>
+        </Card>
+      </Section>
+      <CoachSupportFooter />
     </Screen>
   );
 }
