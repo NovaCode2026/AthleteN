@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { PerformanceLine } from '@/components/performance-chart';
+import { Screen } from '@/components/mobile-ui';
 
 const c = Colors.dark;
 
@@ -96,6 +97,10 @@ export default function ProfileScreen() {
     if(error)setMessage(error.message);else await load()
   }
   const isAdmin=profile?.role==='admin'||profile?.role==='super_admin';
+  const isAcademyAdmin=profile?.role==='academy_admin'||profile?.role==='academy';
+  if(isAcademyAdmin){
+    return <ScreenLikeProfile router={router} profile={profile} session={session} signOut={signOut} />;
+  }
   const weightChart=[...weights].reverse().slice(-7).map(w=>({label:String(w.logged_at).slice(5,10).replace('-','/'),value:Number(w.weight_kg)}));
 
   return <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
