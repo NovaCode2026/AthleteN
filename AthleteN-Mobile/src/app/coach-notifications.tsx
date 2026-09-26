@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Header, Section, Card, c } from '@/components/mobile-ui';
 import CoachNav from '@/components/coach-nav';
+import CoachSupportFooter from '@/components/coach-support-footer';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -53,5 +54,7 @@ export default function CoachNotifications() {
         <Card accent><Text style={{ color: c.text, fontSize: 15, fontWeight: '900' }}>No new notifications</Text><Text style={{ color: c.muted, fontSize: 10, lineHeight: 16, marginTop: 4 }}>AthleteN will show connection requests and upcoming competition alerts here.</Text></Card>
       )}
     </Section>
-  </Screen>;
+  <CoachSupportFooter />
+  <CoachSupportFooter />
+</Screen>;
 }
