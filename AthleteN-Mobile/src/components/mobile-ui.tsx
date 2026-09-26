@@ -7,9 +7,21 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 export const c=Colors.dark;
 const icons:Record<string,string>={back:'chevron-left',arrow:'arrow-right',add:'plus',close:'close',check:'check',settings:'cog',empty:'square-outline',search:'magnify',refresh:'refresh',edit:'pencil',delete:'trash-can',calendar:'calendar',bell:'bell',menu:'menu',home:'view-dashboard',dashboard:'view-dashboard',more:'dots-horizontal',searchCircle:'magnify-plus',closeCircle:'close-circle',person:'account',people:'account-group',coach:'run',athlete:'run-fast',training:'run',event:'trophy',finance:'currency-inr',ai:'creation',shield:'shield-check',lock:'lock',warning:'alert',info:'information',chart:'chart-line',medal:'medal',message:'message-text','bell.fill':'bell'};
 export function Icon({name,size=18,color=c.accentBright}:{name:string;size?:number;color?:string}){return <MaterialCommunityIcons name={(icons[name]||name) as any} size={size} color={color}/>}
+export function SupportContact(){
+ const router=useRouter();
+ const openAdmin=()=>router.push('/messages?support=novacode.admin');
+ return <View style={{marginTop:18,paddingTop:16,paddingBottom:8,borderTopWidth:1,borderTopColor:c.border,alignItems:'center',gap:6}}>
+  <Text style={{color:c.muted,fontSize:9,textAlign:'center'}}>Need help with AthleteN?</Text>
+  <Pressable onPress={openAdmin} hitSlop={8}>
+   <Text style={{color:c.accentBright,fontSize:10,fontWeight:'900'}}>MESSAGE NOVACODE ADMIN · novacode.admin</Text>
+  </Pressable>
+  <Text style={{color:c.muted,fontSize:8}}>Support: novacode.create@gmail.com</Text>
+ </View>;
+}
 export function Screen({children,scroll=true,bottomBar}:{children:React.ReactNode;scroll?:boolean;bottomBar?:React.ReactNode}){
  const body=<View style={s.wrap}>{children}</View>;
- return <SafeAreaView style={s.screen} edges={['top','bottom']}>{scroll?<View style={{flex:1}}><ScrollView contentContainerStyle={[s.content,bottomBar&&{paddingBottom:190}]} showsVerticalScrollIndicator={false}>{body}</ScrollView>{bottomBar}</View>:<View style={{flex:1}}>{body}{bottomBar}</View>}</SafeAreaView>;
+ const footer=<SupportContact />;
+ return <SafeAreaView style={s.screen} edges={['top','bottom']}>{scroll?<View style={{flex:1}}><ScrollView contentContainerStyle={[s.content,bottomBar&&{paddingBottom:190}]} showsVerticalScrollIndicator={false}>{body}{footer}</ScrollView>{bottomBar}</View>:<View style={{flex:1}}>{body}{footer}{bottomBar}</View>}</SafeAreaView>;
 }
 export function Header({eyebrow,title,subtitle,right,back=false}:{eyebrow:string;title:string;subtitle?:string;right?:React.ReactNode;back?:boolean}){const router=useRouter();return <View style={s.header}>{back?<Pressable onPress={()=>router.back()} style={s.back}><View style={s.backText}><Icon name="back" size={14} color={c.accentBright}/><Text style={{color:c.accentBright,fontSize:10,fontWeight:'900',letterSpacing:.7,marginLeft:5}}>BACK</Text></View></Pressable>:null}<View style={s.headerRow}><View style={{flex:1,gap:4}}><Text style={s.eyebrow}>{eyebrow}</Text><Text style={s.title}>{title}</Text>{subtitle?<Text style={s.subtitle}>{subtitle}</Text>:null}</View>{right}</View></View>}
 export function Section({title,action,children}:{title:string;action?:React.ReactNode;children:React.ReactNode}){return <View style={s.sectionWrap}><View style={s.sectionHead}><Text style={s.section}>{title}</Text>{action}</View>{children}</View>}
