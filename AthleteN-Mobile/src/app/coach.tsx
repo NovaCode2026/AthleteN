@@ -6,7 +6,6 @@ import { Screen, Card, c, Icon } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import CoachNav from '@/components/coach-nav';
-import CoachSupportFooter from '@/components/coach-support-footer';
 import PlanSection from '@/components/plan-section';
 
 type Athlete = { athlete_user_id: string; full_name?: string | null; discipline?: string | null; belt?: string | null; weight_kg?: number | null };
@@ -182,7 +181,7 @@ export default function Coach() {
         <Pressable onPress={() => router.push('/scanner')}><Card accent><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><IconTile icon="ai" tone="blue" /><View style={{ flex: 1 }}><Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1 }}>COACH TOOL</Text><Text style={{ color: c.text, fontSize: 15, fontWeight: '900', marginTop: 3 }}>Tournament Scanner</Text><Text style={{ color: c.muted, fontSize: 10, lineHeight: 15, marginTop: 2 }}>Scan an official event source and track changes.</Text></View><Text style={{ color: c.accentBright, fontSize: 24 }}>›</Text></View></Card></Pressable>
       </View>
     </View>
-  <CoachSupportFooter />
-  <CoachSupportFooter />
+  
+  
 </Screen>;
 }
