@@ -24,9 +24,11 @@ export default function PlanSection() {
         .limit(1)
         .maybeSingle();
       if (!alive) return;
-      const next = (data?.plan_id || (profile as any)?.plan_id || 'free') as PlanId;
+      const profilePlan = ((profile as any)?.plan_id || 'free') as PlanId;
+      const subscriptionIsActive = data?.status === 'active' || data?.status === 'trialing';
+      const next = (subscriptionIsActive && data?.plan_id ? data.plan_id : profilePlan) as PlanId;
       setPlan(next);
-      setStatus(data?.status || 'active');
+      setStatus(subscriptionIsActive ? String(data?.status || 'active') : 'active');
     })();
     return () => { alive = false; };
   }, [session, (profile as any)?.plan_id]);
