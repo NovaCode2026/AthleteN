@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { Screen, Header, Section, Card, c } from '@/components/mobile-ui';
 import CoachNav from '@/components/coach-nav';
 import { useAuth } from '@/context/AuthContext';
-import CoachSupportFooter from '@/components/coach-support-footer';
 
 export default function CoachMore() {
   const router = useRouter();
@@ -56,7 +55,7 @@ export default function CoachMore() {
           </Pressable>
         </Card>
       </Section>
-      <CoachSupportFooter />
+      
     </Screen>
   );
 }
