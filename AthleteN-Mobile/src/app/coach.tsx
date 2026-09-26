@@ -112,7 +112,7 @@ export default function Coach() {
     setEvents(tournaments.count || 0);
 
     if (profile.profile_image_path) {
-      const signed = await supabase.storage.from('avatars').createSignedUrl(profile.profile_image_path, 3600);
+      const signed = await supabase.storage.from('avatars').createSignedUrl(String(profile.profile_image_path), 3600);
       setAvatar(signed.data?.signedUrl || null);
     } else setAvatar(null);
   }, [profile?.user_id, profile?.profile_image_path]);
