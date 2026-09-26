@@ -52,6 +52,7 @@ function Stat({icon,label,value,sub,accent=c.accent,onPress}:{icon:string;label:
 
 export default function Academy(){
  const {session,profile}=useAuth();
+ const isAcademyRole = profile?.role === 'academy_admin' || profile?.role === 'academy';
  const [tab,setTab]=useState<Tab>('Dashboard');
  const router=useRouter();
  const [navOrder,setNavOrder]=useState<string[]>([...ACADEMY_NAV_DEFAULT]);
@@ -124,6 +125,11 @@ export default function Academy(){
 
  useEffect(()=>{void (async()=>{try{const raw=await AsyncStorage.getItem(ACADEMY_NAV_KEY);if(raw){const p=JSON.parse(raw);if(Array.isArray(p)){const valid=p.filter((x:string)=>ACADEMY_NAV_AVAILABLE.some(a=>a.id===x));setNavOrder([...valid,...ACADEMY_NAV_DEFAULT.filter(x=>!valid.includes(x))].slice(0,6));}}}catch{}})()},[]);
  useEffect(()=>{void load()},[profile?.academy_id]);
+ useEffect(()=>{
+  if(profile && !isAcademyRole){
+   router.replace(profile.role === 'coach' ? '/coach' : profile.role === 'admin' || profile.role === 'super_admin' || profile.role === 'support_admin' ? '/admin' : '/(tabs)');
+  }
+ },[profile,isAcademyRole,router]);
 
  const athletes=members.filter(x=>x.role==='athlete').length;
  const coaches=members.filter(x=>x.role==='coach').length;
@@ -190,7 +196,10 @@ export default function Academy(){
 
   <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
    <View><Text style={{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1.5}}>ATHLETEN ACADEMY</Text><Text style={{color:c.text,fontSize:25,fontWeight:'900',marginTop:3}}>{academy?.name||'Academy'}</Text></View>
-   <Pressable onPress={()=>void load()} style={{width:40,height:40,borderRadius:13,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,alignItems:'center',justifyContent:'center'}}><Icon name="refresh" size={18}/></Pressable>
+   <View style={{flexDirection:'row',alignItems:'center',gap:8}}>
+     <Pressable onPress={()=>router.push('/academy-settings')} style={{width:40,height:40,borderRadius:13,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,alignItems:'center',justifyContent:'center'}}><Icon name="settings" size={18}/></Pressable>
+     <Pressable onPress={()=>void load()} style={{width:40,height:40,borderRadius:13,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,alignItems:'center',justifyContent:'center'}}><Icon name="refresh" size={18}/></Pressable>
+    </View>
   </View>
 
 
