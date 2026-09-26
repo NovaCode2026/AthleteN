@@ -10,11 +10,13 @@ export function Icon({name,size=18,color=c.accentBright}:{name:string;size?:numb
 export function SupportContact(){
  const router=useRouter();
  const openAdmin=()=>router.push('/messages?support=novacode.admin');
+ const openSupport=()=>router.push('/support');
  return <View style={{marginTop:18,paddingTop:16,paddingBottom:8,borderTopWidth:1,borderTopColor:c.border,alignItems:'center',gap:6}}>
   <Text style={{color:c.muted,fontSize:9,textAlign:'center'}}>Need help with AthleteN?</Text>
   <Pressable onPress={openAdmin} hitSlop={8}>
    <Text style={{color:c.accentBright,fontSize:10,fontWeight:'900'}}>MESSAGE NOVACODE ADMIN · novacode.admin</Text>
   </Pressable>
+  <Pressable onPress={openSupport} hitSlop={8}><Text style={{color:c.accentBright,fontSize:9,fontWeight:'900'}}>CREATE SUPPORT TICKET</Text></Pressable>
   <Text style={{color:c.muted,fontSize:8}}>Support: novacode.create@gmail.com</Text>
  </View>;
 }
