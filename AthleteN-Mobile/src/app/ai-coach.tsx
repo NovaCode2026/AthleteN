@@ -3,7 +3,6 @@ import { ActivityIndicator,Pressable,ScrollView,Text,TextInput,View,StyleSheet }
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
-import CoachSupportFooter from '@/components/coach-support-footer';
 
 const c=Colors.dark;
 export default function AICoachScreen(){
@@ -15,7 +14,7 @@ export default function AICoachScreen(){
  <View style={s.cards}><Metric label="14D TRAINING" value={training+' min'}/><Metric label="SESSIONS" value={String(sessions)}/><Metric label="UPCOMING" value={String(upcoming)}/></View>
  <Text style={s.section}>QUICK COACH QUESTIONS</Text><View style={s.quick}>{['How is my training?','What about my competition?','How are my goals?'].map(x=><Pressable key={x} onPress={()=>ask(x)} style={s.quickButton}><Text style={s.quickText}>{x}</Text></Pressable>)}</View>
  <View style={s.chat}><Text style={s.chatLabel}>ASK ATHLETEN COACH</Text><TextInput value={question} onChangeText={setQuestion} onSubmitEditing={()=>ask(question)} placeholder="Ask about training, competition or goals…" placeholderTextColor={c.muted} style={s.input}/><Pressable onPress={()=>ask(question)} style={s.ask}><Text style={s.askText}>ASK COACH</Text></Pressable>{answer?<View style={s.answer}><Text style={s.answerLabel}>COACH</Text><Text style={s.answerText}>{answer}</Text></View>:null}</View>
- <CoachSupportFooter />
+ 
 </ScrollView>
 }
 function Metric({label,value}:{label:string;value:string}){return <View style={s.metric}><Text style={s.metricValue}>{value}</Text><Text style={s.metricLabel}>{label}</Text></View>}
