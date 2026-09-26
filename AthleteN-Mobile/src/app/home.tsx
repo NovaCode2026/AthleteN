@@ -9,7 +9,7 @@ import { validMinutes, validWeight } from '@/lib/performance';
 import { calculateStreak } from '@/lib/streak';
 import { PerformanceLine, ChartPoint } from '@/components/performance-chart';
 import PlanSection from '@/components/plan-section';
-import { Icon } from '@/components/mobile-ui';
+import { Icon, SupportContact } from '@/components/mobile-ui';
 import { requestWidgetUpdate } from 'react-native-android-widget';
 import { AthleteWidget } from '@/widgets/AthleteWidget';
 
