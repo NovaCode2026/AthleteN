@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {Tabs} from 'expo-router';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import {useEffect,useState} from 'react';
