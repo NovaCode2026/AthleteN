@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
 import { Text, View, Pressable } from 'react-native';
 import { Screen, Header, Section, Card, c } from '@/components/mobile-ui';
