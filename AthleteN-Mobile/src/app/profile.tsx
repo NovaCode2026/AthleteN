@@ -161,7 +161,7 @@ export default function ProfileScreen() {
 
     <Text style={s.settingsSection}>SECURITY</Text>
     <Pressable onPress={()=>router.push('/change-password')} style={s.settingsRow}><Icon name="lock" size={18}/><View style={s.settingsCopy}><Text style={s.settingsTitle}>Password & Security</Text><Text style={s.meta}>Change your current password and manage account security.</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>
-    <Pressable onPress={()=>router.push('/support')} style={s.settingsRow}><Icon name="support" size={18}/><View style={s.settingsCopy}><Text style={s.settingsTitle}>AthleteN Support</Text><Text style={s.meta}>Get help with your account or the app.</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>
+    <Pressable onPress={()=>router.push('/support')} style={s.settingsRow}><Icon name="info" size={18}/><View style={s.settingsCopy}><Text style={s.settingsTitle}>AthleteN Support</Text><Text style={s.meta}>Get help with your account or the app.</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>
 
     <Text style={s.settingsSection}>ACCOUNT ACTIONS</Text>
     <Pressable onPress={signOut} style={s.signOut}><Text style={s.signOutText}>SIGN OUT</Text></Pressable>  </ScrollView>
