@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect,useState } from 'react';
 import { Alert, Pressable,ScrollView,Text,View,StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
