@@ -13,6 +13,21 @@ import { Screen } from '@/components/mobile-ui';
 
 const c = Colors.dark;
 
+function ScreenLikeProfile({router,profile,session,signOut}:{router:any;profile:any;session:any;signOut:()=>void}){
+  return <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+    <View style={s.brandRow}><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>ACADEMY PROFILE</Text></View>
+    <View style={s.card}>
+      <Text style={s.name}>{String(profile?.full_name||'Academy Admin')}</Text>
+      <Text style={s.meta}>{String(profile?.username||'')} • Academy Admin</Text>
+      <Text style={s.meta}>{String(profile?.plan_id||'academy')} plan</Text>
+    </View>
+    <Pressable onPress={()=>router.push('/academy')} style={s.adminCard}><View><Text style={s.adminKicker}>ACADEMY</Text><Text style={s.adminTitle}>Academy Dashboard</Text><Text style={s.meta}>Manage athletes, coaches, training, events and finance.</Text></View><Text style={s.adminArrow}>›</Text></Pressable>
+    <Pressable onPress={()=>router.push('/academy-settings')} style={s.adminCard}><View><Text style={s.adminKicker}>SETTINGS</Text><Text style={s.adminTitle}>Academy Settings</Text><Text style={s.meta}>Configure your academy workspace.</Text></View><Text style={s.adminArrow}>›</Text></Pressable>
+    <Pressable onPress={()=>router.push('/notification-settings')} style={s.adminCard}><View><Text style={s.adminKicker}>ALERTS</Text><Text style={s.adminTitle}>Notification Settings</Text><Text style={s.meta}>Manage academy notifications.</Text></View><Text style={s.adminArrow}>›</Text></Pressable>
+    <Pressable onPress={signOut} style={s.signOut}><Text style={s.signOutText}>SIGN OUT</Text></Pressable>
+  </ScrollView>
+}
+
 export default function ProfileScreen() {
   const { profile, session, signOut, refreshProfile } = useAuth();
   const router = useRouter();
