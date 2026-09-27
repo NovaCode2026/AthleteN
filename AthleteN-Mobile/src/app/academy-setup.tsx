@@ -18,6 +18,7 @@ export default function AcademySetupScreen() {
   const [country, setCountry] = useState('India');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -58,7 +59,7 @@ export default function AcademySetupScreen() {
             status: 'active',
             setup_completed: false,
           })
-          .select('id,name,city,state,country,contact_email,contact_phone,setup_completed')
+          .select('id,name,city,state,country,contact_email,contact_phone,contact_email_verified_at,setup_completed')
           .single();
 
         if (created.error) {
@@ -89,12 +90,46 @@ export default function AcademySetupScreen() {
       setState(String(data.state || ''));
       setCountry(String(data.country || 'India'));
       setEmail(String(data.contact_email || ''));
+      setEmailVerified(Boolean(data.contact_email_verified_at) && String(data.contact_email || '').toLowerCase() === String(session.user.email || '').toLowerCase());
       setPhone(String(data.contact_phone || ''));
       setLoading(false);
     })();
 
     return () => { alive = false; };
   }, [session?.user.id, profile?.academy_id]);
+
+  async function verifyOrUpdateEmail() {
+    setMessage('');
+    if (!session) return;
+    const nextEmail = email.trim().toLowerCase();
+    if (!nextEmail || !nextEmail.includes('@')) { setMessage('Enter a valid academy email address.'); return; }
+    if (nextEmail === String(session.user.email || '').toLowerCase() && session.user.email_confirmed_at) {
+      setEmailVerified(true);
+      if (academyId) await supabase.from('academies').update({ contact_email: nextEmail, contact_email_verified_at: new Date().toISOString() }).eq('id', academyId).eq('owner_user_id', session.user.id);
+      setMessage('Your email is already verified.');
+      return;
+    }
+    if (nextEmail === String(session.user.email || '').toLowerCase()) { setMessage('Please verify your AthleteN account email first.'); return; }
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ email: nextEmail });
+    setBusy(false);
+    if (error) { setMessage(error.message); return; }
+    setEmailVerified(false);
+    setMessage('Verification email sent. Verify the new email, then return to AthleteN and refresh this page.');
+  }
+
+  async function refreshEmailVerification() {
+    setBusy(true);
+    const { data, error } = await supabase.auth.getUser();
+    if (error) { setBusy(false); setMessage(error.message); return; }
+    const verified = String(data.user?.email || '').toLowerCase() === email.trim().toLowerCase() && Boolean(data.user?.email_confirmed_at);
+    setEmailVerified(verified);
+    if (verified && academyId) {
+      await supabase.from('academies').update({ contact_email: email.trim().toLowerCase(), contact_email_verified_at: new Date().toISOString() }).eq('id', academyId).eq('owner_user_id', session?.user.id || '');
+      setMessage('Email verified and account email updated successfully.');
+    } else if (!verified) setMessage('The new email is not verified yet. Open the verification email, then try again.');
+    setBusy(false);
+  }
 
   async function finishSetup() {
     setMessage('');
@@ -105,6 +140,10 @@ export default function AcademySetupScreen() {
     }
     if (!email.includes('@')) {
       setMessage('Enter a valid academy email address.');
+      return;
+    }
+    if (!emailVerified) {
+      setMessage('Verify the Academy email before completing setup.');
       return;
     }
     if (phone.replace(/\D/g, '').length < 10) {
@@ -126,6 +165,7 @@ export default function AcademySetupScreen() {
         country: country.trim(),
         contact_email: email.trim(),
         contact_phone: phone.trim(),
+        contact_email_verified_at: new Date().toISOString(),
         setup_completed: true,
         setup_completed_at: new Date().toISOString(),
       })
@@ -157,7 +197,7 @@ export default function AcademySetupScreen() {
         <View style={s.progress}><View style={s.progressActive}/><View style={s.progressInactive}/><View style={s.progressInactive}/></View>
         <Text style={s.kicker}>ATHLETEN ACADEMY</Text>
         <Text style={s.title}>Set up your academy.</Text>
-        <Text style={s.subtitle}>Your Academy plan is active. Before you enter the Academy dashboard, complete the workspace details below.</Text>
+        <Text style={s.subtitle}>Your Academy plan is active. Complete your workspace details and verify your Academy email before entering the dashboard.</Text>
 
         <View style={s.badge}><Text style={s.badgeText}>ACADEMY PLAN • ACTIVE</Text></View>
 
@@ -171,7 +211,8 @@ export default function AcademySetupScreen() {
 
         <View style={s.card}>
           <Text style={s.section}>ACADEMY CONTACT</Text>
-          <Field label="Contact email *" value={email} onChangeText={setEmail} placeholder="academy@example.com" keyboardType="email-address"/>
+          <Field label="Contact email *" value={email} onChangeText={(v) => { setEmail(v); setEmailVerified(false); }} placeholder="academy@example.com" keyboardType="email-address"/>
+          <View style={{ gap: 8 }}><Text style={s.label}>{emailVerified ? "✓ EMAIL VERIFIED" : "EMAIL VERIFICATION REQUIRED"}</Text><Pressable onPress={() => void verifyOrUpdateEmail()} disabled={busy} style={s.secondaryButton}><Text style={s.secondaryButtonText}>{emailVerified ? "EMAIL VERIFIED" : "VERIFY / SEND EMAIL"}</Text></Pressable>{!emailVerified ? <Pressable onPress={() => void refreshEmailVerification()} disabled={busy} style={s.linkButton}><Text style={s.linkText}>I verified it — check again</Text></Pressable> : null}</View>
           <Field label="Contact phone *" value={phone} onChangeText={setPhone} placeholder="+91 98765 43210" keyboardType="phone-pad"/>
         </View>
 
@@ -212,6 +253,10 @@ const s = StyleSheet.create({
   field:{gap:5},
   label:{color:c.textSecondary,fontSize:10,fontWeight:'800'},
   input:{backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:13,color:c.text,padding:13,fontSize:13},
+  secondaryButton:{borderWidth:1,borderColor:c.accent,borderRadius:13,padding:13,alignItems:"center"},
+  secondaryButtonText:{color:c.accentBright,fontSize:10,fontWeight:"900",letterSpacing:1},
+  linkButton:{alignItems:"center",padding:4},
+  linkText:{color:c.muted,fontSize:10,fontWeight:"800"},
   button:{backgroundColor:c.accent,borderRadius:14,padding:15,alignItems:'center',marginTop:2},
   buttonText:{color:'#fff',fontSize:10,fontWeight:'900',letterSpacing:1},
   message:{color:c.danger,fontSize:11,lineHeight:17},
