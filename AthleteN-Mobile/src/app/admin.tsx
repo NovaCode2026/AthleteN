@@ -162,7 +162,7 @@ export default function AdminScreen() {
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         <View style={s.topBar}>
           <View style={s.brandRow}>
-            <Image source={require('@/assets/logo.png')} style={s.brandLogo} contentFit="cover" />
+            <Image source={require('@/assets/logo.png')} style={s.brandLogo} />
             <View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>OWNER COMMAND CENTER</Text></View>
           </View>
           <Pressable style={s.menuButton} onPress={() => setDrawerOpen(true)}><Icon name="menu" size={17} color={c.text} /><Text style={s.menuText}>MENU</Text></Pressable>
@@ -271,8 +271,8 @@ export default function AdminScreen() {
                   <TextInput value={field.value} onChangeText={value => setField(field.key, value)} placeholder={labelize(field.key)} placeholderTextColor={c.muted} style={s.input} multiline={field.value.length > 80} />
                 </View>
               ))}
-              {selected === 'profiles' && !owner ? <View style={s.roleProtected}><Text style={s.roleProtectedTitle}>ACCESS ROLE PROTECTED</Text><Text style={s.roleProtectedText}>Only the owner can assign Admin or Super Admin. Your administrator role can manage athlete data without changing privileged access.</Text></View> : null}
-              {selected === 'profiles' && owner ? <View style={s.rolePanel}><Text style={s.rolePanelTitle}>ACCESS ROLE</Text><Text style={s.rolePanelHint}>Owner-only permission. Choose who can access the Admin Command Center.</Text><View style={s.roleButtons}>{['athlete','coach','academy_admin','support_admin','admin','super_admin'].map(role => <Pressable key={role} onPress={() => setField('role', role)} style={[s.roleButton, fields.find(field => field.key === 'role')?.value === role && s.roleButtonActive]}><Text style={[s.roleButtonText, fields.find(field => field.key === 'role')?.value === role && s.roleButtonTextActive]}>{role.replace('_',' ').toUpperCase()}</Text></Pressable>)}</View></View> : null}
+              {selected === 'profiles' && !owner ? <View style={s.panel}><Text style={s.panelTitle}>ACCESS ROLE PROTECTED</Text><Text style={s.panelHint}>Only the owner can assign Admin or Super Admin. Your administrator role can manage athlete data without changing privileged access.</Text></View> : null}
+              {selected === 'profiles' && owner ? <View style={s.panel}><Text style={s.panelTitle}>ACCESS ROLE</Text><Text style={s.panelHint}>Owner-only permission. Choose who can access the Admin Command Center.</Text><View style={s.choiceRow}>{['athlete','coach','academy_admin','support_admin','admin','super_admin'].map(role => <Pressable key={role} onPress={() => setField('role', role)} style={[s.roleButton, fields.find(field => field.key === 'role')?.value === role && s.choiceActive]}><Text style={[s.choiceText, fields.find(field => field.key === 'role')?.value === role && s.choiceTextActive]}>{role.replace('_',' ').toUpperCase()}</Text></Pressable>)}</View></View> : null}
               <Text style={s.advancedHint}>Advanced database fields such as IDs and timestamps are protected from normal editing.</Text>
             </ScrollView>
             <View style={s.editorActions}>
