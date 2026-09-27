@@ -44,8 +44,8 @@ export default function EntryGate() {
 
   useEffect(() => {
     if (!session || !profile || ageChecking) return;
-    const isAcademy = profile.role === 'academy_admin' || profile.role === 'academy';
-    if (!isAcademy) {
+    const isAcademyPlan = String(profile.plan_id || '').toLowerCase() === 'academy';
+    if (!isAcademyPlan) {
       setAcademySetup('not_applicable');
       return;
     }
@@ -61,14 +61,14 @@ export default function EntryGate() {
       setAcademySetup(error || !data || data.status !== 'active' || data.setup_completed !== true ? 'required' : 'complete');
     })();
     return () => { cancelled = true; };
-  }, [session?.user.id, profile?.user_id, profile?.role, profile?.academy_id, ageChecking]);
+  }, [session?.user.id, profile?.user_id, profile?.role, profile?.plan_id, profile?.academy_id, ageChecking]);
 
   useEffect(() => {
     if (!session || !profile || ageChecking || academySetup === 'checking') return;
     const approved = ageStatus === 'approved' || ageStatus === 'not_required' || ageStatus === 'qa_verified';
     if (!approved) return;
 
-    if ((profile.role === 'academy_admin' || profile.role === 'academy') && academySetup === 'required') {
+    if (String(profile.plan_id || '').toLowerCase() === 'academy' && academySetup === 'required') {
       let cancelled = false;
       const timer = setTimeout(() => { if (!cancelled) void router.replace('/academy-setup'); }, 50);
       return () => { cancelled = true; clearTimeout(timer); };
@@ -90,7 +90,7 @@ export default function EntryGate() {
     };
   }, [session?.user.id, profile?.user_id, profile?.role, ageChecking, ageStatus, academySetup, router]);
 
-  if (loading || (session && profileLoading) || ageChecking || (session && profile && (profile.role === 'academy_admin' || profile.role === 'academy') && academySetup === 'checking')) return <Loading />;
+  if (loading || (session && profileLoading) || ageChecking || (session && profile && (String(profile.plan_id || '').toLowerCase() === 'academy' && academySetup === 'checking')) return <Loading />;
 
   if (authError) {
     return (
