@@ -29,7 +29,7 @@ function Bar({state,navigation}:{state:any;navigation:any}){
 }
 
 export default function TabLayout(){
- return <Tabs tabBar={p=><Bar {...p}/>} screenOptions={{headerShown:false,sceneStyle:{backgroundColor:c.background}}}>
+ return <Tabs tabBar={(p:any)=><Bar {...p}/>} screenOptions={{headerShown:false,sceneStyle:{backgroundColor:c.background}}}>
   {AVAILABLE.map(x=><Tabs.Screen key={x.id} name={x.id}/>)}
  </Tabs>
 }
