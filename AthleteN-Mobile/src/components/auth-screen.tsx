@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
@@ -167,7 +167,9 @@ export default function AuthScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.topAccent} />
-      <View style={styles.content}>
+      <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <View style={styles.content}>
         <View style={styles.brandBlock}>
           <Image source={require('@/assets/logo.png')} style={styles.logo} />
           <View><Text style={styles.brand}>ATHLETEN</Text><Text style={styles.brandSub}>ATHLETE PERFORMANCE PLATFORM</Text></View>
@@ -200,7 +202,9 @@ export default function AuthScreen() {
         <Pressable onPress={() => { setRegister(!register); setError(''); setVerificationNotice(''); }}>
           <Text style={styles.switch}>{register ? 'Already have an account? Sign in' : 'New to AthleteN? Create an account'}</Text>
         </Pressable>
-      </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -208,7 +212,9 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   screen:{flex:1,backgroundColor:Colors.dark.background},
   topAccent:{position:'absolute',top:0,left:0,right:0,height:3,backgroundColor:Colors.dark.accent},
-  content:{flex:1,paddingHorizontal:24,justifyContent:'center',gap:13},
+  keyboard:{flex:1},
+  scrollContent:{flexGrow:1},
+  content:{flexGrow:1,paddingHorizontal:24,paddingVertical:24,justifyContent:'center',gap:13},
   brandBlock:{flexDirection:'row',alignItems:'center',gap:11,marginBottom:14},
   logo:{width:54,height:54,borderRadius:16},
   brand:{color:Colors.dark.text,fontSize:16,fontWeight:'900',letterSpacing:3.6},
