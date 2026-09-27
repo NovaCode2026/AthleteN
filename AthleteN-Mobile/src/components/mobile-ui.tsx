@@ -66,3 +66,5 @@ const s=StyleSheet.create({
  emptyTitle:{color:c.text,fontSize:14,fontWeight:'800'},
  muted:{color:c.muted,fontSize:10,lineHeight:16}
 });
+
+export const ui=s;
