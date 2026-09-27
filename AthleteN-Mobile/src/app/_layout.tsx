@@ -48,6 +48,7 @@ export default function RootLayout() {
           <AnnouncementOverlay />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.dark.background } }}>
             <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="academy-setup" options={{ headerShown: false }} />
             <Stack.Screen name="reset-request" options={{ headerShown: false }} />
             <Stack.Screen name="reset-password" options={{ headerShown: false }} />
             <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
