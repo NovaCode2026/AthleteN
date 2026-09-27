@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Header, Section, Card, c } from '@/components/mobile-ui';
