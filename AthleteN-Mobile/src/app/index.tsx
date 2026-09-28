@@ -90,7 +90,7 @@ export default function EntryGate() {
     };
   }, [session?.user.id, profile?.user_id, profile?.role, ageChecking, ageStatus, academySetup, router]);
 
-  if (loading || (session && profileLoading) || ageChecking || (session && profile && (String(profile.plan_id || '').toLowerCase() === 'academy' && academySetup === 'checking')) return <Loading />;
+  if (loading || (session && profileLoading) || ageChecking || (session && profile && String(profile.plan_id || '').toLowerCase() === 'academy' && academySetup === 'checking')) return <Loading />;
 
   if (authError) {
     return (
