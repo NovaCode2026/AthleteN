@@ -74,7 +74,7 @@ export default function AcademySetupScreen() {
 
       const { data, error } = await supabase
         .from('academies')
-        .select('id,name,city,state,country,contact_email,contact_phone,setup_completed')
+        .select('id,name,city,state,country,contact_email,contact_phone,contact_email_verified_at,setup_completed')
         .eq('id', id)
         .single();
 
@@ -90,7 +90,7 @@ export default function AcademySetupScreen() {
       setState(String(data.state || ''));
       setCountry(String(data.country || 'India'));
       setEmail(String(data.contact_email || ''));
-      setEmailVerified(Boolean(data.contact_email_verified_at) && String(data.contact_email || '').toLowerCase() === String(session.user.email || '').toLowerCase());
+      setEmailVerified(Boolean((data as any).contact_email_verified_at) && String(data.contact_email || '').toLowerCase() === String(session.user.email || '').toLowerCase());
       setPhone(String(data.contact_phone || ''));
       setLoading(false);
     })();
