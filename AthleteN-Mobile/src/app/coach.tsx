@@ -25,7 +25,6 @@ function ActionCard({ icon, tone, title, subtitle, onPress }: { icon: string; to
 }
 
 function TrainingChart({ points }: { points: DayPoint[] }) {
-  const [refreshing,setRefreshing]=useState(false);
  const [chartWidth, setChartWidth] = useState(0);
   const max = Math.max(1, ...points.flatMap(p => [p.sessions, p.attended]));
   return <View style={{ gap: 8 }}>
@@ -68,6 +67,7 @@ export default function Coach() {
   const [draws, setDraws] = useState(0);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [trainingPoints, setTrainingPoints] = useState<DayPoint[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     if (!profile?.user_id) return;
