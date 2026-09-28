@@ -70,7 +70,7 @@ export default function EntryGate() {
 
     if (String(profile.plan_id || '').toLowerCase() === 'academy' && academySetup === 'required') {
       let cancelled = false;
-      const timer = setTimeout(() => { if (!cancelled) void router.replace('/academy-setup'); }, 50);
+      const timer = setTimeout(() => { if (!cancelled) void router.replace('/academy-setup' as any); }, 50);
       return () => { cancelled = true; clearTimeout(timer); };
     }
     const role = String(profile.role || 'athlete');
