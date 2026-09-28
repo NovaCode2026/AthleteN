@@ -10,7 +10,7 @@ import { validMinutes, validWeight } from '@/lib/performance';
 import { calculateStreak } from '@/lib/streak';
 import { PerformanceLine, ChartPoint } from '@/components/performance-chart';
 import PlanSection from '@/components/plan-section';
-import { Icon, SupportContact } from '@/components/mobile-ui';
+import { Icon, SupportContact, RefreshButton } from '@/components/mobile-ui';
 import { requestWidgetUpdate } from 'react-native-android-widget';
 import { AthleteWidget } from '@/widgets/AthleteWidget';
 
@@ -18,7 +18,7 @@ const c=Colors.dark;
 
 export default function HomeScreen(){
  const {session,profile}=useAuth(); const router=useRouter();
- const [minutes,setMinutes]=useState(0);const [sessions,setSessions]=useState(0);const [chart,setChart]=useState<ChartPoint[]>([]);const [weight,setWeight]=useState<number|null>(null);const [medals,setMedals]=useState(0);const [next,setNext]=useState<any>(null);const [streak,setStreak]=useState(calculateStreak([]));const [unread,setUnread]=useState(0);
+ const [refreshing,setRefreshing]=useState(false);const [minutes,setMinutes]=useState(0);const [sessions,setSessions]=useState(0);const [chart,setChart]=useState<ChartPoint[]>([]);const [weight,setWeight]=useState<number|null>(null);const [medals,setMedals]=useState(0);const [next,setNext]=useState<any>(null);const [streak,setStreak]=useState(calculateStreak([]));const [unread,setUnread]=useState(0);
  const load=useCallback(async()=>{
   if(!session)return; const uid=session.user.id; const now=new Date(); const days:string[]=[];
   for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);days.push([d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'))}
@@ -38,9 +38,10 @@ export default function HomeScreen(){
   } catch {}
  },[session]);
  useEffect(()=>{void load()},[load]);
+ const refresh=useCallback(async()=>{setRefreshing(true);try{await load()}finally{setRefreshing(false)}},[load]);
  const first=profile?.full_name?.split(' ')[0]||'Athlete';
  return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-  <View style={s.header}><View style={s.brandRow}><Image source={require('@/assets/logo.png')} style={s.logo}/><View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>ATHLETE PERFORMANCE</Text></View></View><View style={s.headerActions}><Pressable onPress={()=>router.push('/notifications')} style={s.iconButton}><Icon name="bell" size={19} color={c.text}/>{unread>0?<View style={s.badge}><Text style={s.badgeText}>{unread>9?'9+':unread}</Text></View>:null}</Pressable><Pressable onPress={()=>router.push('/profile')} style={s.settings}><Icon name="settings" size={19} color={c.text}/></Pressable></View></View>
+  <View style={s.header}><View style={s.brandRow}><Image source={require('@/assets/logo.png')} style={s.logo}/><View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>ATHLETE PERFORMANCE</Text></View></View><View style={s.headerActions}><RefreshButton onPress={()=>void refresh()} busy={refreshing}/><Pressable onPress={()=>router.push('/notifications')} style={s.iconButton}><Icon name="bell" size={19} color={c.text}/>{unread>0?<View style={s.badge}><Text style={s.badgeText}>{unread>9?'9+':unread}</Text></View>:null}</Pressable><Pressable onPress={()=>router.push('/profile')} style={s.settings}><Icon name="settings" size={19} color={c.text}/></Pressable></View></View>
   <View style={s.hero}><View><Text style={s.kicker}>YOUR PERFORMANCE HUB</Text><Text style={s.greeting}>Good morning,</Text><Text style={s.name}>{first}</Text><View style={s.pill}><View style={s.dot}/><Text style={s.pillText}>{(profile?.discipline||'TAEKWONDO').toUpperCase()} • LIVE</Text></View></View><View style={s.heroOrb}><Text style={s.heroMark}>A</Text></View></View>
   <View style={s.grid}><Metric label="7D SESSIONS" value={sessions}/><Metric label="7D MINUTES" value={minutes} suffix=" min"/><Metric label="MEDALS" value={medals}/><Metric label="LATEST WEIGHT" value={weight==null?'—':weight} suffix={weight==null?'':' kg'}/></View>
   <PlanSection />
