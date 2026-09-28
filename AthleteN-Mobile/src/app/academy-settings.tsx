@@ -32,7 +32,7 @@ export default function AcademySettings(){
   <Row icon="chart" title="Academy plan & billing" subtitle="View your current plan, AI allowance and available plan changes." onPress={()=>router.push('/plans')}/>
   <Text style={{color:c.muted,fontSize:9,fontWeight:'900',letterSpacing:1.4,marginTop:7}}>ACCOUNT</Text>
   <Row icon="bell" title="Notifications" subtitle="Open your AthleteN notifications." onPress={()=>router.push('/notifications')}/>
-  <Row icon="lock" title="Security & account" subtitle="Manage your account through the standard AthleteN account controls." onPress={()=>router.push('/change-password')}/>
+  <Row icon="lock" title="Security & account" subtitle="Manage your account through the standard AthleteN account controls." onPress={()=>router.push('/change-password' as any)}/>
   <Row icon="close" title="Sign out" subtitle="Sign out of this AthleteN account." onPress={()=>void signOut()} danger/>
  </ScrollView>
 }
