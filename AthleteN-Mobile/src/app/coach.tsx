@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Screen, Card, c, Icon } from '@/components/mobile-ui';
+import { Screen, Card, c, Icon, RefreshButton } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import CoachNav from '@/components/coach-nav';
@@ -25,7 +25,8 @@ function ActionCard({ icon, tone, title, subtitle, onPress }: { icon: string; to
 }
 
 function TrainingChart({ points }: { points: DayPoint[] }) {
-  const [chartWidth, setChartWidth] = useState(0);
+  const [refreshing,setRefreshing]=useState(false);
+ const [chartWidth, setChartWidth] = useState(0);
   const max = Math.max(1, ...points.flatMap(p => [p.sessions, p.attended]));
   return <View style={{ gap: 8 }}>
     <View onLayout={e => setChartWidth(e.nativeEvent.layout.width)} style={{ height: 150, position: 'relative', paddingTop: 8 }}>
@@ -118,7 +119,9 @@ export default function Coach() {
     } else setAvatar(null);
   }, [profile?.user_id, profile?.profile_image_path]);
 
-  useEffect(() => { void load(); }, [load]);
+  const refresh=async()=>{setRefreshing(true);try{await load()}finally{setRefreshing(false)}};
+
+ useEffect(() => { void load(); }, [load]);
 
   const totalMatches = wins + losses + draws;
   const recordText = totalMatches ? String(wins) + 'W · ' + String(losses) + 'L' + (draws ? ' · ' + String(draws) + 'D' : '') : 'No match data yet';
