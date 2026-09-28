@@ -7,7 +7,7 @@ import { Colors } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Icon } from '@/components/mobile-ui';
+import { Icon, RefreshButton } from '@/components/mobile-ui';
 
 const c = Colors.dark;
 
@@ -63,6 +63,7 @@ export default function AdminScreen() {
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementBody, setAnnouncementBody] = useState('');
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -88,6 +89,8 @@ export default function AdminScreen() {
     else setRows((data || []) as Row[]);
     setLoading(false);
   }, [canManage, selected]);
+
+  const refresh = useCallback(async () => { setRefreshing(true); try { await Promise.all([load(), loadCounts()]); } finally { setRefreshing(false); } }, [load, loadCounts]);
 
   useEffect(() => { void loadCounts(); }, [loadCounts]);
   useEffect(() => { void load(); }, [load]);
@@ -166,7 +169,7 @@ export default function AdminScreen() {
             <Image source={require('@/assets/logo.png')} style={s.brandLogo} />
             <View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>OWNER COMMAND CENTER</Text></View>
           </View>
-          <Pressable style={s.menuButton} onPress={() => setDrawerOpen(true)}><Icon name="menu" size={17} color={c.text} /><Text style={s.menuText}>MENU</Text></Pressable>
+          <View style={{flexDirection:'row',alignItems:'center',gap:8}}><RefreshButton onPress={()=>void refresh()} busy={refreshing}/><Pressable style={s.menuButton} onPress={() => setDrawerOpen(true)}><Icon name="menu" size={17} color={c.text} /><Text style={s.menuText}>MENU</Text></Pressable></View>
         </View>
 
         <View style={s.hero}>
