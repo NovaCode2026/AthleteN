@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Icon as AppIcon } from '@/components/mobile-ui';
-import { Screen, Card, Button, Field, c } from '@/components/mobile-ui';
+import { Screen, Card, Button, Field, c, RefreshButton } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { getAiLimit } from '@/lib/entitlements';
@@ -69,6 +69,7 @@ export default function Academy(){
  const [financeAccount,setFinanceAccount]=useState<any>(null); const [financeTx,setFinanceTx]=useState<any[]>([]);
  const [groupName,setGroupName]=useState(''); const [groupFocus,setGroupFocus]=useState(''); const [groupCoach,setGroupCoach]=useState(''); const [groupDays,setGroupDays]=useState('Mon,Wed,Fri'); const [groupTime,setGroupTime]=useState('17:00'); const [groupDuration,setGroupDuration]=useState('90'); const [groupAthletes,setGroupAthletes]=useState(''); const [financeType,setFinanceType]=useState<'income'|'expense'>('income'); const [financeAmount,setFinanceAmount]=useState(''); const [financeCategory,setFinanceCategory]=useState('Training fees'); const [financeDescription,setFinanceDescription]=useState('');
  const [busy,setBusy]=useState(false);
+ const [refreshing,setRefreshing]=useState(false);
  const [aiQuestion,setAiQuestion]=useState('');
  const [aiAnswer,setAiAnswer]=useState('');
  const [aiBusy,setAiBusy]=useState(false);
@@ -126,6 +127,7 @@ export default function Academy(){
 
  useEffect(()=>{void (async()=>{try{const raw=await AsyncStorage.getItem(ACADEMY_NAV_KEY);if(raw){const p=JSON.parse(raw);if(Array.isArray(p)){const valid=p.filter((x:string)=>ACADEMY_NAV_AVAILABLE.some(a=>a.id===x));setNavOrder([...valid,...ACADEMY_NAV_DEFAULT.filter(x=>!valid.includes(x))].slice(0,6));}}}catch{}})()},[]);
  useEffect(()=>{void load()},[profile?.academy_id]);
+ const refresh=async()=>{setRefreshing(true);try{await load()}finally{setRefreshing(false)}};
  useEffect(()=>{
   if(profile && !isAcademyRole){
    router.replace(profile.role === 'coach' ? '/coach' : profile.role === 'admin' || profile.role === 'super_admin' || profile.role === 'support_admin' ? '/admin' : '/(tabs)');
@@ -197,7 +199,7 @@ export default function Academy(){
 
   <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
    <View><Text style={{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1.5}}>ATHLETEN ACADEMY</Text><Text style={{color:c.text,fontSize:25,fontWeight:'900',marginTop:3}}>{academy?.name||'Academy'}</Text></View>
-   <View style={{flexDirection:'row',alignItems:'center',gap:8}}>
+   <View style={{flexDirection:'row',alignItems:'center',gap:8}}><RefreshButton onPress={()=>void refresh()} busy={refreshing}/>>
      <Pressable onPress={()=>router.push('/academy-settings')} style={{width:40,height:40,borderRadius:13,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,alignItems:'center',justifyContent:'center'}}><Icon name="settings" size={18}/></Pressable>
      <Pressable onPress={()=>void load()} style={{width:40,height:40,borderRadius:13,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,alignItems:'center',justifyContent:'center'}}><Icon name="refresh" size={18}/></Pressable>
     </View>
