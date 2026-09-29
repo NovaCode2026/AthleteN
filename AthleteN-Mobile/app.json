@@ -60,7 +60,8 @@
           ]
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/withAthleteNJava17Toolchain"
     ],
     "experiments": {
       "typedRoutes": true,
