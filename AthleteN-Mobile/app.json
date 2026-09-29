@@ -7,9 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "athletenmobile",
     "userInterfaceStyle": "automatic",
-    "ios": {
-      "icon": "./assets/expo.icon"
-    },
+    "ios": { "icon": "./assets/expo.icon" },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -20,52 +18,26 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.AthleteNMobile"
     },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
+    "web": { "output": "static", "favicon": "./assets/images/favicon.png" },
     "plugins": [
       "expo-router",
-      [
-        "expo-web-browser",
-        {
-          "experimentalLauncherActivity": false
-        }
-      ],
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
-        }
-      ],
+      ["expo-web-browser", { "experimentalLauncherActivity": false }],
+      ["expo-splash-screen", { "backgroundColor": "#208AEF", "image": "./assets/images/splash-icon.png", "imageWidth": 76 }],
       "expo-notifications",
-      [
-        "react-native-android-widget",
-        {
-          "widgets": [
-            {
-              "name": "AthleteN",
-              "label": "AthleteN",
-              "description": "AthleteN training streak and athlete status",
-              "minWidth": "250dp",
-              "minHeight": "110dp",
-              "targetCellWidth": 4,
-              "targetCellHeight": 2,
-              "resizeMode": "horizontal|vertical",
-              "updatePeriodMillis": 1800000,
-              "widgetCategory": "home_screen"
-            }
-          ]
-        }
-      ],
-      "expo-secure-store",
-      "./plugins/withAthleteNJava17Toolchain"
+      ["react-native-android-widget", { "widgets": [{
+        "name": "AthleteN",
+        "label": "AthleteN",
+        "description": "AthleteN training streak and athlete status",
+        "minWidth": "250dp",
+        "minHeight": "110dp",
+        "targetCellWidth": 4,
+        "targetCellHeight": 2,
+        "resizeMode": "horizontal|vertical",
+        "updatePeriodMillis": 1800000,
+        "widgetCategory": "home_screen"
+      }] }],
+      "expo-secure-store"
     ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    }
+    "experiments": { "typedRoutes": true, "reactCompiler": true }
   }
 }
