@@ -7,8 +7,7 @@
     "userInterfaceStyle": "dark",
     "scheme": "athleten",
     "android": {
-      "package": "com.anonymous.AthleteNMobile",
-      "versionCode": 2
+      "package": "com.anonymous.AthleteNMobile"
     },
     "plugins": [
       "expo-router",
