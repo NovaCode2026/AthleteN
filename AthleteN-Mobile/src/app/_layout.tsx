@@ -53,6 +53,7 @@ export default function RootLayout() {
             <Stack.Screen name="reset-request" options={{ headerShown: false }} />
             <Stack.Screen name="reset-password" options={{ headerShown: false }} />
             <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+            <Stack.Screen name="policies" options={{ headerShown: false }} />
           </Stack>
         </ThemeProvider>
       </AuthProvider>
