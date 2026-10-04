@@ -1,7 +1,11 @@
 {
+  "cli": {
+    "appVersionSource": "remote"
+  },
   "build": {
     "preview": {
       "distribution": "internal",
+      "node": "22",
       "android": {
         "buildType": "apk"
       }
