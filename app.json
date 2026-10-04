@@ -1,0 +1,26 @@
+﻿{
+  "expo": {
+    "name": "AthleteN-Mobile",
+    "slug": "AthleteN-Mobile",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "athleten",
+    "android": {
+      "package": "com.anonymous.AthleteNMobile",
+      "versionCode": 2
+    },
+    "plugins": [
+      "expo-router",
+      "expo-web-browser",
+      "expo-splash-screen",
+      "expo-notifications",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7f308f88-5459-4f51-bb76-981f381eee3c"
+      }
+    }
+  }
+}
