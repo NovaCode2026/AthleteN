@@ -2,7 +2,7 @@
 
 # 🥋 AthleteN
 
-### The Athlete Operating System for Taekwondo
+### The Athlete Operating System
 
 **Train smarter. Compete stronger. Build your athlete profile.**
 
@@ -14,7 +14,7 @@
 <img src="https://img.shields.io/badge/Supabase-Postgres-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase">
 </p>
 
-**Web + Android mobile • Athlete-first • Taekwondo-focused • AI-assisted**
+**Web + Android • Athlete-first • Taekwondo-focused • AI-assisted**
 
 </div>
 
@@ -28,7 +28,7 @@ It brings **training, competitions, performance, plans, attendance, medals, docu
 
 > **An athlete should have one place to understand where they are, what they need to do next, and how they are progressing.**
 
-AthleteN currently follows a **Taekwondo/Kyorugi-first** direction while its architecture is designed to expand to other sports.
+AthleteN currently follows a **Taekwondo/Kyorugi-first** direction while the product architecture is designed to expand to additional sports over time.
 
 ---
 
