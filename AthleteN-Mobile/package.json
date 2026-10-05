@@ -51,7 +51,16 @@
   },
   "expo": {
     "install": {
-      "exclude": ["expo-document-picker"]
+      "exclude": [
+        "@expo/ui",
+        "expo",
+        "expo-constants",
+        "expo-glass-effect",
+        "expo-image-picker",
+        "expo-linking",
+        "expo-router",
+        "expo-document-picker"
+      ]
     }
   },
   "private": true
