@@ -1,60 +1,57 @@
 # Changelog
 
-All notable changes to AthleteOS are documented here.
+All notable **AthleteN** changes are documented here.
+
+The project evolved from its earlier internal AthleteOS naming into the AthleteN product identity. Historical release notes may retain legacy terminology where it describes the state of the product at that time.
+
+## [Unreleased]
+
+### Product
+- Continued AthleteN web and mobile development.
+- Continued Taekwondo-first athlete, coach, and academy workflows.
+
+### Mobile
+- Hardened Expo startup by removing an optional native widget dependency from the launch path.
+- Cleaned orphan widget integrations and dependency state.
+- Validated installation, TypeScript, ESLint, and Expo Doctor for the hardened mobile path.
+
+### Documentation
+- Reworked the repository README into a product/company-grade overview.
+- Standardized contribution, security, and community documentation around AthleteN.
+- Removed obsolete self-modifying GitHub Actions in favor of explicit validation workflows.
 
 ## [2.0.0] - 2026-08-01
 
-### Added - SRS alignment
-
-- Academy, academy membership, training plan, and attendance schema foundations.
-- Subscription usage and payment event tables for plan metering and billing audit trails.
-- Support ticket, announcement, feature flag, and audit log tables for administrative operations.
-- Expanded RLS helpers for support admin, admin, and super admin roles.
-- Private `academy-media` storage bucket for future academy assets.
-
 ### Added
-
-- TypeScript V2 application shell with typed domain models for plans, verification, usage, feedback, roadmap, and athlete records.
-- Plan catalog for Free, Student, Pro, Champion, and Academy tiers with monthly AI limits.
-- Student verification workflow surface for school ID, fee receipt, and bonafide proof.
-- Feedback portal, public roadmap, and admin command-center foundations.
-- Expanded Supabase schema for verifications, feedback, roadmap items, AI usage events, subscriptions, referrals, and athlete badges.
-- RLS policy coverage for V2 user-owned tables plus public roadmap reads.
-- Payment-provider scaffold metadata for Razorpay, Stripe, and Cashfree.
+- Academy, academy membership, training plan, and attendance schema foundations.
+- Subscription usage and payment event tables.
+- Support ticket, announcement, feature flag, and audit log foundations.
+- Expanded RLS helpers for administrative roles.
+- Private academy media storage foundation.
+- Typed application shell and domain models.
+- Student verification, feedback, roadmap, usage, subscription, referral, and badge foundations.
 
 ### Changed
-
-- Updated the app entrypoint from `src/App.jsx` to `src/App.tsx`.
-- Updated auth, Supabase, and data-access modules to typed TypeScript files.
-- Updated documentation for AthleteOS V2 deployment, modules, and architecture.
+- Migrated major application surfaces from the original JavaScript shell to TypeScript.
+- Updated authentication, Supabase, and data-access modules.
+- Expanded deployment and architecture documentation.
 
 ### Validation
-
-- Production Vite build passes.
-- OpenAI key remains local/server-only and was not committed.
+- Production web build passed.
+- OpenAI credentials remained server-side.
 
 ## [1.0.0] - 2026-07-28
 
 ### Added
-
 - React and Vite production application shell.
-- Supabase Authentication for register, login, logout, password reset, email verification, persistent sessions, and protected access.
-- Supabase data layer for profiles, training sessions, tournaments, matches, medals, certificates, documents, weight logs, calendar events, notifications, checklists, injuries, and goals.
-- SQL setup scripts: `supabase/schema.sql`, `supabase/policies.sql`, and `supabase/storage.sql`.
-- Private Supabase Storage bucket setup for profile images, medal images, certificates, and documents.
-- Secure Netlify Function for OpenAI-powered AI coaching.
-- Netlify deployment configuration and deployment guide.
-- Responsive dashboard with training, tournaments, medals, goals, and weight chart.
-
-### Changed
-
-- Replaced browser `localStorage` persistence with Supabase-backed persistence.
-- Replaced the Node static/API server with Netlify/Vite deployment.
-- Updated README and documentation for cloud setup, security, deployment, and architecture.
-- Split Vite output into React, Supabase, chart, icon, and app chunks.
+- Supabase authentication and protected access.
+- Training, tournament, match, medal, certificate, document, weight, calendar, notification, checklist, injury, and goal data foundations.
+- SQL schema, RLS policy, and storage setup.
+- Secure Netlify Function for AI coaching.
+- Responsive athlete dashboard.
+- Netlify deployment configuration.
 
 ### Security
-
-- OpenAI calls now run only in Netlify Functions.
-- Supabase Row Level Security restricts records to the owning user.
-- `.env.local` remains ignored and secrets are not committed.
+- OpenAI calls moved to server-side functions.
+- Supabase Row Level Security used for protected records.
+- Local environment secrets excluded from version control.
