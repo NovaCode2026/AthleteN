@@ -1,23 +1,36 @@
-# Code of Conduct
+# AthleteN Code of Conduct
 
-## Our Pledge
+## Our Commitment
 
-We are committed to a welcoming, respectful, and productive project community.
+AthleteN aims to be a respectful, professional, and technically constructive project.
+
+We welcome people who improve the product, report problems, ask thoughtful questions, or contribute useful ideas.
 
 ## Expected Behavior
 
 - Be respectful and constructive.
-- Assume good intent while asking for clarity.
-- Keep criticism focused on the work.
-- Help newcomers understand the project.
+- Focus criticism on the work, not the person.
+- Assume good intent while asking for evidence and clarity.
+- Give newcomers enough context to participate.
+- Protect private information.
+- Respect licences, security boundaries, and intellectual property.
+- Keep technical discussions focused on solving the problem.
 
 ## Unacceptable Behavior
 
-- Harassment, threats, or personal attacks
-- Discriminatory language or conduct
-- Sharing private information without permission
-- Repeated disruption of project discussions
+- Harassment, threats, discrimination, or personal attacks
+- Publishing private or sensitive information
+- Deliberately disrupting project infrastructure
+- Malicious security testing without authorization
+- Impersonation or misleading claims of affiliation
+- Repeatedly derailing technical discussions
 
 ## Enforcement
 
-Maintainers may remove comments, close issues, or restrict participation when behavior harms the project community.
+Maintainers may edit or remove inappropriate content, close discussions, restrict participation, or take other reasonable action when behavior harms the project or its community.
+
+For security concerns, use the process in [SECURITY.md](./SECURITY.md).
+
+## Questions
+
+If you are unsure whether something is appropriate, choose the safer and more respectful option and ask the maintainers for clarification.
