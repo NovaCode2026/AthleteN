@@ -4,7 +4,7 @@
 
 ### **THE ATHLETE OPERATING SYSTEM**
 
-**Train smarter. Compete stronger. Build your athlete profile.**
+**Train Smarter. Compete Stronger.**
 
 <p>
 <img src="https://img.shields.io/badge/STATUS-ACTIVE-00C853?style=flat-square" alt="Active">
