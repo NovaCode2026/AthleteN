@@ -20,9 +20,9 @@
 
 ---
 
-## ⚡ What is AthleteN?
+## ⚡ Product Overview
 
-**AthleteN** is a sports-focused platform designed around the real workflow of an athlete — not just a generic fitness tracker.
+**AthleteN** is an athlete-focused sports platform designed around the real workflow of an athlete — not just a generic fitness tracker.
 
 It brings **training, competitions, performance, plans, attendance, medals, documents, goals, nutrition, notifications, verification, coach/academy workflows, and AI-assisted guidance** into one athlete ecosystem.
 
@@ -31,6 +31,12 @@ It brings **training, competitions, performance, plans, attendance, medals, docu
 AthleteN currently follows a **Taekwondo/Kyorugi-first** direction while its architecture is designed to expand to other sports.
 
 ---
+
+## 🎯 Product Vision
+
+AthleteN is being built around a simple product principle: **give athletes one reliable operating layer for the work between training sessions and competition day.**
+
+The platform is designed to connect the athlete's profile, training history, preparation, competition record, coaching relationship, and long-term development rather than treating each activity as an isolated feature.
 
 ## 🥋 The athlete journey
 
@@ -287,7 +293,7 @@ Current mobile gate:
 - 🟢 ESLint
 - 🟢 Expo Doctor
 
-GitHub Actions also provide automated repository validation.
+GitHub Actions provide automated repository validation. A passing mobile validation gate does not replace real-device testing; Android launch, permissions, notifications, camera/scanner flows, and authentication should still be verified on supported physical devices before release.
 
 ---
 
@@ -351,7 +357,7 @@ Multi-sport support • Advanced athlete intelligence • Academy management •
 
 AthleteN is maintained by **Nova Code**.
 
-The project is **proprietary software** and is **not MIT licensed** unless a component is explicitly identified as separately licensed.
+The project is **proprietary software**. Third-party dependencies and separately licensed components remain governed by their own licences.
 
 See [LICENSE](./LICENSE) for the complete terms.
 
