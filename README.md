@@ -1,26 +1,34 @@
 <div align="center">
 
-# 🥋 AthleteN
+# 🥋 **AthleteN**
 
-### The Athlete Operating System
+### **THE ATHLETE OPERATING SYSTEM**
 
 **Train smarter. Compete stronger. Build your athlete profile.**
 
 <p>
-<img src="https://img.shields.io/badge/status-active-00C853?style=for-the-badge" alt="Active">
+<img src="https://img.shields.io/badge/STATUS-ACTIVE-00C853?style=for-the-badge" alt="Active">
 <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
 <img src="https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
 <img src="https://img.shields.io/badge/Expo-57-000020?style=for-the-badge&logo=expo" alt="Expo">
 <img src="https://img.shields.io/badge/Supabase-Postgres-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase">
 </p>
 
-**Web + Android • Athlete-first • Taekwondo-focused • AI-assisted**
+**WEB + ANDROID**  •  **ATHLETE-FIRST**  •  **TAEKWONDO-FOCUSED**  •  **AI-ASSISTED**
 
 </div>
 
 ---
 
-## ⚡ Product Overview
+<div align="center">
+
+### **ATHLETE N // PERFORMANCE // IDENTITY // DEVELOPMENT**
+
+`TRAIN` &nbsp;→&nbsp; `MEASURE` &nbsp;→&nbsp; `PREPARE` &nbsp;→&nbsp; `COMPETE` &nbsp;→&nbsp; `IMPROVE`
+
+</div>
+
+## ⚡ **THE ATHLETEN EXPERIENCE**
 
 **AthleteN** is an athlete-focused sports platform designed around the real workflow of an athlete — not just a generic fitness tracker.
 
@@ -32,7 +40,7 @@ AthleteN currently follows a **Taekwondo/Kyorugi-first** direction while the pro
 
 ---
 
-## 🎯 Product Vision
+## 🎯 **THE VISION**
 
 AthleteN is being built around a simple product principle: **give athletes one reliable operating layer for the work between training sessions and competition day.**
 
@@ -93,7 +101,7 @@ ONBOARD → TRAIN → MEASURE → PLAN → COMPETE → REVIEW → IMPROVE
 
 ---
 
-# 📱 Mobile App
+# 📱 **MOBILE EXPERIENCE**
 
 The AthleteN mobile app uses **Expo + React Native + Expo Router** and follows the same AthleteN product direction as the web platform.
 
@@ -115,7 +123,7 @@ The mobile startup path has been hardened so an optional native Android widget c
 
 ---
 
-# 🧠 Product pillars
+# 🧠 **THE ATHLETEN SYSTEM**
 
 | Pillar | Purpose |
 |---|---|
@@ -129,7 +137,7 @@ The mobile startup path has been hardened so an optional native Android widget c
 
 ---
 
-# 💳 AthleteN Plans
+# 💳 **PLANS**
 
 | Plan | Monthly | Yearly | AI messages / month |
 |---|---:|---:|---:|
@@ -144,7 +152,7 @@ The mobile startup path has been hardened so an optional native Android widget c
 
 ---
 
-# 🏗️ Architecture
+# 🏗️ **ARCHITECTURE**
 
 ```text
                  ┌─────────────────────┐
@@ -181,7 +189,7 @@ The mobile startup path has been hardened so an optional native Android widget c
 
 ---
 
-# 🛠️ Tech Stack
+# 🛠️ **TECHNOLOGY**
 
 ### Web
 React • TypeScript • Vite • Supabase • Netlify Functions
@@ -197,7 +205,7 @@ Server-side AI integration • Athlete context • Plan-aware usage controls
 
 ---
 
-# 📂 Repository structure
+# 📂 **REPOSITORY**
 
 ```text
 AthleteN/
@@ -215,7 +223,7 @@ AthleteN/
 
 ---
 
-# 🚀 Getting Started
+# 🚀 **GET STARTED**
 
 ## Web
 
@@ -274,7 +282,7 @@ SYNC → INSTALL → CLEAR CACHE → LAUNCH → TEST
 
 ---
 
-# 🧪 Validation
+# 🧪 **ENGINEERING QUALITY**
 
 Mobile validation:
 
@@ -297,7 +305,7 @@ GitHub Actions provide automated repository validation. A passing mobile validat
 
 ---
 
-# 🗄️ Supabase Setup
+# 🗄️ **SUPABASE**
 
 Run SQL in this order:
 
@@ -309,7 +317,7 @@ Then configure authentication, redirect URLs, storage policies, RLS and environm
 
 ---
 
-# 🌐 Deployment
+# 🌐 **DEPLOYMENT**
 
 ### Netlify
 1. Connect the GitHub repository.
@@ -328,7 +336,7 @@ Never expose:
 
 ---
 
-# 🥋 Taekwondo-first
+# 🥋 **TAEKWONDO FIRST**
 
 AthleteN is intentionally more than a generic workout tracker.
 
@@ -336,11 +344,11 @@ It is built around concepts such as:
 
 **Kyorugi • Poomsae • Tournaments • Matches • Medals • Training • Weight • Coaches • Academies • Competition preparation**
 
-> **Start with Taekwondo. Build the operating system for athletes.**
+> ### **START WITH TAEKWONDO. BUILD FOR EVERY ATHLETE.**
 
 ---
 
-# 🗺️ Product Direction
+# 🗺️ **PRODUCT DIRECTION**
 
 ### Current
 Dashboard • Mobile • Training • Competitions • Profile • Supabase • Coach/academy foundation • AI-assisted features
@@ -353,7 +361,7 @@ Multi-sport support • Advanced athlete intelligence • Academy management •
 
 ---
 
-# 🤝 Project & Licence
+# 🤝 **PROJECT & LICENCE**
 
 AthleteN is maintained by **Nova Code**.
 
@@ -367,7 +375,7 @@ See [LICENSE](./LICENSE) for the complete terms.
 
 ## 🥋 Train. Compete. Improve. Repeat.
 
-**AthleteN — built for athletes who want more than a scoreboard.**
+**AthleteN — the operating layer between training and competition.**
 
 Made with ⚡ by **Nova Code**
 
