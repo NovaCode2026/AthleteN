@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "AthleteN-Mobile",
-    "slug": "AthleteN-Mobile",
+    "name": "AthleteN",
+    "slug": "athleten",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "athletenmobile",
-    "userInterfaceStyle": "automatic",
+    "scheme": "athleten",
+    "userInterfaceStyle": "dark",
     "ios": { "icon": "./assets/expo.icon" },
     "android": {
       "adaptiveIcon": {
@@ -22,20 +22,8 @@
     "plugins": [
       "expo-router",
       ["expo-web-browser", { "experimentalLauncherActivity": false }],
-      ["expo-splash-screen", { "backgroundColor": "#208AEF", "image": "./assets/images/splash-icon.png", "imageWidth": 76 }],
+      ["expo-splash-screen", { "backgroundColor": "#05070B", "image": "./assets/images/splash-icon.png", "imageWidth": 76 }],
       "expo-notifications",
-      ["react-native-android-widget", { "widgets": [{
-        "name": "AthleteN",
-        "label": "AthleteN",
-        "description": "AthleteN training streak and athlete status",
-        "minWidth": "250dp",
-        "minHeight": "110dp",
-        "targetCellWidth": 4,
-        "targetCellHeight": 2,
-        "resizeMode": "horizontal|vertical",
-        "updatePeriodMillis": 1800000,
-        "widgetCategory": "home_screen"
-      }] }],
       "expo-secure-store"
     ],
     "experiments": { "typedRoutes": true, "reactCompiler": true }
