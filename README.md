@@ -1,20 +1,18 @@
 <div align="center">
 
-# 🥋 AthleteN
+# 🥋 **AthleteN**
 
-### The Athlete Operating System for Taekwondo
+### **THE ATHLETE OPERATING SYSTEM**
 
-**Train smarter. Compete stronger. Build your athlete profile.**
+**Train Smarter. Compete Stronger.**
 
 <p>
-<img src="https://img.shields.io/badge/status-active-00C853?style=for-the-badge" alt="Active">
-<img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
-<img src="https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
-<img src="https://img.shields.io/badge/Expo-57-000020?style=for-the-badge&logo=expo" alt="Expo">
-<img src="https://img.shields.io/badge/Supabase-Postgres-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase">
+<img src="https://img.shields.io/badge/STATUS-ACTIVE-00C853?style=flat-square" alt="Active">
 </p>
 
-**Web + Android mobile • Athlete-first • Taekwondo-focused • AI-assisted**
+**WEB + ANDROID**  ·  **ATHLETE-FIRST**  ·  **TAEKWONDO-FOCUSED**  ·  **AI-ASSISTED**
+
+<sub>React 19 · TypeScript 6 · Expo 57 · Supabase</sub>
 
 </div>
 
