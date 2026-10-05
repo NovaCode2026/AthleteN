@@ -1,146 +1,368 @@
-# AthleteN - Taekwondo Edition
+<div align="center">
 
-**AthleteN** is a production-ready cloud operating system for Taekwondo athletes, built with React, TypeScript, Vite, Supabase, Netlify, and secure server-side OpenAI coaching.
+# 🥋 AthleteN
 
-## Features
+### The Athlete Operating System for Taekwondo
 
-- Secure Supabase authentication: registration, login, logout, email verification, password reset, remembered sessions, and protected routes
-- TypeScript app shell with typed plans, athlete data, verification, feedback, roadmap, and usage models
-- Supabase-backed athlete profile, academies, academy memberships, training plans, attendance, tournaments, matches, medals, certificates, documents, weight logs, calendar, notifications, checklists, injuries, goals, feedback, verifications, subscriptions, referrals, badges, support tickets, announcements, feature flags, audit logs, and AI usage events
-- Row Level Security so athlete-owned records stay private by default
-- Student verification workflow for school ID, fee receipt, and bonafide proof
-- Plan system: Free, Student, Pro, Champion, and Academy with monthly AI limits
-- AI Coach through Netlify Functions so `OPENAI_API_KEY` never ships to the browser
-- Payment-provider scaffold for Razorpay, Stripe, and Cashfree
-- Admin command-center foundation for users, plans, verifications, feedback, roadmap, badges, support tickets, announcements, feature flags, audit logs, AI usage, academy operations, and analytics
-- Responsive AthleteN branded UI for desktop, tablet, and mobile
+**Train smarter. Compete stronger. Build your athlete profile.**
 
-## Architecture
+<p>
+<img src="https://img.shields.io/badge/status-active-00C853?style=for-the-badge" alt="Active">
+<img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
+<img src="https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
+<img src="https://img.shields.io/badge/Expo-57-000020?style=for-the-badge&logo=expo" alt="Expo">
+<img src="https://img.shields.io/badge/Supabase-Postgres-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase">
+</p>
+
+**Web + Android mobile • Athlete-first • Taekwondo-focused • AI-assisted**
+
+</div>
+
+---
+
+## ⚡ What is AthleteN?
+
+**AthleteN** is a sports-focused platform designed around the real workflow of an athlete — not just a generic fitness tracker.
+
+It brings **training, competitions, performance, plans, attendance, medals, documents, goals, nutrition, notifications, verification, coach/academy workflows, and AI-assisted guidance** into one athlete ecosystem.
+
+> **An athlete should have one place to understand where they are, what they need to do next, and how they are progressing.**
+
+AthleteN currently follows a **Taekwondo/Kyorugi-first** direction while its architecture is designed to expand to other sports.
+
+---
+
+## 🥋 The athlete journey
 
 ```text
-React + TypeScript + Vite browser app
-  -> Supabase Auth
-  -> Supabase Postgres with RLS
-  -> Supabase Storage private buckets
-  -> Netlify Functions for secret server operations
-  -> OpenAI Responses API for AI Coach
+ONBOARD → TRAIN → MEASURE → PLAN → COMPETE → REVIEW → IMPROVE
 ```
 
-The browser uses only Supabase publishable anon credentials. OpenAI keys, payment secrets, and future webhook secrets belong only in Netlify/server environments.
+### 🏠 Dashboard
+- Athlete overview and streaks
+- Competition countdown
+- Training minutes and sessions
+- Performance trends
+- Upcoming events
+- Notifications and quick actions
 
-## Requirements
+### 🥊 Training & Performance
+- Training sessions
+- Performance history
+- Goals and checklists
+- Training plans
+- Weight logging
+- Competition preparation
 
-- Node.js 18+
-- Supabase project
-- Netlify project
-- OpenAI API key configured only in server environment variables
+### 🏆 Competition
+- Tournaments and matches
+- Medals and achievements
+- Certificates
+- Competition checklist
+- Competition history
 
-## Environment variables
+### 🤖 AI Coach
+- Athlete-aware coaching experience
+- Plan-aware usage limits
+- Secure server-side AI requests
+- Training and planning assistance
 
-Frontend:
+> AI features are assistance tools and do not replace qualified coaches or medical professionals.
 
-```bash
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
+### 👥 Coach & Academy
+- Academy memberships
+- Coach/athlete relationship foundation
+- Attendance workflows
+- Training plans
+- Academy operations
+- Role-aware experiences
+
+### 📁 Athlete Records
+- Profile and verification
+- Documents
+- Goals and injuries
+- Notifications
+- Feedback and support
+- Badges and referrals
+
+---
+
+# 📱 Mobile App
+
+The AthleteN mobile app uses **Expo + React Native + Expo Router** and follows the same AthleteN product direction as the web platform.
+
+| 🏠 Home | 🏋️ Training | 🏆 Compete | 📷 Scanner | 👤 Profile |
+|---|---|---|---|---|
+
+Built for the moments athletes actually need it: **at training, on competition day, travelling, or checking progress quickly.**
+
+### Mobile stability
+- ✅ Dependency installation
+- ✅ TypeScript
+- ✅ ESLint
+- ✅ Expo Doctor
+- ✅ Expo Router entrypoint
+- ✅ Supabase integration architecture
+- ✅ Android configuration review
+
+The mobile startup path has been hardened so an optional native Android widget cannot block app launch.
+
+---
+
+# 🧠 Product pillars
+
+| Pillar | Purpose |
+|---|---|
+| 🥋 **Train** | Track and understand training |
+| 📈 **Perform** | Turn activity into useful performance data |
+| 🏆 **Compete** | Prepare for and record competitions |
+| 🤖 **Intelligence** | AI-assisted athlete guidance |
+| 👥 **Connect** | Athletes, coaches and academies |
+| 🔐 **Protect** | Private, permission-aware athlete data |
+| 🚀 **Grow** | Build a long-term athlete profile |
+
+---
+
+# 💳 AthleteN Plans
+
+| Plan | Monthly | Yearly | AI messages / month |
+|---|---:|---:|---:|
+| 🆓 Free | ₹0 | ₹0 | — |
+| 🎓 Student | ₹99 | ₹999 | 50 |
+| 🚀 Pro | ₹199 | ₹1,999 | 200 |
+| 🏅 Elite | ₹399 | ₹3,999 | 500 |
+| 🧑‍🏫 Coach | ₹499 | ₹4,999 | 750 |
+| 🏟️ Academy | ₹799 | ₹7,999 | 1,000 |
+
+> Pricing is planned product information and may change before commercial launch.
+
+---
+
+# 🏗️ Architecture
+
+```text
+                 ┌─────────────────────┐
+                 │     AthleteN Web    │
+                 │ React + TS + Vite   │
+                 └──────────┬──────────┘
+                            │
+                 ┌──────────▼──────────┐
+                 │    AthleteN Mobile  │
+                 │ Expo + React Native │
+                 │     + Router        │
+                 └──────────┬──────────┘
+                            │
+                 ┌──────────▼──────────┐
+                 │      Supabase       │
+                 │ Auth • Postgres     │
+                 │ Storage • RLS       │
+                 └──────────┬──────────┘
+                            │
+                 ┌──────────▼──────────┐
+                 │ Server Functions    │
+                 │ Secrets • AI • APIs │
+                 └─────────────────────┘
 ```
 
-Server:
+### 🔐 Security principles
+- Supabase Row Level Security
+- Athlete-owned records private by default
+- Server-side handling of AI credentials
+- No frontend `OPENAI_API_KEY`
+- No frontend Supabase service-role key
+- Private storage for sensitive documents
+- Role-aware athlete/coach/academy access
 
-```bash
-OPENAI_API_KEY=
-OPENAI_MODEL=gpt-4.1-mini
+---
+
+# 🛠️ Tech Stack
+
+### Web
+React • TypeScript • Vite • Supabase • Netlify Functions
+
+### Mobile
+React Native • Expo SDK 57 • Expo Router • React Navigation • Reanimated • Secure Store • Notifications
+
+### Backend / Data
+Supabase Auth • PostgreSQL • Row Level Security • Storage
+
+### AI
+Server-side AI integration • Athlete context • Plan-aware usage controls
+
+---
+
+# 📂 Repository structure
+
+```text
+AthleteN/
+├── src/                         # Web application
+├── AthleteN-Mobile/             # Expo mobile application
+│   ├── src/app/
+│   ├── src/components/
+│   ├── src/context/
+│   └── src/lib/
+├── netlify/functions/           # Secure server functions
+├── supabase/                    # Schema, policies, storage
+├── docs/                        # Product and engineering docs
+└── .github/workflows/           # CI and validation
 ```
 
-Never expose `OPENAI_API_KEY` or any Supabase service-role key in frontend code.
+---
 
-For Netlify production, `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` must be configured in the Netlify site environment before building. Vite embeds `VITE_` variables at build time; production does not read your local `.env.local`.
+# 🚀 Getting Started
 
-## Install
+## Web
 
 ```bash
 npm install
-```
-
-## Run locally
-
-```bash
 npm run dev
 ```
 
-For Netlify Functions locally:
-
-```bash
-netlify dev
-```
-
-## Build
+Build:
 
 ```bash
 npm run build
 ```
 
-## Supabase setup
+Frontend environment:
 
-Run the SQL files in this order in the Supabase SQL editor:
+```env
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+```
+
+Server environment:
+
+```env
+OPENAI_API_KEY=
+OPENAI_MODEL=
+```
+
+**Never commit secrets.**
+
+## 📱 Mobile
+
+```bash
+cd AthleteN-Mobile
+npm install
+npx expo start --clear
+```
+
+Android:
+
+```bash
+npx expo start --android
+```
+
+Native Android build:
+
+```bash
+npx expo run:android
+```
+
+### Recommended workflow
+
+```text
+SYNC → INSTALL → CLEAR CACHE → LAUNCH → TEST
+```
+
+---
+
+# 🧪 Validation
+
+Mobile validation:
+
+```bash
+cd AthleteN-Mobile
+npm ci
+npx tsc --noEmit
+npx eslint .
+npx expo-doctor
+```
+
+Current mobile gate:
+
+- 🟢 Install
+- 🟢 TypeScript
+- 🟢 ESLint
+- 🟢 Expo Doctor
+
+GitHub Actions also provide automated repository validation.
+
+---
+
+# 🗄️ Supabase Setup
+
+Run SQL in this order:
 
 1. `supabase/schema.sql`
 2. `supabase/policies.sql`
 3. `supabase/storage.sql`
 
-Then enable email auth and configure redirect URLs for local development and the Netlify production domain.
+Then configure authentication, redirect URLs, storage policies, RLS and environment variables.
 
-## Netlify deployment
+---
 
-1. Connect GitHub repo `NovaCode2026/AthleteN`.
-2. Set build command: `npm run build`.
-3. Set publish directory: `dist`.
-4. Set functions directory: `netlify/functions`.
-5. Add environment variables.
+# 🌐 Deployment
+
+### Netlify
+1. Connect the GitHub repository.
+2. Build command: `npm run build`
+3. Publish directory: `dist`
+4. Functions directory: `netlify/functions`
+5. Configure environment variables.
 6. Deploy.
 
-## Folder structure
+Never expose:
 
-```text
-src/
-  App.tsx
-  config/plans.ts
-  hooks/useAuth.tsx
-  lib/supabase.ts
-  services/database.ts
-  styles/main.css
-  types.ts
-netlify/functions/
-  ai-coach.mjs
-supabase/
-  schema.sql
-  policies.sql
-  storage.sql
-docs/
-  API.md
-  Architecture.md
-  Deployment.md
-  Development.md
-  UI.md
-```
+- ❌ `OPENAI_API_KEY`
+- ❌ Supabase service-role key
+- ❌ Payment secrets
+- ❌ Webhook signing secrets
 
-## Current modules
+---
 
-- Dashboard
-- Athlete profile
-- Plans and billing scaffold
-- Student verification
-- Academy/coach backend foundation
-- Tournaments
-- Training
-- Medals
-- Secure documents
-- Weight tracking
-- Competition checklist
-- AI Coach with plan-aware limits
-- Feedback portal
+# 🥋 Taekwondo-first
 
-## License
+AthleteN is intentionally more than a generic workout tracker.
 
-AthleteN is proprietary software owned by **Nova Code**. It is **not released under the MIT License** or another open-source licence unless a specific component is expressly identified as being separately licensed.
+It is built around concepts such as:
 
-See [`LICENSE`](./LICENSE) for the complete **AthleteN Proprietary Software Licence**, including the Indian statutory provisions referenced by the licence.
+**Kyorugi • Poomsae • Tournaments • Matches • Medals • Training • Weight • Coaches • Academies • Competition preparation**
+
+> **Start with Taekwondo. Build the operating system for athletes.**
+
+---
+
+# 🗺️ Product Direction
+
+### Current
+Dashboard • Mobile • Training • Competitions • Profile • Supabase • Coach/academy foundation • AI-assisted features
+
+### Next
+Analytics • Attendance • Coach workflows • Training-plan marketplace • Competition tooling • Mobile parity • Production billing
+
+### Later
+Multi-sport support • Advanced athlete intelligence • Academy management • Deeper performance analytics • Larger athlete ecosystem
+
+---
+
+# 🤝 Project & Licence
+
+AthleteN is maintained by **Nova Code**.
+
+The project is **proprietary software** and is **not MIT licensed** unless a component is explicitly identified as separately licensed.
+
+See [LICENSE](./LICENSE) for the complete terms.
+
+---
+
+<div align="center">
+
+## 🥋 Train. Compete. Improve. Repeat.
+
+**AthleteN — built for athletes who want more than a scoreboard.**
+
+Made with ⚡ by **Nova Code**
+
+</div>
