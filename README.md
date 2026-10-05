@@ -12,23 +12,37 @@
 
 **WEB + ANDROID**  ·  **ATHLETE-FIRST**  ·  **TAEKWONDO-FOCUSED**  ·  **AI-ASSISTED**
 
-<sub>React 19 · TypeScript 6 · Expo 57 · Supabase</sub>
+<sub>React 18 · TypeScript · Expo 57 · Supabase</sub>
 
 </div>
 
 ---
 
-## ⚡ What is AthleteN?
+<div align="center">
 
-**AthleteN** is a sports-focused platform designed around the real workflow of an athlete — not just a generic fitness tracker.
+### **ATHLETE N // PERFORMANCE // IDENTITY // DEVELOPMENT**
+
+`TRAIN` &nbsp;→&nbsp; `MEASURE` &nbsp;→&nbsp; `PREPARE` &nbsp;→&nbsp; `COMPETE` &nbsp;→&nbsp; `IMPROVE`
+
+</div>
+
+## ⚡ **THE ATHLETEN EXPERIENCE**
+
+**AthleteN** is an athlete-focused sports platform designed around the real workflow of an athlete — not just a generic fitness tracker.
 
 It brings **training, competitions, performance, plans, attendance, medals, documents, goals, nutrition, notifications, verification, coach/academy workflows, and AI-assisted guidance** into one athlete ecosystem.
 
 > **An athlete should have one place to understand where they are, what they need to do next, and how they are progressing.**
 
-AthleteN currently follows a **Taekwondo/Kyorugi-first** direction while its architecture is designed to expand to other sports.
+AthleteN currently follows a **Taekwondo/Kyorugi-first** direction while the product architecture is designed to expand to additional sports over time.
 
 ---
+
+## 🎯 **THE VISION**
+
+AthleteN is being built around a simple product principle: **give athletes one reliable operating layer for the work between training sessions and competition day.**
+
+The platform is designed to connect the athlete's profile, training history, preparation, competition record, coaching relationship, and long-term development rather than treating each activity as an isolated feature.
 
 ## 🥋 The athlete journey
 
@@ -85,7 +99,7 @@ ONBOARD → TRAIN → MEASURE → PLAN → COMPETE → REVIEW → IMPROVE
 
 ---
 
-# 📱 Mobile App
+# 📱 **MOBILE EXPERIENCE**
 
 The AthleteN mobile app uses **Expo + React Native + Expo Router** and follows the same AthleteN product direction as the web platform.
 
@@ -107,7 +121,7 @@ The mobile startup path has been hardened so an optional native Android widget c
 
 ---
 
-# 🧠 Product pillars
+# 🧠 **THE ATHLETEN SYSTEM**
 
 | Pillar | Purpose |
 |---|---|
@@ -121,7 +135,7 @@ The mobile startup path has been hardened so an optional native Android widget c
 
 ---
 
-# 💳 AthleteN Plans
+# 💳 **PLANS**
 
 | Plan | Monthly | Yearly | AI messages / month |
 |---|---:|---:|---:|
@@ -136,7 +150,7 @@ The mobile startup path has been hardened so an optional native Android widget c
 
 ---
 
-# 🏗️ Architecture
+# 🏗️ **ARCHITECTURE**
 
 ```text
                  ┌─────────────────────┐
@@ -173,7 +187,7 @@ The mobile startup path has been hardened so an optional native Android widget c
 
 ---
 
-# 🛠️ Tech Stack
+# 🛠️ **TECHNOLOGY**
 
 ### Web
 React • TypeScript • Vite • Supabase • Netlify Functions
@@ -189,7 +203,7 @@ Server-side AI integration • Athlete context • Plan-aware usage controls
 
 ---
 
-# 📂 Repository structure
+# 📂 **REPOSITORY**
 
 ```text
 AthleteN/
@@ -207,7 +221,7 @@ AthleteN/
 
 ---
 
-# 🚀 Getting Started
+# 🚀 **GET STARTED**
 
 ## Web
 
@@ -266,7 +280,7 @@ SYNC → INSTALL → CLEAR CACHE → LAUNCH → TEST
 
 ---
 
-# 🧪 Validation
+# 🧪 **ENGINEERING QUALITY**
 
 Mobile validation:
 
@@ -278,18 +292,18 @@ npx eslint .
 npx expo-doctor
 ```
 
-Current mobile gate:
+Current mobile validation gate:
 
-- 🟢 Install
-- 🟢 TypeScript
-- 🟢 ESLint
-- 🟢 Expo Doctor
+- Install
+- TypeScript
+- ESLint
+- Expo Doctor
 
-GitHub Actions also provide automated repository validation.
+GitHub Actions provide automated repository validation. A passing mobile validation gate does not replace real-device testing; Android launch, permissions, notifications, camera/scanner flows, and authentication should still be verified on supported physical devices before release.
 
 ---
 
-# 🗄️ Supabase Setup
+# 🗄️ **SUPABASE**
 
 Run SQL in this order:
 
@@ -301,7 +315,7 @@ Then configure authentication, redirect URLs, storage policies, RLS and environm
 
 ---
 
-# 🌐 Deployment
+# 🌐 **DEPLOYMENT**
 
 ### Netlify
 1. Connect the GitHub repository.
@@ -320,7 +334,7 @@ Never expose:
 
 ---
 
-# 🥋 Taekwondo-first
+# 🥋 **TAEKWONDO FIRST**
 
 AthleteN is intentionally more than a generic workout tracker.
 
@@ -328,11 +342,11 @@ It is built around concepts such as:
 
 **Kyorugi • Poomsae • Tournaments • Matches • Medals • Training • Weight • Coaches • Academies • Competition preparation**
 
-> **Start with Taekwondo. Build the operating system for athletes.**
+> ### **START WITH TAEKWONDO. BUILD FOR EVERY ATHLETE.**
 
 ---
 
-# 🗺️ Product Direction
+# 🗺️ **PRODUCT DIRECTION**
 
 ### Current
 Dashboard • Mobile • Training • Competitions • Profile • Supabase • Coach/academy foundation • AI-assisted features
@@ -345,11 +359,11 @@ Multi-sport support • Advanced athlete intelligence • Academy management •
 
 ---
 
-# 🤝 Project & Licence
+# 🤝 **PROJECT & LICENCE**
 
 AthleteN is maintained by **Nova Code**.
 
-The project is **proprietary software** and is **not MIT licensed** unless a component is explicitly identified as separately licensed.
+The project is **proprietary software**. Third-party dependencies and separately licensed components remain governed by their own licences.
 
 See [LICENSE](./LICENSE) for the complete terms.
 
@@ -359,7 +373,7 @@ See [LICENSE](./LICENSE) for the complete terms.
 
 ## 🥋 Train. Compete. Improve. Repeat.
 
-**AthleteN — built for athletes who want more than a scoreboard.**
+**AthleteN — the operating layer between training and competition.**
 
 Made with ⚡ by **Nova Code**
 
