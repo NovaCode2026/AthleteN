@@ -37,14 +37,14 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --no-install --non-interactive
 
-      - name: Build debug APK
+      - name: Build standalone release APK
         working-directory: AthleteN-Mobile/android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AthleteN-debug-apk
-          path: AthleteN-Mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          name: AthleteN-release-apk
+          path: AthleteN-Mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
