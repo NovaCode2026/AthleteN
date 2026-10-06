@@ -1,0 +1,35 @@
+name: Temporary mobile lockfile sync
+
+on:
+  push:
+    branches: [fix/mobile-lockfile-sync]
+    paths:
+      - ".github/workflows/temp-mobile-lockfile.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: AthleteN-Mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Sync lockfile
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Commit lockfile
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "Lockfile already synchronized"
+          else
+            git commit -m "fix(mobile): sync npm lockfile"
+            git push
+          fi
