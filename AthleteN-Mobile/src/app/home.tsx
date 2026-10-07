@@ -11,6 +11,7 @@ import { calculateStreak } from '@/lib/streak';
 import { PerformanceLine, ChartPoint } from '@/components/performance-chart';
 import PlanSection from '@/components/plan-section';
 import { Icon, SupportContact, RefreshButton } from '@/components/mobile-ui';
+import DashboardFeatures from '@/components/dashboard-features';
 
 const c=Colors.dark;
 
@@ -43,6 +44,7 @@ export default function HomeScreen(){
   {next?<View style={s.competition}><View style={s.competitionBadge}><Text style={s.competitionDay}>{new Date(next.starts_at).getDate()}</Text><Text style={s.competitionMonth}>{new Date(next.starts_at).toLocaleString(undefined,{month:'short'}).toUpperCase()}</Text></View><View style={s.competitionCopy}><Text style={s.competitionTitle} numberOfLines={2}>{next.name}</Text><Text style={s.meta}>{next.location||'Location not set'} • {(next.status||'planned').toUpperCase()}</Text></View></View>:<View style={s.empty}><Text style={s.emptyTitle}>No upcoming competition</Text><Text style={s.meta}>Add your next tournament in Compete to build your preparation view.</Text></View>}
   <View style={s.sectionHead}><Text style={s.section}>QUICK ACTIONS</Text></View>
   <View style={s.actions}><Action title="Training" text="Log today's work" onPress={()=>router.push('/training')}/><Action title="AI" text="See performance signals" onPress={()=>router.push('/ai')}/><Action title="Compete" text="Events & medals" onPress={()=>router.push('/compete')}/><Action title="Scanner" text="Track tournament sources" onPress={()=>router.push('/scanner')}/></View>
+  <DashboardFeatures />
  </ScrollView></SafeAreaView>
 }
 function Metric({label,value,suffix='' }:{label:string;value:number|string;suffix?:string}){return <View style={s.metric}><Text style={s.metricLabel}>{label}</Text><Text style={s.metricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>{value}{suffix}</Text></View>}
