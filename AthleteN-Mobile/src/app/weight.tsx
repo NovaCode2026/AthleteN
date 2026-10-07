@@ -1,5 +1,5 @@
 import { useCallback,useEffect,useState } from 'react';
-import { Text } from 'react-native';
+import { Pressable,Text } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { validWeight } from '@/lib/performance';
