@@ -93,8 +93,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!session?.user.id) return;
-    void registerForPushNotifications(session.user.id).catch(() => undefined);
-    return attachNotificationListeners();
+
+    const userId = session.user.id;
+    void registerForPushNotifications(userId).catch(() => undefined);
+
+    const channel = supabase
+      .channel(`mobile-account-sync-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles', filter: `user_id=eq.${userId}` },
+        () => { void loadProfile(userId); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'subscriptions', filter: `user_id=eq.${userId}` },
+        () => { void loadProfile(userId); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'account_entitlements', filter: `user_id=eq.${userId}` },
+        () => { void loadProfile(userId); }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+      attachNotificationListeners();
+    };
   }, [session?.user.id]);
 
   return (
