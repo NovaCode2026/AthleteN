@@ -12,7 +12,7 @@ export default function ResetRequestScreen(){
   const e=email.trim().toLowerCase(); setError(''); setMessage('');
   if(!e||!e.includes('@')){setError('Enter a valid email address.');return}
   setBusy(true);
-  const redirectTo='athletenmobile://auth/callback?next=reset-password'; const {error}=await supabase.auth.resetPasswordForEmail(e,{redirectTo});
+  const redirectTo='athleten://auth/callback?next=reset-password'; const {error}=await supabase.auth.resetPasswordForEmail(e,{redirectTo});
   setBusy(false);
   if(error)setError(error.message); else setMessage('If an account uses this email, a password reset email has been sent. Check your inbox and spam folder.');
  }
