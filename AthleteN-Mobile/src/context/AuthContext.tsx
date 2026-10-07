@@ -96,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const userId = session.user.id;
     void registerForPushNotifications(userId).catch(() => undefined);
+    const removeNotificationListeners = attachNotificationListeners();
 
     const channel = supabase
       .channel(`mobile-account-sync-${userId}`)
@@ -118,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       void supabase.removeChannel(channel);
-      attachNotificationListeners();
+      removeNotificationListeners?.();
     };
   }, [session?.user.id]);
 
