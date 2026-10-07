@@ -8,6 +8,7 @@ import { NAV_ITEMS,DEFAULT,KEY } from './(tabs)/_layout';
 import { Icon } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { hasFeature } from '@/lib/entitlements';
+import { supabase } from '@/lib/supabase';
 
 const c=Colors.dark;
 export default function NavigationSettings(){
@@ -15,11 +16,11 @@ export default function NavigationSettings(){
  const eligible=useMemo(()=>NAV_ITEMS.filter(x=>!x.feature||hasFeature(profile?.plan_id,x.feature,profile?.role)),[profile?.plan_id,profile?.role]);
  const [items,setItems]=useState<string[]>([]);
  const [message,setMessage]=useState('');
- useEffect(()=>{void(async()=>{try{const raw=await AsyncStorage.getItem(KEY);const parsed=raw?JSON.parse(raw):[];const valid=Array.isArray(parsed)?parsed.filter((x:string)=>eligible.some(a=>a.id===x)):[];const defaults=DEFAULT.filter(x=>eligible.some(a=>a.id===x));setItems([...valid,...defaults.filter(x=>!valid.includes(x))].slice(0,6));}catch{setItems(DEFAULT.filter(x=>eligible.some(a=>a.id===x)).slice(0,6))}})()},[eligible.map(x=>x.id).join('|')]);
+ useEffect(()=>{void(async()=>{try{const raw=await AsyncStorage.getItem(KEY);const parsed=raw?JSON.parse(raw):[];const localValid=Array.isArray(parsed)?parsed.filter((x:string)=>eligible.some(a=>a.id===x)):[];const {data}=await supabase.rpc('get_my_navigation_preferences');const remoteValid=Array.isArray(data)?data.filter((x:string)=>eligible.some(a=>a.id===x)):[];const chosen=remoteValid.length?remoteValid:localValid;const defaults=DEFAULT.filter(x=>eligible.some(a=>a.id===x));setItems([...chosen,...defaults.filter(x=>!chosen.includes(x))].slice(0,6));}catch{setItems(DEFAULT.filter(x=>eligible.some(a=>a.id===x)).slice(0,6))}})()},[eligible.map(x=>x.id).join('|')]);
  function toggle(id:string){if(items.includes(id)){if(items.length===1)return;const x=eligible.find(a=>a.id===id);Alert.alert('Remove from navigation?',`${x?.label||'This feature'} will disappear from your bottom bar. You can add it again later.`,[{text:'Cancel',style:'cancel'},{text:'Remove',style:'destructive',onPress:()=>setItems(v=>v.filter(item=>item!==id))}]);}else if(items.length<6)setItems(v=>[...v,id]);else Alert.alert('Bottom bar full','Keep up to 6 features on the bottom bar. Remove one first.')}
  function move(id:string,dir:number){setItems(v=>{const a=[...v],i=a.indexOf(id),j=i+dir;if(i<0||j<0||j>=a.length)return a;[a[i],a[j]]=[a[j],a[i]];return a})}
- async function save(){await AsyncStorage.setItem(KEY,JSON.stringify(items));setMessage('Bottom navigation saved.');setTimeout(()=>router.back(),500)}
- async function reset(){const d=DEFAULT.filter(x=>eligible.some(a=>a.id===x)).slice(0,6);setItems(d);await AsyncStorage.setItem(KEY,JSON.stringify(d));setMessage('Default navigation restored.')}
+ async function save(){const next=items.slice(0,6);const {error}=await supabase.rpc('set_my_navigation_preferences',{p_item_ids:next});if(error){setMessage('Could not sync navigation. Try again.');return}await AsyncStorage.setItem(KEY,JSON.stringify(next));setMessage('Bottom navigation saved and synced across your devices.');setTimeout(()=>router.back(),500)}
+ async function reset(){const d=DEFAULT.filter(x=>eligible.some(a=>a.id===x)).slice(0,6);setItems(d);await supabase.rpc('set_my_navigation_preferences',{p_item_ids:d});await AsyncStorage.setItem(KEY,JSON.stringify(d));setMessage('Default navigation restored and synced.')}
  return <ScrollView style={s.screen} contentContainerStyle={s.content}>
   <Text style={s.kicker}>ATHLETEN PERSONALIZATION</Text><Text style={s.title}>Customize bottom navigation</Text>
   <Text style={s.sub}>Every feature available to your current plan and role appears below. Pick up to 6 for instant access and reorder them anytime.</Text>
