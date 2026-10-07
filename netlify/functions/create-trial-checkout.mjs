@@ -1,6 +1,6 @@
 import { authenticate, env, json, logPaymentEvent, requireApprovedStudent, serverSupabase, siteUrl } from "../payment-common.mjs";
 
-const trialPlans = new Set(["student", "pro", "champion"]);
+const trialPlans = new Set(["student", "pro", "elite", "coach", "academy"]);
 const providers = new Set(["razorpay", "stripe", "cashfree"]);
 const TRIAL_FEE_PAISE = 900;
 
