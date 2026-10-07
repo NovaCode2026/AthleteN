@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useCallback,useEffect,useState } from 'react';
-import { Pressable,Text,TextInput,View } from 'react-native';
+import { Alert, Pressable,Text,TextInput,View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
