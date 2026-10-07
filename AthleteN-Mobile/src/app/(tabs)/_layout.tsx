@@ -1,37 +1,64 @@
 // @ts-nocheck
-import {Tabs} from 'expo-router';
-import {Pressable,StyleSheet,Text,View} from 'react-native';
-import {useEffect,useState} from 'react';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import { Tabs } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {Colors} from '@/constants/theme';
-import {Icon} from '@/components/mobile-ui';
+import { Colors } from '@/constants/theme';
+import { Icon } from '@/components/mobile-ui';
+import { useAuth } from '@/context/AuthContext';
+import { hasFeature } from '@/lib/entitlements';
 
-const c=Colors.dark;
-export const KEY='athleten.bottom-navigation.v1';
-export const DEFAULT=['index','training','ai','compete','profile','explore'] as const;
-export const AVAILABLE=[
- {id:'index',label:'Home',icon:'dashboard'},
- {id:'training',label:'Train',icon:'training'},
- {id:'ai',label:'AI Coach',icon:'ai'},
- {id:'compete',label:'Compete',icon:'event'},
- {id:'profile',label:'Profile',icon:'person'},
- {id:'explore',label:'More',icon:'more'},
+const c = Colors.dark;
+export const KEY = 'athleten.bottom-navigation.v2';
+export const DEFAULT = ['index','training','ai','compete','profile','explore'] as const;
+
+export const NAV_ITEMS = [
+ {id:'index',label:'Home',icon:'dashboard',feature:null},
+ {id:'training',label:'Train',icon:'training',feature:null},
+ {id:'ai',label:'AI Coach',icon:'ai',feature:null},
+ {id:'compete',label:'Compete',icon:'event',feature:null},
+ {id:'profile',label:'Profile',icon:'person',feature:null},
+ {id:'explore',label:'More',icon:'more',feature:null},
+ {id:'calendar',label:'Calendar',icon:'calendar',feature:'calendar'},
+ {id:'journey',label:'Journey',icon:'timeline',feature:'athlete_journey'},
+ {id:'weight',label:'Weight',icon:'chart',feature:'weight_tracking'},
+ {id:'messages',label:'Messages',icon:'message',feature:'messaging'},
+ {id:'documents',label:'Documents',icon:'document',feature:'documents'},
+ {id:'attendance',label:'Attendance',icon:'check',feature:'attendance'},
+ {id:'analytics',label:'Analytics',icon:'chart',feature:'advanced_analytics'},
+ {id:'competition-analysis',label:'Comp Analysis',icon:'event',feature:'competition_analysis'},
+ {id:'reports',label:'Reports',icon:'document',feature:'export_reports'},
+ {id:'coach',label:'Coach',icon:'people',feature:'coach_dashboard'},
+ {id:'academy',label:'Academy',icon:'academy',feature:'academy_management'},
 ] as const;
 
-function DashboardGlyph({color,size=19}:{color:string;size?:number}){const cell=Math.max(4,Math.round(size*.34));const gap=Math.max(2,Math.round(size*.1));return <View style={{width:size,height:size,flexDirection:'row',flexWrap:'wrap',gap,alignContent:'center',justifyContent:'center'}}><View style={{width:cell,height:cell,borderRadius:2,backgroundColor:color}}/><View style={{width:cell,height:cell,borderRadius:2,backgroundColor:color}}/><View style={{width:cell,height:cell,borderRadius:2,backgroundColor:color}}/><View style={{width:cell,height:cell,borderRadius:2,backgroundColor:color}}/></View>}
-function Bar({state,navigation}:{state:any;navigation:any}){
- const insets=useSafeAreaInsets();
- const [order,setOrder]=useState<string[]>([...DEFAULT]);
- useEffect(()=>{let alive=true;(async()=>{try{const raw=await AsyncStorage.getItem(KEY);if(!alive||!raw)return;const parsed=JSON.parse(raw);if(Array.isArray(parsed)){const valid=parsed.filter((x:string)=>AVAILABLE.some(a=>a.id===x));const merged=[...valid,...DEFAULT.filter(x=>!valid.includes(x))];setOrder(merged.slice(0,6));}}catch{}})();return()=>{alive=false}},[]);
+export const AVAILABLE = NAV_ITEMS;
+
+function DashboardGlyph({color,size=19}:{color:string;size?:number}) {
+ const cell=Math.max(4,Math.round(size*.34)); const gap=Math.max(2,Math.round(size*.1));
+ return <View style={{width:size,height:size,flexDirection:'row',flexWrap:'wrap',gap,alignContent:'center',justifyContent:'center'}}>
+  {[0,1,2,3].map(i=><View key={i} style={{width:cell,height:cell,borderRadius:2,backgroundColor:color}}/>)} 
+ </View>;
+}
+
+function Bar({state,navigation}:{state:any;navigation:any}) {
+ const {profile}=useAuth(); const insets=useSafeAreaInsets();
+ const eligible=useMemo(()=>NAV_ITEMS.filter(x=>!x.feature||hasFeature(profile?.plan_id,x.feature,profile?.role)),[profile?.plan_id,profile?.role]);
+ const defaults=useMemo(()=>DEFAULT.filter(id=>eligible.some(x=>x.id===id)),[eligible]);
+ const [order,setOrder]=useState<string[]>([...defaults]);
+ useEffect(()=>{let alive=true;(async()=>{try{const raw=await AsyncStorage.getItem(KEY);const parsed=raw?JSON.parse(raw):[];if(!alive)return;const valid=Array.isArray(parsed)?parsed.filter((x:string)=>eligible.some(a=>a.id===x)):[];setOrder([...valid,...defaults.filter(x=>!valid.includes(x))].slice(0,6));}catch{setOrder([...defaults])}})();return()=>{alive=false}},[eligible.map(x=>x.id).join('|'),defaults.join('|')]);
+ const visible=order.filter(id=>eligible.some(x=>x.id===id)).slice(0,6);
  return <View style={[s.outer,{paddingBottom:Math.max(insets.bottom,6)}]}><View style={s.bar}>
-  {order.map(id=>{const meta=AVAILABLE.find(x=>x.id===id)!;const routeIndex=state.routes.findIndex((r:any)=>r.name===id);const active=state.index===routeIndex;return <Pressable key={id} onPress={()=>navigation.navigate(id)} accessibilityRole="button" accessibilityState={active?{selected:true}:{}} style={s.item}><View style={[s.icon,active&&s.active]}>{id==='index'?<DashboardGlyph color={active?c.accentBright:c.muted} size={19}/>:<Icon name={meta.icon} size={19} color={active?c.accentBright:c.muted} />}</View><Text style={[s.label,active&&s.activeLabel]} numberOfLines={1}>{meta.label}</Text></Pressable>})}
- </View></View>
+  {visible.map(id=>{const meta=eligible.find(x=>x.id===id)!;const routeIndex=state.routes.findIndex((r:any)=>r.name===id);const active=state.index===routeIndex;return <Pressable key={id} onPress={()=>navigation.navigate(id)} accessibilityRole="button" accessibilityState={active?{selected:true}:{}} style={s.item}><View style={[s.icon,active&&s.active]}>{id==='index'?<DashboardGlyph color={active?c.accentBright:c.muted}/>:<Icon name={meta.icon} size={19} color={active?c.accentBright:c.muted}/>}</View><Text style={[s.label,active&&s.activeLabel]} numberOfLines={1}>{meta.label}</Text></Pressable>})}
+ </View></View>;
 }
 
 export default function TabLayout(){
+ const {profile}=useAuth();
+ const eligible=NAV_ITEMS.filter(x=>!x.feature||hasFeature(profile?.plan_id,x.feature,profile?.role));
  return <Tabs tabBar={(p:any)=><Bar {...p}/>} screenOptions={{headerShown:false,sceneStyle:{backgroundColor:c.background}}}>
-  {AVAILABLE.map(x=><Tabs.Screen key={x.id} name={x.id}/>)}
- </Tabs>
+  {eligible.map(x=><Tabs.Screen key={x.id} name={x.id}/>)}
+ </Tabs>;
 }
-const s=StyleSheet.create({outer:{backgroundColor:c.surface,borderTopWidth:1,borderTopColor:c.borderStrong},bar:{height:62,flexDirection:'row',paddingHorizontal:5,paddingTop:5},item:{flex:1,alignItems:'center',gap:2},icon:{width:38,height:30,borderRadius:13,alignItems:'center',justifyContent:'center'},active:{backgroundColor:c.accentSoft},iconText:{color:c.muted,fontSize:20,fontWeight:'700'},activeText:{color:c.accentBright},label:{color:c.muted,fontSize:9,fontWeight:'800'},activeLabel:{color:c.text}});
+const s=StyleSheet.create({outer:{backgroundColor:c.surface,borderTopWidth:1,borderTopColor:c.borderStrong},bar:{height:62,flexDirection:'row',paddingHorizontal:5,paddingTop:5},item:{flex:1,alignItems:'center',gap:2},icon:{width:38,height:30,borderRadius:13,alignItems:'center',justifyContent:'center'},active:{backgroundColor:c.accentSoft},label:{color:c.muted,fontSize:9,fontWeight:'800'},activeLabel:{color:c.text}});
