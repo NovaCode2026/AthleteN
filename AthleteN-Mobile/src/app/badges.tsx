@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { Icon } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 
 const c = Colors.dark;
@@ -11,11 +12,11 @@ type Definition={badge_key:string;badge_label:string;description:string;category
 type Earned=Definition&{id:string;awarded_at:string;permanent:boolean};
 
 export default function BadgesScreen(){
- const {session}=useAuth(); const [earned,setEarned]=useState<Earned[]>([]); const [catalog,setCatalog]=useState<Definition[]>([]); const [busy,setBusy]=useState(true); const [message,setMessage]=useState('');
+ const {session}=useAuth(); const router=useRouter(); const [earned,setEarned]=useState<Earned[]>([]); const [catalog,setCatalog]=useState<Definition[]>([]); const [busy,setBusy]=useState(true); const [message,setMessage]=useState('');
  const load=useCallback(async()=>{if(!session)return;setBusy(true);const [e,d]=await Promise.all([supabase.from('athlete_badges').select('id,badge_key,badge_label,awarded_at,permanent').eq('user_id',session.user.id).order('awarded_at',{ascending:false}),supabase.from('badge_definitions').select('badge_key,badge_label,description,category,rarity,icon').order('category').order('badge_label')]);if(e.error||d.error)setMessage(e.error?.message||d.error?.message||'Could not load badges.');const defs=(d.data||[]) as Definition[];const map=new Map(defs.map(x=>[x.badge_key,x]));setCatalog(defs);setEarned(((e.data||[]) as any[]).map(x=>({...map.get(x.badge_key),...x})).filter(x=>x.badge_label) as Earned[]);setBusy(false)},[session]);
  useEffect(()=>{void load()},[load]);
  return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-  <View style={s.header}><Pressable onPress={()=>history.back()} style={s.back}><Icon name="arrow" size={17} color={c.text}/></Pressable><View style={{flex:1}}><Text style={s.kicker}>ATHLETEN PROGRESSION</Text><Text style={s.title}>Badges</Text></View><View style={s.count}><Text style={s.countText}>{earned.length}</Text></View></View>
+  <View style={s.header}><Pressable onPress={()=>router.back()} style={s.back}><Icon name="arrow" size={17} color={c.text}/></Pressable><View style={{flex:1}}><Text style={s.kicker}>ATHLETEN PROGRESSION</Text><Text style={s.title}>Badges</Text></View><View style={s.count}><Text style={s.countText}>{earned.length}</Text></View></View>
   <View style={s.hero}><Text style={s.heroTitle}>YOUR ATHLETEN JOURNEY</Text><Text style={s.heroText}>Achievements come from real athlete activity. System badges are protected and server-assigned.</Text></View>
   {message?<Text style={s.message}>{message}</Text>:null}
   {busy?<View style={s.loading}><ActivityIndicator color={c.accentBright}/><Text style={s.meta}>Loading badges...</Text></View>:earned.length?<View style={s.grid}>{earned.map(b=><View key={b.id} style={s.card}><View style={s.icon}><Text style={s.iconText}>{b.icon||'🏅'}</Text></View><View style={{flex:1}}><Text style={s.badgeName}>{b.badge_label}</Text><Text style={s.meta}>{b.description}</Text><View style={s.metaRow}><Text style={s.rarity}>{String(b.rarity).toUpperCase()}</Text><Text style={s.date}>{new Date(b.awarded_at).toLocaleDateString()}</Text></View></View></View>)}</View>:<View style={s.empty}><Text style={s.emptyTitle}>Your badge journey starts here.</Text><Text style={s.meta}>Training, competition and progress can unlock achievements.</Text></View>}
