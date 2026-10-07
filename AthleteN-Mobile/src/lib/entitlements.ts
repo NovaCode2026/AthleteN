@@ -13,7 +13,13 @@ export type FeatureKey =
   | 'coach_training_monitoring'
   | 'coach_ai_reports'
   | 'academy_management'
-  | 'academy_analytics';
+  | 'academy_analytics'
+  | 'athlete_journey'
+  | 'calendar'
+  | 'weight_tracking'
+  | 'messaging'
+  | 'documents'
+  | 'attendance';
 
 export const AI_LIMITS: Record<PlanId, number> = {
   free: 0,
@@ -77,6 +83,12 @@ export function hasFeature(
     coach_ai_reports: ['coach', 'academy'],
     academy_management: ['academy'],
     academy_analytics: ['academy'],
+    athlete_journey: ['free','student','pro','elite','coach','academy'],
+    calendar: ['free','student','pro','elite','coach','academy'],
+    weight_tracking: ['free','student','pro','elite','coach','academy'],
+    messaging: ['student','pro','elite','coach','academy'],
+    documents: ['student','pro','elite','coach','academy'],
+    attendance: ['coach','academy'],
   };
 
   if (!access[feature]?.includes(p)) return false;
