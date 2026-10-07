@@ -1,4 +1,4 @@
-export type PlanId = "free" | "student" | "pro" | "champion" | "academy";
+export type PlanId = "free" | "student" | "pro" | "elite" | "coach" | "academy";
 export type TaekwondoDiscipline = "kyorugi" | "poomsae";
 export interface Plan { id: PlanId; name: string; price: string; aiLimit: number; audience: string; features: string[]; }
 export interface Profile { id?: string; user_id?: string; full_name?: string; gender?: string; username?: string; date_of_birth?: string; profile_image_path?: string; weight_kg?: number; height_cm?: number; belt?: string; academy?: string; coach?: string; academy_id?: string; coach_user_id?: string; competition_weight_category?: string; competition_weight_category_updated_at?: string; emergency_contact?: string; achievements?: string; sport?: "taekwondo"; discipline?: TaekwondoDiscipline; plan_id?: PlanId; verified_athlete?: boolean; founder_badge?: boolean; role?: "athlete" | "coach" | "academy_admin" | "support_admin" | "admin" | "super_admin"; }
