@@ -191,7 +191,7 @@ export default function AuthScreen() {
     setError('');
     setResending(true);
     try {
-      const result = await supabase.auth.resend({ type: 'signup', email: cleanEmail });
+      const result = await supabase.auth.resend({ type: 'signup', email: cleanEmail, options: { emailRedirectTo: authRedirect() } });
       if (result.error) setError(result.error.message);
       else setVerificationNotice('Verification email sent. Check your inbox and spam folder.');
     } finally { setResending(false); }
