@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
-const planIntervals = { free: 12, student: 6, pro: 3, champion: 1, academy: 0.5 };
+const planIntervals = { free: 12, student: 6, pro: 3, elite: 2, coach: 1, academy: 0.5 };
 const maxDiscoveredPages = 30;
 const MAX_SCAN_MS = 95000;
 const MAX_PAGE_FETCH_MS = 8000;
