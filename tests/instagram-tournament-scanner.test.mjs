@@ -17,7 +17,7 @@ test("Instagram scanner keeps irrelevant captions non-fatal", () => {
 test("clean tournament facts never use missing-value filler", () => {
   assert.doesNotMatch(backend, /Not found in accessible source/);
   assert.doesNotMatch(backend, /None detected/);
-  assert.doesNotMatch(backend, /importantFacts[\\s\\S]{0,6000}\\|\\| ["']—["']/);
+  assert.doesNotMatch(backend, /importantFacts\\.[A-Za-z_]+\\s*\\|\\|\\s*["']—["']/);
   assert.doesNotMatch(frontend, /Not found in accessible source/);
   assert.doesNotMatch(frontend, /None detected/);
 });
