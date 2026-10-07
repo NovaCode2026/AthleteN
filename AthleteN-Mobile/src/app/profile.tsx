@@ -159,6 +159,9 @@ export default function ProfileScreen() {
     <Pressable onPress={()=>router.push('/navigation-settings')} style={s.adminCard}><View><Text style={s.adminKicker}>NAVIGATION</Text><Text style={s.adminTitle}>Customize Bottom Bar</Text><Text style={s.meta}>Choose and reorder the AthleteN features you want at the bottom.</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>
     <Pressable onPress={()=>router.push('/notification-settings')} style={s.adminCard}><View><Text style={s.adminKicker}>ALERTS</Text><Text style={s.adminTitle}>Notification Settings</Text><Text style={s.meta}>Control training, competition, coach and account alerts.</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>
 
+    <Text style={s.settingsSection}>ATHLETE JOURNEY</Text>
+    <Pressable onPress={()=>router.push('/athlete-journey')} style={s.adminCard}><View><Text style={s.adminKicker}>LONG-TERM DEVELOPMENT</Text><Text style={s.adminTitle}>Athlete Journey</Text><Text style={s.meta}>Seasons, competition journal, Fight IQ, techniques, challenges, records and milestones.</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>
+
     <Text style={s.settingsSection}>ATHLETEN FEATURES</Text>
     <Pressable onPress={()=>router.push('/explore')} style={s.adminCard}><View><Text style={s.adminKicker}>FEATURE HUB</Text><Text style={s.adminTitle}>More AthleteN Features</Text><Text style={s.meta}>Taekwondo Hub, Calendar, Medals, Documents, Messages and more.</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>
 
