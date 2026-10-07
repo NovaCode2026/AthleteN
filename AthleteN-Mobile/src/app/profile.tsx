@@ -155,7 +155,7 @@ export default function ProfileScreen() {
     <Text style={s.settingsSection}>ACCOUNT CONTROL</Text>
     <Pressable onPress={()=>router.push('/settings')} style={s.adminCard}><View><Text style={s.adminKicker}>SETTINGS</Text><Text style={s.adminTitle}>Central Settings</Text><Text style={s.meta}>Account, privacy, messaging, notifications, security, support and important controls.</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>
 
-    <Text style={s.settingsSection}>PERSONALIZATION</Text>
+    <Text style={s.settingsSection}>ACCOUNT SETTINGS</Text><Pressable onPress={()=>router.push('/settings')} style={s.adminCard}><View><Text style={s.adminKicker}>SETTINGS</Text><Text style={s.adminTitle}>All Settings</Text><Text style={s.meta}>Account, messaging, privacy, alerts, team, data and support.</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>\n\n    <Text style={s.settingsSection}>PERSONALIZATION</Text>
     <Pressable onPress={()=>router.push('/navigation-settings')} style={s.adminCard}><View><Text style={s.adminKicker}>NAVIGATION</Text><Text style={s.adminTitle}>Customize Bottom Bar</Text><Text style={s.meta}>Choose and reorder the AthleteN features you want at the bottom.</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>
     <Pressable onPress={()=>router.push('/notification-settings')} style={s.adminCard}><View><Text style={s.adminKicker}>ALERTS</Text><Text style={s.adminTitle}>Notification Settings</Text><Text style={s.meta}>Control training, competition, coach and account alerts.</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>
 
