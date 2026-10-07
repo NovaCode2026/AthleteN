@@ -32,8 +32,8 @@ export const NAV_ITEMS = [
  {id:'coach',label:'Coach',icon:'people',feature:'coach_dashboard'},
  {id:'verification-review',label:'Verify',icon:'check',feature:'weight_verification'},
  {id:'academy',label:'Academy',icon:'school-outline',feature:'academy_management'},
+ {id:'badges',label:'Badges',icon:'trophy',feature:null},
 ] as const;
-
 export const AVAILABLE = NAV_ITEMS;
 
 function DashboardGlyph({color,size=19}:{color:string;size?:number}) {
