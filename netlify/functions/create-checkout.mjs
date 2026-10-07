@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { authenticate, env, json, logPaymentEvent, planPricesMinor, providerPlanKey, requireApprovedStudent, serverSupabase, siteUrl } from "../payment-common.mjs";
 
-const paidPlans = new Set(["student", "pro", "champion"]);
+const paidPlans = new Set(["student", "pro", "elite", "coach", "academy"]);
 const providers = new Set(["razorpay", "stripe", "cashfree"]);
 
 async function razorpayCheckout(supabase, user, planId, amountMinor, verificationId) {
@@ -122,8 +122,8 @@ export default async function handler(request) {
     if (!providers.has(provider)) return json({ error: "Unsupported payment provider." }, 400);
 
     const supabase = serverSupabase();
-    const verification = await requireApprovedStudent(supabase, user.id);
-    if (!verification) return json({ error: "Student ID approval is required before payment." }, 403);
+    const verification = planId === "student" ? await requireApprovedStudent(supabase, user.id) : null;
+    if (planId === "student" && !verification) return json({ error: "Student ID approval is required before payment." }, 403);
 
     const amountMinor = planPricesMinor[planId];
     const result = provider === "razorpay"
