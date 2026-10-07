@@ -28,7 +28,7 @@ export const NAV_ITEMS = [
  {id:'documents',label:'Documents',icon:'file-document-outline',feature:'documents'},
  {id:'attendance',label:'Attendance',icon:'check',feature:'attendance'},
  {id:'analytics',label:'Analytics',icon:'chart',feature:'advanced_analytics'},
- {id:'reports',label:'Reports',icon:'document',feature:'export_reports'},
+ {id:'reports',label:'Reports',icon:'file-document-outline',feature:'export_reports'},
  {id:'coach',label:'Coach',icon:'people',feature:'coach_dashboard'},
  {id:'verification-review',label:'Verify',icon:'check',feature:'coach_dashboard'},
  {id:'academy',label:'Academy',icon:'school-outline',feature:'academy_management'},
