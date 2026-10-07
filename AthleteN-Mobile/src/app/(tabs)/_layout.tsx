@@ -21,17 +21,17 @@ export const NAV_ITEMS = [
  {id:'profile',label:'Profile',icon:'person',feature:null},
  {id:'explore',label:'More',icon:'more',feature:null},
  {id:'calendar',label:'Calendar',icon:'calendar',feature:'calendar'},
- {id:'journey',label:'Journey',icon:'timeline',feature:'athlete_journey'},
+ {id:'journey',label:'Journey',icon:'chart-timeline',feature:'athlete_journey'},
  {id:'weight',label:'Weight',icon:'chart',feature:'weight_tracking'},
  {id:'messages',label:'Messages',icon:'message',feature:'messaging'},
- {id:'documents',label:'Documents',icon:'document',feature:'documents'},
+ {id:'documents',label:'Documents',icon:'file-document-outline',feature:'documents'},
  {id:'attendance',label:'Attendance',icon:'check',feature:'attendance'},
  {id:'analytics',label:'Analytics',icon:'chart',feature:'advanced_analytics'},
  {id:'competition-analysis',label:'Comp Analysis',icon:'event',feature:'competition_analysis'},
  {id:'reports',label:'Reports',icon:'document',feature:'export_reports'},
  {id:'coach',label:'Coach',icon:'people',feature:'coach_dashboard'},
  {id:'verification-review',label:'Verify',icon:'check',feature:'coach_dashboard'},
- {id:'academy',label:'Academy',icon:'academy',feature:'academy_management'},
+ {id:'academy',label:'Academy',icon:'school-outline',feature:'academy_management'},
 ] as const;
 
 export const AVAILABLE = NAV_ITEMS;
