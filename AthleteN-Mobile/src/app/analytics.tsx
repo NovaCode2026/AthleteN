@@ -1,32 +1,71 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Colors } from '@/constants/theme';
-import { supabase } from '@/lib/supabase';
+import { useCallback, useEffect, useState } from 'react';
+import { Text } from 'react-native';
+import { Screen, Header, Section, Card, c } from '@/components/mobile-ui';
+import { PerformanceBars, PerformanceLine } from '@/components/performance-chart';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { validMinutes, validWeight } from '@/lib/performance';
 
-const c=Colors.dark;
-export default function AnalyticsScreen(){
-  const {session}=useAuth();
-  const [data,setData]=useState({training:0,minutes:0,medals:0,goals:0,weights:0});
-  const [loading,setLoading]=useState(true);
-  useEffect(()=>{let alive=true;(async()=>{
-    if(!session){if(alive)setLoading(false);return}
-    const [t,m,g,w]=await Promise.all([
-      supabase.from('training_sessions').select('id,minutes').eq('user_id',session.user.id),
-      supabase.from('medals').select('id').eq('user_id',session.user.id),
-      supabase.from('goals').select('id').eq('user_id',session.user.id),
-      supabase.from('weight_logs').select('id').eq('user_id',session.user.id)
+export default function AnalyticsScreen() {
+  const { session } = useAuth();
+  const [training, setTraining] = useState<any[]>([]);
+  const [weights, setWeights] = useState<any[]>([]);
+  const [medals, setMedals] = useState(0);
+  const [competitions, setCompetitions] = useState(0);
+  const [goals, setGoals] = useState(0);
+  const [message, setMessage] = useState('');
+
+  const load = useCallback(async () => {
+    if (!session) return;
+    const uid = session.user.id;
+    const [t, w, m, comp, g] = await Promise.all([
+      supabase.from('training_sessions').select('session_date,minutes').eq('user_id', uid).order('session_date', { ascending: true }).limit(365),
+      supabase.from('weight_logs').select('logged_at,weight_kg,verification_status').eq('user_id', uid).order('logged_at', { ascending: true }).limit(100),
+      supabase.from('medals').select('id', { count: 'exact', head: true }).eq('user_id', uid),
+      supabase.from('tournaments').select('id', { count: 'exact', head: true }).eq('user_id', uid),
+      supabase.from('goals').select('id', { count: 'exact', head: true }).eq('user_id', uid).eq('status', 'active'),
     ]);
-    if(alive)setData({training:t.data?.length||0,minutes:(t.data||[]).reduce((n,x)=>n+Number(x.minutes||0),0),medals:m.data?.length||0,goals:g.data?.length||0,weights:w.data?.length||0});
-    if(alive)setLoading(false);
-  })();return()=>{alive=false}},[session]);
-  return <ScrollView style={s.screen} contentContainerStyle={s.content}>
-    <Text style={s.kicker}>ATHLETEN PERFORMANCE</Text><Text style={s.title}>Advanced analytics</Text>
-    <Text style={s.sub}>A live summary from your synced athlete records.</Text>
-    {loading?<ActivityIndicator color={c.accent}/>:<View style={s.grid}>
-      <Card label="TRAINING SESSIONS" value={data.training}/><Card label="TRAINING MINUTES" value={data.minutes}/><Card label="MEDALS" value={data.medals}/><Card label="ACTIVE GOALS" value={data.goals}/><Card label="WEIGHT RECORDS" value={data.weights}/>
-    </View>}
-  </ScrollView>;
+    if ([t.error, w.error, m.error, comp.error, g.error].some(Boolean)) setMessage('Some analytics data could not be loaded.');
+    setTraining(t.data || []);
+    setWeights((w.data || []).filter((x: any) => validWeight(x.weight_kg) !== null));
+    setMedals(m.count || 0);
+    setCompetitions(comp.count || 0);
+    setGoals(g.count || 0);
+  }, [session]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const weekly = Array.from({ length: 7 }, (_, index) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - index));
+    const key = d.toISOString().slice(0, 10);
+    return {
+      label: key.slice(5).replace('-', '/'),
+      value: training.filter((x) => String(x.session_date).slice(0, 10) === key).reduce((sum, x) => sum + validMinutes(x.minutes), 0),
+    };
+  });
+
+  const latestWeight = weights.length ? validWeight(weights[weights.length - 1].weight_kg) : null;
+  const verified = weights.filter((x) => x.verification_status === 'verified').length;
+
+  return (
+    <Screen>
+      <Header eyebrow="ATHLETEN INTELLIGENCE" title="Analytics" subtitle="A live view of your synced training, competition and performance records." />
+      <Section title="OVERVIEW">
+        <Card>
+          <Text style={{ color: c.text, fontSize: 14, fontWeight: '900' }}>Training this week: {weekly.reduce((a, b) => a + b.value, 0)} min</Text>
+          <Text style={{ color: c.muted, fontSize: 11, marginTop: 5 }}>Competitions {competitions} · Medals {medals} · Active goals {goals}</Text>
+        </Card>
+      </Section>
+      <PerformanceBars title="7-day training load" subtitle="Minutes logged per day" data={weekly} unit="min" />
+      <PerformanceLine title="Weight history" subtitle={verified ? verified + ' verified measurements' : 'Saved measurements'} data={weights.slice(-30).map((x) => ({ label: String(x.logged_at).slice(5, 10), value: validWeight(x.weight_kg) || 0 })).filter((x) => x.value > 0)} unit="kg" accent={c.success} />
+      <Section title="LATEST">
+        <Card>
+          <Text style={{ color: c.text, fontSize: 13, fontWeight: '900' }}>{latestWeight ? latestWeight.toFixed(1) + ' kg latest recorded measurement' : 'No weight data yet'}</Text>
+          <Text style={{ color: c.muted, fontSize: 11, marginTop: 5 }}>The same Supabase records are available across supported AthleteN devices.</Text>
+          {message ? <Text style={{ color: c.accentBright, fontSize: 11, marginTop: 7 }}>{message}</Text> : null}
+        </Card>
+      </Section>
+    </Screen>
+  );
 }
-function Card({label,value}:{label:string;value:number}){return <View style={s.card}><Text style={s.label}>{label}</Text><Text style={s.value}>{value.toLocaleString('en-IN')}</Text></View>}
-const s=StyleSheet.create({screen:{flex:1,backgroundColor:c.background},content:{padding:20,gap:12},kicker:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.5},title:{color:c.text,fontSize:30,fontWeight:'900'},sub:{color:c.muted,fontSize:12,lineHeight:18},grid:{gap:10},card:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:18,padding:16},label:{color:c.muted,fontSize:9,fontWeight:'900',letterSpacing:1},value:{color:c.text,fontSize:28,fontWeight:'900',marginTop:5}});
