@@ -19,7 +19,8 @@ export type FeatureKey =
   | 'weight_tracking'
   | 'messaging'
   | 'documents'
-  | 'attendance';
+  | 'attendance'
+  | 'weight_verification';
 
 export const AI_LIMITS: Record<PlanId, number> = {
   free: 0,
@@ -89,6 +90,7 @@ export function hasFeature(
     messaging: ['student','pro','elite','coach','academy'],
     documents: ['student','pro','elite','coach','academy'],
     attendance: ['coach','academy'],
+    weight_verification: ['coach','academy'],
   };
 
   if (!access[feature]?.includes(p)) return false;
