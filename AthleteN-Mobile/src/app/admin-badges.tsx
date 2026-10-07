@@ -3,6 +3,7 @@ import { ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 const c=Colors.dark;
 type Badge={badge_key:string;badge_label:string;description:string;category:string;rarity:string;icon:string;is_system_badge:boolean};
