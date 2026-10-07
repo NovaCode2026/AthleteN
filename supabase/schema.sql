@@ -21,7 +21,7 @@ create table if not exists public.profiles (
   coach text,
   emergency_contact text,
   achievements text,
-  plan_id text not null default 'free' check (plan_id in ('free','student','pro','champion','academy')),
+  plan_id text not null default 'free' check (plan_id in ('free','student','pro','elite','coach','academy')),
   verified_athlete boolean not null default false,
   founder_badge boolean not null default false,
   role text not null default 'athlete' check (role in ('athlete','coach','academy_admin','support_admin','admin','super_admin')),
@@ -309,7 +309,7 @@ create table if not exists public.ai_usage_events (
 create table if not exists public.subscriptions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references auth.users(id) on delete cascade,
-  plan_id text not null default 'free' check (plan_id in ('free','student','pro','champion','academy')),
+  plan_id text not null default 'free' check (plan_id in ('free','student','pro','elite','coach','academy')),
   provider text check (provider in ('manual','razorpay','stripe','cashfree')),
   provider_customer_id text,
   provider_subscription_id text,
