@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { Tabs } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -49,7 +49,7 @@ function Bar({state,navigation}:{state:any;navigation:any}) {
  const eligible=useMemo(()=>NAV_ITEMS.filter(x=>!x.feature||hasFeature(profile?.plan_id,x.feature,profile?.role)),[profile?.plan_id,profile?.role]);
  const defaults=useMemo(()=>DEFAULT.filter(id=>eligible.some(x=>x.id===id)),[eligible]);
  const [order,setOrder]=useState<string[]>([...defaults]);
- useEffect(()=>{let alive=true;(async()=>{try{const local=await AsyncStorage.getItem(KEY);const localParsed=local?JSON.parse(local):[];const localValid=Array.isArray(localParsed)?localParsed.filter((x:string)=>eligible.some(a=>a.id===x)):[];let remoteValid:string[]=[];const {data}=await supabase.rpc('get_my_navigation_preferences');if(Array.isArray(data))remoteValid=data.filter((x:string)=>eligible.some(a=>a.id===x));const chosen=(remoteValid.length?remoteValid:localValid);if(!alive)return;const next=[...chosen,...defaults.filter(x=>!chosen.includes(x))].slice(0,6);setOrder(next);await AsyncStorage.setItem(KEY,JSON.stringify(next));}catch{if(alive)setOrder([...defaults])}})();return()=>{alive=false}},[eligible.map(x=>x.id).join('|'),defaults.join('|')]);
+ useEffect(()=>{let alive=true;const load=async()=>{try{const local=await AsyncStorage.getItem(KEY);const localParsed=local?JSON.parse(local):[];const localValid=Array.isArray(localParsed)?localParsed.filter((x:string)=>eligible.some(a=>a.id===x)):[];const {data}=await supabase.rpc('get_my_navigation_preferences');if(!alive)return;const remoteValid=Array.isArray(data)?data.filter((x:string)=>eligible.some(a=>a.id===x)):[];const chosen=remoteValid.length?remoteValid:localValid;const next=[...chosen,...defaults.filter(x=>!chosen.includes(x))].slice(0,6);setOrder(next);await AsyncStorage.setItem(KEY,JSON.stringify(next));}catch{if(alive)setOrder([...defaults])}};void load();const sub=AppState.addEventListener('change',(state)=>{if(state==='active')void load()});return()=>{alive=false;sub.remove()}},[eligible.map(x=>x.id).join('|'),defaults.join('|')]);
  const visible=order.filter(id=>eligible.some(x=>x.id===id)).slice(0,6);
  return <View style={[s.outer,{paddingBottom:Math.max(insets.bottom,6)}]}><View style={s.bar}>
   {visible.map(id=>{const meta=eligible.find(x=>x.id===id)!;const routeIndex=state.routes.findIndex((r:any)=>r.name===id);const active=state.index===routeIndex;return <Pressable key={id} onPress={()=>navigation.navigate(id)} accessibilityRole="button" accessibilityState={active?{selected:true}:{}} style={s.item}><View style={[s.icon,active&&s.active]}>{id==='index'?<DashboardGlyph color={active?c.accentBright:c.muted}/>:<Icon name={meta.icon} size={19} color={active?c.accentBright:c.muted}/>}</View><Text style={[s.label,active&&s.activeLabel]} numberOfLines={1}>{meta.label}</Text></Pressable>})}
