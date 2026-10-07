@@ -30,6 +30,7 @@ export const NAV_ITEMS = [
  {id:'competition-analysis',label:'Comp Analysis',icon:'event',feature:'competition_analysis'},
  {id:'reports',label:'Reports',icon:'document',feature:'export_reports'},
  {id:'coach',label:'Coach',icon:'people',feature:'coach_dashboard'},
+ {id:'verification-review',label:'Verify',icon:'check',feature:'coach_dashboard'},
  {id:'academy',label:'Academy',icon:'academy',feature:'academy_management'},
 ] as const;
 
