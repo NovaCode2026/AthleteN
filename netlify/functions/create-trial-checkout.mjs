@@ -143,8 +143,8 @@ export default async function handler(request) {
     if (!providers.has(provider)) return json({ error: "Unsupported payment provider." }, 400);
 
     const supabase = serverSupabase();
-    const verification = await requireApprovedStudent(supabase, user.id);
-    if (!verification) return json({ error: "Student ID approval is required before trial payment." }, 403);
+    const verification = planId === "student" ? await requireApprovedStudent(supabase, user.id) : null;
+    if (planId === "student" && !verification) return json({ error: "Student ID approval is required before trial payment." }, 403);
 
     const { data: entitlement, error: entitlementError } = await supabase
       .from("account_entitlements")
