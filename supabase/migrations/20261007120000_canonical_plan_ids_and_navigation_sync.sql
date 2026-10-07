@@ -108,3 +108,32 @@ begin
   return v_row;
 end;
 $$;
+
+-- Security hardening: navigation writes accept only known mobile route IDs.
+create or replace function public.set_my_navigation_preferences(p_item_ids text[])
+returns text[] language plpgsql security invoker set search_path=public as $$
+declare
+  v_ids text[];
+  v_allowed constant text[] := array[
+    'index','training','ai','compete','profile','explore',
+    'calendar','journey','weight','messages','documents','attendance',
+    'analytics','competition-analysis','reports','coach','verification-review','academy'
+  ];
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if p_item_ids is null or cardinality(p_item_ids)=0 then raise exception 'Navigation cannot be empty'; end if;
+  v_ids := array(
+    select distinct x from unnest(p_item_ids) as u(x)
+    where x = any(v_allowed) and length(trim(x)) > 0 limit 6
+  );
+  if cardinality(v_ids)=0 then raise exception 'Navigation contains no supported features'; end if;
+  insert into public.user_navigation_preferences(user_id,item_ids) values(auth.uid(),v_ids)
+  on conflict(user_id) do update set item_ids=excluded.item_ids,updated_at=now();
+  return v_ids;
+end;
+$$;
+revoke all on function public.set_my_navigation_preferences(text[]) from public,anon;
+grant execute on function public.set_my_navigation_preferences(text[]) to authenticated;
+
+-- Trigger-only audit function; never expose it as an RPC endpoint.
+revoke all on function public.audit_athlete_record_change() from public,anon,authenticated;
