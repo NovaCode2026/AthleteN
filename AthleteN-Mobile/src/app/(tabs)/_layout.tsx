@@ -30,7 +30,7 @@ export const NAV_ITEMS = [
  {id:'analytics',label:'Analytics',icon:'chart',feature:'advanced_analytics'},
  {id:'reports',label:'Reports',icon:'file-document-outline',feature:'export_reports'},
  {id:'coach',label:'Coach',icon:'people',feature:'coach_dashboard'},
- {id:'verification-review',label:'Verify',icon:'check',feature:'coach_dashboard'},
+ {id:'verification-review',label:'Verify',icon:'check',feature:'weight_verification'},
  {id:'academy',label:'Academy',icon:'school-outline',feature:'academy_management'},
 ] as const;
 
