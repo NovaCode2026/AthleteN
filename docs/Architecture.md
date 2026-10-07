@@ -8,7 +8,7 @@ AthleteOS is a React/TypeScript/Vite cloud application backed by Supabase and de
 - **Browser app:** `src/App.tsx` renders protected routes, dashboard, plans, verification, feedback, roadmap, admin, and athlete feature screens.
 - **Auth:** `src/hooks/useAuth.tsx` manages Supabase authentication, email verification state, and session persistence.
 - **Data access:** `src/services/database.ts` centralizes Supabase table and storage operations.
-- **Plans:** `src/config/plans.ts` defines Free, Student, Pro, Champion, and Academy tiers.
+- **Plans:** `src/config/plans.ts` defines Free, Student, Pro, Coach, and Academy tiers.
 - **Server-only AI:** `netlify/functions/ai-coach.mjs` calls OpenAI without exposing secrets.
 
 ## Data Persistence
