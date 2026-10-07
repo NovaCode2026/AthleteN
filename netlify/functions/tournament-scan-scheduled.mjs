@@ -6,7 +6,8 @@ const planIntervals = {
   free: 12,
   student: 6,
   pro: 3,
-  champion: 1,
+  elite: 2,
+  coach: 1,
   academy: 0.5
 };
 
