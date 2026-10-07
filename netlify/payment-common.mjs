@@ -27,9 +27,11 @@ export async function authenticate(request) {
 }
 
 export const planPricesMinor = {
-  student: 7900,
-  pro: 14900,
-  champion: 29900
+  student: 99900,
+  pro: 199900,
+  elite: 399900,
+  coach: 499900,
+  academy: 799900
 };
 
 export function providerPlanKey(provider, planId) {
