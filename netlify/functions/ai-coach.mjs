@@ -15,9 +15,10 @@ const allowedTopics = new Set([
 const planLimits = {
   free: 0,
   student: 50,
-  pro: 100,
-  champion: 500,
-  academy: 2000
+  pro: 200,
+  elite: 500,
+  coach: 750,
+  academy: 1000
 };
 
 const MAX_PROMPT_LENGTH = 4000;
