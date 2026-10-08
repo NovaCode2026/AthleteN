@@ -205,7 +205,7 @@ export default function AdminPanelScreen() {
             {superView ? <Text style={s.controlLabel}>ROLE {superAdmin ? '' : '(SUPER ADMIN ONLY)'}</Text> : null}
             {superView ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
               {ROLES.map((nextRole) => <Pressable key={nextRole} disabled={busy || !superAdmin} onPress={() => void setRole(selected, nextRole)} style={[s.chip, selected.role === nextRole && s.chipActive, !superAdmin && s.disabled]}><Text style={s.chipText}>{nextRole.toUpperCase()}</Text></Pressable>)}
-            </ScrollView>
+            </ScrollView> : null}
 
             {busy ? <ActivityIndicator color={c.accentBright} /> : null}
           </View>
