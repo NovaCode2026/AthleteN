@@ -55,6 +55,7 @@ export default function AdminPanelScreen() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [superView, setSuperView] = useState(superAdmin);
 
   const load = useCallback(async () => {
     if (!allowed || !session) return;
@@ -141,9 +142,19 @@ export default function AdminPanelScreen() {
         contentContainerStyle={s.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={c.accentBright} />}
       >
-        <Pressable onPress={() => router.back()}><Text style={s.back}>‹ BACK</Text></Pressable>
-        <Text style={s.kicker}>{superAdmin ? 'SUPER ADMIN CONTROL CENTER' : 'ADMIN CONTROL CENTER'}</Text>
-        <Text style={s.title}>AthleteN Command</Text>
+        <Pressable onPress={() => router.back()}><Text style={s.back}>‹ BACK TO ATHLETEN</Text></Pressable>
+        {superAdmin ? (
+          <View style={s.modeRow}>
+            <Pressable onPress={() => setSuperView(false)} style={[s.modeButton, !superView && s.modeActive]}>
+              <Text style={s.modeText}>NORMAL ADMIN</Text>
+            </Pressable>
+            <Pressable onPress={() => setSuperView(true)} style={[s.modeButton, superView && s.modeActive]}>
+              <Text style={s.modeText}>SUPER ADMIN</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        <Text style={s.kicker}>{superView && superAdmin ? 'SUPER ADMIN CONTROL CENTER' : 'ADMIN CONTROL CENTER'}</Text>
+        <Text style={s.title}>{superView && superAdmin ? 'Super Admin Command' : 'Admin Command'}</Text>
         <Text style={s.meta}>Secure mobile administration. Sensitive mutations go through protected Supabase RPCs.</Text>
 
         <View style={s.grid}>
@@ -157,6 +168,7 @@ export default function AdminPanelScreen() {
 
         <View style={s.panel}>
           <Text style={s.section}>ADMIN SHORTCUTS</Text>
+          {superView && superAdmin ? <Action title="Super Admin Mode" text="Full privileged controls are enabled for this account." onPress={() => setMessage('Super Admin mode is active.')} /> : null}
           <Action title="Badge Control" text="Award/revoke non-system badges using protected RPCs." onPress={() => router.push('/admin-badges')} />
           <Action title="Audit & Security" text="Review recent privileged mutations and security events." onPress={() => setMessage('Audit events are shown below.')} />
           <Action title="Refresh Control Center" text="Reload users, audit events and feature flags." onPress={() => void refresh()} />
@@ -190,8 +202,8 @@ export default function AdminPanelScreen() {
               {PLANS.map((plan) => <Pressable key={plan} disabled={busy} onPress={() => void setPlan(selected, plan)} style={[s.chip, selected.plan_id === plan && s.chipActive]}><Text style={s.chipText}>{plan.toUpperCase()}</Text></Pressable>)}
             </ScrollView>
 
-            <Text style={s.controlLabel}>ROLE {superAdmin ? '' : '(SUPER ADMIN ONLY)'}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
+            {superView ? <Text style={s.controlLabel}>ROLE {superAdmin ? '' : '(SUPER ADMIN ONLY)'}</Text> : null}
+            {superView ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
               {ROLES.map((nextRole) => <Pressable key={nextRole} disabled={busy || !superAdmin} onPress={() => void setRole(selected, nextRole)} style={[s.chip, selected.role === nextRole && s.chipActive, !superAdmin && s.disabled]}><Text style={s.chipText}>{nextRole.toUpperCase()}</Text></Pressable>)}
             </ScrollView>
 
@@ -199,7 +211,7 @@ export default function AdminPanelScreen() {
           </View>
         ) : null}
 
-        {superAdmin ? (
+        {superAdmin && superView ? (
           <View style={s.panel}>
             <Text style={s.section}>FEATURE FLAGS</Text>
             {flags.map((flag) => (
@@ -242,5 +254,5 @@ function Action({ title, text, onPress }: { title: string; text: string; onPress
 }
 
 const s = StyleSheet.create({
-  screen:{flex:1,backgroundColor:c.background},content:{padding:18,paddingBottom:60,gap:12},back:{color:c.accentBright,fontSize:11,fontWeight:'900',letterSpacing:1},kicker:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.7},title:{color:c.text,fontSize:30,fontWeight:'900',marginTop:2},meta:{color:c.muted,fontSize:11,lineHeight:17},grid:{flexDirection:'row',flexWrap:'wrap',gap:8},stat:{width:'31%',minWidth:100,backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:16,padding:12},statValue:{color:c.text,fontSize:22,fontWeight:'900'},statLabel:{color:c.muted,fontSize:7,fontWeight:'900',letterSpacing:1,marginTop:3},panel:{backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:20,padding:14,gap:10},section:{color:c.muted,fontSize:9,fontWeight:'900',letterSpacing:1.5},input:{backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,padding:12,fontSize:12},userRow:{flexDirection:'row',alignItems:'center',gap:10,borderTopWidth:1,borderTopColor:c.border,paddingVertical:12},selected:{backgroundColor:c.accentSoft,borderRadius:12,paddingHorizontal:10},userName:{color:c.text,fontSize:13,fontWeight:'900'},userMeta:{color:c.muted,fontSize:9,lineHeight:14},userCode:{color:c.accentBright,fontSize:8,fontWeight:'800',marginTop:2},chevron:{color:c.accentBright,fontSize:22,fontWeight:'900'},chips:{gap:7},chip:{borderWidth:1,borderColor:c.border,borderRadius:10,paddingHorizontal:11,paddingVertical:9,backgroundColor:c.background},chipActive:{borderColor:c.accent,backgroundColor:c.accentSoft},disabled:{opacity:.45},chipText:{color:c.text,fontSize:8,fontWeight:'900'},controlLabel:{color:c.textSecondary,fontSize:9,fontWeight:'900',letterSpacing:1,marginTop:4},action:{flexDirection:'row',alignItems:'center',gap:10,borderTopWidth:1,borderTopColor:c.border,paddingVertical:10},actionTitle:{color:c.text,fontSize:12,fontWeight:'900'},flagRow:{flexDirection:'row',alignItems:'center',gap:10,borderTopWidth:1,borderTopColor:c.border,paddingVertical:10},toggle:{borderWidth:1,borderColor:c.border,borderRadius:999,paddingHorizontal:10,paddingVertical:6},toggleOn:{backgroundColor:c.accentSoft,borderColor:c.accent},toggleText:{color:c.accentBright,fontSize:8,fontWeight:'900'},auditRow:{borderTopWidth:1,borderTopColor:c.border,paddingVertical:9},auditAction:{color:c.text,fontSize:10,fontWeight:'900'},message:{color:c.accentBright,fontSize:10},denied:{flex:1,backgroundColor:c.background,alignItems:'center',justifyContent:'center',padding:25}}
+  screen:{flex:1,backgroundColor:c.background},content:{padding:18,paddingBottom:60,gap:12},back:{color:c.accentBright,fontSize:11,fontWeight:'900',letterSpacing:1},kicker:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.7},title:{color:c.text,fontSize:30,fontWeight:'900',marginTop:2},meta:{color:c.muted,fontSize:11,lineHeight:17},grid:{flexDirection:'row',flexWrap:'wrap',gap:8},stat:{width:'31%',minWidth:100,backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:16,padding:12},statValue:{color:c.text,fontSize:22,fontWeight:'900'},statLabel:{color:c.muted,fontSize:7,fontWeight:'900',letterSpacing:1,marginTop:3},panel:{backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:20,padding:14,gap:10},section:{color:c.muted,fontSize:9,fontWeight:'900',letterSpacing:1.5},input:{backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,padding:12,fontSize:12},userRow:{flexDirection:'row',alignItems:'center',gap:10,borderTopWidth:1,borderTopColor:c.border,paddingVertical:12},selected:{backgroundColor:c.accentSoft,borderRadius:12,paddingHorizontal:10},userName:{color:c.text,fontSize:13,fontWeight:'900'},userMeta:{color:c.muted,fontSize:9,lineHeight:14},userCode:{color:c.accentBright,fontSize:8,fontWeight:'800',marginTop:2},chevron:{color:c.accentBright,fontSize:22,fontWeight:'900'},chips:{gap:7},chip:{borderWidth:1,borderColor:c.border,borderRadius:10,paddingHorizontal:11,paddingVertical:9,backgroundColor:c.background},chipActive:{borderColor:c.accent,backgroundColor:c.accentSoft},disabled:{opacity:.45},chipText:{color:c.text,fontSize:8,fontWeight:'900'},controlLabel:{color:c.textSecondary,fontSize:9,fontWeight:'900',letterSpacing:1,marginTop:4},action:{flexDirection:'row',alignItems:'center',gap:10,borderTopWidth:1,borderTopColor:c.border,paddingVertical:10},actionTitle:{color:c.text,fontSize:12,fontWeight:'900'},flagRow:{flexDirection:'row',alignItems:'center',gap:10,borderTopWidth:1,borderTopColor:c.border,paddingVertical:10},toggle:{borderWidth:1,borderColor:c.border,borderRadius:999,paddingHorizontal:10,paddingVertical:6},toggleOn:{backgroundColor:c.accentSoft,borderColor:c.accent},toggleText:{color:c.accentBright,fontSize:8,fontWeight:'900'},auditRow:{borderTopWidth:1,borderTopColor:c.border,paddingVertical:9},auditAction:{color:c.text,fontSize:10,fontWeight:'900'},message:{color:c.accentBright,fontSize:10},denied:{flex:1,backgroundColor:c.background,alignItems:'center',justifyContent:'center',padding:25},modeRow:{flexDirection:'row',gap:8,marginTop:6},modeButton:{flex:1,borderWidth:1,borderColor:c.border,borderRadius:12,paddingVertical:11,alignItems:'center',backgroundColor:c.surface},modeActive:{borderColor:c.accent,backgroundColor:c.accentSoft},modeText:{color:c.text,fontSize:9,fontWeight:'900',letterSpacing:.5}}
 );
