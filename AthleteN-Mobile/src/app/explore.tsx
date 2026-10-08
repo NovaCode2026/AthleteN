@@ -39,6 +39,7 @@ export default function ExploreScreen(){
    <FeatureRow title="Mission Center" text="Create and complete healthy performance missions." icon="check" onPress={()=>router.push('/missions')}/>
    <FeatureRow title="Athlete Journey" text="Seasons, Fight IQ, techniques, challenges, records and milestones." icon="chart" onPress={()=>router.push('/athlete-journey')}/>
   </Section>
+  {['admin','super_admin','support_admin'].includes(String(profile?.role||''))?<Section title="ADMINISTRATION"><FeatureRow title="Admin Control Center" text="Users, roles, plans, feature flags, badges and audit activity." icon="shield" onPress={()=>router.push('/admin-panel')}/></Section>:null}
   <Section title="TEAM"><FeatureRow title="My Team" text="Connect or change your Coach and Academy" onPress={()=>router.push({pathname:'/team'})}/></Section>
   <Section title="ATHLETEN COMMUNITY">
    <FeatureRow title="Messages" text="Secure athlete, coach and team messaging" onPress={()=>router.push({pathname:'/messages'})}/>
