@@ -55,7 +55,6 @@ export default function AdminPanelScreen() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [superView, setSuperView] = useState(superAdmin);
 
   const load = useCallback(async () => {
     if (!allowed || !session) return;
@@ -142,19 +141,9 @@ export default function AdminPanelScreen() {
         contentContainerStyle={s.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={c.accentBright} />}
       >
-        <Pressable onPress={() => router.back()}><Text style={s.back}>‹ BACK TO ATHLETEN</Text></Pressable>
-        {superAdmin ? (
-          <View style={s.modeRow}>
-            <Pressable onPress={() => setSuperView(false)} style={[s.modeButton, !superView && s.modeActive]}>
-              <Text style={s.modeText}>NORMAL ADMIN</Text>
-            </Pressable>
-            <Pressable onPress={() => setSuperView(true)} style={[s.modeButton, superView && s.modeActive]}>
-              <Text style={s.modeText}>SUPER ADMIN</Text>
-            </Pressable>
-          </View>
-        ) : null}
-        <Text style={s.kicker}>{superView && superAdmin ? 'SUPER ADMIN CONTROL CENTER' : 'ADMIN CONTROL CENTER'}</Text>
-        <Text style={s.title}>{superView && superAdmin ? 'Super Admin Command' : 'Admin Command'}</Text>
+        <Pressable onPress={() => router.replace('/')}><Text style={s.back}>‹ BACK TO DASHBOARD</Text></Pressable>
+        <Text style={s.kicker}>{superAdmin ? 'SUPER ADMIN CONTROL CENTER' : 'ADMIN CONTROL CENTER'}</Text>
+        <Text style={s.title}>{superAdmin ? 'Super Admin Dashboard' : 'Admin Dashboard'}</Text>
         <Text style={s.meta}>Secure mobile administration. Sensitive mutations go through protected Supabase RPCs.</Text>
 
         <View style={s.grid}>
@@ -168,8 +157,7 @@ export default function AdminPanelScreen() {
 
         <View style={s.panel}>
           <Text style={s.section}>ADMIN SHORTCUTS</Text>
-          {superView && superAdmin ? <Action title="Super Admin Mode" text="Full privileged controls are enabled for this account." onPress={() => setMessage('Super Admin mode is active.')} /> : null}
-          <Action title="Badge Control" text="Award/revoke non-system badges using protected RPCs." onPress={() => router.push('/admin-badges')} />
+            <Action title="Badge Control" text="Award/revoke non-system badges using protected RPCs." onPress={() => router.push('/admin-badges')} />
           <Action title="Audit & Security" text="Review recent privileged mutations and security events." onPress={() => setMessage('Audit events are shown below.')} />
           <Action title="Refresh Control Center" text="Reload users, audit events and feature flags." onPress={() => void refresh()} />
         </View>
@@ -202,16 +190,16 @@ export default function AdminPanelScreen() {
               {PLANS.map((plan) => <Pressable key={plan} disabled={busy} onPress={() => void setPlan(selected, plan)} style={[s.chip, selected.plan_id === plan && s.chipActive]}><Text style={s.chipText}>{plan.toUpperCase()}</Text></Pressable>)}
             </ScrollView>
 
-            {superView ? <Text style={s.controlLabel}>ROLE {superAdmin ? '' : '(SUPER ADMIN ONLY)'}</Text> : null}
-            {superView ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
+            <Text style={s.controlLabel}>ROLE {superAdmin ? '' : '(SUPER ADMIN ONLY)'}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
               {ROLES.map((nextRole) => <Pressable key={nextRole} disabled={busy || !superAdmin} onPress={() => void setRole(selected, nextRole)} style={[s.chip, selected.role === nextRole && s.chipActive, !superAdmin && s.disabled]}><Text style={s.chipText}>{nextRole.toUpperCase()}</Text></Pressable>)}
-            </ScrollView> : null}
+            </ScrollView>
 
             {busy ? <ActivityIndicator color={c.accentBright} /> : null}
           </View>
         ) : null}
 
-        {superAdmin && superView ? (
+        {superAdmin ? (
           <View style={s.panel}>
             <Text style={s.section}>FEATURE FLAGS</Text>
             {flags.map((flag) => (
