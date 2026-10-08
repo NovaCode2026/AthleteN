@@ -31,6 +31,14 @@ export default function ExploreScreen(){
    <FeatureRow title="Documents" text="Private athlete documents" badge={String(counts.docs)} onPress={()=>router.push({pathname:'/documents'})}/>
    <FeatureRow title="Verification" text="Athlete/student verification status" onPress={()=>router.push({pathname:'/verification'})}/>
   </Section>
+  <Section title="ATHLETE OPERATING SYSTEM">
+   <FeatureRow title="Today's Command Center" text="See the next useful action across training, competition and missions." icon="dashboard" onPress={()=>router.push('/athlete-command')}/>
+   <FeatureRow title="Training Session Mode" text="Run a timed session and save it to the same training history." icon="training" onPress={()=>router.push('/training-session')}/>
+   <FeatureRow title="Competition Mode" text="Preparation, checklist, intelligence and post-event review." icon="event" onPress={()=>router.push('/competition-mode')}/>
+   <FeatureRow title="Athlete Passport" text="A compact share-ready identity and achievement record." icon="shield" onPress={()=>router.push('/athlete-passport')}/>
+   <FeatureRow title="Mission Center" text="Create and complete healthy performance missions." icon="check" onPress={()=>router.push('/missions')}/>
+   <FeatureRow title="Athlete Journey" text="Seasons, Fight IQ, techniques, challenges, records and milestones." icon="chart" onPress={()=>router.push('/athlete-journey')}/>
+  </Section>
   <Section title="TEAM"><FeatureRow title="My Team" text="Connect or change your Coach and Academy" onPress={()=>router.push({pathname:'/team'})}/></Section>
   <Section title="ATHLETEN COMMUNITY">
    <FeatureRow title="Messages" text="Secure athlete, coach and team messaging" onPress={()=>router.push({pathname:'/messages'})}/>
