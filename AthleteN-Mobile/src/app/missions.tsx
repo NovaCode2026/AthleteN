@@ -1,0 +1,20 @@
+// @ts-nocheck
+import { useCallback,useEffect,useState } from 'react';
+import { Pressable,Text,View } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { Screen,Header,Section,Card,Button,Field,c,RefreshButton } from '@/components/mobile-ui';
+
+export default function Missions(){
+ const {session}=useAuth();const [rows,setRows]=useState<any[]>([]);const [title,setTitle]=useState('');const [target,setTarget]=useState('');const [unit,setUnit]=useState('sessions');const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');
+ const load=useCallback(async()=>{if(!session)return;setBusy(true);const r=await supabase.from('athlete_challenges').select('id,title,target_value,current_value,unit,due_date,status').eq('user_id',session.user.id).order('status',{ascending:true}).order('due_date',{ascending:true});setRows(r.data||[]);setBusy(false)},[session]);
+ useEffect(()=>{void load()},[load]);
+ const add=async()=>{const n=Number(target);if(!session||!title.trim()||!Number.isFinite(n)||n<=0){setMessage('Add a mission title and a positive target.');return}setBusy(true);const {error}=await supabase.from('athlete_challenges').insert({user_id:session.user.id,title:title.trim(),target_value:n,current_value:0,unit:unit.trim()||'sessions',status:'active',created_by:session.user.id});setBusy(false);if(error)setMessage(error.message);else{setTitle('');setTarget('');setMessage('Mission created.');await load()}};
+ const complete=async(id:string)=>{setBusy(true);const {error}=await supabase.from('athlete_challenges').update({status:'completed'}).eq('id',id).eq('user_id',session?.user.id);setBusy(false);if(error)setMessage(error.message);else await load()};
+ return <Screen><Header eyebrow="ATHLETEN MISSIONS" title="Mission Center" subtitle="Turn goals into small, trackable actions. No body or appearance scoring." right={<RefreshButton onPress={()=>void load()} busy={busy}/>}/>
+ <Card accent><Text style={{color:c.accentBright,fontSize:9,fontWeight:'900'}}>MISSION ENGINE</Text><Text style={{color:c.text,fontSize:19,fontWeight:'900'}}>Progress beats perfection.</Text><Text style={{color:c.muted,fontSize:10,lineHeight:16}}>Use missions for training consistency, technique practice, competition preparation or other healthy performance tasks.</Text></Card>
+ <Section title="CREATE MISSION"><Field label="MISSION" value={title} onChangeText={setTitle} placeholder="Complete 5 training sessions"/><View style={{flexDirection:'row',gap:9}}><View style={{flex:1}}><Field label="TARGET" value={target} onChangeText={setTarget} placeholder="5" keyboardType="number-pad"/></View><View style={{flex:1}}><Field label="UNIT" value={unit} onChangeText={setUnit} placeholder="sessions"/></View></View>{message?<Text style={{color:c.accentBright,fontSize:10}}>{message}</Text>:null}<Button title="CREATE MISSION" onPress={add} busy={busy}/></Section>
+ <Section title="ACTIVE MISSIONS">{rows.filter(x=>x.status==='active').map(x=><Card key={x.id}><Text style={{color:c.text,fontSize:14,fontWeight:'900'}}>{x.title}</Text><Text style={{color:c.accentBright,fontSize:11,fontWeight:'900',marginTop:3}}>{x.current_value||0} / {x.target_value} {x.unit||''}</Text><Pressable onPress={()=>complete(x.id)} disabled={busy} style={{marginTop:7}}><Text style={{color:c.success,fontSize:9,fontWeight:'900'}}>MARK COMPLETE</Text></Pressable></Card>)}{!rows.some(x=>x.status==='active')?<Card><Text style={{color:c.muted,fontSize:10}}>No active missions yet.</Text></Card>:null}</Section>
+ <Section title="COMPLETED">{rows.filter(x=>x.status==='completed').slice(0,8).map(x=><Card key={x.id}><Text style={{color:c.text,fontWeight:'900'}}>{x.title}</Text><Text style={{color:c.success,fontSize:9,fontWeight:'900'}}>COMPLETED</Text></Card>)}</Section>
+ </Screen>;
+}
