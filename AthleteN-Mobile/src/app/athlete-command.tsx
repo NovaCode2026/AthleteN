@@ -32,10 +32,10 @@ export default function AthleteCommand(){
  useEffect(()=>{void load()},[load]);
  return <Screen><Header eyebrow="ATHLETEN COMMAND CENTER" title="Today's cockpit" subtitle="The shortest path from opening AthleteN to knowing what matters today." right={<RefreshButton onPress={()=>void load()} busy={busy}/>}/>
  {loadError?<Card><Text style={{color:c.muted,fontSize:10,lineHeight:15}}>{loadError}</Text></Card>:null}
- <Card accent><Text style={{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.2}}>ATHLETE MODE</Text><Text style={{color:c.text,fontSize:21,fontWeight:'900',marginTop:3}}>{profile?.discipline||'Taekwondo'} • {profile?.academy||'Independent'}</Text><Text style={{color:c.muted,fontSize:11,marginTop:4}}>Focus on the next useful action, not another dashboard.</Text></Card>
+ <Card accent><Text style={{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.2}}>ATHLETE MODE</Text><Text style={{color:c.text,fontSize:21,fontWeight:'900',marginTop:3}}>{String(profile?.discipline||'Taekwondo')} • {typeof profile?.academy==='string'&&profile.academy.trim()?profile.academy:'Independent'}</Text><Text style={{color:c.muted,fontSize:11,marginTop:4}}>Focus on the next useful action, not another dashboard.</Text></Card>
  <Section title="TODAY">
   {data.today?<Card><Text style={{color:c.success,fontSize:9,fontWeight:'900'}}>TRAINING LOGGED</Text><Text style={{color:c.text,fontSize:16,fontWeight:'900'}}>{data.today.title}</Text><Text style={{color:c.muted,fontSize:10}}>{data.today.minutes} minutes</Text></Card>:<FeatureRow title="Start a training session" text="Use Session Mode to time the work and save it when finished." icon="training" onPress={()=>router.push('/training-session')}/>}
-  {data.plan?<FeatureRow title={data.plan.title} text={(data.plan.focus_area||'Training plan')+' • ends '+data.plan.ends_at} icon="calendar" onPress={()=>router.push('/training')}/>:null}
+  {data.plan?<FeatureRow title={String(data.plan.title||'Training plan')} text={String(data.plan.focus_area||'Training plan')+(data.plan.ends_at?' • ends '+String(data.plan.ends_at):'')} icon="calendar" onPress={()=>router.push('/training')}/>:null}
  </Section>
  <Section title="NEXT ACTIONS">
   <FeatureRow title="Competition Mode" text="Prepare the next event, checklist and post-event review." icon="event" onPress={()=>router.push('/competition-mode')}/>
