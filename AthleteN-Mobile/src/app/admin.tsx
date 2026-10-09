@@ -72,11 +72,14 @@ export default function AdminScreen() {
   const loadCounts = useCallback(async () => {
     if (!canManage) return;
     const result: Record<string, number> = {};
-    await Promise.all(resources.map(async ([table]) => {
+    const results = await Promise.all(resources.map(async ([table]) => {
       const r = await supabase.from(table).select('*', { count: 'exact', head: true });
       result[table] = r.count ?? 0;
+      return { table, error: r.error?.message };
     }));
     setCounts(result);
+    const failed = results.find(item => item.error);
+    if (failed) setMessage(`Refresh warning — ${failed.table}: ${failed.error}`);
   }, [canManage]);
 
   const load = useCallback(async () => {
@@ -90,7 +93,17 @@ export default function AdminScreen() {
     setLoading(false);
   }, [canManage, selected]);
 
-  const refresh = useCallback(async () => { setRefreshing(true); try { await Promise.all([load(), loadCounts()]); } finally { setRefreshing(false); } }, [load, loadCounts]);
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    setMessage('');
+    try {
+      await Promise.all([load(), loadCounts()]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not refresh the Command Center.');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load, loadCounts]);
 
   useEffect(() => { void loadCounts(); }, [loadCounts]);
   useEffect(() => { void load(); }, [load]);
@@ -171,6 +184,17 @@ export default function AdminScreen() {
           </View>
           <View style={{flexDirection:'row',alignItems:'center',gap:8}}><RefreshButton onPress={()=>void refresh()} busy={refreshing}/><Pressable style={s.menuButton} onPress={() => setDrawerOpen(true)}><Icon name="menu" size={17} color={c.text} /><Text style={s.menuText}>MENU</Text></Pressable></View>
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open normal AthleteN dashboard"
+          onPress={() => router.replace('/(tabs)')}
+          style={s.dashboardLink}
+        >
+          <Icon name="back" size={15} color={c.accentBright} />
+          <Text style={s.dashboardLinkText}>ATHLETEN DASHBOARD</Text>
+          <Text style={s.dashboardLinkHint}>WELCOME TO THE FUTURE</Text>
+        </Pressable>
 
         <View style={s.hero}>
           <Text style={s.kicker}>ADMINISTRATION</Text>
@@ -312,6 +336,9 @@ const s = StyleSheet.create({
   brandSub:{color:c.muted,fontSize:7,fontWeight:'800',letterSpacing:1.1,marginTop:2},
   menuButton:{flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:12,paddingVertical:10,borderRadius:12,backgroundColor:c.surface,borderWidth:1,borderColor:c.border},
   menuIcon:{color:c.text,fontSize:16}, menuText:{color:c.text,fontSize:9,fontWeight:'900',letterSpacing:1},
+  dashboardLink:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:7,backgroundColor:c.surface,borderWidth:1,borderColor:c.accentDeep,borderRadius:14,paddingHorizontal:13,paddingVertical:12},
+  dashboardLinkText:{color:c.accentBright,fontSize:10,fontWeight:'900',letterSpacing:1},
+  dashboardLinkHint:{color:c.muted,fontSize:8,fontWeight:'800',letterSpacing:.7,marginLeft:'auto'},
   hero:{backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:22,padding:18,gap:8},
   kicker:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.5},
   title:{color:c.text,fontSize:28,fontWeight:'900'},
