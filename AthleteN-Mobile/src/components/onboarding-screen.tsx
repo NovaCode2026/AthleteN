@@ -27,7 +27,7 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
     setBusy(true); setError('');
     const { error: insertError } = await supabase.from('profiles').upsert({
       user_id:userId, full_name:name.trim(), date_of_birth:dob.trim(), gender:gender.trim(),
-      sport:sport.trim(), club:club.trim(), coach:coach.trim(), discipline,
+      sport:sport.trim(), club:club.trim(), coach:coach.trim(), discipline:discipline.toLowerCase(),
     }, { onConflict:'user_id' });
     if (insertError) { setBusy(false); setError(insertError.message); return; }
     if (connectionCode.trim()) {
