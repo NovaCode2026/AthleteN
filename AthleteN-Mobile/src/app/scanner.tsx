@@ -11,11 +11,11 @@ type SourceType='website'|'instagram';
 type ScanDetails={description?:string;fields?:Record<string,any>;important_facts?:Record<string,any>;sections?:Array<{title:string;content:string;source_url?:string}>;key_highlights?:string[];pages_scanned?:number;source_pages?:string[];pdfs?:Array<{href:string;label:string}>;conflicts?:Array<{field:string;candidates:Array<{value:string;source_url?:string}>}>;tournament_group?:{name:string}};
 type Scan={id:string;source_url:string;tournament_name?:string|null;tournament_date?:string|null;venue?:string|null;registration_deadline?:string|null;weigh_in_information?:string|null;categories?:string|null;notices?:string|null;schedules_results?:string|null;pdfs?:Array<{href:string;label:string}>|null;details?:ScanDetails|null;status?:string|null;detected_changes?:string|null;last_checked_at?:string|null;next_check_at?:string|null};
 
-const clean=(v:any)=>String(v??'').replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'").replace(/&amp;/gi,'&').replace(/&lt;/gi,'<').replace(/&gt;/gi,'>').replace(/\\s+/g,' ').trim();
+const clean=(v:any)=>String(v??'').replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'").replace(/&amp;/gi,'&').replace(/&lt;/gi,'<').replace(/&gt;/gi,'>').replace(/\s+/g,' ').trim();
 const isInstagram=(u:string)=>/instagram\.com/i.test(u);
-const labelize=(v:string)=>v.replace(/_/g,' ').replace(/\\b\\w/g,x=>x.toUpperCase());
+const labelize=(v:string)=>v.replace(/_/g,' ').replace(/\b\w/g,x=>x.toUpperCase());
 const fmt=(v?:string|null)=>{if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?v:d.toLocaleString();};
-const validInstagram=(u:string)=>{try{const x=new URL(u);const p=x.pathname.split('/').filter(Boolean);if(!/(^|\\.)instagram\\.com$/i.test(x.hostname)||!p.length)return false;if((p[0]==='p'||p[0]==='reel'||p[0]==='reels')&&p[1])return true;return p.length===1&&/^[a-zA-Z0-9._]{1,30}$/.test(p[0])}catch{return false}};
+const validInstagram=(u:string)=>{try{const x=new URL(u);const p=x.pathname.split('/').filter(Boolean);if(!/(^|\.)instagram\.com$/i.test(x.hostname)||!p.length)return false;if((p[0]==='p'||p[0]==='reel'||p[0]==='reels')&&p[1])return true;return p.length===1&&/^[a-zA-Z0-9._]{1,30}$/.test(p[0])}catch{return false}};
 
 export default function ScannerScreen(){
  const {session}=useAuth();
