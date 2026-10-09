@@ -1,6 +1,13 @@
 name: AthleteN Android APK
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'AthleteN-Mobile/**'
+      - 'netlify/functions/**'
+      - 'tests/**'
+      - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 
 permissions:
