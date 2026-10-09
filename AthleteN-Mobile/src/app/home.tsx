@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useCallback, useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
@@ -16,6 +16,7 @@ const c=Colors.dark;
 
 export default function HomeScreen(){
  const {session,profile}=useAuth(); const router=useRouter();
+ const [greeting,setGreeting]=useState(getGreeting);
  const [refreshing,setRefreshing]=useState(false);const [minutes,setMinutes]=useState(0);const [sessions,setSessions]=useState(0);const [chart,setChart]=useState<ChartPoint[]>([]);const [weight,setWeight]=useState<number|null>(null);const [medals,setMedals]=useState(0);const [next,setNext]=useState<any>(null);const [streak,setStreak]=useState(calculateStreak([]));const [unread,setUnread]=useState(0);
  const load=useCallback(async()=>{
   if(!session)return; const uid=session.user.id; const now=new Date(); const days:string[]=[];
@@ -30,11 +31,12 @@ export default function HomeScreen(){
   const rows=(t.data||[]).map(r=>({...r,_minutes:validMinutes(r.minutes)})).filter(r=>r._minutes>0);const summary=calculateStreak(rows);setStreak(summary);setSessions(rows.length);setMinutes(rows.reduce((sum,r)=>sum+r._minutes,0));setChart(days.map(day=>({label:day.slice(5).replace('-','/'),value:rows.filter(r=>String(r.session_date).slice(0,10)===day).reduce((sum,r)=>sum+r._minutes,0)})));setWeight(w.data?validWeight(w.data.weight_kg):null);setMedals(m.count||0);setNext(e.data||null);setUnread(n.count||0);
  },[session]);
  useEffect(()=>{void load()},[load]);
+ useEffect(()=>{const updateGreeting=()=>setGreeting(getGreeting());updateGreeting();const timer=setInterval(updateGreeting,60000);const sub=AppState.addEventListener('change',state=>{if(state==='active')updateGreeting()});return()=>{clearInterval(timer);sub.remove()}},[]);
  const refresh=useCallback(async()=>{setRefreshing(true);try{await load()}finally{setRefreshing(false)}},[load]);
  const first=profile?.full_name?.split(' ')[0]||'Athlete';
  return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
   <View style={s.header}><View style={s.brandRow}><Image source={require('@/assets/logo.png')} style={s.logo}/><View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>ATHLETE PERFORMANCE</Text></View></View><View style={s.headerActions}><RefreshButton onPress={()=>void refresh()} busy={refreshing}/><Pressable onPress={()=>router.push('/notifications')} style={s.iconButton}><Icon name="bell" size={19} color={c.text}/>{unread>0?<View style={s.badge}><Text style={s.badgeText}>{unread>9?'9+':unread}</Text></View>:null}</Pressable><Pressable onPress={()=>router.push('/profile')} style={s.settings}><Icon name="settings" size={19} color={c.text}/></Pressable></View></View>
-  <View style={s.hero}><View><Text style={s.kicker}>YOUR PERFORMANCE HUB</Text><Text style={s.greeting}>Good morning,</Text><Text style={s.name}>{first}</Text><View style={s.pill}><View style={s.dot}/><Text style={s.pillText}>{(profile?.discipline||'TAEKWONDO').toUpperCase()} • LIVE</Text></View></View><View style={s.heroOrb}><Text style={s.heroMark}>A</Text></View></View>
+  <View style={s.hero}><View><Text style={s.kicker}>YOUR PERFORMANCE HUB</Text><Text style={s.greeting}>{greeting}</Text><Text style={s.name}>{first}</Text><View style={s.pill}><View style={s.dot}/><Text style={s.pillText}>{(profile?.discipline||'TAEKWONDO').toUpperCase()} • LIVE</Text></View></View><View style={s.heroOrb}><Text style={s.heroMark}>A</Text></View></View>
   <View style={s.grid}><Metric label="7D SESSIONS" value={sessions}/><Metric label="7D MINUTES" value={minutes} suffix=" min"/><Metric label="MEDALS" value={medals}/><Metric label="LATEST WEIGHT" value={weight==null?'—':weight} suffix={weight==null?'':' kg'}/></View>
   {['support_admin','admin','super_admin'].includes(String(profile?.role||''))?<Pressable onPress={()=>router.push('/admin-panel')} style={s.adminDashboardButton}><View style={s.adminDashboardIcon}><Icon name="settings" size={18} color={c.accentBright}/></View><View style={{flex:1}}><Text style={s.adminDashboardKicker}>ADMINISTRATION</Text><Text style={s.adminDashboardTitle}>Admin Dashboard</Text><Text style={s.meta}>Open the secure management center</Text></View><Icon name="arrow" size={16} color={c.accentBright}/></Pressable>:null}
   <PlanSection />
@@ -53,6 +55,7 @@ export default function HomeScreen(){
   <View style={s.actions}><Action title="Training" text="Log today's work" onPress={()=>router.push('/training')}/><Action title="AI" text="See performance signals" onPress={()=>router.push('/ai')}/><Action title="Compete" text="Events & medals" onPress={()=>router.push('/compete')}/><Action title="Scanner" text="Track tournament sources" onPress={()=>router.push('/scanner')}/></View>
  </ScrollView></SafeAreaView>
 }
+function getGreeting(){const hour=new Date().getHours();if(hour>=5&&hour<12)return 'Good morning,';if(hour>=12&&hour<17)return 'Good afternoon,';if(hour>=17&&hour<22)return 'Good evening,';return 'Welcome back,'}
 function Metric({label,value,suffix='' }:{label:string;value:number|string;suffix?:string}){return <View style={s.metric}><Text style={s.metricLabel}>{label}</Text><Text style={s.metricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>{value}{suffix}</Text></View>}
 function Command({title,text,onPress}:{title:string;text:string;onPress:()=>void}){return <Pressable onPress={onPress} style={s.command}><Text style={s.commandTitle}>{title}</Text><Text style={s.commandText}>{text}</Text></Pressable>}
 function Action({title,text,onPress}:{title:string;text:string;onPress:()=>void}){return <Pressable onPress={onPress} style={s.action}><View style={s.actionIcon}><Icon name={title==="Training"?"training":title==="AI"?"ai":title==="Compete"?"event":"search"} size={18}/></View><View style={s.actionCopy}><Text style={s.actionTitle}>{title}</Text><Text style={s.actionText}>{text}</Text></View><Icon name="arrow" size={16} color={c.muted}/></Pressable>}
