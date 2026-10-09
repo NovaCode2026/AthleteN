@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 
 const c = Colors.dark;
 const ADMIN_ROLES = ['support_admin', 'admin', 'super_admin'];
-const ROLES = ['athlete', 'coach', 'academy', 'academy_admin', 'support_admin', 'admin', 'super_admin'];
+const ROLES = ['athlete', 'coach', 'academy_admin', 'support_admin', 'admin', 'super_admin'];
 const PLANS = ['free', 'student', 'pro', 'elite', 'coach', 'academy'];
 
 type ProfileRow = {
