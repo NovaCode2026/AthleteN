@@ -44,8 +44,11 @@ export default function ScannerScreen(){
    const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({sourceUrl})});
    const payload=await response.json().catch(()=>({}));
    if(!response.ok)throw new Error(String(payload?.error||'Tournament scanner request failed.'));
-   if(payload?.scan){const row=payload.scan as Scan;setSelected(row);setScans(old=>old.some(x=>x.id===row.id)?old.map(x=>x.id===row.id?{...x,...row}:x):[row,...old])}
-   setMessage('Scan complete. Full tournament intelligence was extracted.');await load();
+   if(payload?.scan){const row=payload.scan as Scan;setSelected(row);setScans(old=>old.some(x=>x.id===row.id)?old.map(x=>x.id===row.id?{...x,...row}:x):[row,...old]);
+    if(String(row.status||'').toLowerCase()==='blocked')setMessage(clean(row.notices)||'This source blocked automatic scanning or did not expose readable content. Try a public HTML page or a text-based PDF.');
+    else setMessage('Scan complete. Review the extracted details and source links below.');
+   }else setMessage('The scanner returned no saved result. Please try again.');
+   await load();
   }catch(e){setMessage(e instanceof Error?e.message:'Tournament scan failed.')}finally{setScanning(null)}
  }
  async function saveAndScan(){
@@ -54,9 +57,9 @@ export default function ScannerScreen(){
   if(kind==='instagram'&&!validInstagram(source)){setMessage('Paste a public Instagram tournament post or reel URL.');return}
   setBusy(true);setMessage('');
   try{
-   const {data,error}=await supabase.from('tournament_scans').upsert({user_id:session.user.id,source_url:source,status:'pending'},{onConflict:'user_id,source_url'}).select('id,source_url').single();
-   if(error)throw error;setUrl('');await load();await runScan(source,data?.id);
-  }catch(e){setMessage(e instanceof Error?e.message:'Could not save scan source.')}finally{setBusy(false)}
+   setUrl('');
+   await runScan(source);
+  }catch(e){setMessage(e instanceof Error?e.message:'Could not start the scan.')}finally{setBusy(false)}
  }
  async function remove(id:string){setBusy(true);const {error}=await supabase.from('tournament_scans').delete().eq('id',id).eq('user_id',session?.user.id);setBusy(false);if(error)setMessage(error.message);else{if(selected?.id===id)setSelected(null);await load()}}
  const details=selected?.details||{};const fields=details.fields||{};const facts=details.important_facts||{};
