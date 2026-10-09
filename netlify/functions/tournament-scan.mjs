@@ -219,15 +219,17 @@ async function fetchText(url, timeoutMs = MAX_PAGE_FETCH_MS) {
   try {
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "AthleteN-TournamentScanner/2.0",
-        Accept: "text/html,text/plain,application/xml,text/xml,application/xhtml+xml"
+        "User-Agent": "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 AthleteN-TournamentScanner/2.1",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain,application/pdf,*/*;q=0.8",
+        "Accept-Language": "en-IN,en;q=0.9"
       },
       signal: controller.signal,
       redirect: "follow"
     });
     if (!response.ok) throw new Error(`HTTP_${response.status}`);
-    const contentType = response.headers.get("content-type") || "";
-    const isPdf = /application\/pdf/i.test(contentType) || /\.pdf$/i.test(new URL(url).pathname);
+    const contentType = (response.headers.get("content-type") || "").toLowerCase();
+    const finalUrl = response.url || url;
+    const isPdf = /application\/pdf/i.test(contentType) || /\.pdf$/i.test(new URL(finalUrl).pathname);
     if (isPdf) {
       const pdfText = extractPdfText(Buffer.from(await response.arrayBuffer()));
       if (!pdfText) throw new Error("PDF_TEXT_UNAVAILABLE");
