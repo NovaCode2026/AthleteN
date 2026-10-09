@@ -127,14 +127,14 @@ export default async function handler(request) {
 
     const amountMinor = planPricesMinor[planId];
     const result = provider === "razorpay"
-      ? await razorpayCheckout(supabase, user, planId, amountMinor, verification.id)
+      ? await razorpayCheckout(supabase, user, planId, amountMinor, verification?.id || null)
       : provider === "stripe"
-        ? await stripeCheckout(supabase, user, planId, amountMinor, verification.id)
-        : await cashfreeCheckout(supabase, user, planId, amountMinor, verification.id);
+        ? await stripeCheckout(supabase, user, planId, amountMinor, verification?.id || null)
+        : await cashfreeCheckout(supabase, user, planId, amountMinor, verification?.id || null);
 
     await logPaymentEvent(supabase, {
       user_id: user.id, provider, event_type: "checkout.created", amount_minor: amountMinor,
-      currency: "INR", status: "pending", metadata: { plan_id: planId, payment_order_id: result.orderId, verification_id: verification.id }
+      currency: "INR", status: "pending", metadata: { plan_id: planId, payment_order_id: result.orderId, verification_id: verification?.id || null }
     });
     return json({ ...result, planId, amountMinor, currency: "INR", verification: "approved" });
   } catch (error) {
