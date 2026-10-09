@@ -11,21 +11,27 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
   const [sport,setSport]=useState('Taekwondo');
   const [club,setClub]=useState('');
   const [coach,setCoach]=useState('');
+  const [connectionCode,setConnectionCode]=useState('');
   const [discipline,setDiscipline]=useState<'Kyorugi'|'Poomsae'>('Kyorugi');
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
 
   async function save() {
-    if (!name.trim()||!dob.trim()||!gender.trim()||!sport.trim()||!club.trim()||!coach.trim()) {
-      setError('All athlete profile fields are required.'); return;
+    if (!name.trim()||!dob.trim()||!gender.trim()||!sport.trim()) {
+      setError('Name, date of birth, gender, and sport are required.'); return;
     }
     setBusy(true); setError('');
     const { error: insertError } = await supabase.from('profiles').upsert({
       user_id:userId, full_name:name.trim(), date_of_birth:dob.trim(), gender:gender.trim(),
       sport:sport.trim(), club:club.trim(), coach:coach.trim(), discipline,
     }, { onConflict:'user_id' });
+    if (insertError) { setBusy(false); setError(insertError.message); return; }
+    if (connectionCode.trim()) {
+      const { error: connectError } = await supabase.rpc('connect_athlete_by_code', { p_code: connectionCode.trim().toUpperCase() });
+      if (connectError) { setBusy(false); setError(`Profile saved, but the connection code could not be applied: ${connectError.message}`); return; }
+    }
     setBusy(false);
-    if (insertError) setError(insertError.message); else onComplete();
+    onComplete();
   }
 
   return <SafeAreaView style={styles.screen}><ScrollView contentContainerStyle={styles.content}>
@@ -37,9 +43,10 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
       ['Date of birth (YYYY-MM-DD)',dob,setDob],
       ['Gender',gender,setGender],
       ['Sport',sport,setSport],
-      ['Club / Academy',club,setClub],
-      ['Coach',coach,setCoach],
+      ['Club / Academy name (optional)',club,setClub],
+      ['Coach name (optional)',coach,setCoach],
     ].map(([label,value,setter])=><View key={label as string} style={styles.field}><Text style={styles.label}>{label as string} *</Text><TextInput value={value as string} onChangeText={setter as any} placeholder={label as string} placeholderTextColor={Colors.dark.muted} style={styles.input}/></View>)}
+    <View style={styles.field}><Text style={styles.label}>Academy or Coach connection code (optional)</Text><Text style={styles.hint}>Enter the code shared by your academy or coach to connect your account. You can skip this and connect later.</Text><TextInput value={connectionCode} onChangeText={setConnectionCode} autoCapitalize="characters" autoCorrect={false} placeholder="e.g. SRTAEKWONDO" placeholderTextColor={Colors.dark.muted} style={styles.input}/></View>
     <Text style={styles.label}>Taekwondo discipline *</Text>
     <View style={styles.row}><Pressable onPress={()=>setDiscipline('Kyorugi')} style={[styles.choice,discipline==='Kyorugi'&&styles.choiceActive]}><Text style={styles.choiceText}>Kyorugi</Text></Pressable><Pressable onPress={()=>setDiscipline('Poomsae')} style={[styles.choice,discipline==='Poomsae'&&styles.choiceActive]}><Text style={styles.choiceText}>Poomsae</Text></Pressable></View>
     {!!error&&<Text style={styles.error}>{error}</Text>}
