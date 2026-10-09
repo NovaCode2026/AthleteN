@@ -11,7 +11,7 @@ const c = Colors.dark;
 
 type BillingCycle = 'monthly' | 'yearly';
 
-const plans: Array<{
+const athletePlans: Array<{
   id: PlanId;
   name: string;
   monthly: number;
@@ -22,24 +22,28 @@ const plans: Array<{
   features: string[];
 }> = [
   { id: 'free', name: 'Free', monthly: 0, yearly: 0, saving: 0, ai: 0, audience: 'Everyone', features: ['Athlete profile', 'Training log', 'Basic progress tracking', 'Tournament and medal history'] },
-  { id: 'student', name: 'Student', monthly: 99, yearly: 999, saving: 189, ai: 50, audience: 'Individual athletes', features: ['AI training insights', 'AI performance summaries', 'Detailed progress analysis', 'Personal goals'] },
+  { id: 'student', name: 'Student', monthly: 99, yearly: 999, saving: 189, ai: 50, audience: 'Verified students', features: ['AI training insights', 'AI performance summaries', 'Detailed progress analysis', 'Personal goals'] },
   { id: 'pro', name: 'Pro', monthly: 199, yearly: 1999, saving: 389, ai: 200, audience: 'Competitive athletes', features: ['Advanced performance analytics', 'Competition preparation insights', 'Advanced training analysis', 'Priority support'] },
   { id: 'elite', name: 'Elite', monthly: 399, yearly: 3999, saving: 789, ai: 500, audience: 'Advanced athletes', features: ['Advanced competition analysis', 'Long-term performance trends', 'Advanced training planning', 'Exportable athlete reports'] },
-  { id: 'coach', name: 'Coach', monthly: 499, yearly: 4999, saving: 989, ai: 750, audience: 'Coaches', features: ['Coach dashboard', 'Athlete management', 'Training monitoring', 'AI athlete summaries and reports'] },
-  { id: 'academy', name: 'Academy', monthly: 799, yearly: 7999, saving: 1589, ai: 1000, audience: 'Academies', features: ['2 Coach-plan accounts included', 'Additional coaches: ₹50/month each + ₹100 one-time onboarding', 'Unlimited academy athletes', 'Academy-wide analytics, attendance and training', 'Competition, finance, reports and announcements', 'Academy AI — 1,000 messages/month'] },
 ];
+
+const productPlans = {
+  coach: { name: 'Coach', monthly: 499, yearly: 4999, saving: 989, ai: 750, description: 'A dedicated coaching workspace with athlete management, training monitoring and coach reports.' },
+  academy_admin: { name: 'Academy', monthly: 799, yearly: 7999, saving: 1589, ai: 1000, description: 'A dedicated academy workspace for athletes, coaches, attendance, analytics and operations.' },
+} as const;
 
 export default function PlansScreen() {
   const { profile, session } = useAuth();
   const router = useRouter();
   const [billing, setBilling] = useState<BillingCycle>('yearly');
   const [usage, setUsage] = useState<{ ai_requests_used: number; ai_requests_limit: number } | null>(null);
-  const [subscription, setSubscription] = useState<any>(null);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const role = String(profile?.role || 'athlete');
 
-  const current = ((profile as any)?.plan_id || subscription?.plan_id || 'free') as PlanId;
+  const current = ((profile as any)?.plan_id || 'free') as PlanId;
 
   useEffect(() => {
     let alive = true;
@@ -47,11 +51,11 @@ export default function PlansScreen() {
       if (!session) { if (alive) setLoading(false); return; }
       const [u, s] = await Promise.all([
         supabase.from('subscription_usage').select('ai_requests_used,ai_requests_limit').eq('user_id', session.user.id).order('usage_month', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('subscriptions').select('plan_id,status,current_period_end,provider,billing_cycle').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('subscriptions').select('plan_id,status,current_period_end,provider,billing_cycle').eq('user_id', session.user.id).in('status', ['active','trialing','past_due']).order('created_at', { ascending: false }),
       ]);
       if (!alive) return;
       setUsage(u.data || null);
-      setSubscription(s.data || null);
+      setSubscriptions(s.data || []);
       setLoading(false);
     })();
     return () => { alive = false; };
@@ -72,7 +76,7 @@ export default function PlansScreen() {
           'This plan is not available for the current account.'
         );
       }
-      setMessage('Payment checkout is not connected yet. No subscription was changed. Once payment is connected, this screen will be used to change the active plan.');
+      setMessage('Checkout is ready for the selected product, but the payment provider must be configured on the server before a real charge can be created. No subscription was changed.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Upgrade could not be started.');
     } finally {
@@ -83,6 +87,7 @@ export default function PlansScreen() {
   const used = usage?.ai_requests_used ?? 0;
   const remaining = getAiRemaining(current, used);
   const limit = AI_LIMITS[current] ?? 0;
+  const activeProducts = new Set(subscriptions.map((s) => String(s.plan_id)));
 
   return <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
     <View>
@@ -105,7 +110,7 @@ export default function PlansScreen() {
       <View style={{ flex: 1 }}>
         <Text style={s.currentKicker}>CURRENT PLAN</Text>
         <Text style={s.currentName}>{PLAN_NAMES[current] || 'Free'}</Text>
-        <Text style={s.meta}>{subscription?.status || 'active'}{subscription?.current_period_end ? ' • renews ' + String(subscription.current_period_end).slice(0, 10) : ''}</Text>
+        <Text style={s.meta}>{subscriptions.length ? subscriptions.map((s) => `${s.plan_id} • ${s.status}`).join('  ·  ') : 'free'}</Text>
       </View>
       <Text style={s.currentBadge}>ACTIVE</Text>
     </View>
@@ -117,8 +122,8 @@ export default function PlansScreen() {
 
     {loading ? <View style={s.loading}><ActivityIndicator color={c.accent} /></View> : null}
 
-    {plans.map((p) => {
-      const active = p.id === current;
+    {athletePlans.map((p) => {
+      const active = p.id === current && role === 'athlete';
       const busy = busyPlan === p.id;
       const displayedPrice = billing === 'yearly' ? p.yearly : p.monthly;
       const period = billing === 'yearly' ? 'year' : 'month';
@@ -133,20 +138,53 @@ export default function PlansScreen() {
             <Text style={s.period}>/{period}</Text>
           </View>
         </View>
-
         {billing === 'yearly' && p.saving > 0 ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
-
-        <View style={s.aiPill}>
-          <Text style={s.aiText}>{p.ai === 0 ? 'No AI requests' : p.ai + ' AI requests every month'}</Text>
-        </View>
-
+        <View style={s.aiPill}><Text style={s.aiText}>{p.ai === 0 ? 'No AI requests' : p.ai + ' AI requests every month'}</Text></View>
         {p.features.map((feature) => <View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
-
         <Pressable disabled={active || !!busyPlan || p.id === 'free'} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => void handleUpgrade(p.id)}>
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : 'CHANGE PLAN'}</Text>}
         </Pressable>
       </View>;
     })}
+
+    <View style={s.productSection}>
+      <Text style={s.sectionKicker}>PROFESSIONAL PRODUCTS</Text>
+      <Text style={s.productTitle}>Coach & Academy are separate subscriptions.</Text>
+      <Text style={s.meta}>You can own both. Buying one never replaces the other. Workspace switching only changes which product is active in the app.</Text>
+      {(['coach','academy_admin'] as const).map((productRole) => {
+        const p = productPlans[productRole];
+        const owned = activeProducts.has(productRole === 'coach' ? 'coach' : 'academy');
+        const isCurrent = role === productRole;
+        return <View key={productRole} style={[s.productCard, owned && s.productActive]}>
+          <View style={s.productTop}>
+            <View style={{flex:1}}>
+              <Text style={s.planName}>{p.name}</Text>
+              <Text style={s.audience}>{isCurrent ? 'Current workspace' : owned ? 'Active subscription' : 'Separate product'}</Text>
+            </View>
+            <Text style={s.price}>₹{(billing === 'yearly' ? p.yearly : p.monthly).toLocaleString('en-IN')}<Text style={s.period}>/{billing === 'yearly' ? 'year' : 'month'}</Text></Text>
+          </View>
+          <Text style={s.meta}>{p.description}</Text>
+          {billing === 'yearly' ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
+          <Pressable
+            disabled={!!busyPlan}
+            style={[s.planButton, isCurrent && s.planButtonActive]}
+            onPress={async () => {
+              if (!session) return;
+              if (isCurrent) { await handleUpgrade(productRole === 'coach' ? 'coach' as PlanId : 'academy' as PlanId); return; }
+              setBusyPlan(productRole);
+              setMessage('');
+              const { error } = await supabase.rpc('switch_my_product_role', { p_target_role: productRole });
+              setBusyPlan(null);
+              if (error) { setMessage(error.message === 'COACH_HAS_ACTIVE_ATHLETES' ? 'Transfer or end your active athletes before leaving the Coach workspace.' : error.message === 'ACADEMY_HAS_ACTIVE_MEMBERS' ? 'Transfer academy responsibility before leaving the Academy workspace.' : error.message); return; }
+              setMessage(productRole === 'coach' ? 'Coach workspace created. Buy the Coach subscription to unlock Coach features.' : 'Academy workspace created. Buy the Academy subscription to unlock Academy features.');
+            }}
+          >
+            <Text style={s.planButtonText}>{owned ? (isCurrent ? 'MANAGE COACH' : 'OPEN WORKSPACE') : productRole === 'coach' ? 'BECOME A COACH' : 'CREATE AN ACADEMY'}</Text>
+          </Pressable>
+        </View>;
+      })}
+      {subscriptions.length > 1 ? <View style={s.subscriptionList}><Text style={s.sectionKicker}>ACTIVE SUBSCRIPTIONS</Text>{subscriptions.map((sub) => <Text key={sub.plan_id} style={s.subscriptionItem}>• {String(sub.plan_id).toUpperCase()} — {sub.status}{sub.current_period_end ? ' · renews ' + String(sub.current_period_end).slice(0,10) : ''}</Text>)}</View> : null}
+    </View>
 
     {message ? <Text style={s.message}>{message}</Text> : null}
 
@@ -202,7 +240,7 @@ const s = StyleSheet.create({
   planButtonBusy:{backgroundColor:c.accent},
   planButtonText:{color:c.text,fontSize:9,fontWeight:'900',letterSpacing:1},
   planButtonTextActive:{color:c.accentBright},
-  note:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:15,padding:14,gap:4},
+  productSection:{gap:10,marginTop:4},sectionKicker:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.4},productTitle:{color:c.text,fontSize:18,fontWeight:'900'},productCard:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:18,padding:15,gap:9},productActive:{borderColor:c.accent},productTop:{flexDirection:'row',justifyContent:'space-between',gap:8},subscriptionList:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:15,padding:14,gap:5},subscriptionItem:{color:c.textSecondary,fontSize:10,fontWeight:'800'},note:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:15,padding:14,gap:4},
   noteTitle:{color:c.text,fontSize:12,fontWeight:'900'},
   back:{borderWidth:1,borderColor:c.border,borderRadius:12,padding:13,alignItems:'center'},
   backText:{color:c.text,fontSize:9,fontWeight:'900',letterSpacing:1},
