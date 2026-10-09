@@ -363,13 +363,21 @@ export default async function handler(request) {
   const { data: profile, error: profileError } = await supabase.from("profiles").select("user_id, plan_id").eq("user_id", userId).maybeSingle();
   if (profileError) return json({ error: "Unable to verify your scanner entitlement." }, 503);
   if (!profile) return json({ error: "Complete onboarding before using Tournament Scanner." }, 403);
-  const { data: subscription } = await supabase.from("subscriptions").select("plan_id, status").eq("user_id", userId).in("status", ["active", "trialing"]).maybeSingle();
+  const { data: activeSubscriptions } = await supabase.from("subscriptions").select("plan_id, status").eq("user_id", userId).in("status", ["active", "trialing"]);
+  const subscription = (activeSubscriptions || []).slice().sort((a, b) => (planIntervals[a.plan_id] ?? planIntervals.free) - (planIntervals[b.plan_id] ?? planIntervals.free))[0];
   const planId = subscription?.plan_id || profile.plan_id || "free";
   const intervalHours = planIntervals[planId] ?? planIntervals.free;
-  const { data: existing } = await supabase.from("tournament_scans").select("last_checked_at, source_hash").eq("user_id", userId).eq("source_url", parsedUrl.toString()).maybeSingle();
+  const { data: existing } = await supabase.from("tournament_scans").select("last_checked_at, source_hash, status").eq("user_id", userId).eq("source_url", parsedUrl.toString()).maybeSingle();
   if (existing?.last_checked_at) {
-    const earliest = new Date(existing.last_checked_at).getTime() + intervalHours * 60 * 60 * 1000;
-    if (Date.now() < earliest) return json({ error: `This source was checked recently. Your plan allows checks every ${intervalHours === 0.5 ? "30 minutes" : `${intervalHours} hours`}.` }, 429);
+    const retryIntervalHours = existing.status === "blocked" ? 5 / 60 : intervalHours;
+    const earliest = new Date(existing.last_checked_at).getTime() + retryIntervalHours * 60 * 60 * 1000;
+    if (Date.now() < earliest) {
+      if (existing.status === "blocked") {
+        const retryMinutes = Math.max(1, Math.ceil((earliest - Date.now()) / 60000));
+        return json({ error: `The last scan could not read this source. You can retry in about ${retryMinutes} minute(s).` }, 429);
+      }
+      return json({ error: `This source was checked recently. Your plan allows checks every ${intervalHours === 0.5 ? "30 minutes" : `${intervalHours} hours`}.` }, 429);
+    }
   }
 
   let status = "checked";
@@ -397,7 +405,8 @@ export default async function handler(request) {
     extracted = { notices: failureMessage, details: { fields: {}, scan_error_code: failureCode, pages_scanned: 0, source_pages: [], sections: [], headings: [], key_highlights: [], pdfs: [] } };
   }
   const changed = existing?.source_hash && existing.source_hash !== sourceHash ? "Source or a discovered tournament page changed since the previous check." : "No previous change detected.";
-  const { data, error } = await supabase.from("tournament_scans").upsert({ user_id: userId, source_url: parsedUrl.toString(), ...extracted, source_hash: sourceHash, detected_changes: changed, status, last_checked_at: new Date().toISOString(), next_check_at: nextCheckIso(intervalHours) }, { onConflict: "user_id,source_url" }).select().single();
+  const nextCheckHours = status === "blocked" ? 5 / 60 : intervalHours;
+  const { data, error } = await supabase.from("tournament_scans").upsert({ user_id: userId, source_url: parsedUrl.toString(), ...extracted, source_hash: sourceHash, detected_changes: changed, status, last_checked_at: new Date().toISOString(), next_check_at: nextCheckIso(nextCheckHours) }, { onConflict: "user_id,source_url" }).select().single();
   if (error) return json({ error: "Tournament scan could not be saved." }, 503);
   return json({ scan: data });
 }
