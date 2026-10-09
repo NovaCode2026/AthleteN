@@ -157,10 +157,10 @@ export default async function handler(request) {
     if (entitlement?.trial_payment_status === "paid") return json({ error: "Your trial payment is already confirmed. Refresh the account plan to continue." }, 409);
 
     const result = provider === "razorpay"
-      ? await createRazorpayTrial(supabase, user, planId, verification.id)
+      ? await createRazorpayTrial(supabase, user, planId, verification?.id || null)
       : provider === "stripe"
-        ? await createStripeTrial(supabase, user, planId, verification.id)
-        : await createCashfreeTrial(supabase, user, planId, verification.id);
+        ? await createStripeTrial(supabase, user, planId, verification?.id || null)
+        : await createCashfreeTrial(supabase, user, planId, verification?.id || null);
 
     await supabase.from("account_entitlements").upsert({
       user_id: user.id,
@@ -177,7 +177,7 @@ export default async function handler(request) {
       amount_minor: TRIAL_FEE_PAISE,
       currency: "INR",
       status: "pending",
-      metadata: { plan_id: planId, payment_order_id: result.orderId, purpose: "trial", verification_id: verification.id }
+      metadata: { plan_id: planId, payment_order_id: result.orderId, purpose: "trial", verification_id: verification?.id || null }
     });
 
     return json({ ...result, planId, purpose: "trial" });
