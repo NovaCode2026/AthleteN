@@ -14,7 +14,8 @@ function Loading() {
   return (
     <View style={{ flex: 1, backgroundColor: c.background, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
       <ActivityIndicator size="large" color={c.accent} />
-      <Text style={{ color: c.muted }}>Connecting to AthleteN…</Text>
+      <Text style={{ color: c.text, fontSize: 21, fontWeight: '900', letterSpacing: 1.2, textAlign: 'center' }}>WELCOME TO THE FUTURE</Text>
+      <Text style={{ color: c.muted, fontSize: 12 }}>Connecting to AthleteN…</Text>
     </View>
   );
 }
