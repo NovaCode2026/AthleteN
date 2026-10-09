@@ -25,7 +25,10 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBou
       <View style={{ flex: 1, backgroundColor: Colors.dark.background, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 14 }}>
         <Text style={{ color: Colors.dark.text, fontSize: 21, fontWeight: '900', textAlign: 'center' }}>AthleteN hit a screen error</Text>
         <Text style={{ color: Colors.dark.muted, fontSize: 11, lineHeight: 17, textAlign: 'center' }}>
-          The app caught the error safely. Restart AthleteN and try again.
+          The app caught the error safely. The details below can help diagnose this screen.
+        </Text>
+        <Text selectable style={{ color: Colors.dark.warning || '#F6B94A', fontSize: 10, lineHeight: 15, textAlign: 'center' }}>
+          {String(this.state.error.message || this.state.error).slice(0, 700)}
         </Text>
         <Pressable
           onPress={() => this.setState({ error: null })}
