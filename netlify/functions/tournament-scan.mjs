@@ -393,7 +393,7 @@ export default async function handler(request) {
             : failureCode === "SOURCE_UNAVAILABLE" || failureCode === "AbortError"
               ? "The source could not be reached in time. Check your connection or try the official tournament page."
               : "The source may require login, JavaScript, or block automated access. Try a public page or text-based PDF.";
-    sourceHash = createHash("sha256").update(\`${parsedUrl}:BLOCKED:${failureCode}\`).digest("hex");
+    sourceHash = createHash("sha256").update(String(parsedUrl) + ":BLOCKED:" + failureCode).digest("hex");
     extracted = { notices: failureMessage, details: { fields: {}, scan_error_code: failureCode, pages_scanned: 0, source_pages: [], sections: [], headings: [], key_highlights: [], pdfs: [] } };
   }
   const changed = existing?.source_hash && existing.source_hash !== sourceHash ? "Source or a discovered tournament page changed since the previous check." : "No previous change detected.";
