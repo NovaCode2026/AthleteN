@@ -4,6 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 
+function formatDobInput(value: string) { const digits = value.replace(/\D/g, '').slice(0, 8); if (digits.length <= 4) return digits; if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`; return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`; }
+function isValidDob(value: string) { if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false; const [year, month, day] = value.split('-').map(Number); const date = new Date(Date.UTC(year, month - 1, day)); const today = new Date(); return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day && date <= new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())); }
+
 export default function OnboardingScreen({ userId, onComplete }: { userId: string; onComplete: () => void }) {
   const [name,setName]=useState('');
   const [dob,setDob]=useState('');
@@ -20,6 +23,7 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
     if (!name.trim()||!dob.trim()||!gender.trim()||!sport.trim()) {
       setError('Name, date of birth, gender, and sport are required.'); return;
     }
+    if (!isValidDob(dob)) { setError('Enter a valid date of birth in YYYY-MM-DD format, for example 2013-10-23.'); return; }
     setBusy(true); setError('');
     const { error: insertError } = await supabase.from('profiles').upsert({
       user_id:userId, full_name:name.trim(), date_of_birth:dob.trim(), gender:gender.trim(),
@@ -38,14 +42,14 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
     <Text style={styles.brand}>ATHLETEN</Text>
     <Text style={styles.title}>Build your athlete profile</Text>
     <Text style={styles.subtitle}>These details personalize your AthleteN experience.</Text>
-    {[
-      ['Full name',name,setName],
-      ['Date of birth (YYYY-MM-DD)',dob,setDob],
-      ['Gender',gender,setGender],
-      ['Sport',sport,setSport],
-      ['Club / Academy name (optional)',club,setClub],
-      ['Coach name (optional)',coach,setCoach],
-    ].map(([label,value,setter])=><View key={label as string} style={styles.field}><Text style={styles.label}>{label as string} *</Text><TextInput value={value as string} onChangeText={setter as any} placeholder={label as string} placeholderTextColor={Colors.dark.muted} style={styles.input}/></View>)}
+    {([
+      {label:'Full name',value:name,set:setName,required:true},
+      {label:'Date of birth (YYYY-MM-DD)',value:dob,set:setDob,required:true},
+      {label:'Gender',value:gender,set:setGender,required:true},
+      {label:'Sport',value:sport,set:setSport,required:true},
+      {label:'Club / Academy name (optional)',value:club,set:setClub,required:false},
+      {label:'Coach name (optional)',value:coach,set:setCoach,required:false},
+    ] as const).map(field=><View key={field.label} style={styles.field}><Text style={styles.label}>{field.label}{field.required?' *':''}</Text><TextInput value={field.value} onChangeText={field.label.startsWith('Date of birth')?value=>setDob(formatDobInput(value)):field.set} placeholder={field.label} placeholderTextColor={Colors.dark.muted} style={styles.input} keyboardType={field.label.startsWith('Date of birth')?'numeric':'default'} autoCapitalize={field.label==='Full name'?'words':'sentences'} />{field.label.startsWith('Date of birth')&&<Text style={styles.hint}>Type YYYYMMDD or YYYY-MM-DD; AthleteN formats and validates the date.</Text>}</View>)}
     <View style={styles.field}><Text style={styles.label}>Academy or Coach connection code (optional)</Text><Text style={styles.hint}>Enter the code shared by your academy or coach to connect your account. You can skip this and connect later.</Text><TextInput value={connectionCode} onChangeText={setConnectionCode} autoCapitalize="characters" autoCorrect={false} placeholder="e.g. SRTAEKWONDO" placeholderTextColor={Colors.dark.muted} style={styles.input}/></View>
     <Text style={styles.label}>Taekwondo discipline *</Text>
     <View style={styles.row}><Pressable onPress={()=>setDiscipline('Kyorugi')} style={[styles.choice,discipline==='Kyorugi'&&styles.choiceActive]}><Text style={styles.choiceText}>Kyorugi</Text></Pressable><Pressable onPress={()=>setDiscipline('Poomsae')} style={[styles.choice,discipline==='Poomsae'&&styles.choiceActive]}><Text style={styles.choiceText}>Poomsae</Text></Pressable></View>
@@ -58,7 +62,7 @@ const styles=StyleSheet.create({
  screen:{flex:1,backgroundColor:Colors.dark.background},content:{padding:24,gap:12,paddingBottom:40},
  brand:{color:Colors.dark.accent,fontSize:14,fontWeight:'900',letterSpacing:4,marginTop:10},
  title:{color:Colors.dark.text,fontSize:28,fontWeight:'800',marginTop:4},subtitle:{color:Colors.dark.muted,fontSize:14,lineHeight:21,marginBottom:8},
- field:{gap:6},label:{color:Colors.dark.text,fontSize:12,fontWeight:'700'},
+ field:{gap:6},label:{color:Colors.dark.text,fontSize:12,fontWeight:'700'},hint:{color:Colors.dark.muted,fontSize:12,lineHeight:18},
  input:{backgroundColor:Colors.dark.surface,borderWidth:1,borderColor:Colors.dark.border,borderRadius:13,color:Colors.dark.text,padding:14,fontSize:14},
  row:{flexDirection:'row',gap:10},choice:{flex:1,borderWidth:1,borderColor:Colors.dark.border,borderRadius:13,padding:14,alignItems:'center'},choiceActive:{backgroundColor:Colors.dark.accentDeep,borderColor:Colors.dark.accent},choiceText:{color:Colors.dark.text,fontWeight:'700'},
  primary:{backgroundColor:Colors.dark.accent,borderRadius:14,padding:15,alignItems:'center',marginTop:8},primaryText:{color:'#fff',fontWeight:'900',letterSpacing:1,fontSize:12},error:{color:'#B6D0FF',fontSize:12},
