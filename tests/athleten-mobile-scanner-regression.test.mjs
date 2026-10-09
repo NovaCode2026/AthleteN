@@ -47,7 +47,10 @@ test("mobile scanner normalizes whitespace and recognizes Instagram hosts", () =
   assert.ok(screen.includes("!/(^|\\\\.)instagram\\\\.com$/i.test(x.hostname)"));
 });
 
-test("dashboard greeting uses India local time", () => {
+test("dashboard greeting follows the device timezone and supports pull-to-refresh", () => {
   const screen = read("AthleteN-Mobile/src/app/home.tsx");
-  assert.ok(screen.includes("timeZone:'Asia/Kolkata'"));
+  assert.match(screen, /function getGreeting\(\)\{const hour=new Date\(\)\.getHours\(\)/);
+  assert.match(screen, /RefreshControl refreshing=\{refreshing\} onRefresh=\{\(\)=>void refresh\(\)\}/);
+  assert.match(screen, /RefreshButton onPress=\{\(\)=>void refresh\(\)\}/);
+  assert.doesNotMatch(screen, /timeZone:'Asia\/Kolkata'/);
 });
