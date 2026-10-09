@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { inflateSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
 
 const planIntervals = { free: 12, student: 6, pro: 3, elite: 2, coach: 1, academy: 0.5 };
@@ -166,6 +167,52 @@ function scanPage(html, sourceUrl) {
   };
 }
 
+export function extractPdfText(buffer) {
+  const source = Buffer.isBuffer(buffer) ? buffer.toString("latin1") : Buffer.from(buffer).toString("latin1");
+  const streams = [];
+  const streamPattern = /<<(?:[\s\S]*?)>>\s*stream\r?\n/g;
+  for (const match of source.matchAll(streamPattern)) {
+    const dictionary = match[0].slice(0, match[0].lastIndexOf("stream"));
+    const start = match.index + match[0].length;
+    const end = source.indexOf("endstream", start);
+    if (end < 0) continue;
+    let bytes = Buffer.from(source.slice(start, end).replace(/[\r\n]+$/, ""), "latin1");
+    if (/\/FlateDecode\b/.test(dictionary)) {
+      try { bytes = inflateSync(bytes); } catch { continue; }
+    }
+    streams.push(bytes.toString("latin1"));
+  }
+
+  const decodeLiteral = (value) => value
+    .replace(/\\([nrtbf()\\])/g, (_, code) => ({ n: "\n", r: "\r", t: "\t", b: "\b", f: "\f", "(": "(", ")": ")", "\\": "\\" })[code] ?? code)
+    .replace(/\\([0-7]{1,3})/g, (_, octal) => String.fromCharCode(parseInt(octal, 8)));
+  const decodeHex = (value) => {
+    try {
+      let bytes = Buffer.from(value, "hex");
+      if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
+        bytes = bytes.subarray(2);
+        if (bytes.length % 2 === 0) return bytes.swap16().toString("utf16le");
+      }
+      return bytes.toString("latin1");
+    } catch { return ""; }
+  };
+
+  const extracted = [];
+  for (const stream of streams) {
+    for (const block of stream.matchAll(/\bBT\b([\s\S]*?)\bET\b/g)) {
+      const text = block[1];
+      for (const match of text.matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)) extracted.push(decodeLiteral(match[1]));
+      for (const match of text.matchAll(/\[((?:.|\r|\n)*?)\]\s*TJ/g)) {
+        for (const part of match[1].matchAll(/\(((?:\\.|[^\\)])*)\)|<([0-9A-Fa-f]{4,})>/g)) {
+          extracted.push(part[1] !== undefined ? decodeLiteral(part[1]) : decodeHex(part[2]));
+        }
+      }
+      for (const match of text.matchAll(/<([0-9A-Fa-f]{4,})>\s*Tj/g)) extracted.push(decodeHex(match[1]));
+    }
+  }
+  return extracted.join(" ").replace(/\s+/g, " ").trim();
+}
+
 async function fetchText(url, timeoutMs = MAX_PAGE_FETCH_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -180,6 +227,12 @@ async function fetchText(url, timeoutMs = MAX_PAGE_FETCH_MS) {
     });
     if (!response.ok) throw new Error(`HTTP_${response.status}`);
     const contentType = response.headers.get("content-type") || "";
+    const isPdf = /application\/pdf/i.test(contentType) || /\.pdf$/i.test(new URL(url).pathname);
+    if (isPdf) {
+      const pdfText = extractPdfText(Buffer.from(await response.arrayBuffer()));
+      if (!pdfText) throw new Error("PDF_TEXT_UNAVAILABLE");
+      return pdfText;
+    }
     if (!contentType.includes("text/html") && !contentType.includes("text/plain") && !contentType.includes("xml")) throw new Error("UNSUPPORTED_CONTENT");
     return response.text();
   } finally {
@@ -326,10 +379,22 @@ export default async function handler(request) {
     const result = await scanSource(parsedUrl.toString());
     extracted = result.extracted;
     sourceHash = result.source_hash;
-  } catch {
+  } catch (error) {
     status = "blocked";
-    sourceHash = createHash("sha256").update(`${parsedUrl}:${Date.now()}`).digest("hex");
-    extracted = { notices: "AthleteN could not scan this source automatically. The site may block server requests, require JavaScript, or use an unsupported file type.", details: { fields: {}, pages_scanned: 0, source_pages: [], sections: [], headings: [], key_highlights: [], pdfs: [] } };
+    const failureCode = String(error?.message || "SOURCE_UNAVAILABLE").slice(0, 80);
+    const failureMessage = failureCode === "PDF_TEXT_UNAVAILABLE"
+      ? "The PDF did not expose selectable text. It may be a scanned image; try the official webpage or a text-based PDF."
+      : /^HTTP_(401|403|429)$/.test(failureCode)
+        ? "The source denied or rate-limited automated access. Try another public tournament page or its linked notice."
+        : failureCode === "HTTP_404"
+          ? "The source page was not found. Check the link and try again."
+          : failureCode === "UNSUPPORTED_CONTENT"
+            ? "This file type is not supported yet. Try a public HTML page or a text-based PDF."
+            : failureCode === "SOURCE_UNAVAILABLE" || failureCode === "AbortError"
+              ? "The source could not be reached in time. Check your connection or try the official tournament page."
+              : "The source may require login, JavaScript, or block automated access. Try a public page or text-based PDF.";
+    sourceHash = createHash("sha256").update(\`${parsedUrl}:BLOCKED:${failureCode}\`).digest("hex");
+    extracted = { notices: failureMessage, details: { fields: {}, scan_error_code: failureCode, pages_scanned: 0, source_pages: [], sections: [], headings: [], key_highlights: [], pdfs: [] } };
   }
   const changed = existing?.source_hash && existing.source_hash !== sourceHash ? "Source or a discovered tournament page changed since the previous check." : "No previous change detected.";
   const { data, error } = await supabase.from("tournament_scans").upsert({ user_id: userId, source_url: parsedUrl.toString(), ...extracted, source_hash: sourceHash, detected_changes: changed, status, last_checked_at: new Date().toISOString(), next_check_at: nextCheckIso(intervalHours) }, { onConflict: "user_id,source_url" }).select().single();
