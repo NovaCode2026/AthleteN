@@ -39,3 +39,15 @@ test("scanner reports blocked sources instead of claiming full success", () => {
   assert.match(screen, /toLowerCase\(\)==='blocked'/);
   assert.doesNotMatch(screen, /Scan complete\. Full tournament intelligence was extracted\./);
 });
+
+test("mobile scanner normalizes whitespace and recognizes Instagram hosts", () => {
+  const screen = read("AthleteN-Mobile/src/app/scanner.tsx");
+  assert.ok(screen.includes("replace(/\\\\s+/g,' ').trim()"));
+  assert.ok(screen.includes("const isInstagram=(u:string)=>/instagram\\\\.com/i.test(u);"));
+  assert.ok(screen.includes("!/(^|\\\\.)instagram\\\\.com$/i.test(x.hostname)"));
+});
+
+test("dashboard greeting uses India local time", () => {
+  const screen = read("AthleteN-Mobile/src/app/home.tsx");
+  assert.ok(screen.includes("timeZone:'Asia/Kolkata'"));
+});
