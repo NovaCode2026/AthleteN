@@ -64,5 +64,5 @@ test("profile uses coach or academy connection code instead of manual names", ()
   assert.match(identity, /Coach \/ Academy connection code \(optional\)/);
   assert.doesNotMatch(identity, /label="Club \/ Academy"|label="Coach"/);
   assert.match(screen, /supabase\.rpc\('connect_athlete_by_code',\{p_code:connectionCode\.trim\(\)\.toUpperCase\(\)\}\)/);
-  assert.match(screen, /club:null,coach:null/);
+  assert.doesNotMatch(screen, /club:null,coach:null/);
 });
