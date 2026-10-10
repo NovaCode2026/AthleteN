@@ -54,3 +54,15 @@ test("dashboard greeting follows the device timezone and supports pull-to-refres
   assert.match(screen, /RefreshButton onPress=\{\(\)=>void refresh\(\)\}/);
   assert.doesNotMatch(screen, /timeZone:'Asia\/Kolkata'/);
 });
+
+test("profile uses coach or academy connection code instead of manual names", () => {
+  const screen = read("AthleteN-Mobile/src/app/profile.tsx");
+  const start = screen.indexOf('<Section title="ATHLETE IDENTITY">');
+  const end = screen.indexOf('<Section title="WEIGHT">', start);
+  assert.ok(start >= 0 && end > start);
+  const identity = screen.slice(start, end);
+  assert.match(identity, /Coach \/ Academy connection code \(optional\)/);
+  assert.doesNotMatch(identity, /label="Club \/ Academy"|label="Coach"/);
+  assert.match(screen, /supabase\.rpc\('connect_athlete_by_code',\{p_code:connectionCode\.trim\(\)\.toUpperCase\(\)\}\)/);
+  assert.match(screen, /club:null,coach:null/);
+});
