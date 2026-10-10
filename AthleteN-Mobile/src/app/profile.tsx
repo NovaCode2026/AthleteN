@@ -86,7 +86,7 @@ export default function ProfileScreen() {
     if(!session||!name.trim()||!dob.trim()||!gender.trim()||!sport.trim()){setMessage('Complete every required athlete field.');return}
     setBusy(true);setMessage('');
     try{
-      const {error}=await supabase.from('profiles').update({full_name:name.trim(),date_of_birth:dob.trim(),gender:gender.trim(),sport:sport.trim(),club:null,coach:null,discipline}).eq('user_id',session.user.id);
+      const {error}=await supabase.from('profiles').update({full_name:name.trim(),date_of_birth:dob.trim(),gender:gender.trim(),sport:sport.trim(),discipline}).eq('user_id',session.user.id);
       if(error)throw error;
       if(connectionCode.trim()){
         const {error:connectError}=await supabase.rpc('connect_athlete_by_code',{p_code:connectionCode.trim().toUpperCase()});
