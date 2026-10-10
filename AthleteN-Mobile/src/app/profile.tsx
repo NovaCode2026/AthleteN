@@ -194,7 +194,7 @@ export default function ProfileScreen() {
 }
 
 function Section({title,children}:{title:string;children:React.ReactNode}){return <View style={s.sectionBlock}><Text style={s.section}>{title}</Text>{children}</View>}
-function Field({label,value,onChangeText,placeholder,keyboardType,compact}:{label:string;value:string;onChangeText:(v:string)=>void;placeholder:string;keyboardType?:any;compact?:boolean}){return <View style={[s.field,compact&&s.compactField]}><Text style={s.label}>{label}</Text><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={c.muted} keyboardType={keyboardType} style={s.input}/></View>}
+function Field({label,value,onChangeText,placeholder,keyboardType,compact,autoCapitalize,autoCorrect}:{label:string;value:string;onChangeText:(v:string)=>void;placeholder:string;keyboardType?:any;compact?:boolean;autoCapitalize?:'none'|'sentences'|'words'|'characters';autoCorrect?:boolean}){return <View style={[s.field,compact&&s.compactField]}><Text style={s.label}>{label}</Text><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={c.muted} keyboardType={keyboardType} autoCapitalize={autoCapitalize} autoCorrect={autoCorrect} style={s.input}/></View>}
 function Choice({title,active,onPress}:{title:string;active:boolean;onPress:()=>void}){return <Pressable onPress={onPress} style={[s.choice,active&&s.choiceActive]}><Text style={[s.choiceText,active&&s.choiceTextActive]}>{title}</Text></Pressable>}
 function Button({title,onPress,busy}:{title:string;onPress:()=>void;busy:boolean}){return <Pressable onPress={onPress} disabled={busy} style={s.button}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>{title}</Text>}</Pressable>}
 
