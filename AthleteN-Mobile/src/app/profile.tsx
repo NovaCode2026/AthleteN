@@ -35,8 +35,7 @@ export default function ProfileScreen() {
   const [dob,setDob]=useState(String(profile?.date_of_birth||''));
   const [gender,setGender]=useState(String(profile?.gender||''));
   const [sport,setSport]=useState(String(profile?.sport||'Taekwondo'));
-  const [club,setClub]=useState(String(profile?.club||profile?.academy||''));
-  const [coach,setCoach]=useState(String(profile?.coach||''));
+  const [connectionCode,setConnectionCode]=useState('');
   const [discipline,setDiscipline]=useState<'Kyorugi'|'Poomsae'>((profile?.discipline as any)||'Kyorugi');
   const [weight,setWeight]=useState('');
   const [target,setTarget]=useState('');
@@ -84,10 +83,28 @@ export default function ProfileScreen() {
   }
 
   async function saveProfile(){
-    if(!session||!name.trim()||!dob.trim()||!gender.trim()||!sport.trim()||!club.trim()||!coach.trim()){setMessage('Complete every required athlete field.');return}
-    setBusy(true);
-    const {error}=await supabase.from('profiles').update({full_name:name.trim(),date_of_birth:dob.trim(),gender:gender.trim(),sport:sport.trim(),club:club.trim(),coach:coach.trim(),discipline}).eq('user_id',session.user.id);
-    setBusy(false); if(error)setMessage(error.message); else {setMessage('Profile saved.');await refreshProfile()}
+    if(!session||!name.trim()||!dob.trim()||!gender.trim()||!sport.trim()){setMessage('Complete every required athlete field.');return}
+    setBusy(true);setMessage('');
+    try{
+      const {error}=await supabase.from('profiles').update({full_name:name.trim(),date_of_birth:dob.trim(),gender:gender.trim(),sport:sport.trim(),club:null,coach:null,discipline}).eq('user_id',session.user.id);
+      if(error)throw error;
+      if(connectionCode.trim()){
+        const {error:connectError}=await supabase.rpc('connect_athlete_by_code',{p_code:connectionCode.trim().toUpperCase()});
+        if(connectError){
+          await refreshProfile();
+          setMessage('Profile saved, but the coach or academy code could not be applied: '+connectError.message);
+          return;
+        }
+        setConnectionCode('');
+        await refreshProfile();
+        setMessage('Profile saved and coach / academy connected.');
+      }else{
+        await refreshProfile();
+        setMessage('Profile saved. You can connect to a coach or academy later using their code.');
+      }
+    }catch(error){
+      setMessage(error instanceof Error?error.message:'Could not save your profile.');
+    }finally{setBusy(false)}
   }
   async function addWeight(){
     const value=Number(weight); const t=target.trim()?Number(target):null;
@@ -124,7 +141,8 @@ export default function ProfileScreen() {
     <View style={s.profileHero}><Pressable onPress={()=>void changePhoto()} disabled={avatarBusy} style={s.profileHero}>{avatarUrl?<Image source={{uri:avatarUrl}} style={s.avatar} contentFit="cover"/>:<View style={s.avatar}><Text style={s.avatarText}>{String(profile?.full_name||'A').slice(0,1).toUpperCase()}</Text></View>}<View style={s.liveDot}><Text style={s.avatarText}>{avatarBusy?'…':'+'}</Text></View></Pressable><View style={s.heroCopy}><Text style={s.name}>{String(profile?.full_name||'Athlete')}</Text><Text style={s.meta}>{String(discipline)} • {String(profile?.plan_id||'free')} plan</Text><Pressable onPress={()=>void changePhoto()}><Text style={s.meta}>CHANGE PROFILE PHOTO</Text></Pressable></View><View style={s.liveDot}/></View>
 
     <Section title="ATHLETE IDENTITY"><View style={s.card}>
-      <Field label="Full name" value={name} onChangeText={setName} placeholder="Your full name"/><Field label="Date of birth" value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD"/><Field label="Gender" value={gender} onChangeText={setGender} placeholder="Gender"/><Field label="Sport" value={sport} onChangeText={setSport} placeholder="Taekwondo"/><Field label="Club / Academy" value={club} onChangeText={setClub} placeholder="Club / Academy"/><Field label="Coach" value={coach} onChangeText={setCoach} placeholder="Coach"/>
+      <Field label="Full name" value={name} onChangeText={setName} placeholder="Your full name"/><Field label="Date of birth" value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD"/><Field label="Gender" value={gender} onChangeText={setGender} placeholder="Gender"/><Field label="Sport" value={sport} onChangeText={setSport} placeholder="Taekwondo"/>
+      <Field label="Coach / Academy connection code (optional)" value={connectionCode} onChangeText={setConnectionCode} placeholder="Enter coach or academy code" autoCapitalize="characters" autoCorrect={false}/><Text style={s.meta}>You can add the code later. Use the code provided by your coach or academy to connect your account.</Text>
       <Text style={s.label}>DISCIPLINE</Text><View style={s.choiceRow}><Choice title="Kyorugi" active={discipline==='Kyorugi'} onPress={()=>setDiscipline('Kyorugi')}/><Choice title="Poomsae" active={discipline==='Poomsae'} onPress={()=>setDiscipline('Poomsae')}/></View><Button title="SAVE PROFILE" onPress={saveProfile} busy={busy}/>
     </View></Section>
 
