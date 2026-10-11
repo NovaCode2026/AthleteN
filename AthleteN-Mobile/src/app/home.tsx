@@ -15,7 +15,7 @@ import { Icon, SupportContact, RefreshButton } from '@/components/mobile-ui';
 const c=Colors.dark;
 
 export default function HomeScreen(){
- const {session,profile}=useAuth(); const router=useRouter();
+ const {session,profile,syncVersion}=useAuth(); const router=useRouter();
  const [greeting,setGreeting]=useState(getGreeting);
  const [refreshing,setRefreshing]=useState(false);const [minutes,setMinutes]=useState(0);const [sessions,setSessions]=useState(0);const [chart,setChart]=useState<ChartPoint[]>([]);const [weight,setWeight]=useState<number|null>(null);const [medals,setMedals]=useState(0);const [next,setNext]=useState<any>(null);const [streak,setStreak]=useState(calculateStreak([]));const [unread,setUnread]=useState(0);
  const load=useCallback(async()=>{
@@ -29,7 +29,7 @@ export default function HomeScreen(){
    supabase.from('notifications').select('id',{count:'exact',head:true}).eq('user_id',uid).is('read_at',null)
   ]);
   const rows=(t.data||[]).map(r=>({...r,_minutes:validMinutes(r.minutes)})).filter(r=>r._minutes>0);const summary=calculateStreak(rows);setStreak(summary);setSessions(rows.length);setMinutes(rows.reduce((sum,r)=>sum+r._minutes,0));setChart(days.map(day=>({label:day.slice(5).replace('-','/'),value:rows.filter(r=>String(r.session_date).slice(0,10)===day).reduce((sum,r)=>sum+r._minutes,0)})));setWeight(w.data?validWeight(w.data.weight_kg):null);setMedals(m.count||0);setNext(e.data||null);setUnread(n.count||0);
- },[session]);
+ },[session,syncVersion]);
  useEffect(()=>{void load()},[load]);
  useEffect(()=>{const updateGreeting=()=>setGreeting(getGreeting());updateGreeting();const timer=setInterval(updateGreeting,60000);const sub=AppState.addEventListener('change',state=>{if(state==='active')updateGreeting()});return()=>{clearInterval(timer);sub.remove()}},[]);
  const refresh=useCallback(async()=>{setRefreshing(true);try{await load()}finally{setRefreshing(false)}},[load]);
