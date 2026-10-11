@@ -41,7 +41,50 @@
         }
       ],
       "expo-notifications",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "AthletePulse",
+              "label": "AthleteN • Athlete Pulse",
+              "description": "Your training streak and sessions this week.",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "horizontal|vertical",
+              "widgetCategory": "home_screen"
+            },
+            {
+              "name": "TrainingPlanner",
+              "label": "AthleteN • Training Planner",
+              "description": "Your next training session and daily focus.",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "horizontal|vertical",
+              "widgetCategory": "home_screen"
+            },
+            {
+              "name": "CompetitionCountdown",
+              "label": "AthleteN • Competition Countdown",
+              "description": "Countdown to your next competition.",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "horizontal|vertical",
+              "widgetCategory": "home_screen"
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
