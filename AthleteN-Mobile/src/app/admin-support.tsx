@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase';
 
 export default function AdminSupportScreen(){
  const {profile}=useAuth();
+ const role=String(profile?.role||'');
+ const allowed=['support_admin','admin','super_admin'].includes(role);
  const [tickets,setTickets]=useState<any[]>([]);
  const [selected,setSelected]=useState<any>(null);
  const [messages,setMessages]=useState<any[]>([]);
@@ -16,14 +18,14 @@ export default function AdminSupportScreen(){
  const [error,setError]=useState('');
 
  const load=useCallback(async()=>{
-  if(!profile)return;
+  if(!profile || !allowed)return;
   const [t,a]=await Promise.all([
    supabase.from('support_tickets').select('id,user_id,subject,body,status,priority,visibility,assigned_to,resolution,created_at,updated_at,closed_at').order('created_at',{ascending:false}).limit(100),
    supabase.from('profiles').select('user_id,full_name,username,role').in('role',['admin','super_admin','support_admin']).order('full_name')
   ]);
   if(t.error)setError(t.error.message);else setTickets(t.data||[]);
   if(!a.error)setAdmins(a.data||[]);
- },[profile]);
+ },[profile,allowed]);
  useEffect(()=>{void load()},[load]);
 
  async function open(t:any){
@@ -52,6 +54,7 @@ export default function AdminSupportScreen(){
   if(!selected)return;
   await save({status:close?'closed':'resolved',resolution:resolution.trim()||null,closed_at:close?new Date().toISOString():null});
  }
+ if(!allowed)return <Screen><Header back eyebrow="ATHLETEN SECURITY" title="Admin access required" subtitle="Support workspace access is limited to authorized support administrators."/></Screen>;
  return <Screen><Header back eyebrow="ADMIN • SUPPORT" title="Support Workspace" subtitle="Work tickets, reply, assign, resolve and close."/>
  <Section title="TICKETS">{tickets.length?tickets.map(t=><Pressable key={t.id} onPress={()=>void open(t)}><Card><View style={{flexDirection:'row',justifyContent:'space-between',gap:8}}><Text style={{color:c.text,fontSize:13,fontWeight:'900',flex:1}}>{t.subject}</Text><Text style={{color:t.status==='closed'?c.muted:c.accentBright,fontSize:8,fontWeight:'900'}}>{String(t.status).toUpperCase()}</Text></View><Text style={{color:c.muted,fontSize:9,marginTop:4}}>{t.visibility.toUpperCase()} · {t.priority.toUpperCase()} · {new Date(t.created_at).toLocaleString()}</Text><Text style={{color:c.muted,fontSize:10,marginTop:4}} numberOfLines={2}>{t.body}</Text></Card></Pressable>):<Empty text="No support tickets."/>}</Section>
  {selected?<Section title={selected.subject}><Card>
