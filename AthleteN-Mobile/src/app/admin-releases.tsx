@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -113,7 +114,7 @@ export default function AdminReleasesScreen() {
       <Text style={s.body}>Upload the signed APK to a stable HTTPS release URL first. Save as draft to prepare it; publish only after you verify the APK and version code.</Text>
       <View style={s.panel}>
         <Text style={s.label}>INSTALLED BUILD</Text>
-        <Text style={s.body}>This source tree currently identifies the app as version 1.0.2 (Android version code 3). Every distributed update must use the same application ID and signing key.</Text>
+        <Text style={s.body}>Installed build metadata: version {String(Constants.expoConfig?.version || 'unknown')} · Android version code {String(Constants.expoConfig?.android?.versionCode || 'unknown')}. Every distributed update must use the same application ID and signing key.</Text>
         <Field label="VERSION NAME" value={version} onChangeText={setVersion} placeholder="1.0.2" />
         <Field label="ANDROID VERSION CODE" value={versionCode} onChangeText={setVersionCode} placeholder="3" keyboardType="number-pad" />
         <Field label="MINIMUM SUPPORTED VERSION CODE" value={minimumVersionCode} onChangeText={setMinimumVersionCode} placeholder="1" keyboardType="number-pad" />
