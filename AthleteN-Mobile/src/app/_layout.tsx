@@ -4,6 +4,7 @@ import { Pressable, Text, View, useColorScheme } from 'react-native';
 import { AuthProvider } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
 import AnnouncementOverlay from '@/components/announcement-overlay';
+import AppUpdateGate from '@/components/app-update-gate';
 
 type ErrorBoundaryState = { error: Error | null };
 
@@ -49,6 +50,7 @@ export default function RootLayout() {
       <AuthProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <AnnouncementOverlay />
+          <AppUpdateGate />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.dark.background } }}>
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="academy-setup" options={{ headerShown: false }} />
