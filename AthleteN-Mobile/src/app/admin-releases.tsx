@@ -134,7 +134,7 @@ export default function AdminReleasesScreen() {
       </View>
       <View style={s.panel}>
         <Text style={s.label}>IMPORTANT</Text>
-        <Text style={s.body}>Android cannot silently install an APK on standard consumer phones. AthleteN can detect the release and open the direct APK download, but each user must open the downloaded file and approve Android’s installer. Keep the same signing key and package name for every update, and always increase versionCode. JavaScript-only changes can be delivered differently through an OTA update system, but that requires separate Expo Updates configuration and a native build.
+        <Text style={s.body}>Android cannot silently install an APK on standard consumer phones. AthleteN can detect the release and open the direct APK download, but each user must open the downloaded file and approve Android’s installer. Keep the same signing key and package name for every update, and always increase versionCode. JavaScript-only changes can be delivered differently through an OTA update system, but that requires separate Expo Updates configuration and a native build.</Text>
       </View>
     </ScrollView>
   </SafeAreaView>;
