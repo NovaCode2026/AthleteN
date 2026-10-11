@@ -1,6 +1,8 @@
 import React from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import { Pressable, Text, View, useColorScheme } from 'react-native';
+import { useRouter } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AuthProvider } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
 import AnnouncementOverlay from '@/components/announcement-overlay';
@@ -44,6 +46,7 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBou
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
 
   return (
     <AppErrorBoundary>
@@ -51,7 +54,29 @@ export default function RootLayout() {
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <AnnouncementOverlay />
           <AppUpdateGate />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.dark.background } }}>
+          <Stack
+            screenOptions={{
+              headerShown: true,
+              headerTitle: 'AthleteN',
+              headerTitleStyle: { color: Colors.dark.text, fontSize: 15, fontWeight: '900', letterSpacing: 1.1 },
+              headerStyle: { backgroundColor: Colors.dark.background },
+              headerTintColor: Colors.dark.accentBright,
+              headerBackTitle: 'Back',
+              headerShadowVisible: false,
+              headerLeft: ({ canGoBack }) => canGoBack ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Go back"
+                  hitSlop={12}
+                  onPress={() => router.back()}
+                  style={{ paddingRight: 18, paddingVertical: 8 }}
+                >
+                  <MaterialCommunityIcons name="arrow-left" size={23} color={Colors.dark.accentBright} />
+                </Pressable>
+              ) : null,
+              contentStyle: { backgroundColor: Colors.dark.background },
+            }}
+          >
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="academy-setup" options={{ headerShown: false }} />
             <Stack.Screen name="change-password" options={{ headerShown: false }} />
