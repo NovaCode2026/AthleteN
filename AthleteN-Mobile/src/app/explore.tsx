@@ -47,10 +47,10 @@ export default function ExploreScreen(){
   {['admin','super_admin','support_admin'].includes(String(profile?.role||''))?<Section title="ADMINISTRATION"><FeatureRow title="Admin Control Center" text="Users, roles, plans, feature flags, badges and audit activity." icon="shield" onPress={()=>router.push('/admin-panel')}/></Section>:null}
   <Section title="TEAM"><FeatureRow title="My Team" text="Connect or change your Coach and Academy" onPress={()=>router.push({pathname:'/team'})}/></Section>
   <Section title="PERFORMANCE & INTELLIGENCE">
-   <FeatureRow title="Performance Analytics" text="Training load, weight history, medals and goals" icon="chart" onPress={()=>router.push('/(tabs)/analytics')}/>
-   <FeatureRow title="Athlete Reports" text="Generate a shareable snapshot of your athlete record" icon="file-document-outline" onPress={()=>router.push('/(tabs)/reports')}/>
-   <FeatureRow title="Tournament Scanner" text="Scan official event pages and accessible public Instagram sources" icon="scan" onPress={()=>router.push('/(tabs)/scanner')}/>
-   <FeatureRow title="AI Coach" text="Training guidance within your plan and safety limits" icon="ai" onPress={()=>router.push('/(tabs)/ai')}/>
+   <FeatureRow title="Performance Analytics" text="Training load, weight history, medals and goals" icon="chart" onPress={()=>router.push('/analytics')}/>
+   <FeatureRow title="Athlete Reports" text="Generate a shareable snapshot of your athlete record" icon="file-document-outline" onPress={()=>router.push('/reports')}/>
+   <FeatureRow title="Tournament Scanner" text="Scan official event pages and accessible public Instagram sources" icon="scan" onPress={()=>router.push('/scanner')}/>
+   <FeatureRow title="AI Coach" text="Training guidance within your plan and safety limits" icon="ai" onPress={()=>router.push('/ai')}/>
   </Section>
   <Section title="ATHLETEN COMMUNITY">
    <FeatureRow title="Messages" text="Secure athlete, coach and team messaging" onPress={()=>router.push({pathname:'/messages'})}/>
