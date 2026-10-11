@@ -72,7 +72,7 @@ function firstMatch(text, patterns) {
   return null;
 }
 
-function extractDate(value) {
+export function extractDate(value) {
   if (!value) return null;
   const cleaned = String(value).trim();
   const toIso = (year, month, day) => {
@@ -117,8 +117,10 @@ function extractRelevantLinks(html, baseUrl) {
   for (const match of html.matchAll(pattern)) {
     try {
       const url = new URL(match[1], baseUrl);
-      if (!["http:", "https:"].includes(url.protocol) || url.origin !== new URL(baseUrl).origin) continue;
+      if (!["http:", "https:"].includes(url.protocol)) continue;
       const label = normalizeText(match[2]).slice(0, 200);
+      const isPdfLink = /\.pdf(?:$|[?#])/i.test(url.href) || /\bpdf\b/i.test(label);
+      if (url.origin !== new URL(baseUrl).origin && !isPdfLink) continue;
       if (!relevantLinkPattern.test(`${url.pathname} ${label}`)) continue;
       url.hash = "";
       links.push(url.toString());
@@ -164,7 +166,7 @@ function snippetsForKeywords(text) {
   return [...new Set(snippets)].slice(0, 20);
 }
 
-function extractStructuredEvent(html) {
+export function extractStructuredEvent(html) {
   const candidates = [];
   const visit = (value) => {
     if (Array.isArray(value)) { value.forEach(visit); return; }
@@ -498,13 +500,32 @@ export async function scanSource(sourceUrl) {
   const uniquePdfs = [...new Map(allPdfs.map((pdf) => [pdf.href, pdf])).values()].slice(0, 40);
   const allText = pages.map((page) => `${page.url}\n${normalizeText(page.html)}`).join("\n");
   const discoveredUrls = [...discovered].sort().join("\n");
+  const firstExtracted = (key) => {
+    for (const page of pages) {
+      const value = page.extracted?.[key];
+      if (value !== null && value !== undefined && String(value).trim()) return value;
+    }
+    return null;
+  };
+  const mergedDetails = mergeDetails(pages);
+  const structuredEvents = pages
+    .filter((page) => page.extracted.details?.structured_event)
+    .map((page) => ({ source_url: page.url, ...page.extracted.details.structured_event }));
   return {
     extracted: {
       ...primary,
+      tournament_name: primary.tournament_name || firstExtracted("tournament_name"),
+      tournament_date: primary.tournament_date || firstExtracted("tournament_date"),
+      venue: primary.venue || firstExtracted("venue"),
+      registration_deadline: primary.registration_deadline || firstExtracted("registration_deadline"),
+      weigh_in_information: primary.weigh_in_information || firstExtracted("weigh_in_information"),
+      categories: primary.categories || firstExtracted("categories"),
+      notices: primary.notices || firstExtracted("notices"),
+      schedules_results: primary.schedules_results || firstExtracted("schedules_results"),
       pdfs: uniquePdfs,
-      details: { ...mergeDetails(pages), pdfs: uniquePdfs }
+      details: { ...mergedDetails, structured_events: structuredEvents, pdfs: uniquePdfs }
     },
-    source_hash: createHash("sha256").update(`${discoveredUrls}\n${allText}`).digest("hex"),
+    source_hash: createHash("sha256").update(discoveredUrls + "\n" + allText).digest("hex"),
     pages_scanned: pages.length,
     discovered_urls: [...discovered]
   };
