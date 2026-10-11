@@ -9,7 +9,7 @@ import { Icon } from '@/components/mobile-ui';
 const c = Colors.dark;
 
 export default function CompeteScreen() {
- const { session, profile } = useAuth();
+ const { session, profile, syncVersion } = useAuth();
  const [tournaments,setTournaments]=useState<any[]>([]); const [selected,setSelected]=useState<string|null>(null); const [matches,setMatches]=useState<any[]>([]); const [medals,setMedals]=useState<any[]>([]); const [checklist,setChecklist]=useState<any[]>([]);
  const [name,setName]=useState(''); const [date,setDate]=useState(''); const [location,setLocation]=useState('');
  const [opponent,setOpponent]=useState(''); const [round,setRound]=useState(''); const [result,setResult]=useState(''); const [score,setScore]=useState('');
