@@ -52,7 +52,7 @@ export default function AdminReleasesScreen() {
     if (!allowed || !session || busy) return;
     const code = Number(versionCode);
     const minimum = Number(minimumVersionCode);
-    if (!/^\\d+\\.\\d+\\.\\d+(?:[+-][0-9A-Za-z.-]+)?$/.test(version.trim()) ||
+    if (!/^\d+\.\d+\.\d+(?:[+-][0-9A-Za-z.-]+)?$/.test(version.trim()) ||
         !Number.isSafeInteger(code) || code < 1 ||
         !Number.isSafeInteger(minimum) || minimum < 1) {
       setMessage('Use a version such as 1.0.3 and positive whole-number version codes.');
