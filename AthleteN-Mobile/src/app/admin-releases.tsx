@@ -52,12 +52,29 @@ export default function AdminReleasesScreen() {
     if (!allowed || !session || busy) return;
     const code = Number(versionCode);
     const minimum = Number(minimumVersionCode);
-    if (!version.trim() || !Number.isInteger(code) || code < 1 || !Number.isInteger(minimum) || minimum < 1) {
-      setMessage('Enter a version and valid positive integer version codes.');
+    if (!/^\\d+\\.\\d+\\.\\d+(?:[+-][0-9A-Za-z.-]+)?$/.test(version.trim()) ||
+        !Number.isSafeInteger(code) || code < 1 ||
+        !Number.isSafeInteger(minimum) || minimum < 1) {
+      setMessage('Use a version such as 1.0.3 and positive whole-number version codes.');
       return;
     }
-    if (!downloadUrl.trim().startsWith('https://')) {
-      setMessage('Enter the HTTPS URL of the APK release asset before saving.');
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(downloadUrl.trim());
+    } catch {
+      setMessage('Enter a valid HTTPS URL for the APK release asset.');
+      return;
+    }
+    if (parsedUrl.protocol !== 'https:' || !parsedUrl.hostname || parsedUrl.username || parsedUrl.password) {
+      setMessage('The APK URL must use HTTPS and cannot contain embedded credentials.');
+      return;
+    }
+    if (notes.length > 10000) {
+      setMessage('Release notes must be 10,000 characters or fewer.');
+      return;
+    }
+    if (nextPublished && current && code < current.version_code) {
+      setMessage('A published Android release cannot move to a lower version code. Increase the code for a newer release.');
       return;
     }
     if (minimum > code) {
@@ -95,6 +112,8 @@ export default function AdminReleasesScreen() {
       <Text style={s.title}>Pre-Play-Store updates</Text>
       <Text style={s.body}>Upload the signed APK to a stable HTTPS release URL first. Save as draft to prepare it; publish only after you verify the APK and version code.</Text>
       <View style={s.panel}>
+        <Text style={s.label}>INSTALLED BUILD</Text>
+        <Text style={s.body}>This source tree currently identifies the app as version 1.0.2 (Android version code 3). Every distributed update must use the same application ID and signing key.</Text>
         <Field label="VERSION NAME" value={version} onChangeText={setVersion} placeholder="1.0.2" />
         <Field label="ANDROID VERSION CODE" value={versionCode} onChangeText={setVersionCode} placeholder="3" keyboardType="number-pad" />
         <Field label="MINIMUM SUPPORTED VERSION CODE" value={minimumVersionCode} onChangeText={setMinimumVersionCode} placeholder="1" keyboardType="number-pad" />
