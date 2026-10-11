@@ -134,7 +134,7 @@ function upgradeInstagramImageUrl(imageUrl) {
   return String(imageUrl || "").replace(/s640x640/gi, "s1440x1440").replace(/e35_s640x640/gi, "e35_s1440x1440");
 }
 
-async function analyzeTournamentImage(imageUrl) {
+async function analyzeTournamentImage(imageUrl, deadline = Date.now() + 30000) {
   if (!imageUrl) return { poster: null, error: "POSTER_IMAGE_URL_MISSING" };
 
   const requestedImageUrl = upgradeInstagramImageUrl(imageUrl);
@@ -195,7 +195,8 @@ async function analyzeTournamentImage(imageUrl) {
       });
 
       const ocrPasses = [];
-      for (const pageSegMode of ["11", "6", "3", "12"]) {
+      for (const pageSegMode of ["11", "6", "3"]) {
+        if (Date.now() >= deadline - 12000) break;
         await worker.setParameters({ tessedit_pageseg_mode: pageSegMode, preserve_interword_spaces: "1" });
         const result = await worker.recognize(buffer);
         const raw = String(result?.data?.text || "");
@@ -1212,9 +1213,9 @@ async function scanPublicSource(sourceUrl) {
   // Analyze several exposed poster/frame images. A Reel can expose a
   // thumbnail plus alternate frames; limiting this to two made readable
   // tournament evidence disappear when the first frame was decorative.
-  for (const imageUrl of imageUrls.slice(0, 3)) {
+  for (const imageUrl of imageUrls.slice(0, 2)) {
     if (Date.now() >= deadline - 25000) break;
-    const analysis = await analyzeTournamentImage(imageUrl);
+    const analysis = await analyzeTournamentImage(imageUrl, deadline);
     posterAnalysisError = analysis?.error || posterAnalysisError;
     if (analysis?.poster) {
       poster = analysis.poster;
