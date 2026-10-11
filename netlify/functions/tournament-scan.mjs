@@ -5,9 +5,9 @@ import { inflateSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
 
 const planIntervals = { free: 12, student: 6, pro: 3, elite: 2, coach: 1, academy: 0.5 };
-const maxDiscoveredPages = 30;
-const MAX_SCAN_MS = 95000;
-const MAX_PAGE_FETCH_MS = 8000;
+const maxDiscoveredPages = 20;
+const MAX_SCAN_MS = 45000;
+const MAX_PAGE_FETCH_MS = 5500;
 const MAX_PARALLEL_PAGES = 5;
 const relevantLinkPattern = /(tournament|championship|open|notice|circular|announcement|schedule|result|fixture|draw|weigh|registration|entry|pdf|rules|equipment|accommodation|transport|venue|fee|category|eligibility|contact|scoring|system)/i;
 const infoPatterns = {
