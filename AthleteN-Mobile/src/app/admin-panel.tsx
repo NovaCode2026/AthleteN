@@ -158,6 +158,7 @@ export default function AdminPanelScreen() {
         <View style={s.panel}>
           <Text style={s.section}>ADMIN SHORTCUTS</Text>
             <Action title="Badge Control" text="Award/revoke non-system badges using protected RPCs." onPress={() => router.push('/admin-badges')} />
+          {superAdmin ? <Action title="Android Release Control" text="Prepare, publish or unpublish native Android updates." onPress={() => router.push('/admin-releases')} /> : null}
           <Action title="Audit & Security" text="Review recent privileged mutations and security events." onPress={() => setMessage('Audit events are shown below.')} />
           <Action title="Refresh Control Center" text="Reload users, audit events and feature flags." onPress={() => void refresh()} />
         </View>
