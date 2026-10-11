@@ -13,9 +13,9 @@ const MAX_ACCOUNT_POSTS = 12;
 
 // Shared date evidence patterns used by both poster and source extraction.
 const eventDatePatterns = [
-  /\\b(\\d{1,2}(?:st|nd|rd|th)?\\s*(?:&|and|[-–])\\s*\\d{1,2}(?:st|nd|rd|th)?\\s+[A-Za-z]{3,12}(?:\\s+20\\d{2})?)\\b/i,
-  /\\b([A-Za-z]{3,12}\\s+\\d{1,2}(?:st|nd|rd|th)?(?:\\s*(?:&|and|[-–])\\s*\\d{1,2}(?:st|nd|rd|th)?)?(?:\\s+20\\d{2})?)\\b/i,
-  /\\b(\\d{1,2}(?:st|nd|rd|th)?\\s+[A-Za-z]{3,12}(?:\\s+20\\d{2})?)\\b/i
+  /\b(\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+20\d{2})?)\b/i,
+  /\b([A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?)?(?:\s+20\d{2})?)\b/i,
+  /\b(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+20\d{2})?)\b/i
 ];
 
 async function fetchBounded(url, options = {}, timeoutMs = 7000) {
@@ -1071,7 +1071,7 @@ function extractFacts(caption, title, sourceUrl) {
 function instagramPostUrls(html) {
   const urls = [];
   const seen = new Set();
-  for (const m of html.matchAll(/https?:\\/\\/(?:www\\.)?instagram\\.com\\/(?:p|reel)\\/([A-Za-z0-9_-]+)[^"\\s<]*/gi)) {
+  for (const m of html.matchAll(/https?:\/\/(?:www\.)?instagram\.com\/(?:p|reel)\/([A-Za-z0-9_-]+)[^"\s<]*/gi)) {
     const raw = m[0].split(/[?#]/)[0];
     const parts = raw.match(/instagram\\.com\\/(p|reel)\\/([A-Za-z0-9_-]+)/i);
     if (!parts) continue;
