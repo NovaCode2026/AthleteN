@@ -1,5 +1,11 @@
 import 'expo-router/entry';
-import { registerWidgetTaskHandler } from 'react-native-android-widget';
-import { widgetTaskHandler } from './src/widgets/widget-task-handler';
+import { Platform } from 'react-native';
 
-registerWidgetTaskHandler(widgetTaskHandler);
+// The widget library is Android-only. Load it conditionally so iOS/web startup stays unaffected.
+if (Platform.OS === 'android') {
+  void import('react-native-android-widget').then(({ registerWidgetTaskHandler }) =>
+    import('./src/widgets/widget-task-handler').then(({ widgetTaskHandler }) => {
+      registerWidgetTaskHandler(widgetTaskHandler);
+    }),
+  );
+}
