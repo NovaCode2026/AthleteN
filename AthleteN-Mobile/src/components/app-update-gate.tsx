@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
@@ -21,12 +21,12 @@ export default function AppUpdateGate() {
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const [lastCheckedAt, setLastCheckedAt] = useState(0);
+  const lastCheckedAt = useRef(0);
 
   const checkForUpdate = useCallback(async (force = false) => {
-    if (Platform.OS !== 'android' || busy) return;
-    if (!force && Date.now() - lastCheckedAt < 6 * 60 * 60 * 1000) return;
-    setLastCheckedAt(Date.now());
+    if (Platform.OS !== 'android') return;
+    if (!force && Date.now() - lastCheckedAt.current < 6 * 60 * 60 * 1000) return;
+    lastCheckedAt.current = Date.now();
     try {
       const { data, error } = await supabase
         .from('mobile_app_releases')
@@ -48,7 +48,7 @@ export default function AppUpdateGate() {
     } catch {
       // Updates are best-effort; network problems must not block sign-in or training.
     }
-  }, [busy, lastCheckedAt]);
+  }, []);
 
   useEffect(() => {
     void checkForUpdate(true);
