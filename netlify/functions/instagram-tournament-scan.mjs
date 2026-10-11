@@ -7,7 +7,7 @@ const MAX_RELATED_ACCOUNTS = 8;
 const MAX_RELATED_POSTS = 30;
 
 function json(payload, status = 200) { return Response.json(payload, { status }); }
-const MAX_SCAN_MS = 110000;
+const MAX_SCAN_MS = 50000;
 const MAX_PROFILE_ACCOUNTS = 8;
 const MAX_ACCOUNT_POSTS = 12;
 
