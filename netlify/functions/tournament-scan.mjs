@@ -393,7 +393,7 @@ async function fetchText(url, timeoutMs = MAX_PAGE_FETCH_MS) {
     if (!response || !response.ok) throw new Error(`HTTP_${response?.status || 0}`);
     const contentType = (response.headers.get("content-type") || "").toLowerCase();
     const finalUrl = new URL(current);
-    const isPdf = /application\\/pdf/i.test(contentType) || /\\.pdf$/i.test(finalUrl.pathname);
+    const isPdf = /application\/pdf/i.test(contentType) || /\.pdf$/i.test(finalUrl.pathname);
     if (isPdf) {
       const pdfText = extractPdfText(await readBoundedBody(response, 15 * 1024 * 1024));
       if (!pdfText) throw new Error("PDF_TEXT_UNAVAILABLE");
