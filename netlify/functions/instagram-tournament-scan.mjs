@@ -1073,7 +1073,7 @@ function instagramPostUrls(html) {
   const seen = new Set();
   for (const m of html.matchAll(/https?:\/\/(?:www\.)?instagram\.com\/(?:p|reel)\/([A-Za-z0-9_-]+)[^"\s<]*/gi)) {
     const raw = m[0].split(/[?#]/)[0];
-    const parts = raw.match(/instagram\\.com\\/(p|reel)\\/([A-Za-z0-9_-]+)/i);
+    const parts = raw.match(/instagram\.com\/(p|reel)\/([A-Za-z0-9_-]+)/i);
     if (!parts) continue;
     const url = `https://www.instagram.com/${parts[1].toLowerCase()}/${parts[2]}/`;
     if (!seen.has(url)) { seen.add(url); urls.push(url); }
