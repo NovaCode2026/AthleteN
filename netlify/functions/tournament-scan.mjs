@@ -473,7 +473,7 @@ export async function scanSource(sourceUrl) {
     discovered.add(link);
   }
   try {
-    if (!/\\.pdf$/i.test(parsedSource.pathname) && Date.now() < deadline - MAX_PAGE_FETCH_MS) {
+    if (!/\.pdf$/i.test(parsedSource.pathname) && Date.now() < deadline - MAX_PAGE_FETCH_MS) {
       const sitemap = await fetchText(new URL("/sitemap.xml", sourceUrl).toString());
       for (const link of extractSitemapLinks(sitemap, sourceUrl)) {
         if (discovered.size >= Math.min(maxDiscoveredPages, 16)) break;
