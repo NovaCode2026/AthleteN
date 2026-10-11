@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /profile
+Disallow: /messages
+Disallow: /documents
+Disallow: /verification
+Disallow: /reset-password
+Disallow: /parent-approval
+Disallow: /auth/
+Disallow: /?code=
+Disallow: /?error=
+
+Sitemap: https://athleten.netlify.app/sitemap.xml
