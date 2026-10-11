@@ -3,11 +3,26 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { deflateSync } from "node:zlib";
-import { assertPublicHttpUrl, extractDate, extractPdfText, extractRelevantLinks, extractStructuredEvent, isBlockedIp } from "../netlify/functions/tournament-scan.mjs";
+import { assertPublicHttpUrl, decodeEntities, extractDate, extractMeta, extractPdfText, extractRelevantLinks, extractStructuredEvent, isBlockedIp, mergeDetails } from "../netlify/functions/tournament-scan.mjs";
 import { eventDatePatterns } from "../netlify/functions/instagram-tournament-scan.mjs";
 
 const root = process.cwd();
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+
+test("scanner reads HTML metadata and decodes decimal and hexadecimal entities", () => {
+  assert.equal(extractMeta('<meta property="og:title" content="National Taekwondo Open &amp; Cup">', "og:title"), "National Taekwondo Open & Cup");
+  assert.equal(extractMeta('<meta name="description" content="Tournament &#8212; Open">', "description"), "Tournament — Open");
+  assert.equal(decodeEntities("A&#233; &amp; &#x1F94B;"), "Aé & 🥋");
+});
+
+test("scanner normalizes whitespace before comparing facts from multiple pages", () => {
+  const merged = mergeDetails([
+    { url: "https://example.org/a", extracted: { details: { fields: { venue: "Indoor   Stadium" } } } },
+    { url: "https://example.org/b", extracted: { details: { fields: { venue: "Indoor Stadium" } } } }
+  ]);
+  assert.equal(merged.conflicts.length, 0);
+  assert.equal(merged.fields.venue, "Indoor   Stadium");
+});
 
 test("scanner extracts selectable text from a basic PDF stream", () => {
   const pdf = Buffer.from("%PDF-1.4\n1 0 obj\n<< /Length 42 >>\nstream\nBT (National Taekwondo Open) Tj ET\nendstream\nendobj\n%%EOF", "latin1");
