@@ -111,7 +111,7 @@ function extractPdfLinks(html, baseUrl) {
   return links.slice(0, 30);
 }
 
-function extractRelevantLinks(html, baseUrl) {
+export function extractRelevantLinks(html, baseUrl) {
   const links = [];
   const pattern = /<a[^>]+href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   for (const match of html.matchAll(pattern)) {
