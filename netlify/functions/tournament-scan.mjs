@@ -42,7 +42,7 @@ function createUserSupabaseClient(accessToken) {
   return createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: `Bearer ${accessToken}` } }, auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-function decodeEntities(value) {
+export function decodeEntities(value) {
   return String(value || "")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
@@ -50,7 +50,7 @@ function decodeEntities(value) {
     .replace(/&apos;/gi, "'")
     .replace(/&#39;/gi, "'")
     .replace(/&#x27;/gi, "'")
-    .replace(/&#(\\d+);/g, (_, number) => {
+    .replace(/&#(\d+);/g, (_, number) => {
       const code = Number(number);
       return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : " ";
     })
@@ -91,12 +91,12 @@ export function extractDate(value) {
   return null;
 }
 
-function extractMeta(html, property) {
-  for (const match of String(html || "").matchAll(/<meta\\b[^>]*>/gi)) {
+export function extractMeta(html, property) {
+  for (const match of String(html || "").matchAll(/<meta\b[^>]*>/gi)) {
     const tag = match[0];
-    const key = tag.match(/(?:property|name)\\s*=\\s*["']([^"']+)["']/i)?.[1];
+    const key = tag.match(/(?:property|name)\s*=\s*["']([^"']+)["']/i)?.[1];
     if (String(key || "").toLowerCase() !== String(property).toLowerCase()) continue;
-    const value = tag.match(/content\\s*=\\s*["']([^"']*)["']/i)?.[1];
+    const value = tag.match(/content\s*=\s*["']([^"']*)["']/i)?.[1];
     if (value) return decodeEntities(value).trim();
   }
   return null;
@@ -409,14 +409,14 @@ async function fetchText(url, timeoutMs = MAX_PAGE_FETCH_MS) {
   }
 }
 
-function mergeDetails(pages) {
+export function mergeDetails(pages) {
   const fields = {};
   const fieldEvidence = {};
   const conflicts = [];
   const sections = [];
   const headings = new Set();
   const highlights = [];
-  const normalizeField = (value) => String(value || "").replace(/\\s+/g, " ").trim().toLowerCase();
+  const normalizeField = (value) => String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
 
   for (const page of pages) {
     Object.entries(page.extracted.details?.fields || {}).forEach(([key, value]) => {
