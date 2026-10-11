@@ -195,9 +195,10 @@ export function extractStructuredEvent(html) {
       .map(asText).filter(Boolean).join(", ");
   };
   const location = event.location;
+  const formatLocation = (item) => [asText(item?.name), addressText(item?.address)].filter(Boolean).join(", ") || addressText(item);
   const venue = Array.isArray(location)
-    ? location.map((item) => item?.name || addressText(item?.address)).filter(Boolean).join("; ")
-    : (location?.name ? asText(location.name) : addressText(location?.address || location));
+    ? location.map(formatLocation).filter(Boolean).join("; ")
+    : formatLocation(location);
   const organizer = Array.isArray(event.organizer)
     ? event.organizer.map((item) => asText(item?.name || item)).filter(Boolean).join(", ")
     : asText(event.organizer?.name || event.organizer);
