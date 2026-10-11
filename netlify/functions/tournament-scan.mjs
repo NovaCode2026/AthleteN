@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { inflateSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
 
@@ -41,7 +43,21 @@ function createUserSupabaseClient(accessToken) {
 }
 
 function decodeEntities(value) {
-  return value.replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&quot;/gi, '"').replace(/&#39;/gi, "'").replace(/&#x27;/gi, "'");
+  return String(value || "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&#39;/gi, "'")
+    .replace(/&#x27;/gi, "'")
+    .replace(/&#(\\d+);/g, (_, number) => {
+      const code = Number(number);
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : " ";
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_, number) => {
+      const code = parseInt(number, 16);
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : " ";
+    });
 }
 
 function normalizeText(html) {
@@ -67,8 +83,14 @@ function extractDate(value) {
 }
 
 function extractMeta(html, property) {
-  const pattern = new RegExp(`<meta[^>]+(?:property|name)=["']${property}["'][^>]+content=["']([^"']+)["'][^>]*>`, "i");
-  return html.match(pattern)?.[1]?.trim() || null;
+  for (const match of String(html || "").matchAll(/<meta\\b[^>]*>/gi)) {
+    const tag = match[0];
+    const key = tag.match(/(?:property|name)\\s*=\\s*["']([^"']+)["']/i)?.[1];
+    if (String(key || "").toLowerCase() !== String(property).toLowerCase()) continue;
+    const value = tag.match(/content\\s*=\\s*["']([^"']*)["']/i)?.[1];
+    if (value) return decodeEntities(value).trim();
+  }
+  return null;
 }
 
 function extractPdfLinks(html, baseUrl) {
@@ -213,30 +235,105 @@ export function extractPdfText(buffer) {
   return extracted.join(" ").replace(/\s+/g, " ").trim();
 }
 
+function isBlockedIp(address) {
+  const version = isIP(address);
+  if (version === 4) {
+    const [a, b, c] = address.split(".").map(Number);
+    return a === 0 || a === 10 || a === 127 || a >= 224 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && (b === 168 || (b === 0 && (c === 0 || c === 2)) || (b === 88 && c === 99))) ||
+      (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) ||
+      (a === 203 && b === 0 && c === 113);
+  }
+  if (version === 6) {
+    const ip = address.toLowerCase().split("%")[0];
+    return ip === "::" || ip === "::1" || ip.startsWith("::ffff:") ||
+      /^(?:fc|fd|fe[89ab]|ff)/i.test(ip) ||
+      ip.startsWith("2001:db8:") || ip.startsWith("2001:10:") ||
+      ip.startsWith("64:ff9b:1:");
+  }
+  return true;
+}
+
+async function assertPublicHttpUrl(value) {
+  let url;
+  try { url = new URL(value); } catch { throw new Error("INVALID_SOURCE_URL"); }
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("UNSUPPORTED_SOURCE_URL");
+  const hostname = url.hostname.toLowerCase().replace(/^\\[|\\]$/g, "");
+  if (!hostname || hostname === "localhost" || hostname.endsWith(".localhost") ||
+      hostname.endsWith(".local") || hostname.endsWith(".internal") ||
+      hostname.endsWith(".test") || hostname.endsWith(".invalid")) throw new Error("PRIVATE_SOURCE_BLOCKED");
+  if (isIP(hostname)) {
+    if (isBlockedIp(hostname)) throw new Error("PRIVATE_SOURCE_BLOCKED");
+    return url;
+  }
+  let addresses;
+  try { addresses = await lookup(hostname, { all: true, verbatim: true }); }
+  catch { throw new Error("HOST_LOOKUP_FAILED"); }
+  if (!addresses.length || addresses.some((entry) => isBlockedIp(entry.address))) throw new Error("PRIVATE_SOURCE_BLOCKED");
+  return url;
+}
+
+async function readBoundedBody(response, maxBytes) {
+  const declared = Number(response.headers.get("content-length") || 0);
+  if (declared > maxBytes) throw new Error("SOURCE_TOO_LARGE");
+  if (!response.body) return Buffer.alloc(0);
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => {});
+        throw new Error("SOURCE_TOO_LARGE");
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks, total);
+}
+
 async function fetchText(url, timeoutMs = MAX_PAGE_FETCH_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 AthleteN-TournamentScanner/2.1",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain,application/pdf,*/*;q=0.8",
-        "Accept-Language": "en-IN,en;q=0.9"
-      },
-      signal: controller.signal,
-      redirect: "follow"
-    });
-    if (!response.ok) throw new Error(`HTTP_${response.status}`);
+    let current = url;
+    let response;
+    for (let redirects = 0; redirects <= 4; redirects += 1) {
+      const checkedUrl = await assertPublicHttpUrl(current);
+      response = await fetch(checkedUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 AthleteN-TournamentScanner/2.2",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain,application/pdf,*/*;q=0.8",
+          "Accept-Language": "en-IN,en;q=0.9"
+        },
+        signal: controller.signal,
+        redirect: "manual"
+      });
+      if (![301, 302, 303, 307, 308].includes(response.status)) break;
+      const location = response.headers.get("location");
+      if (!location) throw new Error("REDIRECT_WITHOUT_LOCATION");
+      if (redirects === 4) throw new Error("TOO_MANY_REDIRECTS");
+      current = new URL(location, checkedUrl).toString();
+    }
+    if (!response || !response.ok) throw new Error(`HTTP_${response?.status || 0}`);
     const contentType = (response.headers.get("content-type") || "").toLowerCase();
-    const finalUrl = response.url || url;
-    const isPdf = /application\/pdf/i.test(contentType) || /\.pdf$/i.test(new URL(finalUrl).pathname);
+    const finalUrl = new URL(current);
+    const isPdf = /application\\/pdf/i.test(contentType) || /\\.pdf$/i.test(finalUrl.pathname);
     if (isPdf) {
-      const pdfText = extractPdfText(Buffer.from(await response.arrayBuffer()));
+      const pdfText = extractPdfText(await readBoundedBody(response, 15 * 1024 * 1024));
       if (!pdfText) throw new Error("PDF_TEXT_UNAVAILABLE");
       return pdfText;
     }
     if (!contentType.includes("text/html") && !contentType.includes("text/plain") && !contentType.includes("xml")) throw new Error("UNSUPPORTED_CONTENT");
-    return response.text();
+    return new TextDecoder("utf-8").decode(await readBoundedBody(response, 5 * 1024 * 1024));
   } finally {
     clearTimeout(timer);
   }
