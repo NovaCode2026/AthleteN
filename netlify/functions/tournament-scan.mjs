@@ -467,25 +467,23 @@ export async function scanSource(sourceUrl) {
   const rootHtml = await fetchText(sourceUrl);
   const parsedSource = new URL(sourceUrl);
   const discovered = new Set([parsedSource.toString()]);
+  const rootLinkLimit = Math.min(maxDiscoveredPages, 13);
   for (const link of extractRelevantLinks(rootHtml, sourceUrl)) {
-    if (discovered.size >= maxDiscoveredPages) break;
+    if (discovered.size >= rootLinkLimit) break;
     discovered.add(link);
   }
   try {
-    if (Date.now() < deadline - MAX_PAGE_FETCH_MS) {
+    if (!/\\.pdf$/i.test(parsedSource.pathname) && Date.now() < deadline - MAX_PAGE_FETCH_MS) {
       const sitemap = await fetchText(new URL("/sitemap.xml", sourceUrl).toString());
       for (const link of extractSitemapLinks(sitemap, sourceUrl)) {
-        if (discovered.size >= maxDiscoveredPages) break;
+        if (discovered.size >= Math.min(maxDiscoveredPages, 16)) break;
         discovered.add(link);
       }
     }
   } catch {}
 
-  const urls = [...discovered];
   const pages = [];
-  for (let i = 0; i < urls.length; i += MAX_PARALLEL_PAGES) {
-    if (Date.now() >= deadline - 1500) break;
-    const batch = urls.slice(i, i + MAX_PARALLEL_PAGES);
+  const scanBatch = async (batch) => {
     const results = await Promise.allSettled(batch.map(async (url) => {
       const html = url === parsedSource.toString() ? rootHtml : await fetchText(url);
       return { url, html, extracted: scanPage(html, url) };
@@ -493,6 +491,29 @@ export async function scanSource(sourceUrl) {
     for (const result of results) {
       if (result.status === "fulfilled" && result.value) pages.push(result.value);
     }
+  };
+  const initialUrls = [...discovered];
+  for (let i = 0; i < initialUrls.length; i += MAX_PARALLEL_PAGES) {
+    if (Date.now() >= deadline - 1500) break;
+    await scanBatch(initialUrls.slice(i, i + MAX_PARALLEL_PAGES));
+  }
+
+  // One bounded second pass finds PDFs linked from tournament notices and
+  // schedules, including public federation/CDN-hosted documents.
+  const nestedUrls = [];
+  for (const page of pages) {
+    if (Date.now() >= deadline - MAX_PAGE_FETCH_MS) break;
+    for (const link of extractRelevantLinks(page.html, page.url)) {
+      if (discovered.size >= maxDiscoveredPages) break;
+      if (discovered.has(link)) continue;
+      discovered.add(link);
+      nestedUrls.push(link);
+    }
+    if (discovered.size >= maxDiscoveredPages) break;
+  }
+  for (let i = 0; i < nestedUrls.length; i += MAX_PARALLEL_PAGES) {
+    if (Date.now() >= deadline - 1500) break;
+    await scanBatch(nestedUrls.slice(i, i + MAX_PARALLEL_PAGES));
   }
 
   if (!pages.length) throw new Error("SOURCE_UNAVAILABLE");
