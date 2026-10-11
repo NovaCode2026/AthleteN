@@ -12,7 +12,7 @@ const MAX_PROFILE_ACCOUNTS = 8;
 const MAX_ACCOUNT_POSTS = 12;
 
 // Shared date evidence patterns used by both poster and source extraction.
-const eventDatePatterns = [
+export const eventDatePatterns = [
   /\b(\d{1,2}(?:st|nd|rd|th)?\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+20\d{2})?)\b/i,
   /\b([A-Za-z]{3,12}\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*(?:&|and|[-–])\s*\d{1,2}(?:st|nd|rd|th)?)?(?:\s+20\d{2})?)\b/i,
   /\b(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+20\d{2})?)\b/i
