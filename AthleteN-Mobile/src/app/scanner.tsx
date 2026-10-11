@@ -18,7 +18,7 @@ const fmt=(v?:string|null)=>{if(!v)return '—';const d=new Date(v);return Numbe
 const validInstagram=(u:string)=>{try{const x=new URL(u);const p=x.pathname.split('/').filter(Boolean);if(!/(^|\.)instagram\.com$/i.test(x.hostname)||!p.length)return false;if((p[0]==='p'||p[0]==='reel'||p[0]==='reels')&&p[1])return true;return p.length===1&&/^[a-zA-Z0-9._]{1,30}$/.test(p[0])}catch{return false}};
 
 export default function ScannerScreen(){
- const {session}=useAuth();
+ const {session,syncVersion}=useAuth();
  const [kind,setKind]=useState<SourceType>('website');
  const [url,setUrl]=useState('');
  const [scans,setScans]=useState<Scan[]>([]);
@@ -33,7 +33,7 @@ export default function ScannerScreen(){
   const {data,error}=await supabase.from('tournament_scans').select('id,source_url,tournament_name,tournament_date,venue,registration_deadline,weigh_in_information,categories,notices,schedules_results,pdfs,details,status,detected_changes,last_checked_at,next_check_at').eq('user_id',session.user.id).order('last_checked_at',{ascending:false}).limit(20);
   if(error){setMessage(error.message);return}
   const rows=(data||[]) as Scan[];setScans(rows);setSelected(s=>s?rows.find(x=>x.id===s.id)||s:rows[0]||null);
- },[session]);
+ },[session,syncVersion]);
  useEffect(()=>{void load()},[load]);
  async function refreshScans(){setRefreshing(true);try{await load()}finally{setRefreshing(false)}}
 
