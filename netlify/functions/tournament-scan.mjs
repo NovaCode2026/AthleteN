@@ -579,15 +579,23 @@ export default async function handler(request) {
     const failureCode = String(error?.message || "SOURCE_UNAVAILABLE").slice(0, 80);
     const failureMessage = failureCode === "PDF_TEXT_UNAVAILABLE"
       ? "The PDF did not expose selectable text. It may be a scanned image; try the official webpage or a text-based PDF."
-      : /^HTTP_(401|403|429)$/.test(failureCode)
-        ? "The source denied or rate-limited automated access. Try another public tournament page or its linked notice."
-        : failureCode === "HTTP_404"
-          ? "The source page was not found. Check the link and try again."
-          : failureCode === "UNSUPPORTED_CONTENT"
-            ? "This file type is not supported yet. Try a public HTML page or a text-based PDF."
-            : failureCode === "SOURCE_UNAVAILABLE" || failureCode === "AbortError"
-              ? "The source could not be reached in time. Check your connection or try the official tournament page."
-              : "The source may require login, JavaScript, or block automated access. Try a public page or text-based PDF.";
+      : failureCode === "PRIVATE_SOURCE_BLOCKED" || failureCode === "UNSUPPORTED_SOURCE_URL"
+        ? "This URL points to a private, local, or unsupported destination, so AthleteN blocked it for safety. Use a public http or https tournament link."
+        : failureCode === "HOST_LOOKUP_FAILED"
+          ? "AthleteN could not resolve the source hostname. Check the URL and try again."
+          : failureCode === "SOURCE_TOO_LARGE"
+            ? "The source is larger than the scanner limit. Try a smaller official notice or a direct text-based PDF."
+            : failureCode === "TOO_MANY_REDIRECTS" || failureCode === "REDIRECT_WITHOUT_LOCATION"
+              ? "The source redirected too many times or returned an invalid redirect. Try the final public page URL."
+              : /^HTTP_(401|403|429)$/.test(failureCode)
+                ? "The source denied or rate-limited automated access. Try another public tournament page or its linked notice."
+                : failureCode === "HTTP_404"
+                  ? "The source page was not found. Check the link and try again."
+                  : failureCode === "UNSUPPORTED_CONTENT"
+                    ? "This file type is not supported yet. Try a public HTML page or a text-based PDF."
+                    : failureCode === "SOURCE_UNAVAILABLE" || failureCode === "AbortError"
+                      ? "The source could not be reached in time. Check your connection or try the official tournament page."
+                      : "The source may require login, JavaScript, or block automated access. Try a public page or text-based PDF.";
     sourceHash = createHash("sha256").update(String(parsedUrl) + ":BLOCKED:" + failureCode).digest("hex");
     extracted = { notices: failureMessage, details: { fields: {}, scan_error_code: failureCode, pages_scanned: 0, source_pages: [], sections: [], headings: [], key_highlights: [], pdfs: [] } };
   }
