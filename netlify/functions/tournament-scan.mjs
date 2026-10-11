@@ -74,11 +74,20 @@ function firstMatch(text, patterns) {
 
 function extractDate(value) {
   if (!value) return null;
-  const cleaned = value.trim();
+  const cleaned = String(value).trim();
+  const toIso = (year, month, day) => {
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+    return [String(year), String(month).padStart(2, "0"), String(day).padStart(2, "0")].join("-");
+  };
+  const iso = cleaned.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
+  if (iso) return toIso(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+  // Tournament posters commonly use Indian DD/MM/YYYY notation. Parse it
+  // before Date.parse(), which can interpret ambiguous dates as US format.
+  const numeric = cleaned.match(/\b(\d{1,2})[\/-](\d{1,2})[\/-](20\d{2})\b/);
+  if (numeric) return toIso(Number(numeric[3]), Number(numeric[2]), Number(numeric[1]));
   const parsed = new Date(cleaned);
   if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
-  const match = cleaned.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
-  if (match) return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
   return null;
 }
 
@@ -319,7 +328,7 @@ async function assertPublicHttpUrl(value) {
   let url;
   try { url = new URL(value); } catch { throw new Error("INVALID_SOURCE_URL"); }
   if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("UNSUPPORTED_SOURCE_URL");
-  const hostname = url.hostname.toLowerCase().replace(/^\\[|\\]$/g, "");
+  const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (!hostname || hostname === "localhost" || hostname.endsWith(".localhost") ||
       hostname.endsWith(".local") || hostname.endsWith(".internal") ||
       hostname.endsWith(".test") || hostname.endsWith(".invalid")) throw new Error("PRIVATE_SOURCE_BLOCKED");
