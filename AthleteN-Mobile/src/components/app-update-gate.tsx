@@ -13,7 +13,6 @@ type Release = {
 };
 
 const c = Colors.dark;
-const installedVersion = String(Constants.expoConfig?.version || '1.0.0');
 const installedCode = Number(Constants.expoConfig?.android?.versionCode || 1);
 
 export default function AppUpdateGate() {
@@ -26,7 +25,6 @@ export default function AppUpdateGate() {
   const checkForUpdate = useCallback(async (force = false) => {
     if (Platform.OS !== 'android') return;
     if (!force && Date.now() - lastCheckedAt.current < 6 * 60 * 60 * 1000) return;
-    lastCheckedAt.current = Date.now();
     try {
       const { data, error } = await supabase
         .from('mobile_app_releases')
@@ -34,10 +32,19 @@ export default function AppUpdateGate() {
         .eq('id', true)
         .eq('published', true)
         .maybeSingle();
-      if (error || !data) return;
+      if (error) return;
+      lastCheckedAt.current = Date.now();
+      if (!data) {
+        setRelease(null);
+        setVisible(false);
+        return;
+      }
       const next = data as Release;
       const url = String(next.download_url || '');
-      if (!url.startsWith('https://')) return;
+      let parsedUrl: URL;
+      try { parsedUrl = new URL(url); } catch { return; }
+      const directApk = parsedUrl.protocol === 'https:' && parsedUrl.pathname.toLowerCase().endsWith('.apk');
+      if (!directApk || !Number.isSafeInteger(Number(next.version_code)) || !Number.isSafeInteger(Number(next.minimum_version_code))) return;
       if (Number(next.version_code) > installedCode || Number(next.minimum_version_code) > installedCode) {
         setRelease(next);
         setVisible(true);
@@ -70,7 +77,7 @@ export default function AppUpdateGate() {
     setMessage('');
     try {
       await Linking.openURL(release.download_url);
-      setMessage('The APK download page has opened. Download the APK, then tap the downloaded file and approve Android’s installer prompt. Your current app remains installed until Android confirms the update.');
+      setMessage('The direct APK link has opened. Android should start downloading it. When the download finishes, open the APK and approve Android’s installer prompt. Your current app remains installed until Android confirms the update.');
     } catch {
       setMessage('Could not open the download link. Check your internet connection or contact AthleteN support.');
     } finally {
@@ -92,7 +99,7 @@ export default function AppUpdateGate() {
           <Pressable disabled={busy} onPress={() => void downloadUpdate()} style={[s.primary, busy && s.disabled]}>
             <Text style={s.primaryText}>{busy ? 'OPENING DOWNLOAD…' : 'DOWNLOAD UPDATE'}</Text>
           </Pressable>
-          <Text style={s.hint}>Android requires your approval to install APK updates. This check does not install software silently.</Text>
+          <Text style={s.hint}>This checks for a published release on app launch and when you return to the app. Android requires your approval to install an APK; apps cannot silently replace themselves on ordinary phones.</Text>
           {!required ? <Pressable onPress={() => setVisible(false)} style={s.secondary}><Text style={s.secondaryText}>NOT NOW</Text></Pressable> : null}
           {message ? <Text style={s.message}>{message}</Text> : null}
         </View>
