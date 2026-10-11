@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { validMinutes, validWeight } from '@/lib/performance';
 
 export default function AnalyticsScreen() {
-  const { session } = useAuth();
+  const { session, syncVersion } = useAuth();
   const [training, setTraining] = useState<any[]>([]);
   const [weights, setWeights] = useState<any[]>([]);
   const [medals, setMedals] = useState(0);
@@ -31,7 +31,7 @@ export default function AnalyticsScreen() {
     setMedals(m.count || 0);
     setCompetitions(comp.count || 0);
     setGoals(g.count || 0);
-  }, [session]);
+  }, [session, syncVersion]);
 
   useEffect(() => { void load(); }, [load]);
 
