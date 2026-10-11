@@ -326,7 +326,7 @@ export function isBlockedIp(address) {
   return true;
 }
 
-async function assertPublicHttpUrl(value) {
+export async function assertPublicHttpUrl(value) {
   let url;
   try { url = new URL(value); } catch { throw new Error("INVALID_SOURCE_URL"); }
   if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("UNSUPPORTED_SOURCE_URL");
