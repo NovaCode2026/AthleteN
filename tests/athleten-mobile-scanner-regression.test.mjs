@@ -35,10 +35,11 @@ test("home greeting is derived from local time and refreshes on app resume", () 
   assert.match(screen, /AppState\.addEventListener/);
 });
 
-test("scanner reports blocked sources instead of claiming full success", () => {
+test("scanner reports blocked sources instead of claiming full success and supports refresh", () => {
   const screen = read("AthleteN-Mobile/src/app/scanner.tsx");
   assert.match(screen, /toLowerCase\(\)==='blocked'/);
   assert.doesNotMatch(screen, /Scan complete\. Full tournament intelligence was extracted\./);
+  assert.match(screen, /RefreshControl refreshing=\{refreshing\} onRefresh=\{\(\)=>void refreshScans\(\)\}/);
 });
 
 test("mobile scanner has whitespace normalization and explicit Instagram URL validation", () => {
