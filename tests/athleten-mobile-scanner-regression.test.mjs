@@ -74,6 +74,37 @@ test("dashboard greeting follows the device timezone and supports pull-to-refres
   assert.doesNotMatch(screen, /timeZone:'Asia\/Kolkata'/);
 });
 
+test("mobile refreshes shared athlete records after realtime changes from web or mobile", () => {
+  const auth = read("AthleteN-Mobile/src/context/AuthContext.tsx");
+  assert.match(auth, /const ownedTables = \[/);
+  assert.match(auth, /setSyncVersion\(\(version\) => version \+ 1\)/);
+  assert.match(auth, /filter: `user_id=eq\.\$\{userId\}`/);
+  for (const table of ["training_sessions", "tournaments", "medals", "weight_logs", "goals", "calendar_events", "documents", "competition_checklists"]) {
+    assert.match(auth, new RegExp("'" + table + "'"));
+  }
+  for (const screenPath of [
+    "AthleteN-Mobile/src/app/home.tsx",
+    "AthleteN-Mobile/src/app/training.tsx",
+    "AthleteN-Mobile/src/app/compete.tsx",
+    "AthleteN-Mobile/src/app/medals.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/weight.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/calendar.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/documents.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/analytics.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/reports.tsx",
+    "AthleteN-Mobile/src/app/scanner.tsx"
+  ]) {
+    assert.match(read(screenPath), /syncVersion/);
+  }
+});
+
+test("mobile More hub exposes parity entry points for web features", () => {
+  const screen = read("AthleteN-Mobile/src/app/explore.tsx");
+  for (const label of ["Plans & Usage", "Performance Analytics", "Athlete Reports", "Tournament Scanner", "AI Coach", "Support & Safety"]) {
+    assert.ok(screen.includes(label), label);
+  }
+});
+
 test("profile uses coach or academy connection code instead of manual names", () => {
   const screen = read("AthleteN-Mobile/src/app/profile.tsx");
   const start = screen.indexOf('<Section title="ATHLETE IDENTITY">');
