@@ -156,9 +156,11 @@ export default function AdminPanelScreen() {
         </View>
 
         <View style={s.panel}>
-          <Text style={s.section}>ADMIN SHORTCUTS</Text>
-            <Action title="Badge Control" text="Award/revoke non-system badges using protected RPCs." onPress={() => router.push('/admin-badges')} />
-          {superAdmin ? <Action title="Android Release Control" text="Prepare, publish or unpublish native Android updates." onPress={() => router.push('/admin-releases')} /> : null}
+          <Text style={s.section}>ROLE-AUTHORIZED WORKSPACES</Text>
+          {superAdmin || role === 'admin' ? <Action title="Full Admin Command Center" text="Open the server-permission-aware data and operations workspace." onPress={() => router.push('/admin')} /> : null}
+          <Action title="Support Workspace" text="Review tickets, assign cases, reply and resolve issues where server permissions allow." onPress={() => router.push('/admin-support')} />
+          <Action title="Badge Control" text="Award or revoke eligible badges through protected operations." onPress={() => router.push('/admin-badges')} />
+          {superAdmin ? <Action title="Android Release Control" text="Prepare and publish native Android updates." onPress={() => router.push('/admin-releases')} /> : null}
           <Action title="Audit & Security" text="Review recent privileged mutations and security events." onPress={() => setMessage('Audit events are shown below.')} />
           <Action title="Refresh Control Center" text="Reload users, audit events and feature flags." onPress={() => void refresh()} />
         </View>
