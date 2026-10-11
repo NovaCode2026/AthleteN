@@ -10,6 +10,7 @@ type AuthValue = {
   loading: boolean;
   profileLoading: boolean;
   authError: string | null;
+  syncVersion: number;
   retry: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [syncVersion, setSyncVersion] = useState(0);
 
   const loadProfile = async (userId: string) => {
     setProfileLoading(true);
@@ -98,24 +100,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void registerForPushNotifications(userId).catch(() => undefined);
     const removeNotificationListeners = attachNotificationListeners();
 
-    const channel = supabase
-      .channel(`mobile-account-sync-${userId}`)
-      .on(
+    const channel = supabase.channel(`mobile-account-sync-${userId}`);
+    const ownedTables = [
+      'training_sessions', 'training_plans', 'tournaments', 'matches', 'medals',
+      'weight_logs', 'goals', 'calendar_events', 'documents', 'notifications',
+      'competition_checklists', 'attendance_records', 'certificates', 'injuries',
+      'tournament_scans', 'athlete_badges', 'messages', 'taekwondo_kyorugi_bouts',
+      'taekwondo_poomsae_performances', 'taekwondo_training_logs',
+      'athlete_seasons', 'competition_journals', 'fight_iq_entries',
+      'technique_progress', 'athlete_challenges', 'personal_records',
+      'athlete_milestones', 'athlete_timeline_events', 'subscriptions',
+      'account_entitlements'
+    ];
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'profiles', filter: `user_id=eq.${userId}` },
+      () => { void loadProfile(userId); setSyncVersion((version) => version + 1); }
+    );
+    for (const table of ownedTables) {
+      channel.on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles', filter: `user_id=eq.${userId}` },
-        () => { void loadProfile(userId); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'subscriptions', filter: `user_id=eq.${userId}` },
-        () => { void loadProfile(userId); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'account_entitlements', filter: `user_id=eq.${userId}` },
-        () => { void loadProfile(userId); }
-      )
-      .subscribe();
+        { event: '*', schema: 'public', table, filter: `user_id=eq.${userId}` },
+        () => {
+          setSyncVersion((version) => version + 1);
+          if (table === 'subscriptions' || table === 'account_entitlements') void loadProfile(userId);
+        }
+      );
+    }
+    channel.subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
@@ -130,6 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       profileLoading,
       authError,
+      syncVersion,
       retry: bootstrap,
       refreshProfile: async () => session ? loadProfile(session.user.id) : undefined,
       signOut: async () => { await supabase.auth.signOut(); },
