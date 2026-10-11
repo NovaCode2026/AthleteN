@@ -77,6 +77,7 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: Colors.dark.background },
             }}
           >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="academy-setup" options={{ headerShown: false }} />
             <Stack.Screen name="change-password" options={{ headerShown: false }} />
