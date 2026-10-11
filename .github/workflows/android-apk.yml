@@ -14,7 +14,23 @@ permissions:
   contents: read
 
 jobs:
+  scanner-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install server test dependencies
+        run: npm install --no-package-lock --ignore-scripts
+      - name: Run scanner regression tests
+        run: node --test tests/athleten-mobile-scanner-regression.test.mjs
+
   build-apk:
+    needs: scanner-regression
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
