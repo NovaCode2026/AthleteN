@@ -115,7 +115,7 @@ export default function AdminReleasesScreen() {
       <Pressable onPress={() => router.back()}><Text style={s.back}>‹ BACK</Text></Pressable>
       <Text style={s.kicker}>ANDROID RELEASE CONTROL</Text>
       <Text style={s.title}>Pre-Play-Store updates</Text>
-      <Text style={s.body}>Upload the signed APK to a stable HTTPS direct-file URL ending in .apk first. Save as draft to prepare it; publish only after you verify the APK and version code. When published, the app checks on launch and prompts users with this download link.
+      <Text style={s.body}>Upload the signed APK to a stable HTTPS direct-file URL ending in .apk first. Save as draft to prepare it; publish only after you verify the APK and version code. When published, the app checks on launch and prompts users with this download link.</Text>
       <View style={s.panel}>
         <Text style={s.label}>INSTALLED BUILD</Text>
         <Text style={s.body}>Installed build metadata: version {String(Constants.expoConfig?.version || 'unknown')} · Android version code {String(Constants.expoConfig?.android?.versionCode || 'unknown')}. Every distributed update must use the same application ID and signing key.</Text>
