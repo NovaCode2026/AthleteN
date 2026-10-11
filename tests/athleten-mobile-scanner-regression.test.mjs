@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { deflateSync } from "node:zlib";
 import { assertPublicHttpUrl, extractDate, extractPdfText, extractStructuredEvent, isBlockedIp } from "../netlify/functions/tournament-scan.mjs";
+import { eventDatePatterns } from "../netlify/functions/instagram-tournament-scan.mjs";
 
 const root = process.cwd();
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
@@ -100,4 +101,10 @@ test("scanner extracts structured event details from JSON-LD", () => {
   assert.equal(event.registration_fee, "INR 1200");
   assert.equal(event.registration_url, "https://example.org/register");
   assert.equal(event.registration_deadline, "2026-10-30");
+});
+
+test("Instagram scanner date patterns recognize common tournament date ranges", () => {
+  assert.ok(eventDatePatterns.some((pattern) => pattern.test("10-11 November 2026")));
+  assert.ok(eventDatePatterns.some((pattern) => pattern.test("November 10th & 11th 2026")));
+  assert.ok(eventDatePatterns.some((pattern) => pattern.test("10 November 2026")));
 });
