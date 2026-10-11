@@ -3,13 +3,13 @@ import { createClient } from "@supabase/supabase-js";
 
 const TOURNAMENT_WORDS = /(taekwondo|tournament|championship|championships|open|cup|games|kyorugi|poomsae|registration|weigh[- ]?in|draw|fixture|entry|medal|cadet|junior|senior|rules|scoring|PSS|protector|venue|schedule|fee|accommodation|transport|results?|competition|state|national)/i;
 const IG_PATHS_TO_IGNORE = new Set(["p","reel","reels","explore","accounts","direct","about","legal","privacy","terms","challenge","stories"]);
-const MAX_RELATED_ACCOUNTS = 8;
-const MAX_RELATED_POSTS = 30;
+const MAX_RELATED_ACCOUNTS = 4;
+const MAX_RELATED_POSTS = 15;
 
 function json(payload, status = 200) { return Response.json(payload, { status }); }
 const MAX_SCAN_MS = 50000;
-const MAX_PROFILE_ACCOUNTS = 8;
-const MAX_ACCOUNT_POSTS = 12;
+const MAX_PROFILE_ACCOUNTS = 4;
+const MAX_ACCOUNT_POSTS = 8;
 
 // Shared date evidence patterns used by both poster and source extraction.
 export const eventDatePatterns = [
