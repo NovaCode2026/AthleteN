@@ -26,6 +26,8 @@ jobs:
           node-version: 22
       - name: Install server test dependencies
         run: npm install --no-package-lock --ignore-scripts
+      - name: Check scanner JavaScript syntax
+        run: node --check netlify/functions/tournament-scan.mjs && node --check netlify/functions/instagram-tournament-scan.mjs
       - name: Run scanner regression tests
         run: node --test tests/athleten-mobile-scanner-regression.test.mjs
 
