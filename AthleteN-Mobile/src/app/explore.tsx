@@ -19,6 +19,11 @@ export default function ExploreScreen(){
   <Section title="PERSONALIZATION">
    <FeatureRow title="Customize Navigation" text="Choose and reorder the six features on your bottom bar" onPress={()=>router.push({pathname:'/navigation-settings'})}/>
   </Section>
+  <Section title="ACCOUNT & SUBSCRIPTION">
+   <FeatureRow title="Plans & Usage" text="Review your plan, feature access and AI usage" icon="credit-card" onPress={()=>router.push('/plans')}/>
+   <FeatureRow title="Notifications & Settings" text="Manage account preferences and notifications" icon="settings" onPress={()=>router.push('/settings')}/>
+   <FeatureRow title="Support & Safety" text="Get help, review policies, or report a safety concern" icon="shield" onPress={()=>router.push('/support')}/>
+  </Section>
   <Section title="TAEKWONDO">
    <FeatureRow title="Taekwondo Hub" text={profile?.discipline?profile.discipline+' performance, bouts and training':'Kyorugi & Poomsae performance'} onPress={()=>router.push({pathname:'/taekwondo'})}/>
    <FeatureRow title="Competition Checklist" text="Gear, documents and pre-event preparation" badge={String(counts.check)} onPress={()=>router.push({pathname:'/checklist'})}/>
@@ -41,6 +46,12 @@ export default function ExploreScreen(){
   </Section>
   {['admin','super_admin','support_admin'].includes(String(profile?.role||''))?<Section title="ADMINISTRATION"><FeatureRow title="Admin Control Center" text="Users, roles, plans, feature flags, badges and audit activity." icon="shield" onPress={()=>router.push('/admin-panel')}/></Section>:null}
   <Section title="TEAM"><FeatureRow title="My Team" text="Connect or change your Coach and Academy" onPress={()=>router.push({pathname:'/team'})}/></Section>
+  <Section title="PERFORMANCE & INTELLIGENCE">
+   <FeatureRow title="Performance Analytics" text="Training load, weight history, medals and goals" icon="chart" onPress={()=>router.push('/(tabs)/analytics')}/>
+   <FeatureRow title="Athlete Reports" text="Generate a shareable snapshot of your athlete record" icon="file-document-outline" onPress={()=>router.push('/(tabs)/reports')}/>
+   <FeatureRow title="Tournament Scanner" text="Scan official event pages and accessible public Instagram sources" icon="scan" onPress={()=>router.push('/(tabs)/scanner')}/>
+   <FeatureRow title="AI Coach" text="Training guidance within your plan and safety limits" icon="ai" onPress={()=>router.push('/(tabs)/ai')}/>
+  </Section>
   <Section title="ATHLETEN COMMUNITY">
    <FeatureRow title="Messages" text="Secure athlete, coach and team messaging" onPress={()=>router.push({pathname:'/messages'})}/>
    <FeatureRow title="Roadmap" text="Vote on what AthleteN should build next" badge={String(counts.roadmap)} onPress={()=>router.push({pathname:'/roadmap'})}/>
