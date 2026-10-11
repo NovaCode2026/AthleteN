@@ -59,7 +59,7 @@ function Bar({state,navigation}:{state:any;navigation:any}) {
 export default function TabLayout(){
  const {profile}=useAuth();
  const eligible=NAV_ITEMS.filter(x=>!x.feature||hasFeature(profile?.plan_id,x.feature,profile?.role));
- return <Tabs tabBar={(p:any)=><Bar {...p}/>} screenOptions={{headerShown:false,sceneStyle:{backgroundColor:c.background}}}>
+ return <Tabs tabBar={(p:any)=><Bar {...p}/>} screenOptions={{headerShown:true,headerTitle:'AthleteN',headerTitleStyle:{color:c.text,fontSize:15,fontWeight:'900',letterSpacing:1.1},headerStyle:{backgroundColor:c.background},headerTintColor:c.accentBright,headerBackTitle:'Back',headerShadowVisible:false,sceneStyle:{backgroundColor:c.background}}}>
   {eligible.map(x=><Tabs.Screen key={x.id} name={x.id}/>)}
  </Tabs>;
 }
