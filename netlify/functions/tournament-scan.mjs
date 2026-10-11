@@ -221,9 +221,9 @@ export function extractStructuredEvent(html) {
 function scanPage(html, sourceUrl) {
   const text = normalizeText(html);
   const structured = extractStructuredEvent(html);
-  const title = extractMeta(html, "og:title") || firstMatch(html, [/<title[^>]*>([\s\S]*?)<\/title>/i]) || structured?.tournament_name || firstMatch(text, [/(?:tournament|championship|open)\s*[:\-]\s*([^|.]{4,160})/i]);
+  const title = structured?.tournament_name || extractMeta(html, "og:title") || firstMatch(html, [/<title[^>]*>([\s\S]*?)<\/title>/i]) || firstMatch(text, [/(?:tournament|championship|open)\s*[:\-]\s*([^|.]{4,160})/i]);
   const description = extractMeta(html, "og:description") || extractMeta(html, "description") || structured?.description || null;
-  const dateText = firstMatch(text, [/(?:date|event date|event\s*on)\s*[:\-]?\s*([A-Za-z0-9,\s/-]{6,60})/i, /(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})/]) || structured?.tournament_date;
+  const dateText = structured?.tournament_date || firstMatch(text, [/(?:date|event date|event\s*on)\s*[:\-]?\s*([A-Za-z0-9,\s/-]{6,60})/i, /(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})/]);
   const fields = {};
   for (const [key, patterns] of Object.entries(infoPatterns)) {
     const value = firstMatch(text, patterns);
@@ -239,7 +239,7 @@ function scanPage(html, sourceUrl) {
   return {
     tournament_name: title || null,
     tournament_date: extractDate(dateText) || (structured?.tournament_date ? extractDate(structured.tournament_date) : null),
-    venue: firstMatch(text, [/(?:venue|location|host\s+venue)\s*[:\-]?\s*([^.;|]{4,220})/i]) || structured?.venue || null,
+    venue: structured?.venue || firstMatch(text, [/(?:venue|location|host\s+venue)\s*[:\-]?\s*([^.;|]{4,220})/i]) || null,
     registration_deadline: extractDate(fields.registration_deadline) || (structured?.registration_deadline ? extractDate(structured.registration_deadline) : null),
     weigh_in_information: fields.weigh_in || null,
     categories: fields.categories || fields.weight_categories || null,
