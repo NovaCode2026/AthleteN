@@ -1313,7 +1313,7 @@ async function scanPublicSource(sourceUrl) {
             caption: clean(postCaption || postTitle || postReel.transcript).slice(0, 4000),
             permalink: postUrl,
             timestamp: null,
-            media_product_type: /\\/reel\\//i.test(postUrl) ? "REELS" : "FEED",
+            media_product_type: /\/reel\//i.test(postUrl) ? "REELS" : "FEED",
             image_url: postImage || null
           });
         } catch {}
