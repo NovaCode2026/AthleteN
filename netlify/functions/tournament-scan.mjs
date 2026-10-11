@@ -155,23 +155,80 @@ function snippetsForKeywords(text) {
   return [...new Set(snippets)].slice(0, 20);
 }
 
+function extractStructuredEvent(html) {
+  const candidates = [];
+  const visit = (value) => {
+    if (Array.isArray(value)) { value.forEach(visit); return; }
+    if (!value || typeof value !== "object") return;
+    if (value["@graph"]) visit(value["@graph"]);
+    const types = Array.isArray(value["@type"]) ? value["@type"] : [value["@type"]];
+    if (types.some((type) => /event/i.test(String(type || ""))) && (value.name || value.startDate)) candidates.push(value);
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "@graph" && child && typeof child === "object") visit(child);
+    }
+  };
+  for (const match of String(html || "").matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try { visit(JSON.parse(match[1].trim())); } catch {}
+  }
+  const event = candidates.find((item) => item.name && item.startDate) || candidates[0];
+  if (!event) return null;
+  const asText = (value) => {
+    if (typeof value === "string" || typeof value === "number") return String(value).trim();
+    if (Array.isArray(value)) return value.map(asText).filter(Boolean).join(", ");
+    if (value && typeof value === "object") return asText(value.name || value.url || value["@id"] || "");
+    return "";
+  };
+  const addressText = (value) => {
+    if (!value || typeof value !== "object") return asText(value);
+    return [value.name, value.streetAddress, value.addressLocality, value.addressRegion, value.postalCode, value.addressCountry]
+      .map(asText).filter(Boolean).join(", ");
+  };
+  const location = event.location;
+  const venue = Array.isArray(location)
+    ? location.map((item) => item?.name || addressText(item?.address)).filter(Boolean).join("; ")
+    : (location?.name ? asText(location.name) : addressText(location?.address || location));
+  const organizer = Array.isArray(event.organizer)
+    ? event.organizer.map((item) => asText(item?.name || item)).filter(Boolean).join(", ")
+    : asText(event.organizer?.name || event.organizer);
+  const offers = Array.isArray(event.offers) ? event.offers[0] : event.offers;
+  return {
+    tournament_name: asText(event.name),
+    tournament_date: asText(event.startDate),
+    tournament_end_date: asText(event.endDate),
+    venue,
+    organizer,
+    description: asText(event.description),
+    event_url: asText(event.url),
+    registration_fee: offers?.price != null ? [asText(offers.priceCurrency), asText(offers.price)].filter(Boolean).join(" ") : "",
+    registration_url: asText(offers?.url),
+    registration_deadline: asText(offers?.validThrough),
+    event_status: asText(event.eventStatus)
+  };
+}
+
 function scanPage(html, sourceUrl) {
   const text = normalizeText(html);
-  const title = extractMeta(html, "og:title") || firstMatch(html, [/<title[^>]*>([\s\S]*?)<\/title>/i]) || firstMatch(text, [/(?:tournament|championship|open)\s*[:\-]\s*([^|.]{4,160})/i]);
-  const description = extractMeta(html, "og:description") || extractMeta(html, "description");
-  const dateText = firstMatch(text, [/(?:date|event date|event\s*on)\s*[:\-]?\s*([A-Za-z0-9,\s/-]{6,60})/i, /(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})/]);
+  const structured = extractStructuredEvent(html);
+  const title = extractMeta(html, "og:title") || firstMatch(html, [/<title[^>]*>([\s\S]*?)<\/title>/i]) || structured?.tournament_name || firstMatch(text, [/(?:tournament|championship|open)\s*[:\-]\s*([^|.]{4,160})/i]);
+  const description = extractMeta(html, "og:description") || extractMeta(html, "description") || structured?.description || null;
+  const dateText = firstMatch(text, [/(?:date|event date|event\s*on)\s*[:\-]?\s*([A-Za-z0-9,\s/-]{6,60})/i, /(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})/]) || structured?.tournament_date;
   const fields = {};
   for (const [key, patterns] of Object.entries(infoPatterns)) {
     const value = firstMatch(text, patterns);
     if (value) fields[key] = value;
   }
+  if (structured?.organizer && !fields.organizer) fields.organizer = structured.organizer;
+  if (structured?.registration_fee && !fields.fees) fields.fees = structured.registration_fee;
+  if (structured?.registration_deadline && !fields.registration_deadline) fields.registration_deadline = structured.registration_deadline;
+  if (structured?.registration_url && !fields.registration_link) fields.registration_link = structured.registration_url;
+  if (structured?.event_status && !fields.event_status) fields.event_status = structured.event_status;
   const headings = [...html.matchAll(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi)].map((m) => normalizeText(m[1])).filter(Boolean).slice(0, 40);
   const links = extractRelevantLinks(html, sourceUrl).slice(0, 40);
   return {
-    tournament_name: title,
-    tournament_date: extractDate(dateText),
-    venue: firstMatch(text, [/(?:venue|location|host\s+venue)\s*[:\-]?\s*([^.;|]{4,220})/i]),
-    registration_deadline: extractDate(fields.registration_deadline),
+    tournament_name: title || null,
+    tournament_date: extractDate(dateText) || (structured?.tournament_date ? extractDate(structured.tournament_date) : null),
+    venue: firstMatch(text, [/(?:venue|location|host\s+venue)\s*[:\-]?\s*([^.;|]{4,220})/i]) || structured?.venue || null,
+    registration_deadline: extractDate(fields.registration_deadline) || (structured?.registration_deadline ? extractDate(structured.registration_deadline) : null),
     weigh_in_information: fields.weigh_in || null,
     categories: fields.categories || fields.weight_categories || null,
     notices: fields.important_notices || null,
@@ -180,6 +237,7 @@ function scanPage(html, sourceUrl) {
     details: {
       description,
       fields,
+      structured_event: structured,
       headings,
       sections: extractSections(html),
       key_highlights: snippetsForKeywords(text),
@@ -235,7 +293,7 @@ export function extractPdfText(buffer) {
   return extracted.join(" ").replace(/\s+/g, " ").trim();
 }
 
-function isBlockedIp(address) {
+export function isBlockedIp(address) {
   const version = isIP(address);
   if (version === 4) {
     const [a, b, c] = address.split(".").map(Number);
@@ -250,7 +308,7 @@ function isBlockedIp(address) {
   if (version === 6) {
     const ip = address.toLowerCase().split("%")[0];
     return ip === "::" || ip === "::1" || ip.startsWith("::ffff:") ||
-      /^(?:fc|fd|fe[89ab]|ff)/i.test(ip) ||
+      /^(?:fc|fd|fe[89a-f]|ff)/i.test(ip) || ip.startsWith('::') ||
       ip.startsWith("2001:db8:") || ip.startsWith("2001:10:") ||
       ip.startsWith("64:ff9b:1:");
   }
