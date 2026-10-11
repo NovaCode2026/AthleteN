@@ -27,13 +27,13 @@ function Shell({ children, uri, label }: { children: React.ReactNode; uri: strin
 
 export function AthletePulseWidget({ data }: { data: PulseData }) {
   return <Shell uri="athleten:///training" label="AthleteN Athlete Pulse. Tap to open training.">
-    <FlexWidget style={{ width: 'match_parent', flexDirection: 'column', gap: 7 }}>
+    <FlexWidget style={{ width: 'match_parent', flexDirection: 'column', }}>
       <Label text="ATHLETE PULSE" />
-      <FlexWidget style={{ width: 'match_parent', flexDirection: 'row', gap: 10 }}>
-        <FlexWidget style={{ flex: 1, backgroundColor: PANEL, borderRadius: 12, padding: 9, flexDirection: 'column', gap: 3 }}>
+      <FlexWidget style={{ width: 'match_parent', flexDirection: 'row', }}>
+        <FlexWidget style={{ flex: 1, backgroundColor: PANEL, borderRadius: 12, padding: 9, flexDirection: 'column', }}>
           <Label text="STREAK" /><Value text={data.signedIn ? String(data.streak) : '—'} /><Label text="DAYS" />
         </FlexWidget>
-        <FlexWidget style={{ flex: 1, backgroundColor: PANEL, borderRadius: 12, padding: 9, flexDirection: 'column', gap: 3 }}>
+        <FlexWidget style={{ flex: 1, backgroundColor: PANEL, borderRadius: 12, padding: 9, flexDirection: 'column', }}>
           <Label text="THIS WEEK" /><Value text={data.signedIn ? String(data.sessions) : '—'} /><Label text="SESSIONS" />
         </FlexWidget>
       </FlexWidget>
@@ -43,7 +43,7 @@ export function AthletePulseWidget({ data }: { data: PulseData }) {
 
 export function TrainingPlannerWidget({ data }: { data: TrainingData }) {
   return <Shell uri="athleten:///training" label="AthleteN Training Planner. Tap to open training.">
-    <FlexWidget style={{ width: 'match_parent', flexDirection: 'column', gap: 7 }}>
+    <FlexWidget style={{ width: 'match_parent', flexDirection: 'column', }}>
       <Label text="TRAINING PLANNER" />
       <Value text={data.title} size={19} />
       <TextWidget text={data.detail} style={{ color: MUTED, fontSize: 11 }} />
@@ -54,7 +54,7 @@ export function TrainingPlannerWidget({ data }: { data: TrainingData }) {
 
 export function CompetitionCountdownWidget({ data }: { data: CompetitionData }) {
   return <Shell uri="athleten:///compete" label="AthleteN Competition Countdown. Tap to open competitions.">
-    <FlexWidget style={{ width: 'match_parent', flexDirection: 'column', gap: 7 }}>
+    <FlexWidget style={{ width: 'match_parent', flexDirection: 'column', }}>
       <Label text="NEXT COMPETITION" />
       <Value text={data.days} size={26} />
       <TextWidget text={data.title} style={{ color: WHITE, fontSize: 13, fontWeight: 'bold' }} />
