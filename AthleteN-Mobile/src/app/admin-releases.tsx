@@ -70,6 +70,10 @@ export default function AdminReleasesScreen() {
       setMessage('The APK URL must use HTTPS and cannot contain embedded credentials.');
       return;
     }
+    if (!parsedUrl.pathname.toLowerCase().endsWith('.apk')) {
+      setMessage('Use a direct HTTPS link to the signed .apk file, not a GitHub release page or website page.');
+      return;
+    }
     if (notes.length > 10000) {
       setMessage('Release notes must be 10,000 characters or fewer.');
       return;
@@ -111,7 +115,7 @@ export default function AdminReleasesScreen() {
       <Pressable onPress={() => router.back()}><Text style={s.back}>‹ BACK</Text></Pressable>
       <Text style={s.kicker}>ANDROID RELEASE CONTROL</Text>
       <Text style={s.title}>Pre-Play-Store updates</Text>
-      <Text style={s.body}>Upload the signed APK to a stable HTTPS release URL first. Save as draft to prepare it; publish only after you verify the APK and version code.</Text>
+      <Text style={s.body}>Upload the signed APK to a stable HTTPS direct-file URL ending in .apk first. Save as draft to prepare it; publish only after you verify the APK and version code. When published, the app checks on launch and prompts users with this download link.
       <View style={s.panel}>
         <Text style={s.label}>INSTALLED BUILD</Text>
         <Text style={s.body}>Installed build metadata: version {String(Constants.expoConfig?.version || 'unknown')} · Android version code {String(Constants.expoConfig?.android?.versionCode || 'unknown')}. Every distributed update must use the same application ID and signing key.</Text>
@@ -130,7 +134,7 @@ export default function AdminReleasesScreen() {
       </View>
       <View style={s.panel}>
         <Text style={s.label}>IMPORTANT</Text>
-        <Text style={s.body}>Android cannot silently install an APK on standard consumer phones. Users must download the signed APK and approve installation. Keep the same signing key and package name for every update, and always increase versionCode.</Text>
+        <Text style={s.body}>Android cannot silently install an APK on standard consumer phones. AthleteN can detect the release and open the direct APK download, but each user must open the downloaded file and approve Android’s installer. Keep the same signing key and package name for every update, and always increase versionCode. JavaScript-only changes can be delivered differently through an OTA update system, but that requires separate Expo Updates configuration and a native build.
       </View>
     </ScrollView>
   </SafeAreaView>;
