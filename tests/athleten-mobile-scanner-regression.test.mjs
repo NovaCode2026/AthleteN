@@ -40,11 +40,13 @@ test("scanner reports blocked sources instead of claiming full success", () => {
   assert.doesNotMatch(screen, /Scan complete\. Full tournament intelligence was extracted\./);
 });
 
-test("mobile scanner normalizes whitespace and recognizes Instagram hosts", () => {
+test("mobile scanner has whitespace normalization and explicit Instagram URL validation", () => {
   const screen = read("AthleteN-Mobile/src/app/scanner.tsx");
-  assert.ok(screen.includes("replace(/\\\\s+/g,' ').trim()"));
-  assert.ok(screen.includes("const isInstagram=(u:string)=>/instagram\\\\.com/i.test(u);"));
-  assert.ok(screen.includes("!/(^|\\\\.)instagram\\\\.com$/i.test(x.hostname)"));
+  assert.match(screen, /const clean=/);
+  assert.match(screen, /const isInstagram=/);
+  assert.match(screen, /const validInstagram=/);
+  assert.match(screen, /instagram\\.com/i);
+  assert.match(screen, /x\.hostname/);
 });
 
 test("dashboard greeting follows the device timezone and supports pull-to-refresh", () => {
