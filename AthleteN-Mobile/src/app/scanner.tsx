@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { Header } from '@/components/mobile-ui';
@@ -24,6 +24,7 @@ export default function ScannerScreen(){
  const [scans,setScans]=useState<Scan[]>([]);
  const [selected,setSelected]=useState<Scan|null>(null);
  const [busy,setBusy]=useState(false);
+ const [refreshing,setRefreshing]=useState(false);
  const [scanning,setScanning]=useState<string|null>(null);
  const [message,setMessage]=useState('');
 
@@ -34,6 +35,7 @@ export default function ScannerScreen(){
   const rows=(data||[]) as Scan[];setScans(rows);setSelected(s=>s?rows.find(x=>x.id===s.id)||s:rows[0]||null);
  },[session]);
  useEffect(()=>{void load()},[load]);
+ async function refreshScans(){setRefreshing(true);try{await load()}finally{setRefreshing(false)}}
 
  async function runScan(sourceUrl:string,id?:string|null){
   if(!session)return;
@@ -67,7 +69,7 @@ export default function ScannerScreen(){
  const pdfs=selected?.pdfs?.length?selected.pdfs:details.pdfs||[];
  const poster=[['Sport',fields.poster_sport],['Disciplines',fields.poster_disciplines],['Events / divisions',fields.poster_events],['Age categories',fields.poster_age_categories],['Weight categories',fields.poster_weight_categories],['Gender categories',fields.poster_gender_categories],['Eligibility',fields.poster_eligibility],['City',fields.poster_city],['State',fields.poster_state],['Country',fields.poster_country],['Organizer',fields.organizer],['Host',fields.poster_host],['Reporting date',fields.reporting_date_text],['Reporting time',fields.reporting_time],['Registration',fields.poster_registration],['Registration deadline',fields.poster_registration_deadline],['Registration link',fields.poster_registration_link],['Fees',fields.fees],['Contact',fields.poster_contact],['Phone',fields.poster_phone],['Email',fields.poster_email],['Website',fields.poster_website],['Rules',fields.poster_rules],['Scoring system',fields.poster_scoring_system],['Competition system',fields.poster_competition_system],['Rounds',fields.poster_rounds],['Equipment',fields.poster_equipment],['Schedule',fields.poster_schedule],['Weigh-in',fields.poster_weigh_in],['Medals',fields.poster_medals],['Prizes',fields.poster_prizes],['Accommodation',fields.poster_accommodation],['Transport',fields.poster_transport],['Documents',fields.poster_documents],['Notices',fields.poster_notices],['Highlights',fields.poster_highlights],['Hashtags',fields.poster_hashtags],['Reel transcript',fields.reel_transcript]].filter(x=>clean(x[1]));
 
- return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+ return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>void refreshScans()} tintColor={c.accent} colors={[c.accent]} progressBackgroundColor={c.surface}/> }>
   <Header back eyebrow="ATHLETEN INTELLIGENCE" title="Tournament Scanner" subtitle="Scan tournament websites, notices, schedules, results, PDFs and public Instagram tournament posts." right={<View style={s.aiBadge}><Text style={s.aiBadgeText}>AI</Text></View>}/>
   <View style={s.tabs}>
    <Pressable onPress={()=>setKind('website')} style={[s.tab,kind==='website'&&s.activeTab]}><Text style={[s.tabTitle,kind==='website'&&s.activeText]}>WEBSITE</Text><Text style={s.tabSub}>Site, notice, schedule or PDF</Text></Pressable>
