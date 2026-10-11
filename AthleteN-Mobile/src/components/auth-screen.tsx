@@ -19,10 +19,11 @@ function authRedirect(next?: string) {
   // Expo Go needs the LAN callback that it can hand back to the running
   // development client. Standalone/native builds use the app scheme.
   if (Constants.executionEnvironment === 'storeClient') {
-    const hostUri = Constants.expoConfig?.hostUri || "192.168.1.3:8081";
+    const hostUri = Constants.expoConfig?.hostUri;
     if (hostUri) {
       return `exp://${hostUri}/--/${path}`;
     }
+    throw new Error("Could not determine the Expo development server address. Reopen the app from the Expo development server and try again.");
   }
 
   return Linking.createURL(path);
