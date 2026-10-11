@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { deflateSync } from "node:zlib";
-import { assertPublicHttpUrl, extractDate, extractPdfText, extractStructuredEvent, isBlockedIp } from "../netlify/functions/tournament-scan.mjs";
+import { assertPublicHttpUrl, extractDate, extractPdfText, extractRelevantLinks, extractStructuredEvent, isBlockedIp } from "../netlify/functions/tournament-scan.mjs";
 import { eventDatePatterns } from "../netlify/functions/instagram-tournament-scan.mjs";
 
 const root = process.cwd();
@@ -108,4 +108,16 @@ test("Instagram scanner date patterns recognize common tournament date ranges", 
   assert.ok(eventDatePatterns.some((pattern) => pattern.test("10-11 November 2026")));
   assert.ok(eventDatePatterns.some((pattern) => pattern.test("November 10th & 11th 2026")));
   assert.ok(eventDatePatterns.some((pattern) => pattern.test("10 November 2026")));
+});
+
+test("scanner discovers same-site pages and linked public PDFs without crawling unrelated external pages", () => {
+  const html = [
+    '<a href="/competition/schedule">Schedule</a>',
+    '<a href="https://cdn.example.org/official-notice.pdf">Official notice PDF</a>',
+    '<a href="https://other.example.org/random">Random external page</a>'
+  ].join("");
+  const links = extractRelevantLinks(html, "https://example.org/tournament");
+  assert.ok(links.includes("https://example.org/competition/schedule"));
+  assert.ok(links.includes("https://cdn.example.org/official-notice.pdf"));
+  assert.ok(!links.includes("https://other.example.org/random"));
 });
