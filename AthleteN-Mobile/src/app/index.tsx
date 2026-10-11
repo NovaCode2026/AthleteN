@@ -75,10 +75,12 @@ export default function EntryGate() {
       return () => { cancelled = true; clearTimeout(timer); };
     }
     const role = String(profile.role || 'athlete');
+    // Keep every account on its normal app dashboard first. Privileged roles
+    // receive a role-specific workspace entry button there; server-side RLS/RPC
+    // authorization remains the source of truth for every administrative action.
     const target =
       role === 'coach' ? '/coach' :
       role === 'academy_admin' || role === 'academy' ? '/academy' :
-      role === 'admin' || role === 'super_admin' || role === 'support_admin' ? '/admin' :
       '/(tabs)';
 
     let cancelled = false;
