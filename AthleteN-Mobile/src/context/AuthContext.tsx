@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { attachNotificationListeners, registerForPushNotifications } from '@/lib/push-notifications';
+import { refreshAthleteWidgets } from '@/lib/widget-refresh';
 
 type Profile = { id: string; user_id: string; full_name: string; discipline: 'Kyorugi' | 'Poomsae' | null; [key: string]: unknown };
 type AuthValue = {
@@ -92,6 +93,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => data.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    void refreshAthleteWidgets();
+  }, [syncVersion, session?.user.id]);
 
   useEffect(() => {
     if (!session?.user.id) return;
