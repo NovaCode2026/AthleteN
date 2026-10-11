@@ -18,15 +18,19 @@ export async function loadWidgetData() {
     const weekStart = new Date(now);
     weekStart.setHours(0, 0, 0, 0);
     weekStart.setDate(weekStart.getDate() - 6);
+    const streakStart = new Date(now);
+    streakStart.setHours(0, 0, 0, 0);
+    streakStart.setDate(streakStart.getDate() - 364);
     const [trainingResult, tournamentResult] = await Promise.all([
       supabase.from('training_sessions').select('session_date,minutes').eq('user_id', userId)
-        .gte('session_date', dateKey(weekStart)).lte('session_date', dateKey(now))
-        .order('session_date', { ascending: false }).limit(100),
+        .gte('session_date', dateKey(streakStart)).lte('session_date', dateKey(now))
+        .order('session_date', { ascending: false }).limit(500),
       supabase.from('tournaments').select('name,starts_at,location').eq('user_id', userId)
         .gte('starts_at', now.toISOString()).order('starts_at', { ascending: true }).limit(1).maybeSingle(),
     ]);
     const rows = trainingResult.data || [];
     const dates = [...new Set(rows.map((row: { session_date: string }) => String(row.session_date).slice(0, 10)))];
+    const weekRows = rows.filter((row: { session_date: string }) => String(row.session_date).slice(0, 10) >= dateKey(weekStart));
     let streak = 0;
     const cursor = new Date(now);
     cursor.setHours(0, 0, 0, 0);
@@ -35,8 +39,8 @@ export async function loadWidgetData() {
       streak += 1;
       cursor.setDate(cursor.getDate() - 1);
     }
-    const sessions = rows.length;
-    const minutes = rows.reduce((sum: number, row: { minutes?: number | null }) => sum + (Number(row.minutes) || 0), 0);
+    const sessions = weekRows.length;
+    const minutes = weekRows.reduce((sum: number, row: { minutes?: number | null }) => sum + (Number(row.minutes) || 0), 0);
     const pulse = { streak, sessions, minutes, signedIn: true };
     const training = {
       title: sessions ? 'Keep your momentum' : 'Plan your next session',
