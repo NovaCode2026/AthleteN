@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 
 const c = Colors.dark;
-const POLICY_VERSION = '2026-09-17';
+const POLICY_VERSION = '2026-10-12';
 
 const privacySections = [
   ['What we collect', 'Depending on the features you use, AthleteN may collect account information, athlete profile information, training and performance information, messages and reports, connected-service information, transaction status, and technical/security information.'],
@@ -20,18 +20,19 @@ const privacySections = [
 ];
 
 const termSections = [
-  ['Acceptance', 'These Terms govern use of AthleteN, including the app, website, subscriptions, academy functions, AI features, and related services. Users must have legal capacity to agree, or use the service with required parent/guardian involvement.'],
-  ['Accounts', 'Users should provide accurate information and protect their credentials. AthleteN may verify accounts, athletes, coaches, or academies when reasonably necessary for safety, security, eligibility, or fraud prevention.'],
-  ['Features', 'AthleteN may provide athlete profiles, training records, tournaments, matches, medals, attendance, goals, documents, notifications, academy functions, analytics, messaging, and AI-assisted features. Features can change as the product evolves.'],
-  ['AI features', 'AI output can be incomplete, inaccurate, or unsuitable for a particular athlete. AI is not a substitute for medical diagnosis, treatment, emergency care, sports medicine, physiotherapy, nutrition care, or qualified coaching.'],
-  ['Sports and safety', 'AthleteN does not guarantee performance, competition results, injury prevention, selection, rankings, medals, or any particular outcome. Users remain responsible for applicable rules, coach instructions, medical advice, and safety requirements.'],
-  ['User content', 'Users keep rights they lawfully own in content they submit. AthleteN receives only the permissions reasonably necessary to host, process, display, secure, and provide requested services, subject to the Privacy Policy and applicable law.'],
-  ['Acceptable use', 'Users must not bypass authentication or security controls, access another person’s account, introduce malicious code, interfere with infrastructure, impersonate others, submit fraudulent verification, or use AthleteN unlawfully or to violate another person’s rights.'],
-  ['Subscriptions and payments', 'Paid-plan pricing, billing intervals, taxes, included features, renewal, cancellation, and applicable refund terms are shown in the relevant plan or checkout flow. Payment providers may have their own terms.'],
-  ['Suspension and termination', 'Access may be restricted when reasonably necessary for security, fraud prevention, legal compliance, protection of users, abuse prevention, or material breach, subject to applicable law and required notice or remedies.'],
-  ['Availability and changes', 'AthleteN is an evolving service and may not always be uninterrupted or error-free. Material contractual changes will be handled according to applicable law.'],
-  ['Privacy', 'Personal data is handled according to the AthleteN Privacy Policy and applicable data-protection law.'],
-  ['Contact and disputes', 'AthleteN is provided by Nova Code. Contact: novacode.create@gmail.com. The current Terms use Indian law to the extent applicable, while preserving mandatory statutory rights and forums.'],
+  ["Agreement and scope", "These Terms cover AthleteN website, mobile apps, APIs, athlete tools, coach/academy workspaces, scanner, messaging, subscriptions and related services. Acceptance must be affirmative where law requires it. Mandatory Indian law prevails. See the full website Terms of Service."],
+  ["Eligibility and minors", "Contractual capacity is governed by applicable law, including section 11 of the Indian Contract Act, 1872. Users under 18 must not be treated as independently entering binding commercial contracts merely by tapping Accept. Parent/guardian authorisation and separate legally required personal-data consent must be obtained. Applicable child safeguards must be implemented before relevant processing."],
+  ["Accounts and roles", "Provide accurate details and protect credentials. Athlete, coach, academy, admin and super-admin permissions are limited to backend-authorised capabilities. Do not share privileged accounts or access another person’s records without authority."],
+  ["Features and availability", "Depending on plan and availability, AthleteN may provide profiles, training, attendance, competitions, medals, documents, weight/performance records, messaging, analytics, coach/academy workspaces, AI tools, scanner and subscriptions. Features may change subject to applicable law and purchase terms."],
+  ["Sports, health and AI safety", "AthleteN is not a medical device or substitute for a qualified coach, doctor, physiotherapist, dietitian or emergency service. AI/scanner outputs may be wrong and do not guarantee performance, selection, medals, eligibility or injury prevention. Do not rely on AthleteN alone for safety-critical training, injury, medication or food decisions."],
+  ["User content and permissions", "You retain rights you lawfully own and must have permission to submit images, documents and other people’s data. AthleteN receives only the limited permissions needed to operate the requested feature, subject to its Privacy Policy and law."],
+  ["Acceptable use and reports", "No unlawful use, harassment, impersonation, fraudulent verification, malware, unauthorised access, scraping personal/protected data, or harm to children/users. Report abuse, privacy or security concerns through available controls or novacode.create@gmail.com."],
+  ["Intellectual property", "AthleteN’s operator-owned software, branding and content remain protected. Use is limited to the intended service; third-party components follow their own licences."],
+  ["Subscriptions, billing and refunds", "Before purchase, checkout must disclose price/currency, billing period, features/limits, taxes/fees, renewal, cancellation and refund terms. Recurring payments require affirmative consent and applicable payment-rule compliance. Consumer rights and mandatory refunds cannot be waived by a blanket no-refund term."],
+  ["Third parties and data", "AthleteN may rely on hosting, authentication, storage, AI, payment and other providers. Personal data is handled under the Privacy Policy and applicable Indian law, including relevant IT Act 2000 and DPDP Act 2023/Rules 2025 provisions as they commence and apply."],
+  ["Grievances and intermediary rules", "Where applicable, AthleteN will follow duties under the IT Act 2000 and IT (Intermediary Guidelines and Digital Media Ethics Code) Rules 2021 as amended. Required grievance officer details must be real and published before launch. Current contact: novacode.create@gmail.com."],
+  ["Suspension, deletion and liability", "Access may be restricted for security, abuse, fraud, unlawful use or legal compliance, subject to required process. Account deletion may be requested using available controls or by email; lawful records may be retained. Nothing excludes non-waivable consumer or statutory rights."],
+  ["Law and operator details", "Indian law applies subject to mandatory law and lawful jurisdiction. Operator currently identified as Nova Code; contracting legal identity, valid business address, support process and any required grievance officer details must be completed before public/commercial launch. Contact: novacode.create@gmail.com."],
 ];
 
 export default function PoliciesScreen() {
