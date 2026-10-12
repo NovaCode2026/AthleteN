@@ -1,167 +1,87 @@
 # ATHLETEN TERMS OF SERVICE
+**Version / effective date:** 12 October 2026  
+**Service:** AthleteN — The Athlete Operating System  
+**Operator currently identified as:** Nova Code (the contracting legal person/entity and business address must be confirmed before public commercial launch)  
+**Contact:** novacode.create@gmail.com
 
-**Effective Date:** 17 September 2026  
-**Last Updated:** 17 September 2026  
-**Operator:** Nova Code  
-**Service:** AthleteN
+> **Launch warning:** This is a product-specific draft, not legal advice or a guarantee of compliance. An Indian lawyer should review it against the actual product before public/commercial launch. Complete the legal operator identity, address, support process and any required grievance officer details. Do not claim Nova Code is a registered company unless it actually is. These Terms do not waive rights that Indian law makes non-waivable.
 
-> **Important:** This document is a legal-policy draft for the AthleteN service. It must be reviewed and adapted by qualified Indian counsel before commercial launch. Bracketed implementation fields must be completed from the actual business, service, and data practices.
+## 1. Agreement and scope
+These Terms govern the AthleteN website, mobile applications, APIs, athlete tools, coach/academy workspaces, scanner, messaging, subscriptions and related services (“Service”). Creating an account, affirmatively accepting, purchasing or using a feature after notice may indicate agreement only to the extent permitted by law. Where law requires a specific form of assent or consent, AthleteN must provide it. If you do not agree, do not use the Service. The Privacy Policy separately explains personal-data processing. A plan page, order confirmation or specific written agreement may add terms for its subject matter. Mandatory law prevails over conflicting contract wording.
 
-## 1. Acceptance
+## 2. Eligibility, contractual capacity and children
+AthleteN serves athletes, coaches, academies, clubs, teams and authorised administrators. Users must provide truthful age and identity information. Section 11 of the Indian Contract Act, 1872 concerns contractual capacity; a person under 18 must not be treated as independently entering a binding commercial contract merely by tapping “accept”. A parent/guardian or other lawful representative must provide authorisation where required. This does not replace separate consent required for personal-data processing. AthleteN must implement any legally required verifiable parental consent and child safeguards before relevant processing. Do not falsely claim parental approval. Access may be limited where lawful safeguards are not in place.
 
-These Terms of Service ("Terms") govern access to and use of AthleteN, including its websites, applications, software, athlete tools, scanner features, dashboards, subscriptions, and related services (collectively, the "Service").
+## 3. Accounts, roles and security
+Keep account details accurate and protect credentials. Report suspected unauthorised access. Athlete, coach, academy, admin and super-admin roles grant only capabilities authorised by the Service and backend. Do not share privileged accounts, bypass role checks or access another person's records without permission. Admin access does not authorise unrelated use of data.
 
-By creating an account, accessing, or using the Service, you agree to these Terms to the extent you are legally capable of entering into such an agreement. If you are not legally capable of accepting these Terms, a parent, guardian, school, academy, club, or other authorised adult must review and accept them where applicable.
+## 4. Features and availability
+Depending on availability and plan, AthleteN may provide athlete profiles; training plans, logs and attendance; competitions, matches, medals and certificates; goals, milestones, weight/performance records; calendars, documents, messaging, coach/academy administration, analytics, reports, badges, AI-assisted tools, scanner features, notifications, subscriptions and integrations. Features, limits and supported devices may change. Material changes and paid-feature removal will be handled under applicable law and purchase terms. A feature being displayed does not guarantee uninterrupted or error-free operation.
 
-If you do not agree, do not use the Service.
+## 5. Sports, health, safety and AI
+AthleteN is organisational and informational software, not a substitute for a qualified coach, doctor, physiotherapist, registered dietitian, emergency service, referee or federation. AI and scanner outputs may be inaccurate, incomplete, outdated, biased or unsuitable. They are not medical diagnoses, injury assessments, official match decisions or guarantees of selection, medals, eligibility or performance. Do not rely on AthleteN alone to decide whether to train through pain, return from injury, change medication, restrict food or make weight. Seek appropriate professional/adult guidance when needed. Users remain responsible for safe training, venue/federation rules and professional advice.
 
-## 2. Eligibility and Minors
+## 6. User content and permissions
+User Content includes profiles, text, images, videos, training records, documents, messages, scans and feedback. You retain rights you lawfully own and confirm you have the rights and permissions required to submit material, including permissions for people shown where required. You grant the operator a limited, non-exclusive permission to host, store, reproduce, transmit, display and process content only as reasonably necessary to operate, secure, support and provide the feature you requested, consistent with the Privacy Policy and applicable law. This does not transfer ownership or permit unrelated advertising use. Separate public or promotional use requires a valid legal basis and any required permission. Coaches and academies must access athlete data only for authorised, disclosed purposes.
 
-AthleteN may be used by athletes, coaches, academies, clubs, schools, administrators, and other authorised users.
+## 7. Acceptable use and community safety
+You must not break law, infringe rights, threaten or harass people, impersonate others, submit false age/identity/parental-consent/athlete/competition/certificate/payment/verification information, upload unlawful material or malware, access accounts or systems without authorisation, bypass security or usage limits, scrape personal/protected data, copy protected code/branding without permission, exploit or endanger children/users, or use another person's data outside the authority and purpose for which it was shared. Nothing prohibits activity that applicable law expressly permits.
 
-Where the Service is used by a child or another person who requires an adult's consent under applicable law, the required parent, guardian, or other lawful authorisation must be obtained before processing or account use where required.
+Report abuse, unsafe content, privacy concerns or security issues using available in-app controls or novacode.create@gmail.com. AthleteN may preserve evidence or restrict content/accounts where reasonably necessary to protect users, comply with law or investigate a credible report, subject to legally required notice and grievance processes.
 
-Nova Code does not rely on these Terms to remove any statutory protection applicable to children or other protected users.
+## 8. Intellectual property
+AthleteN branding, original software, source code, design, documentation and operator-owned content are protected by applicable law. You receive a limited, revocable, non-transferable right to use the Service for its intended purpose, subject to these Terms and any separate licence. These Terms do not transfer ownership. Third-party and open-source components remain subject to their own licences.
 
-## 3. Accounts
+## 9. Plans, prices, payments, renewal and refunds
+Before purchase, the plan/checkout must clearly show price and currency, billing period, included features/limits, taxes/fees where applicable, payment method, renewal frequency, cancellation method, refund/cancellation terms and legally required provider details. Recurring payments must use clear affirmative consent and follow applicable payment-provider/RBI e-mandate requirements. Provide a usable cancellation route and avoid hidden charges, pre-ticked boxes, misleading countdowns and dark patterns.
 
-You must provide information that is accurate and reasonably current. You are responsible for maintaining the confidentiality of credentials associated with your account and for activity carried out through your account, except to the extent liability cannot lawfully be assigned to you.
+A paid plan starts according to the purchase confirmation and verified payment status. Third-party payment providers may handle payment credentials. Cancelling renewal generally stops future billing but does not automatically create a refund for a period already supplied. Refunds, failed/duplicate payments and statutory remedies are handled under the disclosed policy and mandatory law; no blanket “no refunds under any circumstances” term overrides consumer law. If a coach or academy sells a service through AthleteN, disclose the responsible provider, price, scope, fulfilment terms, cancellation/refund terms and complaint route.
 
-You must not impersonate another person, create an account using another person's identity without authorisation, or provide false information intended to defeat security, eligibility, billing, or access controls.
+## 10. Third-party services
+AthleteN may rely on hosting, authentication, database, storage, AI, email, analytics, payment, app-distribution and social-platform providers. Third-party services have their own terms and availability. Material data sharing must be described in the Privacy Policy and permissions/consents obtained where required.
 
-## 4. Athlete and Performance Information
+## 11. Privacy, data requests and security
+Personal data is handled under the AthleteN Privacy Policy and applicable Indian law, including the Information Technology Act, 2000 and applicable rules, and the Digital Personal Data Protection Act, 2023 and Digital Personal Data Protection Rules, 2025 as relevant provisions commence and apply. DPDP implementation is phased; this reference does not claim every provision is already in force. Submit privacy, correction, deletion, consent-withdrawal or grievance requests to novacode.create@gmail.com. We may verify identity or lawful authority. Deletion is subject to lawful retention, security, transaction, dispute and backup requirements.
 
-AthleteN may provide tools for recording, organising, analysing, or displaying athlete information, training information, competition information, performance observations, and related data.
+## 12. User-generated content and intermediary duties
+Where AthleteN qualifies as an intermediary under applicable law, it will follow due diligence, published rules/policies, grievance, lawful notice-handling and other obligations applicable to its actual role and scale under the Information Technology Act, 2000 and Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021, as amended. This clause does not itself establish that any particular intermediary exemption applies. The real grievance officer/contact details required by law must be published before launch; do not invent an officer.
 
-AthleteN is a software service and does not replace qualified coaching, medical care, physiotherapy, nutrition advice, emergency services, or other professional services.
+## 13. Suspension, termination and deletion
+Access may be restricted proportionately for security, credible abuse, fraud, unlawful use, serious breach, non-payment or legal compliance. Where required by law, notice, reasons, an opportunity to appeal/remedy and a grievance process will be provided. Urgent protective action may be taken where needed to prevent harm or secure systems. You may request account deletion through available controls or by emailing us. Deletion may remove access and may not be reversible. Records may be retained for legal, accounting, security, fraud-prevention or dispute purposes.
 
-Users remain responsible for deciding whether a training activity, competition activity, or other physical activity is appropriate and safe for them.
+## 14. Availability, disclaimers and consumer rights
+We use reasonable efforts to keep AthleteN available but do not promise uninterrupted or error-free operation. Maintenance, connectivity, device compatibility and third-party outages may affect availability. Nothing in these Terms excludes statutory warranties, consumer remedies, privacy rights or liability that cannot lawfully be excluded. The Service is provided on an “as available” basis only to the maximum extent permitted by law; this does not excuse deficient service, misleading representations, unfair trade practices, fraud or conduct for which liability cannot be excluded.
 
-## 5. Scanner and Automated Features
+## 15. Liability
+Nothing in these Terms limits liability, consumer remedies or statutory rights that cannot lawfully be limited. Subject to that safeguard, indirect or consequential loss is excluded only to the extent permitted by law. Nothing here excludes liability for fraud, wilful misconduct or a non-waivable statutory obligation.
 
-Certain AthleteN features may analyse images, video, movement, documents, or other inputs. Results may contain errors and should be treated as software-generated assistance rather than guaranteed facts or professional determinations.
+## 16. Changes
+We may update the Service or Terms for product, security or legal reasons. The version/date will be updated, and notice or renewed consent provided where required. Material changes do not retroactively remove accrued statutory rights.
 
-Users must have the necessary rights and permissions to submit images, video, documents, biometric information, or other personal information to the Service.
+## 17. Complaints and disputes
+Contact novacode.create@gmail.com and describe the issue without sending passwords or unnecessary sensitive information. Complaints will be handled within timelines applicable under law and the published grievance procedure. Indian law governs subject to mandatory law and lawful jurisdiction. Courts, consumer commissions and data-protection forums with lawful jurisdiction remain available. Nothing here removes a mandatory statutory forum or remedy.
 
-Nova Code does not represent that scanner or automated results are suitable for medical diagnosis, injury diagnosis, selection decisions, officiating decisions, or other high-stakes decisions unless expressly stated in a separate written service agreement.
+## 18. Severability and transfer
+If a provision is invalid, it will be limited or severed only to the extent necessary and the rest continues where lawful. Failure to enforce a provision is not a waiver. Any transfer of the Service remains subject to applicable privacy law, notice and required consent.
 
-## 6. Acceptable Use
+## 19. Relevant Indian legal framework (non-exhaustive)
+Depending on the actual feature, business model, user and effective date, relevant laws may include:
+- Indian Contract Act, 1872, including contractual capacity under section 11;
+- Information Technology Act, 2000 and applicable rules, including the IT (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021 as amended, where applicable;
+- Digital Personal Data Protection Act, 2023 and Digital Personal Data Protection Rules, 2025, according to phased commencement and application;
+- Consumer Protection Act, 2019; Consumer Protection (E-Commerce) Rules, 2020 as amended; applicable rules/guidelines on unfair trade practices, misleading advertisements and dark patterns;
+- applicable payment-system/RBI, tax, intellectual-property, child-safety and cyber-security laws.
+This list is not exhaustive and is not a legal opinion.
 
-You must not use the Service to:
+## 20. Operator and contact — complete before launch
+- **Product:** AthleteN
+- **Operator name currently used:** Nova Code
+- **Official email:** novacode.create@gmail.com
+- **Legal contracting name/entity:** [CONFIRM THE PERSON OR REGISTERED ENTITY THAT LEGALLY OPERATES ATHLETEN]
+- **Business/registered address:** [INSERT A VALID ADDRESS AS REQUIRED BY LAW]
+- **Customer support:** [CONFIRM EMAIL/IN-APP PROCESS]
+- **Grievance Officer (where required):** [APPOINT AND INSERT REAL NAME, DESIGNATION, ADDRESS AND CONTACT]
+- **Privacy/data-request contact:** novacode.create@gmail.com
+- **Effective date:** 12 October 2026
 
-- violate applicable law or another person's rights;
-- gain unauthorised access to accounts, systems, databases, APIs, or infrastructure;
-- bypass security or access controls;
-- upload malware or intentionally harmful code;
-- interfere with the Service or its availability;
-- scrape, copy, or systematically extract protected Service content without permission;
-- reverse engineer the Service except to the extent a mandatory law expressly permits it;
-- upload content that you do not have the right to submit;
-- impersonate another user or organisation;
-- misuse athlete or children's personal information; or
-- use the Service for unlawful, fraudulent, abusive, or deceptive purposes.
-
-## 7. Intellectual Property
-
-AthleteN, its original software, source code, architecture, interface, designs, branding, documentation, and other original materials owned or controlled by Nova Code are protected by applicable intellectual-property law and the AthleteN Proprietary Software Licence.
-
-These Terms do not transfer ownership of Nova Code intellectual property to a user.
-
-Third-party software, libraries, content, and services remain subject to their respective rights and licences.
-
-## 8. User Content
-
-You retain rights you already own in content you submit to the Service, subject to any separate agreement governing that content.
-
-You grant Nova Code only the permissions reasonably necessary to host, store, process, transmit, display, and operate on submitted content for providing, securing, maintaining, and improving the Service, to the extent permitted by applicable law and the applicable privacy notice.
-
-Nova Code does not acquire ownership of user content merely because it is submitted.
-
-## 9. Privacy and Personal Data
-
-Personal data is handled according to the applicable AthleteN Privacy Policy and applicable data-protection law.
-
-The Privacy Policy forms part of the Service documentation but does not override mandatory statutory rights.
-
-Where Indian data-protection law applies, Nova Code will operate the Service according to the obligations applicable to its role, the processing involved, and the commencement of the relevant provisions.
-
-## 10. Payments and Subscriptions
-
-Where paid plans are offered, the applicable price, billing interval, renewal terms, taxes, payment-provider terms, cancellation rules, and refund rules will be presented at or before purchase or in the applicable order/subscription terms.
-
-A subscription does not grant ownership of AthleteN software or proprietary materials.
-
-Nova Code may use a third-party payment processor. Payment-card information may be handled by that processor rather than stored directly by Nova Code, depending on the implementation.
-
-## 11. Third-Party Services
-
-The Service may integrate with third-party hosting, authentication, analytics, payment, storage, AI, communications, or other providers.
-
-Third-party services may have their own terms and privacy policies. Nova Code is not responsible for a third party's independent services to the extent permitted by law.
-
-## 12. Availability and Changes
-
-Nova Code may modify, suspend, discontinue, or restrict parts of the Service where reasonably necessary for maintenance, security, legal compliance, product development, or other legitimate operational reasons.
-
-Nova Code will not use this clause to remove rights that cannot lawfully be excluded.
-
-## 13. Suspension and Termination
-
-Nova Code may suspend or terminate access where reasonably necessary because of security risks, unlawful use, material breach, fraud, abuse, non-payment where applicable, or operational/legal requirements.
-
-Users may stop using the Service at any time. Account deletion and data retention are subject to the Privacy Policy and applicable law.
-
-Termination does not automatically extinguish rights or obligations that by their nature survive termination.
-
-## 14. Disclaimers
-
-To the maximum extent permitted by applicable law, the Service is provided on an "as is" and "as available" basis.
-
-Nova Code does not guarantee uninterrupted availability, error-free operation, complete accuracy of automated results, or compatibility with every device or environment.
-
-Nothing in these Terms excludes a statutory warranty, consumer right, remedy, or protection that cannot lawfully be excluded.
-
-## 15. Limitation of Liability
-
-To the maximum extent permitted by applicable law, Nova Code will not be liable for indirect, incidental, special, consequential, exemplary, or punitive losses arising from use of the Service.
-
-Nothing in these Terms excludes or limits liability that cannot lawfully be excluded or limited, including mandatory consumer, privacy, intellectual-property, or other statutory rights and remedies.
-
-## 16. Indemnity
-
-To the extent permitted by applicable law, a user may be responsible for losses, claims, or reasonable costs arising from the user's unlawful use of the Service, infringement of third-party rights, or material breach of these Terms, except to the extent caused by Nova Code's own unlawful conduct or liability that cannot legally be transferred.
-
-## 17. Governing Law and Disputes
-
-These Terms are governed by the laws of India, subject to mandatory laws that apply to the user or transaction.
-
-Disputes may be brought before a court or other forum having lawful jurisdiction. Nothing in these Terms removes a mandatory consumer, data-protection, or statutory forum or remedy.
-
-## 18. Changes to These Terms
-
-Nova Code may update these Terms when reasonably necessary. Material changes should be communicated through an appropriate Service notice or other reasonable method where required by law.
-
-The effective date will identify the current version.
-
-## 19. Order of Documents
-
-If a separate written agreement expressly conflicts with these Terms, the specific written agreement controls only for the subject matter and scope expressly covered by it.
-
-The AthleteN Proprietary Software Licence governs software-licensing rights. The Privacy Policy governs personal-data practices. A separate subscription/order agreement governs commercial terms where one exists.
-
-## 20. Severability and No Waiver
-
-If a provision is held invalid or unenforceable, it will be enforced to the maximum lawful extent where possible and the remaining provisions will continue.
-
-Failure to enforce a provision is not a waiver unless a valid written waiver is given.
-
-## 21. Contact
-
-**Nova Code**  
-**Legal/Support contact:** [INSERT OFFICIAL EMAIL]  
-**Business address:** [INSERT OFFICIAL BUSINESS ADDRESS, IF REQUIRED]  
-**Country:** India
-
-## 22. Version
-
-This is the AthleteN Terms of Service version effective **17 September 2026**, subject to lawful updates.
+Do not publish this as final until required identity/contact fields are completed, actual product behaviour matches these promises, and qualified Indian counsel has reviewed it.
