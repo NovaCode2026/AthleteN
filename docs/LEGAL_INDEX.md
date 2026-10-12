@@ -26,9 +26,9 @@ These documents serve different purposes and should not be treated as interchang
 
 Third-party licences, payment-provider terms, academy agreements, employment agreements, contractor agreements, and other specific written agreements may apply separately.
 
-## Production launch checklist
+## Indian-law review and production launch checklist
 
-Before public commercial launch, Nova Code should replace all `[INSERT ...]` placeholders, verify the final production data flows against the Privacy Policy, identify the correct legal entity and address, establish the required grievance/privacy/security contacts, confirm payment/refund disclosures, verify age and parental-consent flows, inventory third-party licences, and obtain qualified legal review of the final documents.
+Before public/commercial launch, confirm the contracting person/entity and business address; appoint and publish any required grievance officer; review Terms and Privacy Policy against actual app, website, backend and vendor data flows; implement legally required child/parental-consent safeguards; implement account deletion and rights-request handling; disclose INR pricing, taxes, renewal, cancellation and refunds; review recurring payment/RBI requirements and dark-pattern risks; establish incident/log handling; inventory third-party licences and data processors; publish terms/privacy/data-deletion routes; and obtain qualified Indian legal review. DPDP Act 2023 and Rules 2025 have phased commencement, so verify provisions effective on launch date. Do not claim an entity registration or appoint a fictitious officer.
 
 The official Nova Code contact email for the current legal-document set is **novacode.create@gmail.com**.
 
