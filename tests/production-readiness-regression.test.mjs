@@ -25,7 +25,7 @@ test('web Google registration records the accepted policy version after callback
 
 test('mobile messaging has no escaped-newline syntax regression and prevents duplicate sends', () => {
   const messages = read('AthleteN-Mobile/src/app/(tabs)/messages.tsx');
-  assert.doesNotMatch(messages, /\\\\n async function/);
+  assert.doesNotMatch(messages, /\\n async function/);
   assert.match(messages, /\|\|sending\)return/);
   assert.match(messages, /finally\{setSending\(false\)\}/);
 });
