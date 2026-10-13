@@ -31,7 +31,7 @@ test('mobile messaging has no escaped-newline syntax regression and prevents dup
 });
 
 test('trigger-only security-definer functions are not exposed as client RPCs', () => {
-  const migration = read('supabase/migrations/20261013120000_revoke_public_trigger_function_execute.sql');
+  const migration = read('supabase/migrations/20261013113154_revoke_public_trigger_function_execute.sql');
   assert.match(migration, /audit_admin_mutation\(\) from public, anon, authenticated/i);
   assert.match(migration, /guard_privileged_profile_fields\(\) from public, anon, authenticated/i);
 });
