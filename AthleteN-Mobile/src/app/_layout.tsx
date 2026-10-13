@@ -58,7 +58,7 @@ export default function RootLayout() {
             screenOptions={{
               headerShown: true,
               headerTitle: 'AthleteN',
-              headerTitleStyle: { color: Colors.dark.text, fontSize: 15, fontWeight: '900', letterSpacing: 1.1 },
+              headerTitleStyle: { color: Colors.dark.text, fontSize: 15, fontWeight: '900' },
               headerStyle: { backgroundColor: Colors.dark.background },
               headerTintColor: Colors.dark.accentBright,
               headerBackTitle: 'Back',
