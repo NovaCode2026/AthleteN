@@ -38,8 +38,159 @@ function sanitizeProfileValues(values: Partial<Profile>) { const safeValues: Par
 function Field({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) { return <label className="field"><span>{label}{props.required ? " *" : ""}</span><input {...props} /></label>; }
 function SelectField({ label, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { label: string }) { return <label className="field"><span>{label}{props.required ? " *" : ""}</span><select {...props}>{children}</select></label>; }
 function Toast({ toast, onClear }: { toast: ToastState; onClear: () => void }) { useEffect(() => { if (!toast || toast.type !== "error") return; const timer = window.setTimeout(onClear, 10000); return () => window.clearTimeout(timer); }, [toast, onClear]); if (!toast || toast.type !== "error") return null; return <div className="toast error" role="alert">{toast.message}</div>; }
-function VerificationCallback() { const auth = useAuth(); const params = new URLSearchParams(window.location.search); const errorDescription = params.get("error_description") || params.get("error"); useEffect(() => { if (auth.user) { const target = auth.emailVerified ? "/" : "/onboarding"; window.history.replaceState(null, "", target); } }, [auth.user, auth.emailVerified]); if (errorDescription) return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN verification</span><h1>Verification link could not be used</h1><p>The link may be expired, already used, or malformed. Return to login and request a new verification email if needed.</p><p className="notice" role="alert">{errorDescription.includes("expired") ? "This verification link has expired." : "Email verification could not be completed."}</p></section></main>; return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN verification</span><h1>{auth.emailVerified ? "Email verified" : "Finishing verification..."}</h1><p>{auth.emailVerified ? "Your email is verified. Redirecting you back to AthleteN." : "Please wait while AthleteN confirms your email session."}</p></section></main>; }
-function AuthScreen({ initialMode }: { initialMode?: AuthMode }) { const auth = useAuth(); const [mode, setMode] = useState<AuthMode>(initialMode || (isPasswordResetRoute() ? "reset" : "login")); const [form, setForm] = useState({ email: "", password: "", name: "" }); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false); async function submit(event: React.FormEvent) { event.preventDefault(); setMessage(""); setBusy(true); try { if (mode === "register") { await auth.signUp({ email: form.email, password: form.password, metadata: { full_name: form.name } }); setMessage("Check your email for the AthleteN verification link. After verifying, you will return here automatically."); } else if (mode === "forgot") { await auth.resetPassword(form.email); setMessage("Password reset email sent."); } else if (mode === "reset") { await auth.updatePassword(form.password); setMessage("Password updated. You can continue to AthleteN."); window.history.replaceState(null, "", "/"); setMode("login"); } else await auth.signIn({ email: form.email, password: form.password }); } catch (error) { setMessage(error instanceof Error ? error.message : "Authentication failed."); } finally { setBusy(false); } } async function resendVerification() { if (!form.email.trim()) { setMessage("Enter your email address first."); return; } setBusy(true); try { await auth.resendVerification(form.email); setMessage("A new AthleteN verification email has been sent."); } catch (error) { setMessage(error instanceof Error ? error.message : "Verification email could not be resent."); } finally { setBusy(false); } } async function signInWithGoogle() { setMessage(""); setBusy(true); try { await auth.signInWithGoogle(); setMessage("Redirecting to Google sign-in..."); } catch (error) { setMessage(error instanceof Error ? error.message : "Google sign-in could not be started."); setBusy(false); } } if (!auth.configured) { const configurationIssues = supabaseConfig.missing.concat(supabaseConfig.invalid); return <main className="auth-page"><section className="auth-card"><h1>AthleteN</h1><p>Supabase is not configured. Add the required public Vite variables to run the cloud app.</p>{configurationIssues.length > 0 && <p className="notice" role="status">Missing or invalid: {configurationIssues.join(", ")}</p>}</section></main>; } return <main className="auth-page"><section className="auth-card"><span className="eyebrow">Nova Code</span><h1>AthleteN - Taekwondo Edition</h1><p>Secure cloud command center for training, tournaments, documents, medals, goals, verification, plans, and AI coaching.</p><button type="button" className="btn oauth-btn" onClick={() => void signInWithGoogle()} disabled={busy}>Continue with Google</button><div className="oauth-divider"><span>or use email</span></div><form onSubmit={submit}>{mode === "register" && <Field label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />}{mode !== "reset" && <Field label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />}{mode !== "forgot" && <Field label="Password" type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />}<label className="remember"><input type="checkbox" defaultChecked /> Remember me on this device</label><button className="btn primary" disabled={busy}>{busy ? "Please wait..." : mode === "register" ? "Create account" : mode === "forgot" ? "Send reset email" : mode === "reset" ? "Update password" : "Log in"}</button></form>{message && <p className="notice" role="status">{message}</p>}<div className="auth-links"><button type="button" onClick={() => { setMessage(""); setMode("login"); }}>Login</button><button type="button" onClick={() => { setMessage(""); setMode("register"); }}>Register</button><button type="button" onClick={() => { setMessage(""); setMode("forgot"); }}>Forgot password</button>{mode === "register" && <button type="button" onClick={resendVerification} disabled={busy}>Resend verification</button>}{mode === "reset" && <button type="button" onClick={() => { setMessage(""); setMode("reset"); }}>Reset password</button>}</div></section></main>; }
+const ATHLETEN_POLICY_VERSION = "2026-10-12";
+
+function VerificationCallback() {
+  const auth = useAuth();
+  const params = new URLSearchParams(window.location.search);
+  const errorDescription = params.get("error_description") || params.get("error");
+  const [callbackMessage, setCallbackMessage] = useState("");
+
+  useEffect(() => {
+    if (!auth.user) return;
+    let cancelled = false;
+    const complete = async () => {
+      const pendingVersion = window.sessionStorage.getItem("athleten_policy_acceptance");
+      if (pendingVersion) {
+        const { error } = await requireSupabase().from("policy_acceptances").upsert({
+          user_id: auth.user!.id,
+          terms_version: pendingVersion,
+          privacy_version: pendingVersion,
+          accepted_at: new Date().toISOString(),
+          source: "web_google_signup",
+        }, { onConflict: "user_id" });
+        if (error) {
+          if (!cancelled) setCallbackMessage("We couldn't record your policy acceptance. Please contact support before continuing.");
+          return;
+        }
+        window.sessionStorage.removeItem("athleten_policy_acceptance");
+      }
+      if (!cancelled) {
+        const target = auth.emailVerified ? "/" : "/onboarding";
+        window.history.replaceState(null, "", target);
+      }
+    };
+    void complete().catch(() => {
+      if (!cancelled) setCallbackMessage("We couldn't finish account setup. Please try signing in again.");
+    });
+    return () => { cancelled = true; };
+  }, [auth.user, auth.emailVerified]);
+
+  if (errorDescription) return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN verification</span><h1>Verification link could not be used</h1><p>The link may be expired, already used, or malformed. Return to login and request a new verification email if needed.</p><p className="notice" role="alert">{errorDescription.includes("expired") ? "This verification link has expired." : "Email verification could not be completed."}</p></section></main>;
+  if (callbackMessage) return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN account setup</span><h1>One more step</h1><p className="notice" role="alert">{callbackMessage}</p><a href="/login">Return to login</a></section></main>;
+  return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN verification</span><h1>{auth.emailVerified ? "Email verified" : "Finishing verification..."}</h1><p>{auth.emailVerified ? "Your email is verified. Redirecting you back to AthleteN." : "Please wait while AthleteN confirms your email session."}</p></section></main>;
+}
+
+function AuthScreen({ initialMode }: { initialMode?: AuthMode }) {
+  const auth = useAuth();
+  const [mode, setMode] = useState<AuthMode>(initialMode || (isPasswordResetRoute() ? "reset" : "login"));
+  const [form, setForm] = useState({ email: "", password: "", name: "" });
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [policiesAccepted, setPoliciesAccepted] = useState(false);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setMessage("");
+    if (mode === "register" && !policiesAccepted) {
+      setMessage("Please review and accept the Privacy Policy and Terms of Service before creating an account.");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (mode === "register") {
+        await auth.signUp({
+          email: form.email,
+          password: form.password,
+          metadata: {
+            full_name: form.name,
+            athleten_terms_accepted_version: ATHLETEN_POLICY_VERSION,
+            athleten_privacy_accepted_version: ATHLETEN_POLICY_VERSION,
+            athleten_policies_accepted_at: new Date().toISOString(),
+          },
+        });
+        setMessage("Check your email for the AthleteN verification link. After verifying, you will return here automatically.");
+      } else if (mode === "forgot") {
+        await auth.resetPassword(form.email);
+        setMessage("Password reset email sent.");
+      } else if (mode === "reset") {
+        await auth.updatePassword(form.password);
+        setMessage("Password updated. You can continue to AthleteN.");
+        window.history.replaceState(null, "", "/");
+        setMode("login");
+      } else {
+        await auth.signIn({ email: form.email, password: form.password });
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Authentication failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resendVerification() {
+    if (!form.email.trim()) { setMessage("Enter your email address first."); return; }
+    setBusy(true);
+    try {
+      await auth.resendVerification(form.email);
+      setMessage("A new AthleteN verification email has been sent.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Verification email could not be resent.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function signInWithGoogle() {
+    setMessage("");
+    if (mode === "register" && !policiesAccepted) {
+      setMessage("Please accept the Privacy Policy and Terms of Service before continuing with Google sign-up.");
+      return;
+    }
+    if (mode === "register") window.sessionStorage.setItem("athleten_policy_acceptance", ATHLETEN_POLICY_VERSION);
+    setBusy(true);
+    try {
+      await auth.signInWithGoogle();
+      setMessage("Redirecting to Google sign-in...");
+    } catch (error) {
+      window.sessionStorage.removeItem("athleten_policy_acceptance");
+      setMessage(error instanceof Error ? error.message : "Google sign-in could not be started.");
+      setBusy(false);
+    }
+  }
+
+  if (!auth.configured) {
+    const configurationIssues = supabaseConfig.missing.concat(supabaseConfig.invalid);
+    return <main className="auth-page"><section className="auth-card"><h1>AthleteN</h1><p>Supabase is not configured. Add the required public Vite variables to run the cloud app.</p>{configurationIssues.length > 0 && <p className="notice" role="status">Missing or invalid: {configurationIssues.join(", ")}</p>}</section></main>;
+  }
+
+  return <main className="auth-page"><section className="auth-card">
+    <span className="eyebrow">Nova Code</span>
+    <h1>AthleteN - Taekwondo Edition</h1>
+    <p>Secure cloud command center for training, tournaments, documents, medals, goals, verification, plans, and AI coaching.</p>
+    <button type="button" className="btn oauth-btn" onClick={() => void signInWithGoogle()} disabled={busy || (mode === "register" && !policiesAccepted)}>Continue with Google</button>
+    <div className="oauth-divider"><span>or use email</span></div>
+    <form onSubmit={submit}>
+      {mode === "register" && <Field label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />}
+      {mode !== "reset" && <Field label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />}
+      {mode !== "forgot" && <Field label="Password" type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />}
+      {mode === "register" && <label className="remember" style={{ alignItems: "flex-start", gap: 10 }}>
+        <input type="checkbox" checked={policiesAccepted} onChange={(e) => setPoliciesAccepted(e.target.checked)} required />
+        <span>I have reviewed and accept the AthleteN <a href="/privacy-policy.html" target="_blank" rel="noreferrer">Privacy Policy</a> and <a href="/terms-of-service.html" target="_blank" rel="noreferrer">Terms of Service</a>.</span>
+      </label>}
+      <label className="remember"><input type="checkbox" defaultChecked /> Remember me on this device</label>
+      <button className="btn primary" disabled={busy || (mode === "register" && !policiesAccepted)}>{busy ? "Please wait..." : mode === "register" ? "Create account" : mode === "forgot" ? "Send reset email" : mode === "reset" ? "Update password" : "Log in"}</button>
+    </form>
+    {message && <p className="notice" role="status">{message}</p>}
+    <div className="auth-links">
+      <button type="button" onClick={() => { setMessage(""); setMode("login"); setPoliciesAccepted(false); }}>Login</button>
+      <button type="button" onClick={() => { setMessage(""); setMode("register"); setPoliciesAccepted(false); }}>Register</button>
+      <button type="button" onClick={() => { setMessage(""); setMode("forgot"); setPoliciesAccepted(false); }}>Forgot password</button>
+      {mode === "register" && <button type="button" onClick={resendVerification} disabled={busy}>Resend verification</button>}
+      {mode === "reset" && <button type="button" onClick={() => { setMessage(""); setMode("reset"); }}>Reset password</button>}
+    </div>
+  </section></main>;
+}
 function Stat({ icon: Icon, label, value, note }: { icon: typeof Activity; label: string; value: string | number; note: string }) { return <article className="metric card"><div className="metric-icon"><Icon size={18} /></div><div><p>{label}</p><strong>{value}</strong><small>{note}</small></div></article>; }
 function DataTable<T extends { id?: string }>({ rows, columns, empty }: { rows: T[]; empty: string; columns: Array<{ key: string; label: string; render?: (row: T) => React.ReactNode }> }) { if (!rows.length) return <div className="empty"><strong>{empty}</strong><p>Add a record with the action above.</p></div>; return <div className="table-wrap"><table><thead><tr>{columns.map((col) => <th key={col.key}>{col.label}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={row.id ?? index}>{columns.map((col) => <td key={col.key}>{col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? "")}</td>)}</tr>)}</tbody></table></div>; }
 function useCloudData(userId: string | undefined, setToast: (toast: ToastState) => void) { const [data, setData] = useState<CloudData>({ profile: {}, tournaments: [], training: [], medals: [], weights: [], goals: [], checklist: [], documents: [], notifications: [], feedback: [], verifications: [], roadmap: [], roadmapVotes: [], tournamentScans: [], aiUsage: [], subscriptions: [], subscriptionUsage: [] }); const [hasProfile, setHasProfile] = useState(false); const [loading, setLoading] = useState(true); async function refresh() { if (!userId || !isSupabaseConfigured) return; setLoading(true); const dataErrors: string[] = []; async function loadUserRows<T>(resource: Resource, options: { order?: string; ascending?: boolean } = {}) { try { return await listRows<T>(resource, userId, options); } catch (error) { dataErrors.push(error instanceof Error ? error.message : `Unable to load ${resource}.`); return [] as T[]; } } try { const profiles = await listRows<Profile>("profile", userId); const savedProfile = profiles[0]; const profileComplete = Boolean(savedProfile?.full_name?.trim()); const profile = savedProfile || { user_id: userId, plan_id: "free", role: "athlete" }; const [tournaments, training, medals, weights, goals, checklist, documents, notifications, feedback, verifications, roadmapRows, roadmapVotes, tournamentScans, aiUsage, subscriptions, subscriptionUsage, kyorugiBouts, poomsaePerformances, taekwondoTraining] = await Promise.all([loadUserRows<Tournament>("tournaments", { order: "starts_at", ascending: true }), loadUserRows<TrainingSession>("training", { order: "session_date", ascending: false }), loadUserRows<MedalRecord>("medals", { order: "awarded_at", ascending: false }), loadUserRows<WeightLog>("weights", { order: "logged_at", ascending: true }), loadUserRows<Goal>("goals", { order: "target_date", ascending: true }), loadUserRows<ChecklistItem>("checklist"), loadUserRows<DocumentRecord>("documents", { order: "created_at" }), loadUserRows<{ id?: string; title: string; body?: string; read_at?: string }>("notifications", { order: "created_at" }), loadUserRows<FeedbackItem>("feedback", { order: "created_at" }), loadUserRows<VerificationRequest>("verifications", { order: "created_at" }), listRows<RoadmapItem>("roadmap", undefined, { order: "votes", publicRows: true }).catch((error) => { dataErrors.push(error instanceof Error ? error.message : "Unable to load roadmap."); return [] as RoadmapItem[]; }), loadUserRows<RoadmapVote>("roadmapVotes", { order: "created_at" }), loadUserRows<TournamentScan>("tournamentScans", { order: "last_checked_at", ascending: false }), loadUserRows<AiUsageEvent>("aiUsage", { order: "created_at", ascending: false }), loadUserRows<Subscription>("subscriptions", { order: "created_at", ascending: false }), loadUserRows<SubscriptionUsage>("subscriptionUsage", { order: "usage_month", ascending: false }), loadUserRows<KyorugiBout>("kyorugiBouts", { order: "event_date", ascending: false }), loadUserRows<PoomsaePerformance>("poomsaePerformances", { order: "event_date", ascending: false }), loadUserRows<TaekwondoTrainingLog>("taekwondoTraining", { order: "session_date", ascending: false })]); setHasProfile(profileComplete); setData({ profile, tournaments, training, medals, weights, goals, checklist, documents, notifications, feedback, verifications, roadmap: roadmapRows.map((item) => ({ ...item, user_has_voted: roadmapVotes.some((vote) => vote.roadmap_item_id === item.id) })), roadmapVotes, tournamentScans, aiUsage, subscriptions, subscriptionUsage, kyorugiBouts, poomsaePerformances, taekwondoTraining }); if (dataErrors.length > 0) setToast({ type: "warning", message: dataErrors.slice(0, 2).join(" ") }); } catch (error) { setHasProfile(false); setToast({ type: "error", message: error instanceof Error ? error.message : "Unable to load profile." }); } finally { setLoading(false); } } useEffect(() => { void refresh(); }, [userId]); return { data, loading, refresh, hasProfile }; }
