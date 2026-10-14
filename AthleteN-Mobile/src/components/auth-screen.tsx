@@ -1,4 +1,5 @@
 ﻿import { useState } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -31,6 +32,10 @@ function authRedirect(next?: string) {
 
 export default function AuthScreen() {
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
+  const compact = width < 380;
+  const wide = width >= 700;
+  const shortScreen = height < 760;
   const [register, setRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -203,15 +208,15 @@ export default function AuthScreen() {
       <View style={styles.topAccent} />
       <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={styles.content}>
+          <View style={[styles.content,{paddingHorizontal:wide?32:compact?18:24,paddingVertical:shortScreen?14:24,maxWidth:wide?760:undefined,width:wide?'100%':undefined,alignSelf:wide?'center':'stretch',justifyContent:shortScreen?'flex-start':'center'}]}>
         <View style={styles.brandBlock}>
           <Image source={require('@/assets/logo.png')} style={styles.logo} />
           <View><Text style={styles.brand}>ATHLETEN</Text><Text style={styles.brandSub}>ATHLETE PERFORMANCE PLATFORM</Text></View>
         </View>
 
         <Text style={styles.kicker}>{register ? 'CREATE YOUR ATHLETE PROFILE' : 'WELCOME BACK'}</Text>
-        <Text style={styles.title}>{register ? 'Build your AthleteN profile.' : 'Your performance. One place.'}</Text>
-        <Text style={styles.subtitle}>Training, competition, weight, goals and athlete intelligence Ã¢â‚¬â€ built around you.</Text>
+        <Text style={[styles.title,{fontSize:wide?38:compact?28:31,lineHeight:wide?44:compact?33:36}]}>{register ? 'Build your AthleteN profile.' : 'Your performance. One place.'}</Text>
+        <Text style={styles.subtitle}>Training, competition, weight, goals and athlete intelligence — built around you.</Text>
 
         <Pressable onPress={signInWithGoogle} disabled={busy || googleBusy || resending || resetBusy} style={styles.google}>
           {googleBusy ? <ActivityIndicator color={Colors.dark.text} /> : <><View style={styles.googleMark}><Text style={styles.googleG}>G</Text></View><Text style={styles.googleText}>CONTINUE WITH GOOGLE</Text></>}
@@ -249,7 +254,7 @@ export default function AuthScreen() {
           <Pressable onPress={submit} disabled={busy || googleBusy || resending} style={styles.primary}>
             {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{register ? 'CREATE ACCOUNT' : 'SIGN IN'}</Text>}
           </Pressable>
-          {!register && <Pressable onPress={resetPassword} disabled={busy || googleBusy || resending || resetBusy}><Text style={styles.forgot}>{resetBusy ? 'SENDING RESET EMAILÃ¢â‚¬Â¦' : 'Forgot password? Send reset email'}</Text></Pressable>}
+          {!register && <Pressable onPress={resetPassword} disabled={busy || googleBusy || resending || resetBusy}><Text style={styles.forgot}>{resetBusy ? 'SENDING RESET EMAIL…' : 'Forgot password? Send reset email'}</Text></Pressable>}
           {!register && /not verified|not confirmed/i.test(error) && <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>{resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION</Text>}</Pressable>}
           {register && !!verificationNotice && <Pressable onPress={resendVerification} disabled={resending} style={styles.secondary}>{resending ? <ActivityIndicator color={Colors.dark.accent} /> : <Text style={styles.secondaryText}>RESEND VERIFICATION EMAIL</Text>}</Pressable>}
         </View>
@@ -273,18 +278,18 @@ const styles = StyleSheet.create({
   topAccent:{position:'absolute',top:0,left:0,right:0,height:3,backgroundColor:Colors.dark.accent},
   keyboard:{flex:1},
   scrollContent:{flexGrow:1},
-  content:{flexGrow:1,paddingHorizontal:24,paddingVertical:24,justifyContent:'center',gap:13},
+  content:{flexGrow:1,paddingHorizontal:24,paddingVertical:24,justifyContent:'center',gap:13,minWidth:0},
   brandBlock:{flexDirection:'row',alignItems:'center',gap:11,marginBottom:14},
   logo:{width:54,height:54,borderRadius:16},
   brand:{color:Colors.dark.text,fontSize:16,fontWeight:'900',letterSpacing:3.6},
   brandSub:{color:Colors.dark.muted,fontSize:7,fontWeight:'800',letterSpacing:1.1,marginTop:3},
   kicker:{color:Colors.dark.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.6},
-  title:{color:Colors.dark.text,fontSize:31,fontWeight:'900',letterSpacing:-0.6,lineHeight:36},
+  title:{color:Colors.dark.text,fontSize:31,fontWeight:'900',letterSpacing:-0.6,lineHeight:36,flexShrink:1},
   subtitle:{color:Colors.dark.muted,fontSize:13,lineHeight:20,marginBottom:4},
   google:{height:52,borderRadius:14,backgroundColor:Colors.dark.surface,borderWidth:1,borderColor:Colors.dark.borderStrong,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:10},
   googleMark:{width:25,height:25,borderRadius:8,backgroundColor:'#fff',alignItems:'center',justifyContent:'center'},
   googleG:{color:'#4285F4',fontSize:15,fontWeight:'900'},
-  googleText:{color:Colors.dark.text,fontSize:10,fontWeight:'900',letterSpacing:1},
+  googleText:{color:Colors.dark.text,fontSize:10,fontWeight:'900',letterSpacing:1,flexShrink:1},
   divider:{flexDirection:'row',alignItems:'center',gap:9},
   line:{flex:1,height:1,backgroundColor:Colors.dark.border},
   or:{color:Colors.dark.muted,fontSize:9,fontWeight:'900'},
