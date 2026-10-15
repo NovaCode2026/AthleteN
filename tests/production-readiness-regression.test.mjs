@@ -35,3 +35,18 @@ test('trigger-only security-definer functions are not exposed as client RPCs', (
   assert.match(migration, /audit_admin_mutation\(\) from public, anon, authenticated/i);
   assert.match(migration, /guard_privileged_profile_fields\(\) from public, anon, authenticated/i);
 });
+
+test('mobile auth copy has valid encoding and adapts to available screen dimensions', () => {
+  const auth = read('AthleteN-Mobile/src/components/auth-screen.tsx');
+  assert.doesNotMatch(auth, /Ã¢|â€|Â¦/);
+  assert.match(auth, /useWindowDimensions/);
+  assert.match(auth, /const compact = width < 380/);
+  assert.match(auth, /const wide = width >= 700/);
+  assert.match(auth, /maxWidth:wide\?760/);
+});
+test('web responsive layout includes narrow phone and tablet breakpoints', () => {
+  const css = read('src/styles/main.css');
+  assert.match(css, /@media \(max-width: 640px\)/);
+  assert.match(css, /@media \(max-width: 360px\)/);
+  assert.match(css, /@media \(max-width: 900px\)/);
+});
