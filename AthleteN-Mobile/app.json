@@ -2,14 +2,11 @@
   "expo": {
     "name": "AthleteN",
     "slug": "AthleteN-Mobile",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "athleten",
     "userInterfaceStyle": "dark",
-    "ios": {
-      "icon": "./assets/expo.icon"
-    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -19,7 +16,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.AthleteNMobile",
-      "versionCode": 3
+      "versionCode": 4
     },
     "web": {
       "output": "static",
