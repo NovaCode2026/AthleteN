@@ -1,9 +1,9 @@
 import React from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import { Pressable, Text, View, useColorScheme } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { AuthProvider } from '@/context/AuthContext';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
 import AnnouncementOverlay from '@/components/announcement-overlay';
 import AppUpdateGate from '@/components/app-update-gate';
@@ -44,6 +44,18 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBou
   }
 }
 
+
+function AuthRouteGuard() {
+  const { session, loading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  React.useEffect(() => {
+    if (loading || session) return;
+    if (pathname !== '/') router.replace('/');
+  }, [loading, session?.user.id, pathname, router]);
+  return null;
+}
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
@@ -51,6 +63,7 @@ export default function RootLayout() {
   return (
     <AppErrorBoundary>
       <AuthProvider>
+        <AuthRouteGuard />
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <AnnouncementOverlay />
           <AppUpdateGate />
