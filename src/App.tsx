@@ -230,7 +230,7 @@ function PlansPage({ profile }: { profile: Profile; userId: string; onSaved: () 
             <strong>{isFree ? "₹0" : "COMING SOON"}</strong>
           </div>
           <p className="plan-ai">{isFree ? "Free launch features" : "Paid AI allowances coming soon"}</p>
-          <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
+          {isFree ? <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul> : <p>Plan details and paid features will be published after billing and entitlements are verified.</p>}
           <button className={isFree ? "btn primary" : "btn"} type="button" disabled>
             {isFree ? "Free plan active" : "Coming soon"}
           </button>
