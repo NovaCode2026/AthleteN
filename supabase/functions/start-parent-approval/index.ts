@@ -14,7 +14,7 @@ function getApprovalSiteUrl(req: Request) {
   } catch {
     // Fall back to the configured production URL.
   }
-  return (Deno.env.get('ATHLETEN_PUBLIC_URL') || Deno.env.get('SITE_URL') || '').replace(/\/$/, '')
+  return (Deno.env.get('ATHLETEN_PUBLIC_URL') || Deno.env.get('SITE_URL') || 'https://athleten.netlify.app').replace(/\/$/, '')
 }
 
 export default {
