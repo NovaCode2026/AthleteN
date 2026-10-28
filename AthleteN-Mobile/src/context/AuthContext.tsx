@@ -151,7 +151,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Best-effort token cleanup prevents a shared device receiving alerts
         // for the previous account after sign-out.
         if (userId) {
-          await supabase.from('device_push_tokens').delete().eq('user_id', userId).catch(() => undefined);
+          try {
+            await supabase.from('device_push_tokens').delete().eq('user_id', userId);
+          } catch {
+            // Do not block sign-out if token cleanup is temporarily unavailable.
+          }
         }
         await supabase.auth.signOut();
       },
