@@ -94,6 +94,13 @@ export default {
       if (!parentEmail) return json({ error: 'A parent or guardian email is required for users under 18.' }, 400)
       if (parentEmail === (ctx.userClaims?.email || '').toLowerCase()) return json({ error: 'Parent or guardian email must be different from the account email.' }, 400)
 
+      const resendKey = Deno.env.get('RESEND_API_KEY')
+      const from = Deno.env.get('PARENT_APPROVAL_FROM')
+      const siteUrl = getApprovalSiteUrl(req)
+      if (!resendKey || !from || !siteUrl) {
+        return json({ error: 'Parent approval email is not configured. Set RESEND_API_KEY, PARENT_APPROVAL_FROM to a verified sender, and ATHLETEN_PUBLIC_URL.' }, 503)
+      }
+
       const secretKey = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}')['default']
       if (!secretKey) return json({ error: 'Server security configuration is incomplete.' }, 500)
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, secretKey, { auth: { autoRefreshToken: false, persistSession: false } })
@@ -101,10 +108,6 @@ export default {
       const { error: updateError } = await admin.from('age_verifications').update({ token_hash: tokenHash, token_expires_at: expiresAt, status: 'pending', approved_at: null, rejected_at: null, updated_at: new Date().toISOString() }).eq('user_id', ctx.userClaims!.sub)
       if (updateError) return json({ error: 'Parent approval request could not be created.' }, 500)
 
-      const resendKey = Deno.env.get('RESEND_API_KEY')
-      const from = Deno.env.get('PARENT_APPROVAL_FROM') || 'onboarding@resend.dev'
-      const siteUrl = getApprovalSiteUrl(req)
-      if (!resendKey || !siteUrl) return json({ error: 'Parent approval email service is not configured yet. Set RESEND_API_KEY and ATHLETEN_PUBLIC_URL.' }, 503)
       const approvalUrl = `${siteUrl}/parent-approval?token=${encodeURIComponent(token)}`; const athleteName = String(body.full_name || 'your athlete').replace(/[<>]/g, '')
       const email = parentApprovalEmail(athleteName, approvalUrl)
       const response = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${resendKey}` }, body: JSON.stringify({ from, to: [parentEmail], ...email }) })
