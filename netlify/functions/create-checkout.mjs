@@ -112,6 +112,10 @@ async function cashfreeCheckout(supabase, user, planId, amountMinor, verificatio
 
 export default async function handler(request) {
   if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
+  // Explicit launch gate: direct API calls cannot create paid orders during Free launch.
+  if (process.env.ATHLETEN_FREE_LAUNCH !== "false") {
+    return json({ error: "Paid plans are coming soon. AthleteN launches on the Free plan." }, 503);
+  }
   try {
     const user = await authenticate(request);
     if (!user) return json({ error: "Please sign in before checkout." }, 401);
