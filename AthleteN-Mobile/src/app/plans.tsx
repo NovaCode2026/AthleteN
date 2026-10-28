@@ -112,19 +112,19 @@ export default function PlansScreen() {
             {FREE_LAUNCH && p.id !== 'free' ? <Text style={s.price}>COMING SOON</Text> : <><Text style={s.price}>₹{displayedPrice.toLocaleString('en-IN')}</Text><Text style={s.period}>/{period}</Text></>}
           </View>
         </View>
-        {billing === 'yearly' && p.saving > 0 ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
+        {!FREE_LAUNCH && billing === 'yearly' && p.saving > 0 ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
         <View style={s.aiPill}><Text style={s.aiText}>{FREE_LAUNCH && p.id !== 'free' ? 'PAID AI COMING SOON' : p.ai === 0 ? 'No AI requests' : p.ai + ' AI requests every month'}</Text></View>
-        {p.features.map((feature) => <View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
+        {FREE_LAUNCH && p.id !== 'free' ? <Text style={s.meta}>Paid features will be announced when billing is ready.</Text> : p.features.map((feature) => <View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
         <Pressable disabled={FREE_LAUNCH || active || !!busyPlan || p.id === 'free'} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => void handleUpgrade(p.id)}>
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : 'COMING SOON'}</Text>
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : 'COMING SOON'}</Text>}
         </Pressable>
       </View>;
     })}
 
     <View style={s.productSection}>
       <Text style={s.sectionKicker}>PROFESSIONAL PRODUCTS</Text>
-      <Text style={s.productTitle}>Coach & Academy are separate subscriptions.</Text>
-      <Text style={s.meta}>You can own both. Buying one never replaces the other. Workspace switching only changes which product is active in the app.</Text>
+      <Text style={s.productTitle}>Coach & Academy</Text>
+      <Text style={s.meta}>Coach and academy subscriptions are disabled during the Free launch. Existing account roles are not changed from this screen.</Text>
       {(['coach','academy_admin'] as const).map((productRole) => {
         const p = productPlans[productRole];
         const owned = activeProducts.has(productRole === 'coach' ? 'coach' : 'academy');
@@ -138,7 +138,7 @@ export default function PlansScreen() {
             {FREE_LAUNCH ? <Text style={s.price}>COMING SOON</Text> : <Text style={s.price}>₹{(billing === 'yearly' ? p.yearly : p.monthly).toLocaleString('en-IN')}<Text style={s.period}>/{billing === 'yearly' ? 'year' : 'month'}</Text></Text>}
           </View>
           <Text style={s.meta}>{p.description}</Text>
-          {billing === 'yearly' ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
+          {!FREE_LAUNCH && billing === 'yearly' ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
           <Pressable
             disabled={FREE_LAUNCH || !!busyPlan}
             style={[s.planButton, isCurrent && s.planButtonActive]}
