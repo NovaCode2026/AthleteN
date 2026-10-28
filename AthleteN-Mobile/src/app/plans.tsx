@@ -113,7 +113,7 @@ export default function PlansScreen() {
           </View>
         </View>
         {billing === 'yearly' && p.saving > 0 ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
-        <View style={s.aiPill}><Text style={s.aiText}>{p.ai === 0 ? 'No AI requests' : p.ai + ' AI requests every month'}</Text></View>
+        <View style={s.aiPill}><Text style={s.aiText}>{FREE_LAUNCH && p.id !== 'free' ? 'PAID AI COMING SOON' : p.ai === 0 ? 'No AI requests' : p.ai + ' AI requests every month'}</Text></View>
         {p.features.map((feature) => <View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
         <Pressable disabled={FREE_LAUNCH || active || !!busyPlan || p.id === 'free'} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => void handleUpgrade(p.id)}>
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : 'COMING SOON'}</Text>
@@ -166,7 +166,7 @@ export default function PlansScreen() {
       <Text style={s.noteTitle}>Plan changes & billing</Text>
       <Text style={s.meta}>Paid plan activation is disabled for the Free launch. No checkout, payment, or manual entitlement activation is available here.</Text>
       <Text style={s.noteTitle}>AI usage</Text>
-      <Text style={s.meta}>AI requests are monthly allowances. A yearly subscription does not receive the full year's requests upfront. For example, Student yearly still provides 50 AI requests each month. Token usage and API cost remain backend metrics, and the allowance is enforced server-side.</Text>
+      <Text style={s.meta}>{FREE_LAUNCH ? 'Paid AI allowances remain disabled until billing and server-side entitlement checks are verified.' : 'AI requests are monthly allowances. Token usage and API cost remain backend metrics, and the allowance is enforced server-side.'}</Text>
     </View>
 
     <Pressable style={s.back} onPress={() => router.back()}><Text style={s.backText}>GO BACK</Text></Pressable>
