@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { AI_LIMITS, PLAN_NAMES, PLAN_PRICING, PlanId, getAiRemaining } from '@/lib/entitlements';
 
 const c = Colors.dark;
+const FREE_LAUNCH = true;
 
 type BillingCycle = 'monthly' | 'yearly';
 
@@ -62,26 +63,8 @@ export default function PlansScreen() {
   }, [session]);
 
   async function handleUpgrade(planId: PlanId) {
-    if (!session || planId === 'free' || planId === current) return;
-    setBusyPlan(planId);
-    setMessage('');
-    try {
-      const { data, error } = await supabase.rpc('can_start_paid_checkout', { p_user_id: session.user.id, p_plan_id: planId });
-      if (error) throw error;
-      if (!data) {
-        throw new Error(
-          planId === 'student' ? 'Student requires an approved student verification.' :
-          planId === 'coach' ? 'Coach access requires a Coach account.' :
-          planId === 'academy' ? 'Academy access requires an Academy administrator account.' :
-          'This plan is not available for the current account.'
-        );
-      }
-      setMessage('Checkout is ready for the selected product, but the payment provider must be configured on the server before a real charge can be created. No subscription was changed.');
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Upgrade could not be started.');
-    } finally {
-      setBusyPlan(null);
-    }
+    if (planId === 'free' || planId === current) return;
+    setMessage('Paid plans are coming soon. AthleteN launches on the Free plan; no payment or subscription has been created.');
   }
 
   const used = usage?.ai_requests_used ?? 0;
@@ -93,17 +76,7 @@ export default function PlansScreen() {
     <View>
       <Text style={s.kicker}>ATHLETEN • SUBSCRIPTION</Text>
       <Text style={s.title}>Choose your plan.</Text>
-      <Text style={s.subtitle}>Yearly is selected by default. Monthly stays available, and AI allowances reset every month.</Text>
-    </View>
-
-    <View style={s.billingWrap}>
-      <Pressable style={[s.billingOption, billing === 'monthly' && s.billingOptionActive]} onPress={() => setBilling('monthly')}>
-        <Text style={[s.billingText, billing === 'monthly' && s.billingTextActive]}>Monthly</Text>
-      </Pressable>
-      <Pressable style={[s.billingOption, billing === 'yearly' && s.billingOptionActive]} onPress={() => setBilling('yearly')}>
-        <Text style={[s.billingText, billing === 'yearly' && s.billingTextActive]}>Yearly</Text>
-        <View style={s.recommended}><Text style={s.recommendedText}>RECOMMENDED</Text></View>
-      </Pressable>
+      <Text style={s.subtitle}>AthleteN launches on the Free plan. Paid subscriptions and billing are coming soon; no checkout or payment is available during launch.</Text>
     </View>
 
     <View style={s.current}>
@@ -122,6 +95,8 @@ export default function PlansScreen() {
 
     {loading ? <View style={s.loading}><ActivityIndicator color={c.accent} /></View> : null}
 
+    <View style={s.note}><Text style={s.noteTitle}>Free launch</Text><Text style={s.meta}>Core athlete features are available on Free. Paid plan activation, checkout, and paid AI allowances remain disabled until billing and production verification are complete.</Text></View>
+
     {athletePlans.map((p) => {
       const active = p.id === current && role === 'athlete';
       const busy = busyPlan === p.id;
@@ -134,23 +109,22 @@ export default function PlansScreen() {
             <Text style={s.audience}>{p.audience}</Text>
           </View>
           <View style={s.priceBox}>
-            <Text style={s.price}>₹{displayedPrice.toLocaleString('en-IN')}</Text>
-            <Text style={s.period}>/{period}</Text>
+            {FREE_LAUNCH && p.id !== 'free' ? <Text style={s.price}>COMING SOON</Text> : <><Text style={s.price}>₹{displayedPrice.toLocaleString('en-IN')}</Text><Text style={s.period}>/{period}</Text></>}
           </View>
         </View>
-        {billing === 'yearly' && p.saving > 0 ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
-        <View style={s.aiPill}><Text style={s.aiText}>{p.ai === 0 ? 'No AI requests' : p.ai + ' AI requests every month'}</Text></View>
-        {p.features.map((feature) => <View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
-        <Pressable disabled={active || !!busyPlan || p.id === 'free'} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => void handleUpgrade(p.id)}>
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : 'CHANGE PLAN'}</Text>}
+        {!FREE_LAUNCH && billing === 'yearly' && p.saving > 0 ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
+        <View style={s.aiPill}><Text style={s.aiText}>{FREE_LAUNCH && p.id !== 'free' ? 'PAID AI COMING SOON' : p.ai === 0 ? 'No AI requests' : p.ai + ' AI requests every month'}</Text></View>
+        {FREE_LAUNCH && p.id !== 'free' ? <Text style={s.meta}>Paid features will be announced when billing is ready.</Text> : p.features.map((feature) => <View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
+        <Pressable disabled={FREE_LAUNCH || active || !!busyPlan || p.id === 'free'} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => void handleUpgrade(p.id)}>
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : 'COMING SOON'}</Text>}
         </Pressable>
       </View>;
     })}
 
     <View style={s.productSection}>
       <Text style={s.sectionKicker}>PROFESSIONAL PRODUCTS</Text>
-      <Text style={s.productTitle}>Coach & Academy are separate subscriptions.</Text>
-      <Text style={s.meta}>You can own both. Buying one never replaces the other. Workspace switching only changes which product is active in the app.</Text>
+      <Text style={s.productTitle}>Coach & Academy</Text>
+      <Text style={s.meta}>Coach and academy subscriptions are disabled during the Free launch. Existing account roles are not changed from this screen.</Text>
       {(['coach','academy_admin'] as const).map((productRole) => {
         const p = productPlans[productRole];
         const owned = activeProducts.has(productRole === 'coach' ? 'coach' : 'academy');
@@ -161,12 +135,12 @@ export default function PlansScreen() {
               <Text style={s.planName}>{p.name}</Text>
               <Text style={s.audience}>{isCurrent ? 'Current workspace' : owned ? 'Active subscription' : 'Separate product'}</Text>
             </View>
-            <Text style={s.price}>₹{(billing === 'yearly' ? p.yearly : p.monthly).toLocaleString('en-IN')}<Text style={s.period}>/{billing === 'yearly' ? 'year' : 'month'}</Text></Text>
+            {FREE_LAUNCH ? <Text style={s.price}>COMING SOON</Text> : <Text style={s.price}>₹{(billing === 'yearly' ? p.yearly : p.monthly).toLocaleString('en-IN')}<Text style={s.period}>/{billing === 'yearly' ? 'year' : 'month'}</Text></Text>}
           </View>
           <Text style={s.meta}>{p.description}</Text>
-          {billing === 'yearly' ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
+          {!FREE_LAUNCH && billing === 'yearly' ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
           <Pressable
-            disabled={!!busyPlan}
+            disabled={FREE_LAUNCH || !!busyPlan}
             style={[s.planButton, isCurrent && s.planButtonActive]}
             onPress={async () => {
               if (!session) return;
@@ -179,7 +153,7 @@ export default function PlansScreen() {
               setMessage(productRole === 'coach' ? 'Coach workspace created. Buy the Coach subscription to unlock Coach features.' : 'Academy workspace created. Buy the Academy subscription to unlock Academy features.');
             }}
           >
-            <Text style={s.planButtonText}>{owned ? (isCurrent ? 'MANAGE COACH' : 'OPEN WORKSPACE') : productRole === 'coach' ? 'BECOME A COACH' : 'CREATE AN ACADEMY'}</Text>
+            <Text style={s.planButtonText}>{FREE_LAUNCH ? 'COMING SOON' : owned ? (isCurrent ? 'MANAGE COACH' : 'OPEN WORKSPACE') : productRole === 'coach' ? 'BECOME A COACH' : 'CREATE AN ACADEMY'}</Text>
           </Pressable>
         </View>;
       })}
@@ -190,9 +164,9 @@ export default function PlansScreen() {
 
     <View style={s.note}>
       <Text style={s.noteTitle}>Plan changes & billing</Text>
-      <Text style={s.meta}>Paid plan changes are completed only after successful payment. The dashboard Plan section always shows the current server subscription and opens this screen to manage or change it.</Text>
+      <Text style={s.meta}>Paid plan activation is disabled for the Free launch. No checkout, payment, or manual entitlement activation is available here.</Text>
       <Text style={s.noteTitle}>AI usage</Text>
-      <Text style={s.meta}>AI requests are monthly allowances. A yearly subscription does not receive the full year's requests upfront. For example, Student yearly still provides 50 AI requests each month. Token usage and API cost remain backend metrics, and the allowance is enforced server-side.</Text>
+      <Text style={s.meta}>{FREE_LAUNCH ? 'Paid AI allowances remain disabled until billing and server-side entitlement checks are verified.' : 'AI requests are monthly allowances. Token usage and API cost remain backend metrics, and the allowance is enforced server-side.'}</Text>
     </View>
 
     <Pressable style={s.back} onPress={() => router.back()}><Text style={s.backText}>GO BACK</Text></Pressable>

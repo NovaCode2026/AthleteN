@@ -110,8 +110,14 @@ async function cashfreeCheckout(supabase, user, planId, amountMinor, verificatio
   return { orderId: order.id, provider: "cashfree", paymentSessionId: data.payment_session_id, providerOrderId: data.order_id };
 }
 
+const FREE_LAUNCH = true;
+
 export default async function handler(request) {
   if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
+  // Explicit launch gate: direct API calls cannot create paid orders during Free launch.
+  if (FREE_LAUNCH) {
+    return json({ error: "Paid plans are coming soon. AthleteN launches on the Free plan." }, 503);
+  }
   try {
     const user = await authenticate(request);
     if (!user) return json({ error: "Please sign in before checkout." }, 401);

@@ -24,6 +24,7 @@ export async function registerForPushNotifications(userId: string) {
       name: 'AthleteN',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
+      sound: 'default',
     });
   }
 
@@ -43,16 +44,16 @@ export async function registerForPushNotifications(userId: string) {
   if (!projectId) return { token: null, reason: 'expo-project-id-missing' as const };
 
   const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-
-  const { error } = await supabase.from('push_tokens').upsert(
+  const { error } = await supabase.from('device_push_tokens').upsert(
     {
       user_id: userId,
-      expo_push_token: token,
+      token,
       platform: Platform.OS,
-      device_id: Device.modelName || null,
+      app_version: Constants.expoConfig?.version ?? null,
+      last_seen_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
-    { onConflict: 'user_id,expo_push_token' }
+    { onConflict: 'token' }
   );
 
   if (error) throw error;

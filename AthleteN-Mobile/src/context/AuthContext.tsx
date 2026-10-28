@@ -146,7 +146,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       syncVersion,
       retry: bootstrap,
       refreshProfile: async () => session ? loadProfile(session.user.id) : undefined,
-      signOut: async () => { await supabase.auth.signOut(); },
+      signOut: async () => {
+        const userId = session?.user.id;
+        // Best-effort token cleanup prevents a shared device receiving alerts
+        // for the previous account after sign-out.
+        if (userId) {
+          try {
+            await supabase.from('device_push_tokens').delete().eq('user_id', userId);
+          } catch {
+            // Do not block sign-out if token cleanup is temporarily unavailable.
+          }
+        }
+        await supabase.auth.signOut();
+      },
     }}>
       {children}
     </AuthContext.Provider>
