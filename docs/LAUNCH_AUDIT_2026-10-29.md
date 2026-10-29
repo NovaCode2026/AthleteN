@@ -71,3 +71,8 @@ Do not label the release fully production-ready until:
 5. Complete two-account messaging, login/recovery, age-approval, role-permission, and core workflow tests on deployed web and a real Android device.
 
 This remains a technical audit, not a claim of completed end-to-end production acceptance.
+
+
+- Additional hardening: restricted direct RPC execution of `sync_training_group_chat_member()`, another internal trigger function. Applied live and committed as `supabase/migrations/20261029171500_restrict_training_chat_trigger_rpc.sql`.
+- After these targeted trigger-function permission changes, the Security Advisor count for authenticated-callable SECURITY DEFINER functions dropped from 62 to 59. Remaining functions still require per-function authorization review.
+- The latest CI and CodeQL workflows are running against the latest report commit; the following migration commit will also trigger fresh checks.
