@@ -54,7 +54,8 @@ test('web responsive layout includes narrow phone and tablet breakpoints', () =>
 
 test('web messaging only clears the composer after the database confirms a saved message', () => {
   const messages = read('src/components/messaging/MessagingPage.tsx');
-  assert.match(messages, /data:savedMessage,error:insertError[\\s\\S]*?\.select\("id,conversation_id,sender_id,body,message_type,created_at,attachment_path,attachment_name,attachment_type,attachment_size"\)\.single\(\)/);
+  assert.match(messages, /data:savedMessage,error:insertError/);
+  assert.match(messages, /\.select\("id,conversation_id,sender_id,body,message_type,created_at,attachment_path,attachment_name,attachment_type,attachment_size"\)\.single\(\)/);
   assert.match(messages, /if\(!savedMessage\?\.id\)throw new Error/);
   assert.match(messages, /setMessages\(old=>old\.some\(item=>item\.id===savedMessage\.id\)/);
 });
@@ -69,8 +70,10 @@ test('mobile messaging confirms the insert and retains the database-returned mes
 
 test('messaging migration safely replaces the prior constraint and keeps member-only writes', () => {
   const migration = read('supabase/migrations/20261029165600_fix_messaging_delivery_persistence.sql');
-  assert.match(migration, /drop constraint if exists messages_body_or_attachment_check[\\s\\S]*?add constraint messages_body_or_attachment_check/);
+  assert.match(migration, /drop constraint if exists messages_body_or_attachment_check/);
+  assert.match(migration, /add constraint messages_body_or_attachment_check/);
   assert.match(migration, /sender_id = \(select auth\.uid\(\)\)/);
   assert.match(migration, /public\.is_conversation_member\(conversation_id\)/);
-  assert.match(migration, /char_length\(trim\(coalesce\(body, ''\)\)\) between 1 and 4000[\\s\\S]*?attachment_path is not null/);
+  assert.match(migration, /char_length\(trim\(coalesce\(body, ''\)\)\) between 1 and 4000/);
+  assert.match(migration, /attachment_path is not null/);
 });
