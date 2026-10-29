@@ -5,7 +5,7 @@ import { Colors } from '@/constants/theme';
 import { Icon } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { AI_LIMITS, PLAN_NAMES, PLAN_PRICING, PlanId, getAiRemaining } from '@/lib/entitlements';
+import { AI_LIMITS, PLAN_NAMES, PlanId, getAiRemaining } from '@/lib/entitlements';
 
 const c = Colors.dark;
 
@@ -97,6 +97,10 @@ export default function PlansScreen() {
     </View>
 
     {loading ? <View style={s.loading}><ActivityIndicator color={c.accent} /></View> : null}
+
+    <View style={s.billingWrap}>
+      {(['monthly','yearly'] as const).map((cycle) => <Pressable key={cycle} onPress={() => setBilling(cycle)} style={[s.billingOption, billing === cycle && s.billingOptionActive]}><Text style={[s.billingText, billing === cycle && s.billingTextActive]}>{cycle === 'monthly' ? 'MONTHLY' : 'YEARLY'}</Text>{cycle === 'yearly' ? <Text style={{color:c.success,fontSize:8,fontWeight:'900',marginTop:3}}>SAVE UP TO 16%</Text> : null}</Pressable>)}
+    </View>
 
     <View style={s.note}><Text style={s.noteTitle}>Subscription activation</Text><Text style={s.meta}>Prices are displayed below. Tap a paid plan to email the AthleteN team for activation and payment instructions. Your plan will not change until activation is confirmed.</Text></View>
 
