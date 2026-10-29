@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Icon } from '@/components/mobile-ui';
@@ -8,7 +8,6 @@ import { supabase } from '@/lib/supabase';
 import { AI_LIMITS, PLAN_NAMES, PLAN_PRICING, PlanId, getAiRemaining } from '@/lib/entitlements';
 
 const c = Colors.dark;
-const FREE_LAUNCH = true;
 
 type BillingCycle = 'monthly' | 'yearly';
 
@@ -62,9 +61,13 @@ export default function PlansScreen() {
     return () => { alive = false; };
   }, [session]);
 
-  async function handleUpgrade(planId: PlanId) {
-    if (planId === 'free' || planId === current) return;
-    setMessage('Paid plans are coming soon. AthleteN launches on the Free plan; no payment or subscription has been created.');
+  async function contactForPlan(planName: string, monthly: number, yearly: number) {
+    const price = billing === 'yearly' ? yearly : monthly;
+    const period = billing === 'yearly' ? 'year' : 'month';
+    const subject = encodeURIComponent(`AthleteN ${planName} plan subscription`);
+    const body = encodeURIComponent(`Hello AthleteN team,\n\nI would like to subscribe to the ${planName} plan.\nSelected price: ₹${price.toLocaleString('en-IN')}/${period}.\n\nPlease guide me through activation and payment.\n\nThank you.`);
+    try { await Linking.openURL(`mailto:novacode.create@gmail.com?subject=${subject}&body=${body}`); }
+    catch { setMessage('Email could not be opened. Contact novacode.create@gmail.com to request plan activation.'); }
   }
 
   const used = usage?.ai_requests_used ?? 0;
@@ -76,7 +79,7 @@ export default function PlansScreen() {
     <View>
       <Text style={s.kicker}>ATHLETEN • SUBSCRIPTION</Text>
       <Text style={s.title}>Choose your plan.</Text>
-      <Text style={s.subtitle}>AthleteN launches on the Free plan. Paid subscriptions and billing are coming soon; no checkout or payment is available during launch.</Text>
+      <Text style={s.subtitle}>Transparent monthly and yearly pricing for athletes, coaches and academies. Select a plan to contact the AthleteN team for subscription activation.</Text>
     </View>
 
     <View style={s.current}>
@@ -95,7 +98,7 @@ export default function PlansScreen() {
 
     {loading ? <View style={s.loading}><ActivityIndicator color={c.accent} /></View> : null}
 
-    <View style={s.note}><Text style={s.noteTitle}>Free launch</Text><Text style={s.meta}>Core athlete features are available on Free. Paid plan activation, checkout, and paid AI allowances remain disabled until billing and production verification are complete.</Text></View>
+    <View style={s.note}><Text style={s.noteTitle}>Subscription activation</Text><Text style={s.meta}>Prices are displayed below. Tap a paid plan to email the AthleteN team for activation and payment instructions. Your plan will not change until activation is confirmed.</Text></View>
 
     {athletePlans.map((p) => {
       const active = p.id === current && role === 'athlete';
@@ -109,14 +112,14 @@ export default function PlansScreen() {
             <Text style={s.audience}>{p.audience}</Text>
           </View>
           <View style={s.priceBox}>
-            {FREE_LAUNCH && p.id !== 'free' ? <Text style={s.price}>COMING SOON</Text> : <><Text style={s.price}>₹{displayedPrice.toLocaleString('en-IN')}</Text><Text style={s.period}>/{period}</Text></>}
+            <><Text style={s.price}>₹{displayedPrice.toLocaleString('en-IN')}</Text><Text style={s.period}>/{period}</Text></>
           </View>
         </View>
-        {!FREE_LAUNCH && billing === 'yearly' && p.saving > 0 ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
-        <View style={s.aiPill}><Text style={s.aiText}>{FREE_LAUNCH && p.id !== 'free' ? 'PAID AI COMING SOON' : p.ai === 0 ? 'No AI requests' : p.ai + ' AI requests every month'}</Text></View>
-        {FREE_LAUNCH && p.id !== 'free' ? <Text style={s.meta}>Paid features will be announced when billing is ready.</Text> : p.features.map((feature) => <View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
-        <Pressable disabled={FREE_LAUNCH || active || !!busyPlan || p.id === 'free'} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => void handleUpgrade(p.id)}>
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : 'COMING SOON'}</Text>}
+        {billing === 'yearly' && p.saving > 0 ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
+        <View style={s.aiPill}><Text style={s.aiText}>{p.ai === 0 ? 'No AI requests included' : p.ai + ' AI requests every month'}</Text></View>
+        {p.features.map((feature) => <View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
+        <Pressable disabled={active || !!busyPlan || p.id === 'free'} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => void contactForPlan(p.name, p.monthly, p.yearly)}>
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : 'CONTACT TO SUBSCRIBE'}</Text>}
         </Pressable>
       </View>;
     })}
@@ -124,7 +127,7 @@ export default function PlansScreen() {
     <View style={s.productSection}>
       <Text style={s.sectionKicker}>PROFESSIONAL PRODUCTS</Text>
       <Text style={s.productTitle}>Coach & Academy</Text>
-      <Text style={s.meta}>Coach and academy subscriptions are disabled during the Free launch. Existing account roles are not changed from this screen.</Text>
+      <Text style={s.meta}>Coach and Academy pricing is listed below. Contact the AthleteN team for activation; selecting a product does not automatically change account permissions.</Text>
       {(['coach','academy_admin'] as const).map((productRole) => {
         const p = productPlans[productRole];
         const owned = activeProducts.has(productRole === 'coach' ? 'coach' : 'academy');
@@ -135,25 +138,20 @@ export default function PlansScreen() {
               <Text style={s.planName}>{p.name}</Text>
               <Text style={s.audience}>{isCurrent ? 'Current workspace' : owned ? 'Active subscription' : 'Separate product'}</Text>
             </View>
-            {FREE_LAUNCH ? <Text style={s.price}>COMING SOON</Text> : <Text style={s.price}>₹{(billing === 'yearly' ? p.yearly : p.monthly).toLocaleString('en-IN')}<Text style={s.period}>/{billing === 'yearly' ? 'year' : 'month'}</Text></Text>}
+            <Text style={s.price}>₹{(billing === 'yearly' ? p.yearly : p.monthly).toLocaleString('en-IN')}<Text style={s.period}>/{billing === 'yearly' ? 'year' : 'month'}</Text></Text>
           </View>
           <Text style={s.meta}>{p.description}</Text>
-          {!FREE_LAUNCH && billing === 'yearly' ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
+          {billing === 'yearly' ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
           <Pressable
-            disabled={FREE_LAUNCH || !!busyPlan}
+            disabled={!!busyPlan}
             style={[s.planButton, isCurrent && s.planButtonActive]}
             onPress={async () => {
               if (!session) return;
-              if (isCurrent) { await handleUpgrade(productRole === 'coach' ? 'coach' as PlanId : 'academy' as PlanId); return; }
-              setBusyPlan(productRole);
-              setMessage('');
-              const { error } = await supabase.rpc('switch_my_product_role', { p_target_role: productRole });
-              setBusyPlan(null);
-              if (error) { setMessage(error.message === 'COACH_HAS_ACTIVE_ATHLETES' ? 'Transfer or end your active athletes before leaving the Coach workspace.' : error.message === 'ACADEMY_HAS_ACTIVE_MEMBERS' ? 'Transfer academy responsibility before leaving the Academy workspace.' : error.message); return; }
-              setMessage(productRole === 'coach' ? 'Coach workspace created. Buy the Coach subscription to unlock Coach features.' : 'Academy workspace created. Buy the Academy subscription to unlock Academy features.');
+              if (isCurrent || owned) { await contactForPlan(p.name, p.monthly, p.yearly); return; }
+              await contactForPlan(p.name, p.monthly, p.yearly);
             }}
           >
-            <Text style={s.planButtonText}>{FREE_LAUNCH ? 'COMING SOON' : owned ? (isCurrent ? 'MANAGE COACH' : 'OPEN WORKSPACE') : productRole === 'coach' ? 'BECOME A COACH' : 'CREATE AN ACADEMY'}</Text>
+            <Text style={s.planButtonText}>{isCurrent ? 'CONTACT TO MANAGE PLAN' : 'CONTACT TO SUBSCRIBE'}</Text>
           </Pressable>
         </View>;
       })}
@@ -164,9 +162,9 @@ export default function PlansScreen() {
 
     <View style={s.note}>
       <Text style={s.noteTitle}>Plan changes & billing</Text>
-      <Text style={s.meta}>Paid plan activation is disabled for the Free launch. No checkout, payment, or manual entitlement activation is available here.</Text>
+      <Text style={s.meta}>Contact novacode.create@gmail.com to request activation and payment instructions. Do not share passwords or verification codes by email. Your account changes only after the team confirms activation.</Text>
       <Text style={s.noteTitle}>AI usage</Text>
-      <Text style={s.meta}>{FREE_LAUNCH ? 'Paid AI allowances remain disabled until billing and server-side entitlement checks are verified.' : 'AI requests are monthly allowances. Token usage and API cost remain backend metrics, and the allowance is enforced server-side.'}</Text>
+      <Text style={s.meta}>AI request allowances are monthly plan limits. Actual access depends on the entitlements enabled for your account.</Text>
     </View>
 
     <Pressable style={s.back} onPress={() => router.back()}><Text style={s.backText}>GO BACK</Text></Pressable>
