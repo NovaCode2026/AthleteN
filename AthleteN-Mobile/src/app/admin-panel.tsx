@@ -167,7 +167,7 @@ export default function AdminPanelScreen() {
 
         <View style={s.panel}>
           <Text style={s.section}>USER MANAGEMENT</Text>
-          <TextInput value={query} onChangeText={setQuery} placeholder="Search name, username, account code or UUID" placeholderTextColor={c.muted} style={s.input} />
+          <TextInput value={query} onChangeText={setQuery} placeholder="Search username or UUID" placeholderTextColor={c.muted} style={s.input} />
           {filtered.map((u) => (
             <Pressable key={u.user_id} onPress={() => setSelected(selected?.user_id === u.user_id ? null : u)} style={[s.userRow, selected?.user_id === u.user_id && s.selected]}>
               <View style={{ flex: 1 }}>
