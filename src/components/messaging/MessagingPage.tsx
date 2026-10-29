@@ -51,8 +51,10 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
         const {error:uploadError}=await supabase.storage.from("message-attachments").upload(uploadedPath,attachment,{contentType:attachment.type||"application/octet-stream",upsert:false});
         if(uploadError)throw uploadError;
       }
-      const {error:insertError}=await supabase.from("messages").insert({conversation_id:selectedId,sender_id:effectiveUserId,body:body.trim(),message_type:messageType,attachment_path:uploadedPath||null,attachment_name:attachment?.name||null,attachment_type:attachment?.type||null,attachment_size:attachment?.size||null});
+      const {data:savedMessage,error:insertError}=await supabase.from("messages").insert({conversation_id:selectedId,sender_id:effectiveUserId,body:body.trim(),message_type:messageType,attachment_path:uploadedPath||null,attachment_name:attachment?.name||null,attachment_type:attachment?.type||null,attachment_size:attachment?.size||null}).select("id,conversation_id,sender_id,body,message_type,created_at,attachment_path,attachment_name,attachment_type,attachment_size").single();
       if(insertError)throw insertError;
+      if(!savedMessage?.id)throw new Error("The server did not confirm saving this message. Please try again.");
+      setMessages(old=>old.some(item=>item.id===savedMessage.id)?old:[...old,savedMessage]);
       setBody("");setAttachment(null);await loadMessages(selectedId);
     } catch(e) {
       if(uploadedPath) await supabase.storage.from("message-attachments").remove([uploadedPath]).catch(()=>undefined);
