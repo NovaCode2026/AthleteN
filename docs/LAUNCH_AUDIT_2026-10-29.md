@@ -53,3 +53,21 @@ Do not label the release fully production-ready until:
 3. Two-account messaging acceptance tests pass on deployed web and a real Android device.
 4. Leaked-password protection is enabled.
 5. SECURITY DEFINER RPCs and outstanding advisor findings receive an explicit risk review.
+
+
+## Follow-up hardening — 29 October 2026
+
+- Added the missing public-schema foreign-key indexes through the live database migration `index_uncovered_foreign_keys_20261029`; the matching migration is committed as `supabase/migrations/20261029170000_index_uncovered_foreign_keys.sql`.
+- Restricted direct execution of two internal PostgreSQL trigger functions (`announce_training_cancellation()` and `ensure_training_group_conversation()`) from `PUBLIC`, `anon`, and `authenticated`. PostgreSQL triggers continue to invoke them; the change only removes unnecessary direct RPC execution. Applied live and committed as `supabase/migrations/20261029171000_restrict_trigger_function_rpc_execution.sql`.
+- Current main CI and CodeQL passed on commit `2c68285597391095564794f7526787a3203a225f` before this follow-up security commit. New CI/CodeQL checks must pass for the latest commit before release.
+- The Android build checked in this audit was still in progress, with no artifact available at the last check.
+
+## Remaining release gates
+
+1. Enable leaked-password protection in Supabase Auth settings; this setting is not exposed by the available project-management actions.
+2. Review all remaining callable SECURITY DEFINER RPCs against their actual authorization logic and app call sites. Do not remove grants in bulk.
+3. Confirm latest CI and CodeQL pass after the follow-up commit.
+4. Confirm the latest Android build completes and publishes an APK artifact.
+5. Complete two-account messaging, login/recovery, age-approval, role-permission, and core workflow tests on deployed web and a real Android device.
+
+This remains a technical audit, not a claim of completed end-to-end production acceptance.
