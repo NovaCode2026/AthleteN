@@ -5,6 +5,7 @@
 -- Support attachment-only messages while still rejecting empty text-only messages.
 alter table public.messages alter column body drop not null;
 alter table public.messages drop constraint if exists messages_body_check;
+alter table public.messages drop constraint if exists messages_body_or_attachment_check;
 alter table public.messages add constraint messages_body_or_attachment_check
   check (
     (char_length(trim(coalesce(body, ''))) between 1 and 4000)
