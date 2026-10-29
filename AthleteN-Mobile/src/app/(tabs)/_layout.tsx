@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname, useRouter } from 'expo-router';
 import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,7 +38,21 @@ export const NAV_ITEMS = [
  {id:'verification-review',label:'Verify',icon:'check',feature:'weight_verification'},
  {id:'academy',label:'Academy',icon:'school-outline',feature:'academy_management'},
  {id:'badges',label:'Badges',icon:'trophy',feature:null},
+ {id:'taekwondo-hub',label:'Taekwondo',icon:'event',feature:null,route:'/taekwondo'},
+ {id:'scanner-panel',label:'Scanner',icon:'scan',feature:null,route:'/scanner'},
+ {id:'plans-panel',label:'Plans',icon:'credit-card',feature:null,route:'/plans'},
+ {id:'notifications-panel',label:'Alerts',icon:'bell',feature:null,route:'/notifications'},
+ {id:'medals-panel',label:'Medals',icon:'trophy',feature:null,route:'/medals'},
+ {id:'checklist-panel',label:'Checklist',icon:'check',feature:null,route:'/checklist'},
+ {id:'nutrition-panel',label:'Nutrition',icon:'heart',feature:null,route:'/nutrition'},
+ {id:'missions-panel',label:'Missions',icon:'target',feature:null,route:'/missions'},
+ {id:'passport-panel',label:'Passport',icon:'shield',feature:null,route:'/athlete-passport'},
+ {id:'support-panel',label:'Support',icon:'shield',feature:null,route:'/support'},
+ {id:'team-panel',label:'Team',icon:'people',feature:null,route:'/team'},
+ {id:'session-panel',label:'Session',icon:'training',feature:null,route:'/training-session'},
+ {id:'competition-mode-panel',label:'Comp. Mode',icon:'event',feature:null,route:'/competition-mode'},
 ] as const;
+const TAB_SCREEN_IDS = new Set(['index','training','ai','compete','profile','explore','journey','weight','messages','documents','attendance','analytics','reports','coach','verification-review','academy','badges']);
 export const AVAILABLE = NAV_ITEMS;
 
 function DashboardGlyph({color,size=19}:{color:string;size?:number}) {
@@ -49,7 +63,7 @@ function DashboardGlyph({color,size=19}:{color:string;size?:number}) {
 }
 
 function Bar({state,navigation}:{state:any;navigation:any}) {
- const {profile}=useAuth(); const insets=useSafeAreaInsets();
+ const {profile}=useAuth(); const insets=useSafeAreaInsets(); const router=useRouter(); const pathname=usePathname();
  const eligible=useMemo(()=>NAV_ITEMS.filter(x=>!x.feature||hasFeature(profile?.plan_id,x.feature,profile?.role)),[profile?.plan_id,profile?.role]);
  const defaults=useMemo(()=>getDefaultNavigation(profile?.discipline).filter(id=>eligible.some(x=>x.id===id)),[eligible,profile?.discipline]);
  const [order,setOrder]=useState<string[]>([...defaults]);
@@ -57,7 +71,7 @@ function Bar({state,navigation}:{state:any;navigation:any}) {
  useEffect(()=>{if(!profile?.user_id)return;let alive=true;const channel=supabase.channel('athleten-nav-'+profile.user_id+'-'+Date.now()+'-'+Math.random()).on('postgres_changes',{event:'*',schema:'public',table:'user_navigation_preferences',filter:`user_id=eq.${profile.user_id}`},async()=>{if(!alive)return;try{const {data}=await supabase.rpc('get_my_navigation_preferences');if(alive&&Array.isArray(data)){const next=data.filter((x:string)=>eligible.some(a=>a.id===x)).slice(0,6);if(next.length){setOrder(next);await AsyncStorage.setItem(KEY,JSON.stringify(next));}}}catch{}}).subscribe();return()=>{alive=false;void supabase.removeChannel(channel)}},[profile?.user_id,eligible.map(x=>x.id).join('|')]);
  const visible=order.filter(id=>eligible.some(x=>x.id===id)).slice(0,6);
  return <View style={[s.outer,{paddingBottom:Math.max(insets.bottom,6)}]}><View style={s.bar}>
-  {visible.map(id=>{const meta=eligible.find(x=>x.id===id)!;const routeIndex=state.routes.findIndex((r:any)=>r.name===id);const active=state.index===routeIndex;return <Pressable key={id} onPress={()=>navigation.navigate(id)} accessibilityRole="button" accessibilityState={active?{selected:true}:{}} style={s.item}><View style={[s.icon,active&&s.active]}>{id==='index'?<DashboardGlyph color={active?c.accentBright:c.muted}/>:<Icon name={meta.icon} size={19} color={active?c.accentBright:c.muted}/>}</View><Text style={[s.label,active&&s.activeLabel]} numberOfLines={1}>{meta.label}</Text></Pressable>})}
+  {visible.map(id=>{const meta=eligible.find(x=>x.id===id)!;const routeIndex=state.routes.findIndex((r:any)=>r.name===id);const active=routeIndex>=0?state.index===routeIndex:pathname===(meta as any).route;return <Pressable key={id} onPress={()=>{if(routeIndex>=0)navigation.navigate(id);else router.push((meta as any).route||('/'+id) as never)}} accessibilityRole="button" accessibilityState={active?{selected:true}:{}} style={s.item}><View style={[s.icon,active&&s.active]}>{id==='index'?<DashboardGlyph color={active?c.accentBright:c.muted}/>:<Icon name={meta.icon} size={19} color={active?c.accentBright:c.muted}/>}</View><Text style={[s.label,active&&s.activeLabel]} numberOfLines={1}>{meta.label}</Text></Pressable>})}
  </View></View>;
 }
 
@@ -65,7 +79,7 @@ export default function TabLayout(){
  const {profile}=useAuth();
  const eligible=NAV_ITEMS.filter(x=>!x.feature||hasFeature(profile?.plan_id,x.feature,profile?.role));
  return <Tabs tabBar={(p:any)=><Bar {...p}/>} screenOptions={{headerShown:false,sceneStyle:{backgroundColor:c.background}}}>
-  {eligible.map(x=><Tabs.Screen key={x.id} name={x.id}/>)}
+  {eligible.filter(x=>TAB_SCREEN_IDS.has(x.id)).map(x=><Tabs.Screen key={x.id} name={x.id}/>)}
  </Tabs>;
 }
 const s=StyleSheet.create({outer:{backgroundColor:c.surface,borderTopWidth:1,borderTopColor:c.borderStrong},bar:{height:62,flexDirection:'row',paddingHorizontal:5,paddingTop:5},item:{flex:1,alignItems:'center',gap:2},icon:{width:38,height:30,borderRadius:13,alignItems:'center',justifyContent:'center'},active:{backgroundColor:c.accentSoft},label:{color:c.muted,fontSize:9,fontWeight:'800'},activeLabel:{color:c.text}});
