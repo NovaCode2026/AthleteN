@@ -96,9 +96,15 @@ export default {
 
       const resendKey = Deno.env.get('RESEND_API_KEY')
       const from = Deno.env.get('PARENT_APPROVAL_FROM')
+      const gmailScriptUrl = Deno.env.get('ATHLETEN_GMAIL_SCRIPT_URL')
+      const mailerSecret = Deno.env.get('ATHLETEN_MAILER_SECRET')
+      const useGmailMailer = Boolean(gmailScriptUrl && mailerSecret)
       const siteUrl = getApprovalSiteUrl(req)
-      if (!resendKey || !from || !siteUrl) {
-        return json({ error: 'Parent approval email is not configured. Set RESEND_API_KEY, PARENT_APPROVAL_FROM to a verified sender, and ATHLETEN_PUBLIC_URL.' }, 503)
+      if (!siteUrl || (!useGmailMailer && (!resendKey || !from))) {
+        return json({ error: 'Parent approval email is not configured. Configure ATHLETEN_GMAIL_SCRIPT_URL and ATHLETEN_MAILER_SECRET for the Gmail mailer, or RESEND_API_KEY and PARENT_APPROVAL_FROM for Resend, plus ATHLETEN_PUBLIC_URL.' }, 503)
+      }
+      if (gmailScriptUrl && !mailerSecret) {
+        return json({ error: 'The Gmail mailer secret is missing from server configuration.' }, 503)
       }
 
       const secretKey = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}')['default']
@@ -110,8 +116,26 @@ export default {
 
       const approvalUrl = `${siteUrl}/parent-approval?token=${encodeURIComponent(token)}`; const athleteName = String(body.full_name || 'your athlete').replace(/[<>]/g, '')
       const email = parentApprovalEmail(athleteName, approvalUrl)
-      const response = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${resendKey}` }, body: JSON.stringify({ from, to: [parentEmail], ...email }) })
-      if (!response.ok) return json({ error: 'The parent approval email could not be sent. Please try again.' }, 502)
+      if (useGmailMailer) {
+        let mailerResponse: Response
+        try {
+          mailerResponse = await fetch(gmailScriptUrl!, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ secret: mailerSecret, to: parentEmail, ...email }),
+            redirect: 'follow',
+          })
+        } catch {
+          return json({ error: 'The Gmail mailer could not be reached. Please try again.' }, 502)
+        }
+        if (!mailerResponse.ok) return json({ error: 'The Gmail mailer could not send the parent approval email.' }, 502)
+        let mailerResult: { ok?: boolean; error?: string } | null = null
+        try { mailerResult = await mailerResponse.json() } catch { /* The mailer must return JSON. */ }
+        if (!mailerResult?.ok) return json({ error: 'The Gmail mailer did not confirm sending the parent approval email.' }, 502)
+      } else {
+        const response = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${resendKey}` }, body: JSON.stringify({ from, to: [parentEmail], ...email }) })
+        if (!response.ok) return json({ error: 'The parent approval email could not be sent. Please try again.' }, 502)
+      }
       return json({ status: 'pending', age_years: ageYears, expires_at: expiresAt })
     } catch (error) { console.error(error); return json({ error: error instanceof Error ? error.message : 'Parent approval could not be started.' }, 500) }
   }),
