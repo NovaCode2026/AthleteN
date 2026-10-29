@@ -4,7 +4,7 @@ import { Alert,Pressable,ScrollView,Text,View,StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
-import { NAV_ITEMS,DEFAULT,KEY,getDefaultNavigation } from './(tabs)/_layout';
+import { NAV_ITEMS,KEY,getDefaultNavigation } from './(tabs)/_layout';
 import { Icon } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { hasFeature } from '@/lib/entitlements';
