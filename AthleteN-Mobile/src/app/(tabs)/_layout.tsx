@@ -13,6 +13,11 @@ import { supabase } from '@/lib/supabase';
 const c = Colors.dark;
 export const KEY = 'athleten.bottom-navigation.v2';
 export const DEFAULT = ['index','training','ai','compete','profile','explore'] as const;
+export function getDefaultNavigation(discipline?: string | null) {
+ return String(discipline || '').toLowerCase() === 'poomsae'
+  ? ['index','training','compete','profile','explore']
+  : [...DEFAULT];
+}
 
 export const NAV_ITEMS = [
  {id:'index',label:'Home',icon:'dashboard',feature:null},
@@ -46,9 +51,9 @@ function DashboardGlyph({color,size=19}:{color:string;size?:number}) {
 function Bar({state,navigation}:{state:any;navigation:any}) {
  const {profile}=useAuth(); const insets=useSafeAreaInsets();
  const eligible=useMemo(()=>NAV_ITEMS.filter(x=>!x.feature||hasFeature(profile?.plan_id,x.feature,profile?.role)),[profile?.plan_id,profile?.role]);
- const defaults=useMemo(()=>DEFAULT.filter(id=>eligible.some(x=>x.id===id)),[eligible]);
+ const defaults=useMemo(()=>getDefaultNavigation(profile?.discipline).filter(id=>eligible.some(x=>x.id===id)),[eligible,profile?.discipline]);
  const [order,setOrder]=useState<string[]>([...defaults]);
- useEffect(()=>{let alive=true;const load=async()=>{try{const local=await AsyncStorage.getItem(KEY);const localParsed=local?JSON.parse(local):[];const localValid=Array.isArray(localParsed)?localParsed.filter((x:string)=>eligible.some(a=>a.id===x)):[];const {data}=await supabase.rpc('get_my_navigation_preferences');if(!alive)return;const remoteValid=Array.isArray(data)?data.filter((x:string)=>eligible.some(a=>a.id===x)):[];const chosen=remoteValid.length?remoteValid:localValid;const next=[...chosen,...defaults.filter(x=>!chosen.includes(x))].slice(0,6);setOrder(next);await AsyncStorage.setItem(KEY,JSON.stringify(next));}catch{if(alive)setOrder([...defaults])}};void load();const sub=AppState.addEventListener('change',(state)=>{if(state==='active')void load()});return()=>{alive=false;sub.remove()}},[eligible.map(x=>x.id).join('|'),defaults.join('|')]);
+ useEffect(()=>{let alive=true;const load=async()=>{try{const local=await AsyncStorage.getItem(KEY);const localParsed=local?JSON.parse(local):[];const localValid=Array.isArray(localParsed)?localParsed.filter((x:string)=>eligible.some(a=>a.id===x)):[];const {data}=await supabase.rpc('get_my_navigation_preferences');if(!alive)return;const remoteValid=Array.isArray(data)?data.filter((x:string)=>eligible.some(a=>a.id===x)):[];const chosen=remoteValid.length?remoteValid:localValid;const next=chosen.length?[...chosen,...defaults.filter(x=>!chosen.includes(x))].slice(0,6):defaults.slice(0,6);setOrder(next);await AsyncStorage.setItem(KEY,JSON.stringify(next));}catch{if(alive)setOrder([...defaults])}};void load();const sub=AppState.addEventListener('change',(state)=>{if(state==='active')void load()});return()=>{alive=false;sub.remove()}},[eligible.map(x=>x.id).join('|'),defaults.join('|')]);
  useEffect(()=>{if(!profile?.user_id)return;let alive=true;const channel=supabase.channel('athleten-nav-'+profile.user_id+'-'+Date.now()+'-'+Math.random()).on('postgres_changes',{event:'*',schema:'public',table:'user_navigation_preferences',filter:`user_id=eq.${profile.user_id}`},async()=>{if(!alive)return;try{const {data}=await supabase.rpc('get_my_navigation_preferences');if(alive&&Array.isArray(data)){const next=data.filter((x:string)=>eligible.some(a=>a.id===x)).slice(0,6);if(next.length){setOrder(next);await AsyncStorage.setItem(KEY,JSON.stringify(next));}}}catch{}}).subscribe();return()=>{alive=false;void supabase.removeChannel(channel)}},[profile?.user_id,eligible.map(x=>x.id).join('|')]);
  const visible=order.filter(id=>eligible.some(x=>x.id===id)).slice(0,6);
  return <View style={[s.outer,{paddingBottom:Math.max(insets.bottom,6)}]}><View style={s.bar}>
