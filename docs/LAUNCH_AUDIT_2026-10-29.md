@@ -76,3 +76,26 @@ This remains a technical audit, not a claim of completed end-to-end production a
 - Additional hardening: restricted direct RPC execution of `sync_training_group_chat_member()`, another internal trigger function. Applied live and committed as `supabase/migrations/20261029171500_restrict_training_chat_trigger_rpc.sql`.
 - After these targeted trigger-function permission changes, the Security Advisor count for authenticated-callable SECURITY DEFINER functions dropped from 62 to 59. Remaining functions still require per-function authorization review.
 - The latest CI and CodeQL workflows are running against the latest report commit; the following migration commit will also trigger fresh checks.
+
+## Verification update — 30 October 2026
+
+Verification was repeated from `origin/main` commit `ad7a331` on branch `codex/latest-main-readiness` using Node 24 locally; repository CI is pinned to Node 22.
+
+- Web tests: **PASS** — `pnpm test`, 42 passed / 0 failed.
+- Web production build: **PASS** — `pnpm run build`.
+- Mobile dependency install: **PASS** — clean `npm ci --ignore-scripts --no-audit --no-fund`; React Native and Expo dependencies resolve from the committed lockfile.
+- Mobile test command: **PASS** — `npm test` runs successfully (the mobile package currently contains no discovered test files; mobile regression coverage remains in the root test suite).
+- Mobile TypeScript: **PASS** — `npx tsc --noEmit`.
+- Mobile lint: **PASS** — 0 errors, 87 warnings. Warnings remain for unused imports, hook dependency hygiene, duplicate imports, and array-type style.
+- Expo Doctor: **PASS** — 21/21 checks.
+- Android bundle/export: **PASS** — `npx expo export --platform android --output-dir .expo/ci-export-readiness`; Android bundle emitted successfully.
+- Android release APK: **NOT RUN / BLOCKED** — no GitHub Actions run or downloadable artifact was returned for commit `ad7a331`; the configured workflow is present and uses Node 22, Java 17, `npm ci`, `expo prebuild`, and `assembleRelease`. The expected artifact is `AthleteN-release-apk` containing `AthleteN-Mobile/android/app/build/outputs/apk/release/app-release.apk`. Configured app version is `1.0.3`, Android version code `4`.
+- CI and CodeQL: **NOT VERIFIED** — the repository connector returned no workflow runs for `ad7a331`; no run URL can be truthfully recorded.
+- Supabase live migrations: **PASS (read-only verification)** — live history includes the messaging persistence, notification/privacy, age-approval, foreign-key-index, and three targeted trigger-execution hardening migrations through `20261029171121`.
+- Supabase leaked-password protection: **BLOCKED / MANUAL** — Security Advisor still reports it disabled. Enable it in Dashboard → Authentication → Password Security → Leaked password protection, then rerun Security Advisor.
+- Netlify production deployment: **BLOCKED / NOT VERIFIED** — no authorized deployment result or deployed commit was available in the configured connector during this run.
+- Real-device and two-account acceptance: **NOT RUN** — this environment did not provide an authenticated Android device or two test accounts. This includes logout/expired-session/account-switching and push-notification delivery verification.
+
+### Release decision
+
+**NO-GO for an evidence-backed public production launch tomorrow.** Code-level web and mobile checks pass, but the APK artifact, CI/CodeQL result, Netlify deployed commit, leaked-password setting, and real-device/two-account acceptance remain unverified. A controlled internal beta is reasonable only after explicitly accepting those gates and completing the manual checks above.
