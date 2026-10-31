@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, RefreshCw, ShieldCheck, Users, UserPlus, ClipboardList, Building2, Search } from "lucide-react";
+import { Plus, RefreshCw, ShieldCheck, Users, UserPlus, ClipboardList, Building2, Search, BarChart3, CalendarCheck, Trophy } from "lucide-react";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "../../lib/supabase";
 import type { Profile } from "../../types";
 
@@ -12,6 +13,11 @@ type Membership = { id: string; academy_id: string; user_id: string; role: strin
 type Academy = { id: string; owner_user_id: string; name: string; city?: string | null; state?: string | null; country?: string | null; status?: string | null };
 
 type AthleteLookup = Pick<Athlete, "user_id" | "full_name" | "username" | "discipline" | "belt">;
+type TrainingMetric = { user_id:string; session_date:string; minutes:number };
+type AttendanceMetric = { user_id:string; attended_at:string; status:string };
+type MedalMetric = { user_id:string; awarded_at:string|null; medal_type:string };
+type CompetitionMetric = { user_id:string; starts_at:string|null; result:string|null };
+function monthlySeries(rows:Array<{date:string|null}>,key:"sessions"|"records"){return Array.from({length:6},(_,i)=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-(5-i));const month=d.toLocaleDateString(undefined,{month:"short"});const prefix=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;return {month,[key]:rows.filter(x=>x.date?.startsWith(prefix)).length};});}
 
 function Card({ children }: { children: React.ReactNode }) { return <section className="card panel">{children}</section>; }
 function ErrorText({ children }: { children: React.ReactNode }) { return <p className="notice" role="alert">{children}</p>; }
@@ -49,6 +55,11 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [nutritionEnabled, setNutritionEnabled] = useState<Record<string, boolean>>({});
+  const [trainingMetrics,setTrainingMetrics]=useState<TrainingMetric[]>([]);
+  const [attendanceMetrics,setAttendanceMetrics]=useState<AttendanceMetric[]>([]);
+  const [medalMetrics,setMedalMetrics]=useState<MedalMetric[]>([]);
+  const [competitionMetrics,setCompetitionMetrics]=useState<CompetitionMetric[]>([]);
+  const [analyticsUnavailable,setAnalyticsUnavailable]=useState(false);
 
   async function load() {
     if (!supabase || !userId) return;
@@ -65,6 +76,17 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
     setLinks((linkResult.data || []) as LinkRow[]);
     setPlans((planResult.data || []) as PlanRow[]);
     setNutritionEnabled(Object.fromEntries(((nutritionResult.data || []) as any[]).map((row) => [row.athlete_user_id, row.enabled === true])));
+    const athleteIds=Array.from(new Set([...(profileResult.data||[]).map((a:any)=>a.user_id),...(linkResult.data||[]).filter((x:any)=>x.status==="active").map((x:any)=>x.athlete_user_id)].filter(Boolean)));
+    if(athleteIds.length){
+      const [tr,ar,mr,cr]=await Promise.all([
+        supabase.from("training_sessions").select("user_id,session_date,minutes").in("user_id",athleteIds).order("session_date",{ascending:false}).limit(500),
+        supabase.from("attendance_records").select("user_id,attended_at,status").in("user_id",athleteIds).order("attended_at",{ascending:false}).limit(500),
+        supabase.from("medals").select("user_id,awarded_at,medal_type").in("user_id",athleteIds).order("awarded_at",{ascending:false}).limit(500),
+        supabase.from("tournaments").select("user_id,starts_at,result").in("user_id",athleteIds).order("starts_at",{ascending:false}).limit(500)
+      ]);
+      setTrainingMetrics((tr.data||[]) as TrainingMetric[]);setAttendanceMetrics((ar.data||[]) as AttendanceMetric[]);setMedalMetrics((mr.data||[]) as MedalMetric[]);setCompetitionMetrics((cr.data||[]) as CompetitionMetric[]);
+      setAnalyticsUnavailable(Boolean(tr.error&&ar.error&&mr.error&&cr.error));
+    }else{setTrainingMetrics([]);setAttendanceMetrics([]);setMedalMetrics([]);setCompetitionMetrics([]);setAnalyticsUnavailable(false);}
     setLoading(false);
   }
   useEffect(() => { void load(); }, [userId]);
@@ -99,6 +121,11 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   }
 
   const activeLinks = links.filter((item) => item.status === "active").length;
+  const trainingByMonth=useMemo(()=>monthlySeries(trainingMetrics.map(x=>({date:x.session_date})), "sessions"),[trainingMetrics]);
+  const attendanceByMonth=useMemo(()=>monthlySeries(attendanceMetrics.map(x=>({date:x.attended_at})), "records"),[attendanceMetrics]);
+  const presentCount=attendanceMetrics.filter(x=>["present","attended","late"].includes(String(x.status).toLowerCase())).length;
+  const attendanceRate=attendanceMetrics.length?Math.round(presentCount/attendanceMetrics.length*100):null;
+  const totalMinutes=trainingMetrics.reduce((sum,x)=>sum+(Number(x.minutes)||0),0);
   async function toggleNutrition(athleteUserId: string) {
     if (!supabase || !userId) return;
     setBusy(true); setError("");
@@ -119,6 +146,11 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
     <div className="page-head"><div><p className="eyebrow">Individual Coach</p><h2>Coach Command Center</h2><p>Manage your athletes, assign Taekwondo training plans, and keep coaching data separate from the athlete workspace.</p></div><button className="btn" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> {loading ? "Refreshing…" : "Refresh"}</button></div>
     <section className="metrics"><article className="metric card"><div className="metric-icon"><Users size={18}/></div><div><p>Athletes</p><strong>{athletes.length}</strong><small>Linked athlete profiles</small></div></article><article className="metric card"><div className="metric-icon"><UserPlus size={18}/></div><div><p>Active links</p><strong>{activeLinks}</strong><small>Coach relationships</small></div></article><article className="metric card"><div className="metric-icon"><ClipboardList size={18}/></div><div><p>Plans</p><strong>{plans.length}</strong><small>Assigned training plans</small></div></article></section>
     {error && <ErrorText>{error}</ErrorText>}
+    <section className="role-analytics-grid">
+      <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Roster intelligence</span><h3>Training activity</h3><p className="muted">Monthly sessions from linked athletes · latest 6 months</p></div><BarChart3/></div>{trainingMetrics.length?<ResponsiveContainer width="100%" height={220}><BarChart data={trainingByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="sessions" name="Training sessions" fill="#49d7ff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No training analytics yet</strong><span>Training sessions from linked athletes will appear here when recorded and accessible.</span></div>}</article>
+      <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Participation</span><h3>Attendance overview</h3><p className="muted">Based on attendance records visible to this coach</p></div><CalendarCheck/></div><div className="role-analytics-kpis"><div><strong>{attendanceRate===null?"—":`${attendanceRate}%`}</strong><small>Attendance rate</small></div><div><strong>{attendanceMetrics.length}</strong><small>Recorded check-ins</small></div><div><strong>{Math.round(totalMinutes/60*10)/10}h</strong><small>Training hours</small></div></div>{attendanceMetrics.length?<ResponsiveContainer width="100%" height={145}><LineChart data={attendanceByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Line type="monotone" dataKey="records" name="Attendance records" stroke="#65e0b5" strokeWidth={3}/></LineChart></ResponsiveContainer>:<div className="empty"><strong>Attendance data will appear here</strong><span>No accessible attendance records were returned for this roster.</span></div>}</article>
+    </section>
+    {analyticsUnavailable&&<p className="muted" role="status">Some analytics sources are currently unavailable. Available charts are shown without inventing missing values.</p>}
     <div className="grid two">
       <Card><div className="panel-head"><div><p className="eyebrow">Roster</p><h3>Link an athlete</h3><p className="muted">Search by the athlete's username or paste their user ID from their profile.</p></div><UserPlus size={20}/></div><div className="inline-form"><input value={athleteQuery} onChange={(e) => { setAthleteQuery(e.target.value); setFoundAthlete(null); }} placeholder="@athlete_username or user ID"/><button className="btn" onClick={() => void findAthlete()} disabled={busy || !athleteQuery.trim()}><Search size={15}/> Find</button></div>{foundAthlete && <div className="detail-row"><div><strong>{foundAthlete.full_name || foundAthlete.username}</strong><small>@{foundAthlete.username || "username not set"} · {foundAthlete.discipline?.toUpperCase() || "Taekwondo"} · {foundAthlete.belt || "Belt not set"}</small></div><button className="btn primary" onClick={() => void connectAthlete()} disabled={busy}><UserPlus size={15}/> Link athlete</button></div>}{athletes.length ? <DataList rows={athletes} empty="No athletes linked yet." render={(athlete) => <div><strong>{athlete.full_name || athlete.username || athlete.user_id}</strong><small>{athlete.discipline ? athlete.discipline.toUpperCase() : "Taekwondo"} · {athlete.belt || "Belt not set"}</small></div>}/> : <p className="muted">No athletes linked yet.</p>}</Card>
       <Card><div className="panel-head"><div><p className="eyebrow">Training plans</p><h3>Assign a plan</h3></div><ClipboardList size={20}/></div><label className="field"><span>Athlete</span><select value={selectedAthlete} onChange={(e) => setSelectedAthlete(e.target.value)}><option value="">Choose athlete</option>{athletes.map((athlete) => <option key={athlete.user_id} value={athlete.user_id}>{athlete.full_name || athlete.username || athlete.user_id}</option>)}</select></label><label className="field"><span>Plan title</span><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Competition preparation"/></label><label className="field"><span>Focus</span><input value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="Kyorugi performance"/></label><label className="field"><span>Coach notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}/></label><button className="btn primary" onClick={() => void createPlan()} disabled={busy || !selectedAthlete || !title.trim()}><Plus size={15}/> Assign plan</button></Card>
