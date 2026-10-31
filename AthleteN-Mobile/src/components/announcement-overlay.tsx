@@ -1,7 +1,6 @@
 import { useCallback,useEffect,useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { ATHLETEN_NOTIFICATION_CHANNEL_ID } from '@/lib/push-notifications';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
