@@ -172,6 +172,10 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [academyTraining,setAcademyTraining]=useState<TrainingMetric[]>([]);
+  const [academyAttendance,setAcademyAttendance]=useState<AttendanceMetric[]>([]);
+  const [academyMedals,setAcademyMedals]=useState<MedalMetric[]>([]);
+  const [academyCompetitions,setAcademyCompetitions]=useState<CompetitionMetric[]>([]);
 
   async function load() {
     if (!supabase || !userId) return;
@@ -191,6 +195,16 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
     if (firstError) setError(firstError.message);
     setMembers((membershipResult.data || []) as Membership[]);
     setMemberProfiles((profileResult.data || []) as Athlete[]);
+    const athleteIds=(profileResult.data||[]).filter((p:any)=>p.role!=="coach"&&p.role!=="academy_admin").map((p:any)=>p.user_id).filter(Boolean);
+    if(athleteIds.length){
+      const [tr,ar,mr,cr]=await Promise.all([
+        supabase.from("training_sessions").select("user_id,session_date,minutes").in("user_id",athleteIds).order("session_date",{ascending:false}).limit(1000),
+        supabase.from("attendance_records").select("user_id,attended_at,status").eq("academy_id",id).order("attended_at",{ascending:false}).limit(1000),
+        supabase.from("medals").select("user_id,awarded_at,medal_type").in("user_id",athleteIds).order("awarded_at",{ascending:false}).limit(1000),
+        supabase.from("tournaments").select("user_id,starts_at,result").in("user_id",athleteIds).order("starts_at",{ascending:false}).limit(1000)
+      ]);
+      setAcademyTraining((tr.data||[]) as TrainingMetric[]);setAcademyAttendance((ar.data||[]) as AttendanceMetric[]);setAcademyMedals((mr.data||[]) as MedalMetric[]);setAcademyCompetitions((cr.data||[]) as CompetitionMetric[]);
+    }else{setAcademyTraining([]);setAcademyAttendance([]);setAcademyMedals([]);setAcademyCompetitions([]);}
     setLoading(false);
   }
   useEffect(() => { void load(); }, [userId]);
@@ -233,11 +247,22 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
   }
 
   const selectedAcademy = useMemo(() => academies.find((academy) => academy.id === academyId), [academies, academyId]);
+  const academyTrainingByMonth=useMemo(()=>monthlySeries(academyTraining.map(x=>({date:x.session_date})),"sessions"),[academyTraining]);
+  const academyAttendanceByMonth=useMemo(()=>monthlySeries(academyAttendance.map(x=>({date:x.attended_at})),"records"),[academyAttendance]);
+  const academyPresent=academyAttendance.filter(x=>["present","attended","late"].includes(String(x.status).toLowerCase())).length;
+  const academyAttendanceRate=academyAttendance.length?Math.round(academyPresent/academyAttendance.length*100):null;
+  const academyHours=academyTraining.reduce((sum,x)=>sum+(Number(x.minutes)||0),0)/60;
+  const medalCount=academyMedals.length;
+  const competitionCount=academyCompetitions.length;
   return <div className="role-dashboard">
     <div className="page-head"><div><p className="eyebrow">Academy</p><h2>Academy Command Center</h2><p>Run the academy workspace separately from individual athlete accounts: membership, coaches, athletes, and academy operations.</p></div><button className="btn" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> {loading ? "Refreshing…" : "Refresh"}</button></div>
     {error && <ErrorText>{error}</ErrorText>}
     {!academies.length ? <Card><div className="panel-head"><div><p className="eyebrow">First setup</p><h3>Create your academy</h3><p className="muted">This creates the academy record and makes your account its academy administrator.</p></div><Building2 size={22}/></div><div className="inline-form"><input value={academyName} onChange={(e) => setAcademyName(e.target.value)} placeholder="Academy name"/><button className="btn primary" onClick={() => void createAcademy()} disabled={busy || !academyName.trim()}><Plus size={15}/> Create academy</button></div></Card> : <>
       <section className="metrics"><article className="metric card"><div className="metric-icon"><Building2 size={18}/></div><div><p>Academy</p><strong>{selectedAcademy?.name || "—"}</strong><small>{selectedAcademy?.status || "active"}</small></div></article><article className="metric card"><div className="metric-icon"><Users size={18}/></div><div><p>Members</p><strong>{members.length}</strong><small>Active and pending membership records</small></div></article><article className="metric card"><div className="metric-icon"><ShieldCheck size={18}/></div><div><p>Athletes</p><strong>{memberProfiles.length}</strong><small>Profiles connected to academy</small></div></article></section>
+      <section className="role-analytics-grid">
+        <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Academy intelligence</span><h3>Training activity</h3><p className="muted">Monthly athlete sessions · latest 6 months</p></div><BarChart3/></div>{academyTraining.length?<ResponsiveContainer width="100%" height={220}><BarChart data={academyTrainingByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="sessions" name="Training sessions" fill="#49d7ff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No training data yet</strong><span>Academy athlete training records will appear here when available.</span></div>}</article>
+        <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Participation and outcomes</span><h3>Academy performance</h3><p className="muted">Metrics from accessible academy records</p></div><Trophy/></div><div className="role-analytics-kpis"><div><strong>{academyAttendanceRate===null?"—":`${academyAttendanceRate}%`}</strong><small>Attendance rate</small></div><div><strong>{medalCount}</strong><small>Medals recorded</small></div><div><strong>{competitionCount}</strong><small>Competition records</small></div><div><strong>{academyHours.toFixed(1)}h</strong><small>Training hours</small></div></div>{academyAttendance.length?<ResponsiveContainer width="100%" height={145}><LineChart data={academyAttendanceByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Line type="monotone" dataKey="records" name="Attendance records" stroke="#65e0b5" strokeWidth={3}/></LineChart></ResponsiveContainer>:<div className="empty"><strong>No attendance data yet</strong><span>Attendance records will populate this view after sessions are recorded.</span></div>}</article>
+      </section>
       <div className="grid two"><Card><div className="panel-head"><div><p className="eyebrow">Membership</p><h3>Add member</h3><p className="muted">Find an athlete by username or user ID, then add them to the academy.</p></div><UserPlus size={20}/></div><div className="inline-form"><input value={memberQuery} onChange={(e) => { setMemberQuery(e.target.value); setFoundMember(null); }} placeholder="@athlete_username or user ID"/><button className="btn" onClick={() => void findMember()} disabled={busy || !memberQuery.trim()}><Search size={15}/> Find</button></div>{foundMember && <div className="detail-row"><div><strong>{foundMember.full_name || foundMember.username}</strong><small>@{foundMember.username || "username not set"} · {foundMember.discipline?.toUpperCase() || "Taekwondo"} · {foundMember.belt || "Belt not set"}</small></div><button className="btn primary" onClick={() => void addMember()} disabled={busy}><UserPlus size={15}/> Add</button></div>}<label className="field"><span>Role</span><select value={memberRole} onChange={(e) => setMemberRole(e.target.value)}><option value="athlete">Athlete</option><option value="coach">Coach</option></select></label></Card><Card><div className="panel-head"><div><p className="eyebrow">Athlete roster</p><h3>Academy athletes</h3></div><Users size={20}/></div>{memberProfiles.length ? <DataList rows={memberProfiles} empty="No athletes yet." render={(member) => <div><strong>{member.full_name || member.username || member.user_id}</strong><small>{member.discipline ? member.discipline.toUpperCase() : "Taekwondo"} · {member.belt || "Belt not set"}</small></div>}/> : <p className="muted">Add athlete memberships to build the roster.</p>}</Card></div>
       <Card><h3>Membership management</h3>{members.length ? <DataList rows={members} empty="No membership records." render={(member) => <div className="membership-row"><div><strong>{memberProfiles.find((p) => p.user_id === member.user_id)?.full_name || member.user_id}</strong><small>{member.role} · {member.status}</small></div>{member.user_id !== userId && <div className="inline-actions"><button className="btn" onClick={() => void updateMember(member.id, member.status === "active" ? "suspended" : "active")}>{member.status === "active" ? "Suspend" : "Activate"}</button></div>}</div>}/> : <p className="muted">No membership records.</p>}</Card>
     </>}
