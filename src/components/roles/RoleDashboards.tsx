@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, RefreshCw, ShieldCheck, Users, UserPlus, ClipboardList, Building2, Search, BarChart3, CalendarCheck, Trophy } from "lucide-react";
+import { Plus, RefreshCw, ShieldCheck, Users, UserPlus, ClipboardList, Building2, Search, BarChart3, CalendarCheck, Trophy, Award } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "../../lib/supabase";
 import type { Profile } from "../../types";
