@@ -1,5 +1,7 @@
 import { useCallback,useEffect,useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { ATHLETEN_NOTIFICATION_CHANNEL_ID } from '@/lib/push-notifications';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
@@ -25,7 +27,16 @@ export default function AnnouncementOverlay(){
   void load();
   if(!session)return;
   const channel=supabase.channel('global-announcements-'+session.user.id)
-   .on('postgres_changes',{event:'INSERT',schema:'public',table:'announcements'},()=>{void load()})
+   .on('postgres_changes',{event:'INSERT',schema:'public',table:'announcements'},(payload:any)=>{
+    const announcement=payload.new;
+    if(!announcement?.published_at || new Date(announcement.published_at).getTime()>Date.now())return;
+    if(announcement.audience!=='all')return;
+    void Notifications.scheduleNotificationAsync({
+     content:{title:announcement.title||'AthleteN announcement',body:announcement.body||'A new announcement is available.',sound:'default',data:{route:'/notifications'}},
+     trigger:null,
+    }).catch((error)=>console.warn('[AthleteN] announcement alert failed',error));
+    void load();
+   })
    .subscribe();
   return ()=>{void supabase.removeChannel(channel)};
  },[load,session]);
