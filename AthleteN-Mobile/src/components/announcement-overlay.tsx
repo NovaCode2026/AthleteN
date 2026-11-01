@@ -1,6 +1,5 @@
 import { useCallback,useEffect,useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
@@ -30,10 +29,7 @@ export default function AnnouncementOverlay(){
     const announcement=payload.new;
     if(!announcement?.published_at || new Date(announcement.published_at).getTime()>Date.now())return;
     if(announcement.audience!=='all')return;
-    void Notifications.scheduleNotificationAsync({
-     content:{title:announcement.title||'AthleteN announcement',body:announcement.body||'A new announcement is available.',sound:'default',data:{route:'/notifications'}},
-     trigger:null,
-    }).catch((error)=>console.warn('[AthleteN] announcement alert failed',error));
+    // Published announcements create durable notification rows server-side.
     void load();
    })
    .subscribe();
