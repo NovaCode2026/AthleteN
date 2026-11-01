@@ -55,7 +55,7 @@ test('web responsive layout includes narrow phone and tablet breakpoints', () =>
 test('web messaging only clears the composer after the database confirms a saved message', () => {
   const messages = read('src/components/messaging/MessagingPage.tsx');
   assert.match(messages, /data:savedMessage,error:insertError/);
-  assert.match(messages, /\.select\("id,conversation_id,sender_id,body,message_type,created_at,attachment_path,attachment_name,attachment_type,attachment_size"\)\.single\(\)/);
+  assert.match(messages, /\.select\("id,conversation_id,sender_id,body,message_type,created_at,client_message_id,attachment_path,attachment_name,attachment_type,attachment_size"\)\.single\(\)/);
   assert.match(messages, /if\(!savedMessage\?\.id\)throw new Error/);
   assert.match(messages, /setMessages\(old=>old\.some\(item=>item\.id===savedMessage\.id\)/);
 });
@@ -63,7 +63,7 @@ test('web messaging only clears the composer after the database confirms a saved
 test('mobile messaging confirms the insert and retains the database-returned message', () => {
   const messages = read('AthleteN-Mobile/src/app/(tabs)/messages.tsx');
   assert.match(messages, /data:savedMessage,error:e\}=await supabase\.from\('messages'\)\.insert/);
-  assert.match(messages, /\.select\('id,conversation_id,sender_id,body,message_type,created_at,attachment_path,attachment_name,attachment_type,attachment_size'\)\.single\(\)/);
+  assert.match(messages, /\.select\('id,conversation_id,sender_id,body,message_type,created_at,client_message_id,attachment_path,attachment_name,attachment_type,attachment_size'\)\.single\(\)/);
   assert.match(messages, /if\(!savedMessage\?\.id\)throw new Error/);
   assert.match(messages, /setMessages\(old=>old\.some\(m=>m\.id===savedMessage\.id\)/);
 });
