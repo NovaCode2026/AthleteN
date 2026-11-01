@@ -3,7 +3,7 @@ import { Pressable, Text } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { ATHLETEN_NOTIFICATION_CHANNEL_ID, registerForPushNotifications } from '@/lib/push-notifications';
+import { registerForPushNotifications } from '@/lib/push-notifications';
 import { Screen, Header, Card, Empty, c } from '@/components/mobile-ui';
 
 type NotificationRow = {
@@ -64,41 +64,8 @@ export default function NotificationsScreen() {
         (payload) => {
           const n = payload.new as NotificationRow;
           void load();
-          void (async () => {
-            // In-app notifications are always stored. Local alert delivery follows
-            // the athlete's category preference; a missing preference row uses defaults.
-            const { data: preferences, error } = await supabase
-              .from('notification_preferences')
-              .select('training,competitions,messages,coach_academy,achievements,system')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
-            if (!active || error) return;
-
-            const type = String(n?.notification_type || 'system').toLowerCase();
-            const preferenceKey =
-              type === 'training' ? 'training' :
-              type === 'competition' || type === 'competitions' ? 'competitions' :
-              type === 'message' || type === 'messages' ? 'messages' :
-              type === 'academy' || type === 'coach_academy' ? 'coach_academy' :
-              type === 'achievement' || type === 'achievements' ? 'achievements' : 'system';
-            if (preferences && preferences[preferenceKey] === false) return;
-
-            await Notifications.scheduleNotificationAsync({
-              content: {
-                title: n?.title || 'AthleteN',
-                body: n?.body || 'You have a new notification.',
-                data: { route: n?.action_route || '/notifications' },
-              },
-              trigger: {
-                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-                seconds: 1,
-                repeats: false,
-                channelId: ATHLETEN_NOTIFICATION_CHANNEL_ID,
-              },
-            });
-          })().catch((error) => {
-            console.warn('[AthleteN] local notification scheduling failed', error);
-          });
+          // Remote Expo push is dispatched by the database notification trigger.
+          // Realtime is used here only to refresh the in-app inbox; this avoids duplicate alerts.
         }
       )
       .subscribe();
