@@ -653,3 +653,21 @@ input, select, textarea, button { max-width: 100%; }
 /* Dashboard personalization and message delivery states */
 .athlete-customize{padding:14px 18px}.athlete-customize-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.athlete-customize-head>div{display:grid;gap:3px}.athlete-customize-head strong{font-size:14px}.athlete-customize-head small{font-size:11px;color:#8fa8c1}.athlete-widget-options{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;border-top:1px solid rgba(145,168,193,.16);margin-top:12px;padding-top:12px}.athlete-widget-options label{display:flex;align-items:center;gap:7px;color:#b8c9dc;font-size:12px;cursor:pointer}.athlete-widget-options input{accent-color:#49d7ff;width:15px;height:15px}.athlete-widget-options .plain{font-size:11px;color:#70dfff}
 .message-receipt-status{color:#62d8ff;font-weight:800;letter-spacing:.03em;margin-left:6px}
+
+
+/* APS 1.0 — analytics controls and printable coach/academy reports */
+.role-dashboard-actions{display:flex;align-items:flex-end;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.role-range-picker{display:grid;gap:4px;color:#8fa7bf;font-size:10px;font-weight:800;letter-spacing:.04em}
+.role-range-picker select{min-height:38px;border:1px solid #294663;border-radius:10px;background:#102640;color:#eaf5ff;padding:0 10px;font:inherit;font-size:12px}
+@media(max-width:720px){.role-dashboard-actions{width:100%;justify-content:flex-start}.role-range-picker{flex:1;min-width:145px}}
+@media print{
+  @page{size:auto;margin:12mm}
+  html,body{background:#fff!important;color:#111!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sidebar,.app-shell>main>header,.role-dashboard-actions,.logout,.toast,.modal-backdrop,.verify-banner{display:none!important}
+  .app-shell{display:block!important;background:#fff!important}
+  .app-shell>main{padding:0!important;max-width:none!important;overflow:visible!important}
+  .role-dashboard{color:#111!important}
+  .role-dashboard .card,.role-dashboard .panel{break-inside:avoid;box-shadow:none!important}
+  .role-analytics-grid{grid-template-columns:1fr 1fr!important;break-inside:avoid}
+  .role-dashboard .muted,.role-dashboard .eyebrow{color:#46576b!important}
+}
