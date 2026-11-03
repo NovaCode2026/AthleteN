@@ -109,3 +109,15 @@ test('pg_net is recorded as a required dependency for server-dispatched Expo not
   assert.match(dispatch, /net\.http_post/);
   assert.match(dispatch, /exception when others then/i);
 });
+
+
+test('coach and academy analytics support date ranges, CSV exports, and print-to-PDF', () => {
+  const dashboards = read('src/components/roles/RoleDashboards.tsx');
+  const styles = read('src/styles/main.css');
+  assert.match(dashboards, /const \[rangeMonths,setRangeMonths\]=useState\(6\)/);
+  assert.match(dashboards, /filteredTrainingMetrics/);
+  assert.match(dashboards, /filteredAcademyTraining/);
+  assert.match(dashboards, /Export CSV/);
+  assert.match(dashboards, /window\.print\(\)/);
+  assert.match(styles, /@media print/);
+});
