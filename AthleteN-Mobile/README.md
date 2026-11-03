@@ -12,7 +12,7 @@
 
 AthleteN Mobile is built with React Native, Expo SDK 57 and Expo Router. It connects to the same Supabase identity, account roles, subscription entitlements and data model as the web application.
 
-> For the full product, pricing and verification specification, see the [AthleteN Platform Guide](../docs/ATHLETEN_PLATFORM_GUIDE.md).
+> Start with the [AthleteN Platform Guide](../docs/ATHLETEN_PLATFORM_GUIDE.md), then read [Plans, Verification & Billing](../docs/PLAN_VERIFICATION_AND_BILLING.md) for the exact Student, Coach and Academy click → verify → checkout journeys. The [Documentation Hub](../docs/README.md) links every project guide.
 
 ## 🌟 Main experience
 
@@ -67,6 +67,9 @@ AI reports must use only permitted saved records and user-supplied details. They
 - Paid checkout remains closed while the server Free Launch gate is enabled.
 
 ## 🔐 Purchase journey
+
+The Plans screen uses a verification-first flow: tapping Coach or Academy runs account checks before checkout. Coach requires the existing `coach` role and a confirmed account email. Academy requires the existing `academy_admin` role plus an owned, active, fully set-up workspace with verified contact email. If the account role is missing, the screen explains that an authorized AthleteN Admin must review/assign the role; selecting a plan never changes a user's role. If Academy setup is incomplete, the user is directed to the existing Academy setup flow.
+
 
 **Student:** Select Student → submit proof → Admin review → approved → checkout → payment confirmed.
 
