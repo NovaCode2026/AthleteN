@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, RefreshCw, Share2, Sparkles, Swords } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
+import type { Profile } from "../../types";
 
 type Toast = (toast: { type: "success" | "error" | "warning"; message: string }) => void;
 type ReportRow = { id: string; report_type: "match" | "monthly"; title: string; period_start?: string | null; period_end?: string | null; content: string; created_at: string };
@@ -16,11 +17,10 @@ const previousMonth = () => {
   return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10), label: start.toLocaleString(undefined, { month: "long", year: "numeric" }) };
 };
 
-export default function IntelligenceReportsPage({ setToast }: { setToast: Toast }) {
+export default function IntelligenceReportsPage({ setToast, profile }: { setToast: Toast; profile: Profile }) {
   const auth = useAuth();
   const uid = auth.user?.id;
-  const role = auth.session ? String((auth as any).profile?.role || "athlete") : "athlete";
-  const profile = (auth as any).profile || {};
+  const role = String(profile.role || "athlete");
   const plan = String(profile.plan_id || "free");
   const eligible = paidPlanForRole(role, plan);
   const [reports, setReports] = useState<ReportRow[]>([]);
