@@ -1,5 +1,15 @@
 # Changelog
 
+
+## [Unreleased] — 2026-11-03
+
+### Documentation and purchase journey
+- Added a colorful documentation hub at `docs/README.md` to make product, engineering, operations, release and legal guides easy to discover.
+- Added `docs/PLAN_VERIFICATION_AND_BILLING.md` with role-specific Student, Coach and Academy verification-to-payment diagrams, state definitions, implementation file map and launch acceptance checklist.
+- Updated the root README, platform guide and Android README to cross-link the documentation and clearly explain that Coach/Academy verification happens before checkout.
+- Clarified that a missing Coach or Academy role requires authorized Admin review; choosing a plan never changes account roles.
+- Reiterated that paid checkout remains closed during Free Launch and only verified provider webhooks can activate subscriptions.
+
 All notable **AthleteN** changes are documented here.
 
 The project evolved from its earlier internal AthleteOS naming into the AthleteN product identity. Historical release notes may retain legacy terminology where it describes the state of the product at that time.
