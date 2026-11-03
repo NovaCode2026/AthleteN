@@ -4,7 +4,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { attachNotificationListeners, registerForPushNotifications, unregisterPushNotifications } from '@/lib/push-notifications';
 import { refreshAthleteWidgets } from '@/lib/widget-refresh';
 
-type Profile = { id: string; user_id: string; full_name: string; discipline: 'Kyorugi' | 'Poomsae' | null; [key: string]: unknown };
+type Profile = { id: string; user_id: string; full_name: string; sport?: 'taekwondo' | null; discipline: 'kyorugi' | 'poomsae' | null; [key: string]: unknown };
 type AuthValue = {
   session: Session | null;
   profile: Profile | null;
