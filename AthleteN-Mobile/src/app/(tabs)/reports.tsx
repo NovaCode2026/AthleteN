@@ -16,7 +16,8 @@ const completedMonth = () => {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth()-1, 1);
   const end = new Date(now.getFullYear(), now.getMonth(), 1);
-  return { start:start.toISOString().slice(0,10), end:end.toISOString().slice(0,10), label:start.toLocaleString(undefined,{month:'long',year:'numeric'}) };
+  const key=(date:Date)=>date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+  return { start:key(start), end:key(end), label:start.toLocaleString(undefined,{month:'long',year:'numeric'}) };
 };
 
 export default function Reports(){
@@ -181,6 +182,6 @@ export default function Reports(){
   <Section title="SAVED REPORT HISTORY">
    {loading?<ActivityIndicator color={c.accent}/>:history.length?history.map(x=><Pressable key={x.id} onPress={()=>setCurrent(x)} style={{marginBottom:8}}><Card><Text style={{color:c.text,fontSize:12,fontWeight:'900'}}>{x.title}</Text><Text style={{color:c.muted,fontSize:9,marginTop:4}}>{String(x.report_type).toUpperCase()} · {new Date(x.created_at).toLocaleString()}</Text></Card></Pressable>):<Empty text="No AI reports generated yet."/>}
   </Section>
-  {active?<Section title="REPORT PREVIEW"><Card><Text style={{color:c.text,fontSize:15,fontWeight:'900'}}>{active.title}</Text><Text style={{color:c.muted,fontSize:9,marginTop:5}}>{new Date(active.created_at).toLocaleString()}</Text><Text selectable style={{color:c.textSecondary,fontSize:11,lineHeight:18,marginTop:12}}>{active.content}</Text><Pressable onPress={()=>void share(active)} style={{marginTop:12,borderWidth:1,borderColor:c.accent,borderRadius:11,padding:12,alignItems:'center'}}><Text style={{color:c.accentBright,fontSize:9,fontWeight:'900'}}>SHARE REPORT</Text></Pressable></Card></Section>:null}
+  {active?<Section title="REPORT PREVIEW"><Card><Text style={{color:c.text,fontSize:15,fontWeight:'900'}}>{active.title}</Text><Text style={{color:c.muted,fontSize:9,marginTop:5}}>{new Date(active.created_at).toLocaleString()}</Text><Text selectable style={{color:c.text,fontSize:11,lineHeight:18,marginTop:12}}>{active.content}</Text><Pressable onPress={()=>void share(active)} style={{marginTop:12,borderWidth:1,borderColor:c.accent,borderRadius:11,padding:12,alignItems:'center'}}><Text style={{color:c.accentBright,fontSize:9,fontWeight:'900'}}>SHARE REPORT</Text></Pressable></Card></Section>:null}
  </Screen>;
 }
