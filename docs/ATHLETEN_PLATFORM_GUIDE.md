@@ -161,6 +161,8 @@ This is a product-level summary, not a substitute for actual RLS and backend ent
 
 ## 8. Verification and purchasing journeys
 
+For the detailed step-by-step diagrams, engineering file map and pre-launch test checklist, see [Plans, Verification & Billing](./PLAN_VERIFICATION_AND_BILLING.md).
+
 Verification, payment and subscription activation are three separate states.
 
 ### 8.1 Student plan (Athlete only)
