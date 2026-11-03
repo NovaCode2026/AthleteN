@@ -57,6 +57,7 @@ The client builds a period snapshot for the previous completed calendar month fr
 - Medal count and medal-type breakdown
 - Competition entries
 - Goals not marked completed or cancelled
+- Active Academy coach count and new athlete/coach memberships for Academy reports
 - Athlete count for Coach/Academy report scope
 
 The client passes only those totals and categories to the AI. The model must not infer unprovided physiology, match events or attendance.
