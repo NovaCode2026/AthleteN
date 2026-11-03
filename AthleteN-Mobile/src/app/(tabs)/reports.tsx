@@ -27,7 +27,7 @@ export default function Reports(){
  const role=String(profile?.role||'athlete');
  const plan=String(profile?.plan_id||'free');
  const eligible=hasReportPlan(role,plan);
- const period=useMemo(completedMonth,[]);
+ const period=useMemo(() => completedMonth(), []);
  const [stats,setStats]=useState<any>(null);
  const [history,setHistory]=useState<any[]>([]);
  const [current,setCurrent]=useState<any>(null);
