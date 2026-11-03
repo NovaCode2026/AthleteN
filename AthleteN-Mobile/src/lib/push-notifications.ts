@@ -71,8 +71,8 @@ async function acknowledgeMessageDelivery(data: Record<string, unknown> | undefi
 }
 
 export function attachNotificationListeners() {
-  const received = Notifications.addNotificationReceivedListener((event) => {
-    void acknowledgeMessageDelivery(event.notification.request.content.data);
+  const received = Notifications.addNotificationReceivedListener((notification) => {
+    void acknowledgeMessageDelivery(notification.request.content.data);
   });
   const response = Notifications.addNotificationResponseReceivedListener((event) => {
     const notificationData = event.notification.request.content.data;
