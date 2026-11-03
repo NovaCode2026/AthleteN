@@ -185,6 +185,7 @@ The database also contains earlier normalized tables named kyorugi_bouts, poomsa
 - [ ] Database saves only lowercase canonical values.
 - [ ] Poomsae profile shows Poomsae Studio, Poomsae Training and Poomsae Session labels on Web and Android.
 - [ ] Kyorugi profile shows Kyorugi Hub, Kyorugi Training and Kyorugi Session labels on Web and Android.
+- [ ] Mobile Training and timed Session screens block discipline-specific logging until a discipline is selected.
 - [ ] Poomsae practice saves as a non-official Poomsae training log.
 - [ ] Poomsae official result saves to the shared Poomsae performance table.
 - [ ] Poomsae records remain visible on Web after a mobile refresh, and vice versa.
