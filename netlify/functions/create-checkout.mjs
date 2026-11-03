@@ -139,6 +139,9 @@ export default async function handler(request) {
       (planId === "coach" && profile.role === "coach") ||
       (planId === "academy" && profile.role === "academy_admin");
     if (!roleAllowed) return json({ error: "This plan is only available to the matching verified account type." }, 403);
+    if (["coach", "academy"].includes(planId) && !user.email_confirmed_at) {
+      return json({ error: "Verify your AthleteN account email before purchasing this plan." }, 403);
+    }
     const verification = planId === "student" ? await requireApprovedStudent(supabase, user.id) : null;
     if (planId === "student" && !verification) return json({ error: "Student ID approval is required before payment." }, 403);
 
