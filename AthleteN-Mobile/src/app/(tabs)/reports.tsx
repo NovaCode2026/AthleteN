@@ -21,7 +21,7 @@ const completedMonth = () => {
 };
 
 export default function Reports(){
- const {session,profile}=useAuth();
+ const {session,profile,syncVersion}=useAuth();
  const uid=session?.user?.id;
  const router=useRouter();
  const role=String(profile?.role||'athlete');
@@ -45,7 +45,7 @@ export default function Reports(){
   if(error)setMessage(error.message);else setHistory(data||[]);
   setLoading(false);
  },[uid]);
- useEffect(()=>{void loadHistory()},[loadHistory]);
+ useEffect(()=>{void loadHistory()},[loadHistory,syncVersion]);
 
  async function monthlySnapshot(){
   if(!uid)throw new Error('Please sign in again.');
