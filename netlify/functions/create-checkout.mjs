@@ -130,7 +130,7 @@ export default async function handler(request) {
     const supabase = serverSupabase();
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role,academy_id")
       .eq("user_id", user.id)
       .maybeSingle();
     if (profileError || !profile) return json({ error: "Unable to verify this account for the selected plan." }, 503);
@@ -141,6 +141,22 @@ export default async function handler(request) {
     if (!roleAllowed) return json({ error: "This plan is only available to the matching verified account type." }, 403);
     const verification = planId === "student" ? await requireApprovedStudent(supabase, user.id) : null;
     if (planId === "student" && !verification) return json({ error: "Student ID approval is required before payment." }, 403);
+
+    // Coach checkout relies on the existing verified Coach role.
+    // Academy checkout reuses the existing owner setup + contact-email verification.
+    if (planId === "academy") {
+      let academyQuery = supabase
+        .from("academies")
+        .select("id")
+        .eq("owner_user_id", user.id)
+        .eq("status", "active")
+        .eq("setup_completed", true)
+        .not("contact_email_verified_at", "is", null);
+      if (profile.academy_id) academyQuery = academyQuery.eq("id", profile.academy_id);
+      const { data: academy, error: academyError } = await academyQuery.limit(1).maybeSingle();
+      if (academyError) return json({ error: "Unable to verify Academy setup." }, 503);
+      if (!academy) return json({ error: "Complete the existing Academy verification and setup before purchasing the Academy plan." }, 403);
+    }
 
     const amountMinor = planPricesMinor[planId];
     const result = provider === "razorpay"
