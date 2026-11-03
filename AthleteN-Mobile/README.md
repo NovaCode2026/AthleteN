@@ -18,6 +18,10 @@ AthleteN Mobile is built with React Native, Expo SDK 57 and Expo Router. It conn
 
 AthleteN currently exposes **Taekwondo only**. New profiles must select the sport first, then choose one of its available disciplines. Kyorugi and Poomsae are explicit choices; the app does not guess Kyorugi for an incomplete profile. Changing a sport selection clears its dependent discipline. See the [Taekwondo Disciplines guide](../docs/TAEKWONDO_DISCIPLINES.md) for the complete feature matrix, data model and acceptance checklist.
 
+## 📱 Mobile is the compact AthleteN companion
+
+The Web application is the full master information workspace for detailed charts, history, comparisons, reports and complex configuration. Android is optimized for quick daily checks, training capture, timed sessions, competition preparation, messages and essential role-authorized tasks. This is one product: both clients use the same Supabase records, account identity, permissions and subscription rules. A record saved on either client must appear on the other after refresh/sync. See the [Web + Mobile Experience Model](../docs/WEB_MOBILE_EXPERIENCE_MODEL.md) for the detailed layout rules and parity acceptance tests.
+
 ## 🌟 Main experience
 
 ### 🥋 Athlete
