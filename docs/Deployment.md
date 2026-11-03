@@ -33,15 +33,50 @@ The existing production site was checked and the core values below are present i
 | `VITE_SUPABASE_URL` | Supabase project URL | Frontend |
 | `VITE_SUPABASE_ANON_KEY` | Supabase publishable/anon key | Frontend |
 | `SUPABASE_URL` | Optional canonical URL for server functions; current functions fall back to `VITE_SUPABASE_URL` | Server only |
-| `SUPABASE_SERVICE_ROLE_KEY` | Scheduled scanner and privileged server-side tasks | **Secret — server only** |
-| `OPENAI_API_KEY` | AI Coach requests | **Secret — server only** |
+| `SUPABASE_ANON_KEY` | Optional explicit public key for server-side user-scoped Supabase clients | Server only |
+| `SUPABASE_SERVICE_ROLE_KEY` | Privileged server-side tasks and payment webhooks | **Secret — server only** |
+| `OPENAI_API_KEY` | AI Coach and AI report requests | **Secret — server only** |
 | `OPENAI_MODEL` | Optional model override; the function has a code default | Server only |
+| `ATHLETEN_SITE_URL` | Canonical site URL used in payment provider return URLs | Server only |
+| `PAYMENT_PROVIDER` | Provider selection: razorpay, stripe or cashfree | Server only |
 
 The server functions currently accept `VITE_SUPABASE_URL` as a fallback for `SUPABASE_URL`; setting `SUPABASE_URL` as well makes the server configuration explicit.
 
 Use the current publishable/anon key from Supabase Project API Keys. Never put the service-role key, OpenAI key, payment secret, Instagram app secret, or webhook secret in a `VITE_*` variable, source file, or client bundle.
 
 Optional Instagram integration variables already configured on the site include the app ID, app secret, callback URLs and webhook verification token. Keep secret values server-side.
+
+### Verification and AI report entitlements
+
+The latest report-entitlement migration is:
+
+`20261103170000_harden_ai_reports_active_subscription_academy_verification.sql`
+
+It is already applied to the connected production Supabase project. It:
+- Restricts saved report reads/inserts to the account owner with a matching paid role and active/trialing, unexpired subscription.
+- Requires the latest Student verification request to be approved.
+- Requires Academy Admin role, Academy ownership, active workspace, completed setup and verified Academy contact email.
+- Keeps Coach access on the existing verified Coach role. It does not create a second Coach verification table.
+- Restricts subscription activation to the server payment role.
+
+The clients also perform verification preflight before requesting checkout:
+- Student: latest Student proof status must be approved by platform Admin.
+- Coach: existing Coach account role plus confirmed account email.
+- Academy: Academy Admin role plus active owned workspace, completed setup and verified contact email.
+
+A successful verification check is not payment. The signed payment webhook remains the only route to paid subscription activation.
+
+### AI report acceptance tests
+
+Use separate test accounts for Athlete, Coach, Academy Admin and Free users:
+1. Confirm Free cannot generate or read paid AI reports.
+2. Confirm Student is unavailable to non-Athlete roles.
+3. Confirm Student checkout is blocked while pending or rejected and allowed only after the latest proof is approved.
+4. Confirm Coach report access is limited to a verified Coach account with an active Coach subscription.
+5. Confirm Academy report access requires the existing Academy workspace setup and verified contact email.
+6. Confirm a cancelled, past-due or expired subscription cannot create or read paid reports.
+7. Confirm report history is private to its generating account and monthly data only includes authorized athlete records.
+8. Confirm AI reports do not invent missing scores, match events, attendance, techniques or health metrics.
 
 ### Payments are intentionally disabled during Free launch
 
@@ -67,6 +102,7 @@ Keep local development callbacks only if they are still needed. Do not add broad
 
 1. Confirm the latest `main` commit is the intended release candidate.
 2. Confirm GitHub CI and CodeQL are green for that exact commit.
+3. Confirm the Mobile Check and APK workflows are green for the exact mobile source commit.
 3. Confirm the mobile check is green for the mobile source commit.
 4. Confirm Supabase migrations referenced by the code are applied to project `wjegokgtrewtoopbsiol`.
 5. Confirm Netlify Production environment variables exist; do not reveal or copy secrets into chat or source control.
