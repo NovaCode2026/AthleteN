@@ -27,6 +27,7 @@
 | Guide | What is inside |
 |---|---|
 | 🥋 [AthleteN Platform Guide](./ATHLETEN_PLATFORM_GUIDE.md) | Product vision, role workspaces, feature catalogue, AI reports, plans and architecture |
+| 🖥️📱 [Web + Mobile Experience Model](./WEB_MOBILE_EXPERIENCE_MODEL.md) | Web as the full master information workspace, Mobile as the compact companion, shared data contracts, charts and parity checks |
 | 🥋 [Taekwondo Disciplines](./TAEKWONDO_DISCIPLINES.md) | Sport-first selection, Kyorugi vs Poomsae, tools, data model and acceptance checks |
 | 💳 [Plans, Verification & Billing](./PLAN_VERIFICATION_AND_BILLING.md) | Six plans, prices, eligibility, Student proof, Coach checks, Academy setup, checkout and payment lifecycle |
 | ⚕️ [Medical & AI Disclaimer](./MEDICAL_AND_AI_DISCLAIMER.md) | Safe boundaries for injury, nutrition, recovery and AI assistance |
