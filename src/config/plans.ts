@@ -15,8 +15,8 @@ export const plans: Plan[] = [
     name: "Student",
     price: "₹99/month · ₹999/year",
     aiLimit: 50,
-    audience: "Students",
-    features: ["Student verification", "50 AI Coach messages", "Documents and messaging", "Priority roadmap voting"]
+    audience: "Athletes · Admin-approved student verification",
+    features: ["AI Match Reports", "AI Monthly Athlete Reports", "50 AI Coach messages", "Documents and messaging", "Priority roadmap voting"]
   },
   {
     id: "pro",
@@ -24,7 +24,7 @@ export const plans: Plan[] = [
     price: "₹199/month · ₹1,999/year",
     aiLimit: 200,
     audience: "Competitive athletes",
-    features: ["200 AI Coach messages", "Advanced analytics", "Competition analysis", "Goal and performance tracking"]
+    features: ["AI Match Reports", "AI Monthly Athlete Reports", "200 AI Coach messages", "Advanced analytics", "Competition analysis", "Goal and performance tracking"]
   },
   {
     id: "elite",
@@ -32,7 +32,7 @@ export const plans: Plan[] = [
     price: "₹399/month · ₹3,999/year",
     aiLimit: 500,
     audience: "Serious competitive athletes",
-    features: ["500 AI Coach messages", "Advanced analytics", "Competition analysis", "Export reports"]
+    features: ["AI Match Reports", "AI Monthly Athlete Reports", "500 AI Coach messages", "Advanced analytics", "Competition analysis", "Export reports"]
   },
   {
     id: "coach",
@@ -40,7 +40,7 @@ export const plans: Plan[] = [
     price: "₹499/month · ₹4,999/year",
     aiLimit: 750,
     audience: "Independent coaches",
-    features: ["Coach dashboard", "Athlete roster and management", "Training monitoring and feedback", "750 AI Coach messages"]
+    features: ["AI Match Reports", "AI Monthly Coach Reports", "Coach dashboard", "Athlete roster and management", "Training monitoring and feedback", "750 AI Coach messages"]
   },
   {
     id: "academy",
@@ -48,7 +48,7 @@ export const plans: Plan[] = [
     price: "₹799/month · ₹7,999/year",
     aiLimit: 1000,
     audience: "Clubs and academies",
-    features: ["Academy dashboard", "Athlete and coach management", "Attendance and academy analytics", "1,000 AI Coach messages"]
+    features: ["AI Match Reports", "AI Monthly Academy Reports", "Academy dashboard", "Athlete and coach management", "Attendance and academy analytics", "1,000 AI Coach messages"]
   }
 ];
 
