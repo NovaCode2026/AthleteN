@@ -42,7 +42,17 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
     setBusy(true);setError("");const clientMessageId=draftMessageId||crypto.randomUUID();setDraftMessageId(clientMessageId);
     try{
       let uploadedPath="";
-      if(attachment){const allowed=["pdf","png","jpg","jpeg","webp","txt","doc","docx","csv","xlsx","zip"];const ext=attachment.name.includes(".")?attachment.name.split(".").pop()?.toLowerCase():"";if(!ext||!allowed.includes(ext))throw new Error("Unsupported file type.");if(attachment.size>10*1024*1024)throw new Error("File too large.");uploadedPath=`${selectedId}/${clientMessageId}.${ext}`;const {error:uploadError}=await supabase.storage.from("message-attachments").upload(uploadedPath,attachment,{contentType:attachment.type||"application/octet-stream",upsert:true});if(uploadError)throw uploadError;}
+      if(attachment){const allowed=["pdf","png","jpg","jpeg","webp","txt","doc","docx","csv","xlsx","zip"];const ext=attachment.name.includes(".")?attachment.name.split(".").pop()?.toLowerCase():"";if(!ext||!allowed.includes(ext))throw new Error("Unsupported file type.");if(attachment.size>10*1024*1024)throw new Error("File too large.");uploadedPath=`${selectedId}/${clientMessageId}.${ext}`;
+        const attachmentName=`${clientMessageId}.${ext}`;
+        const {data:existingFiles,error:listError}=await supabase.storage.from("message-attachments").list(selectedId,{search:attachmentName,limit:10});
+        if(listError)throw listError;
+        if(!existingFiles?.some(file=>file.name===attachmentName)){
+          const {error:uploadError}=await supabase.storage.from("message-attachments").upload(uploadedPath,attachment,{contentType:attachment.type||"application/octet-stream",upsert:false});
+          if(uploadError){
+            const {data:retryFiles,error:retryListError}=await supabase.storage.from("message-attachments").list(selectedId,{search:attachmentName,limit:10});
+            if(retryListError||!retryFiles?.some(file=>file.name===attachmentName))throw uploadError;
+          }
+        }}
       const payload={conversation_id:selectedId,sender_id:effectiveUserId,client_message_id:clientMessageId,body:body.trim(),message_type:messageType,attachment_path:uploadedPath||null,attachment_name:attachment?.name||null,attachment_type:attachment?.type||null,attachment_size:attachment?.size||null};
       let {data:savedMessage,error:insertError}=await supabase.from("messages").insert(payload).select("id,conversation_id,sender_id,body,message_type,created_at,client_message_id,attachment_path,attachment_name,attachment_type,attachment_size").single();
       if(insertError?.code==="23505"){const existing=await supabase.from("messages").select("id,conversation_id,sender_id,body,message_type,created_at,client_message_id,attachment_path,attachment_name,attachment_type,attachment_size").eq("conversation_id",selectedId).eq("sender_id",effectiveUserId).eq("client_message_id",clientMessageId).maybeSingle();if(existing.error)throw existing.error;savedMessage=existing.data;insertError=null;if(uploadedPath&&savedMessage?.attachment_path!==uploadedPath)await supabase.storage.from("message-attachments").remove([uploadedPath]);}
