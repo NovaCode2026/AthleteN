@@ -12,14 +12,15 @@
 
 AthleteN Mobile is built with React Native, Expo SDK 57 and Expo Router. It connects to the same Supabase identity, account roles, subscription entitlements and data model as the web application.
 
-> Start with the [AthleteN Platform Guide](../docs/ATHLETEN_PLATFORM_GUIDE.md), then read [Plans, Verification & Billing](../docs/PLAN_VERIFICATION_AND_BILLING.md) for the exact Student, Coach and Academy click → verify → checkout journeys. The [Documentation Hub](../docs/README.md) links every project guide.
+> Start with the [AthleteN Platform Guide](../docs/ATHLETEN_PLATFORM_GUIDE.md), then review [Taekwondo Disciplines](../docs/TAEKWONDO_DISCIPLINES.md) for the sport-first selector and the distinct Kyorugi/Poomsae tools. Then read [Plans, Verification & Billing](../docs/PLAN_VERIFICATION_AND_BILLING.md) for the exact Student, Coach and Academy click → verify → checkout journeys. The [Documentation Hub](../docs/README.md) links every project guide.
 
 ## 🌟 Main experience
 
 ### 🥋 Athlete
 - Athlete home, profile and journey
 - Training and competition records
-- Taekwondo Kyorugi and Poomsae workflows
+- Sport-first Taekwondo profile selection, followed by Kyorugi or Poomsae
+- Separate Kyorugi Hub and Poomsae Studio labels, practice logging and official performance results
 - Medals, goals, documents and weight records
 - Calendar, attendance and notifications
 - Coach and Academy connections
