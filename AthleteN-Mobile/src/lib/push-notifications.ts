@@ -7,6 +7,15 @@ import { supabase } from '@/lib/supabase';
 
 export const ATHLETEN_NOTIFICATION_CHANNEL_ID = 'athleten-default-v2';
 
+let registeredPushToken: string | null = null;
+let registeredPushUserId: string | null = null;
+
+function getExpoProjectId() {
+  return Constants.expoConfig?.extra?.eas?.projectId ??
+    Constants.easConfig?.projectId ??
+    process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+}
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
@@ -36,10 +45,7 @@ export async function registerForPushNotifications(userId: string) {
   }
   if (status !== 'granted') return { token: null, reason: 'permission-denied' as const };
 
-  const projectId =
-    Constants.expoConfig?.extra?.eas?.projectId ??
-    Constants.easConfig?.projectId ??
-    process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+  const projectId = getExpoProjectId();
 
   if (!projectId) return { token: null, reason: 'expo-project-id-missing' as const };
 
@@ -57,7 +63,36 @@ export async function registerForPushNotifications(userId: string) {
   );
 
   if (error) throw error;
+  registeredPushToken = token;
+  registeredPushUserId = userId;
   return { token, reason: 'registered' as const };
+}
+
+export async function unregisterPushNotifications(userId: string) {
+  if (!userId) return;
+
+  let token = registeredPushUserId === userId ? registeredPushToken : null;
+  if (!token && Device.isDevice) {
+    const permission = await Notifications.getPermissionsAsync();
+    const projectId = getExpoProjectId();
+    if (permission.status === 'granted' && projectId) {
+      token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    }
+  }
+
+  if (token) {
+    const { error } = await supabase
+      .from('device_push_tokens')
+      .delete()
+      .eq('user_id', userId)
+      .eq('token', token);
+    if (error) throw error;
+  }
+
+  if (registeredPushUserId === userId) {
+    registeredPushToken = null;
+    registeredPushUserId = null;
+  }
 }
 
 async function acknowledgeMessageDelivery(data: Record<string, unknown> | undefined) {
