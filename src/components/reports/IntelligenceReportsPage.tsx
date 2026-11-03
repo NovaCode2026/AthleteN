@@ -14,7 +14,8 @@ const previousMonth = () => {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const end = new Date(now.getFullYear(), now.getMonth(), 1);
-  return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10), label: start.toLocaleString(undefined, { month: "long", year: "numeric" }) };
+  const key = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return { start: key(start), end: key(end), label: start.toLocaleString(undefined, { month: "long", year: "numeric" }) };
 };
 
 export default function IntelligenceReportsPage({ setToast, profile }: { setToast: Toast; profile: Profile }) {
