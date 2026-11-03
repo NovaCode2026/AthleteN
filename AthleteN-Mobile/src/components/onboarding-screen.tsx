@@ -11,16 +11,16 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
   const [name,setName]=useState('');
   const [dob,setDob]=useState('');
   const [gender,setGender]=useState('');
-  const [sport,setSport]=useState<'taekwondo'>('taekwondo');
+  const [sport,setSport]=useState<'taekwondo'|''>('');
   const [club,setClub]=useState('');
   const [coach,setCoach]=useState('');
   const [connectionCode,setConnectionCode]=useState('');
-  const [discipline,setDiscipline]=useState<'kyorugi'|'poomsae'>('kyorugi');
+  const [discipline,setDiscipline]=useState<'kyorugi'|'poomsae'|null>(null);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
 
   async function save() {
-    if (!name.trim()||!dob.trim()||!gender.trim()||sport!=='taekwondo'||!['kyorugi','poomsae'].includes(discipline)) {
+    if (!name.trim()||!dob.trim()||!gender.trim()||sport!=='taekwondo'||(!discipline||!['kyorugi','poomsae'].includes(discipline))) {
       setError('Name, date of birth, gender, Taekwondo sport and a discipline are required.'); return;
     }
     if (!isValidDob(dob)) { setError('Enter a valid date of birth in YYYY-MM-DD format, for example 2013-10-23.'); return; }
@@ -53,7 +53,7 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
     <View style={styles.field}>
       <Text style={styles.label}>1 · SPORT *</Text>
       <View style={styles.row}>
-        <Pressable onPress={()=>setSport('taekwondo')} style={[styles.choice,sport==='taekwondo'&&styles.choiceActive]} accessibilityRole="radio" accessibilityState={{selected:sport==='taekwondo'}}>
+        <Pressable onPress={()=>{if(sport!=='taekwondo'){setSport('taekwondo');setDiscipline(null)}}} style={[styles.choice,sport==='taekwondo'&&styles.choiceActive]} accessibilityRole="radio" accessibilityState={{selected:sport==='taekwondo'}}>
           <Text style={styles.choiceText}>🥋 Taekwondo</Text>
         </Pressable>
       </View>
