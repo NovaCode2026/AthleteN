@@ -103,7 +103,6 @@ Keep local development callbacks only if they are still needed. Do not add broad
 1. Confirm the latest `main` commit is the intended release candidate.
 2. Confirm GitHub CI and CodeQL are green for that exact commit.
 3. Confirm the Mobile Check and APK workflows are green for the exact mobile source commit.
-3. Confirm the mobile check is green for the mobile source commit.
 4. Confirm Supabase migrations referenced by the code are applied to project `wjegokgtrewtoopbsiol`.
 5. Confirm Netlify Production environment variables exist; do not reveal or copy secrets into chat or source control.
 6. Build from the repository root and confirm `dist/index.html` and `dist/_redirects` exist.
@@ -121,6 +120,8 @@ Use a test account for each role; do not use a real athlete's private data for a
 - Messaging: direct and group chats, retry after a network interruption, attachments, Delivered/Read receipts.
 - Notifications: in-app inbox and Android push with a registered physical device.
 - AI Coach: entitlement checks, request limits and server-side API key handling.
+- AI reports: confirm Free is blocked; Student requires latest Admin approval; Coach requires the existing Coach role and confirmed account email; Academy requires the verified Academy Admin workspace.
+- Monthly reports: check the previous completed month, attendance/training/competition snapshot, correct athlete relationship scope and private saved report history.
 - Deep links and refresh: `/auth/callback`, `/reset-password`, and normal SPA route refresh.
 
 ## Release caveats
