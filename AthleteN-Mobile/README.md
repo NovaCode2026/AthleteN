@@ -14,13 +14,19 @@ AthleteN Mobile is built with React Native, Expo SDK 57 and Expo Router. It conn
 
 > Start with the [AthleteN Platform Guide](../docs/ATHLETEN_PLATFORM_GUIDE.md), then review [Taekwondo Disciplines](../docs/TAEKWONDO_DISCIPLINES.md) for the sport-first selector and the distinct Kyorugi/Poomsae tools. Then read [Plans, Verification & Billing](../docs/PLAN_VERIFICATION_AND_BILLING.md) for the exact Student, Coach and Academy click → verify → checkout journeys. The [Documentation Hub](../docs/README.md) links every project guide.
 
+## 🥋 Sport and discipline selection
+
+AthleteN currently exposes **Taekwondo only**. New profiles must select the sport first, then choose one of its available disciplines. Kyorugi and Poomsae are explicit choices; the app does not guess Kyorugi for an incomplete profile. Changing a sport selection clears its dependent discipline. See the [Taekwondo Disciplines guide](../docs/TAEKWONDO_DISCIPLINES.md) for the complete feature matrix, data model and acceptance checklist.
+
 ## 🌟 Main experience
 
 ### 🥋 Athlete
 - Athlete home, profile and journey
 - Training and competition records
 - Sport-first Taekwondo profile selection, followed by Kyorugi or Poomsae
-- Separate Kyorugi Hub and Poomsae Studio labels, practice logging and official performance results
+- Sport-first profile setup: choose Taekwondo first, then explicitly choose Kyorugi or Poomsae; no silent default discipline
+- Separate Kyorugi Hub and Poomsae Studio labels, discipline-specific training/session labels, practice logging and official performance results
+- Poomsae tools: forms library, Individual/Pair/Team/Freestyle categories, technique-focus options, repetition logging, event scores, placings, medal results and Poomsae history
 - Medals, goals, documents and weight records
 - Calendar, attendance and notifications
 - Coach and Academy connections
