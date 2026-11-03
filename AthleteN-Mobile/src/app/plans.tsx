@@ -88,7 +88,7 @@ export default function PlansScreen() {
     setBusyPlan(planId);
     setMessage('');
     try {
-      const baseUrl = (process.env.EXPO_PUBLIC_ATHLETEN_API_URL || 'https://athleten.netlify.app').replace(/\\/$/, '');
+      const baseUrl = (process.env.EXPO_PUBLIC_ATHLETEN_API_URL || 'https://athleten.netlify.app').replace(/\/$/, '');
       const response = await fetch(baseUrl + '/.netlify/functions/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
