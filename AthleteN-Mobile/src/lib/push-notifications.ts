@@ -60,10 +60,24 @@ export async function registerForPushNotifications(userId: string) {
   return { token, reason: 'registered' as const };
 }
 
+async function acknowledgeMessageDelivery(data: Record<string, unknown> | undefined) {
+  const messageId = data?.messageId;
+  if (typeof messageId !== 'string' || !messageId) return;
+  const { error } = await supabase.rpc('mark_messages_delivered', { p_message_ids: [messageId] });
+  if (error) {
+    // The in-app message screen will retry the acknowledgement when it loads.
+    console.warn('AthleteN could not acknowledge a push-delivered message yet.');
+  }
+}
+
 export function attachNotificationListeners() {
-  const received = Notifications.addNotificationReceivedListener(() => undefined);
+  const received = Notifications.addNotificationReceivedListener((event) => {
+    void acknowledgeMessageDelivery(event.notification.request.content.data);
+  });
   const response = Notifications.addNotificationResponseReceivedListener((event) => {
-    const route = event.notification.request.content.data?.route;
+    const notificationData = event.notification.request.content.data;
+    void acknowledgeMessageDelivery(notificationData);
+    const route = notificationData?.route;
     if (typeof route === 'string' && route.startsWith('/')) {
       router.push(route as never);
     }
