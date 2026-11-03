@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -16,11 +17,14 @@ const POOMSAE_FORMS = [
 const CATEGORIES = ['Individual','Pair','Team','Freestyle','Other'];
 const FOCUS_OPTIONS = ['Stance & balance','Technique accuracy','Timing & rhythm','Power & control','Presentation','Freestyle choreography'];
 const today = () => new Date().toISOString().slice(0,10);
-const normalizeDiscipline = (value: unknown): Discipline =>
-  String(value || '').toLowerCase() === 'poomsae' ? 'poomsae' : 'kyorugi';
+const normalizeDiscipline = (value: unknown): Discipline | null => {
+  const current = String(value || '').toLowerCase();
+  return current === 'poomsae' ? 'poomsae' : current === 'kyorugi' ? 'kyorugi' : null;
+};
 
 export default function TaekwondoScreen() {
   const { session, profile, syncVersion } = useAuth();
+  const router = useRouter();
   const discipline = normalizeDiscipline(profile?.discipline);
   const [bouts,setBouts] = useState<any[]>([]);
   const [performances,setPerformances] = useState<any[]>([]);
@@ -31,7 +35,7 @@ export default function TaekwondoScreen() {
   const [message,setMessage] = useState('');
 
   const load = useCallback(async () => {
-    if (!session) return;
+    if (!session || !discipline) return;
     const uid = session.user.id;
     const trainingQuery = supabase.from('taekwondo_training_logs')
       .select('id,title,session_date,focus,poomsae_name,category,rounds,repetitions,notes')
@@ -119,6 +123,7 @@ export default function TaekwondoScreen() {
   }
 
   const isPoomsae = discipline === 'poomsae';
+  if (!discipline) return <Screen><Header eyebrow="TAEKWONDO SETUP" title="Choose your discipline" subtitle="Choose Taekwondo in your profile first, then select Kyorugi or Poomsae."/><Card accent><Text style={{color:c.text,fontSize:14,fontWeight:'900'}}>Your selection controls the tools shown here.</Text><Text style={{color:c.muted,fontSize:11,lineHeight:17}}>Kyorugi has sparring and bout records. Poomsae has forms practice, repetitions, scores, placings and its own performance history.</Text><Pressable onPress={()=>router.push('/profile')} style={{backgroundColor:c.accent,borderRadius:12,padding:13,alignItems:'center'}}><Text style={{color:'#fff',fontSize:10,fontWeight:'900'}}>OPEN PROFILE & SELECT</Text></Pressable></Card></Screen>;
   return (
     <Screen>
       <Header eyebrow="TAEKWONDO EDITION" title={isPoomsae ? 'Poomsae Studio' : 'Kyorugi Hub'}
