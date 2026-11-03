@@ -77,3 +77,35 @@ test('messaging migration safely replaces the prior constraint and keeps member-
   assert.match(migration, /char_length\(trim\(coalesce\(body, ''\)\)\) between 1 and 4000/);
   assert.match(migration, /attachment_path is not null/);
 });
+
+
+test('web and Android acknowledge message delivery through recipient-scoped receipts', () => {
+  const web = read('src/components/messaging/MessagingPage.tsx');
+  const mobile = read('AthleteN-Mobile/src/app/(tabs)/messages.tsx');
+  const receiptMigration = read('supabase/migrations/20261101153000_message_delivery_receipts_and_notifications.sql');
+  assert.match(web, /mark_messages_delivered/);
+  assert.match(web, /table:"message_receipts"/);
+  assert.match(web, /mark_messages_read/);
+  assert.match(mobile, /mark_messages_delivered/);
+  assert.match(mobile, /table:'message_receipts'/);
+  assert.match(mobile, /mark_messages_read/);
+  assert.match(receiptMigration, /unique\(message_id, user_id\)/);
+  assert.match(receiptMigration, /message_receipts_read_requires_delivery/);
+});
+
+test('message attachment retries reuse the idempotency key and stable storage path', () => {
+  const web = read('src/components/messaging/MessagingPage.tsx');
+  const mobile = read('AthleteN-Mobile/src/app/(tabs)/messages.tsx');
+  assert.match(web, /uploadedPath=.*clientMessageId.*ext/);
+  assert.match(web, /upsert:true/);
+  assert.match(mobile, /uploadedPath=.*clientMessageId.*ext/);
+  assert.match(mobile, /upsert:true/);
+});
+
+test('pg_net is recorded as a required dependency for server-dispatched Expo notifications', () => {
+  const migration = read('supabase/migrations/20261103100630_enable_pg_net_notification_dispatch.sql');
+  assert.match(migration, /create extension if not exists pg_net/i);
+  const dispatch = read('supabase/migrations/20261103100957_harden_notification_push_dispatch.sql');
+  assert.match(dispatch, /net\.http_post/);
+  assert.match(dispatch, /exception when others then/i);
+});
