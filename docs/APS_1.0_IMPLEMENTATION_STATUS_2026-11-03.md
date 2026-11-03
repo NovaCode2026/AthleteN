@@ -62,8 +62,8 @@ Matching migration files are in `supabase/migrations/`.
 
 | Gate | Latest observed result | Notes |
 |---|---|---|
-| Web CI | PASS | Tests and production build passed on commit `870a329d079e48ebe0343247eb5c2cba06d23537` (run `41627453702`). Latest docs-only commit has another CI run in progress. |
-| CodeQL | PASS | Analysis passed on commit `870a329d079e48ebe0343247eb5c2cba06d23537` (run `41627453916`). Latest docs-only commit has another analysis in progress. |
+| Web CI | PASS | Tests and production build passed on current documentation/release-status commit `06fed37064e6da36ebf275e9abecea7c0715c589` (run `41628528132`). |
+| CodeQL | PASS | Analysis passed on current documentation/release-status commit `06fed37064e6da36ebf275e9abecea7c0715c589` (run `41628528010`). |
 | Mobile Check | PASS | Expo Doctor, TypeScript, ESLint and Android bundle check passed on mobile source commit `21416958d102db405090b3723084ca39f5252ee9` (run `41628045317`), including the per-200-message receipt batching. |
 | Android APK | IN PROGRESS | The APK workflow for mobile source commit `21416958d102db405090b3723084ca39f5252ee9` is running (run `41628045170`); no artifact is available yet. The older APK workflow `41626472271` is also still running and has no artifact. |
 | Netlify production | READY, but STALE | Published deploy `6ae372d8d6582ed467b6b3cc` is ready, but it points to commit `6137212178dfa49a0cc19711e681d692b120b551` from 29 October 2026, not the current release candidate. |
