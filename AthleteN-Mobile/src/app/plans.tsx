@@ -157,8 +157,8 @@ export default function PlansScreen() {
         <View style={s.aiPill}><Text style={s.aiText}>{p.ai === 0 ? 'No AI requests included' : p.ai + ' AI requests every month'}</Text></View>
         {p.features.map((feature) => <View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
         {p.id === 'student' ? <Text style={s.meta}>Student verification: {studentStatus === 'approved' ? 'Approved' : studentStatus === 'pending' ? 'Pending Admin approval' : studentStatus === 'rejected' ? 'Rejected · resubmit proof' : 'Not submitted'}</Text> : null}
-        <Pressable disabled={active || !!busyPlan || p.id === 'free' || (p.id === 'student' && studentStatus === 'pending')} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => p.id === 'student' && studentStatus !== 'approved' ? router.push('/verification') : void startCheckout(p.id)}>
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : p.id === 'student' && studentStatus === 'pending' ? 'AWAITING APPROVAL' : p.id === 'student' && studentStatus !== 'approved' ? 'SUBMIT STUDENT PROOF' : 'BUY PLAN'}</Text>}
+        <Pressable disabled={active || !!busyPlan || p.id === 'free' || (p.id === 'student' && (studentStatus === 'pending' || studentStatus === 'approved'))} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => p.id === 'student' && studentStatus !== 'approved' ? router.push('/verification') : void startCheckout(p.id)}>
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : p.id === 'student' && studentStatus === 'pending' ? 'AWAITING APPROVAL' : p.id === 'student' && studentStatus !== 'approved' ? 'SUBMIT STUDENT PROOF' : p.id === 'student' && studentStatus === 'approved' ? 'APPROVED · PURCHASE COMING SOON' : 'PAID CHECKOUT COMING SOON'}</Text>}
         </Pressable>
         {p.id === 'free' ? <View style={s.note}>
           <Text style={s.noteTitle}>What Free is missing</Text>
@@ -186,11 +186,11 @@ export default function PlansScreen() {
           <Text style={s.meta}>{p.description}</Text>
           {billing === 'yearly' ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
           <Pressable
-            disabled={!!busyPlan || (!!isCurrent && owned) || role !== (productRole === 'coach' ? 'coach' : 'academy_admin')}
+            disabled={true}
             style={[s.planButton, isCurrent && s.planButtonActive]}
             onPress={() => void startCheckout(productRole === 'coach' ? 'coach' : 'academy')}
           >
-            <Text style={s.planButtonText}>{isCurrent && owned ? 'CURRENT PLAN' : role !== (productRole === 'coach' ? 'coach' : 'academy_admin') ? (productRole === 'coach' ? 'COACH VERIFICATION REQUIRED' : 'ACADEMY VERIFICATION REQUIRED') : busyPlan === (productRole === 'coach' ? 'coach' : 'academy') ? 'STARTING CHECKOUT…' : 'BUY PLAN'}</Text>
+            <Text style={s.planButtonText}>{isCurrent && owned ? 'CURRENT PLAN' : role !== (productRole === 'coach' ? 'coach' : 'academy_admin') ? (productRole === 'coach' ? 'COACH VERIFICATION REQUIRED' : 'ACADEMY VERIFICATION REQUIRED') : 'PAID CHECKOUT COMING SOON'}</Text>
           </Pressable>
         </View>;
       })}
