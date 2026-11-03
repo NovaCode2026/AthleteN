@@ -209,17 +209,22 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
   const role = String(profile.role || "athlete");
   const currentPlan = String(profile.plan_id || "free");
   useEffect(() => {
-    let alive = true;
     if (role !== "athlete" || !userId || !supabase) return;
-    setStudentLoading(true);
-    void supabase.from("student_verifications").select("status,reviewed_at,created_at")
-      .eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle()
-      .then(({ data, error }) => {
-        if (!alive) return;
-        if (error) onToast({ type: "error", message: "Student verification status could not be loaded." });
-        else setStudentStatus(String(data?.status || "not_submitted"));
-      }).finally(() => { if (alive) setStudentLoading(false); });
-    return () => { alive = false; };
+    let alive = true;
+    const refreshStatus = async () => {
+      setStudentLoading(true);
+      const { data, error } = await supabase.from("student_verifications").select("status,reviewed_at,created_at")
+        .eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (!alive) return;
+      if (error) onToast({ type: "error", message: "Student verification status could not be loaded." });
+      else setStudentStatus(String(data?.status || "not_submitted"));
+      setStudentLoading(false);
+    };
+    void refreshStatus();
+    const channel = supabase.channel("plan-student-verification-" + userId)
+      .on("postgres_changes", { event: "*", schema: "public", table: "student_verifications", filter: "user_id=eq." + userId }, () => { void refreshStatus(); })
+      .subscribe();
+    return () => { alive = false; void supabase.removeChannel(channel); };
   }, [role, userId]);
   function openPage(path: string) {
     window.history.pushState(null, "", path);
@@ -271,7 +276,7 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
         const isCurrent = currentPlan === plan.id;
         const canBuy = eligible(plan.id);
         const studentNeedsApproval = plan.id === "student" && studentStatus !== "approved";
-        return <article className={`card plan-card ${isCurrent ? "active" : ""}`} key={plan.id}>
+        return <div key={plan.id} style={{ display: "contents" }}><article className={`card plan-card ${isCurrent ? "active" : ""}`}>
           <div className="plan-card-head">
             <span className="pill">{plan.audience}</span>
             {isCurrent && <span className="status-chip success">Current plan</span>}
@@ -286,16 +291,8 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
               onClick={() => studentNeedsApproval && plan.id === "student" ? openPage("/verification") : void startCheckout(plan.id)}>
               {busyPlan === plan.id ? "Starting checkout…" : isCurrent ? "Current plan" : !canBuy && !studentNeedsApproval ? (plan.id === "coach" ? "Coach verification required" : plan.id === "academy" ? "Academy verification required" : "Athletes only") : studentNeedsApproval ? (studentStatus === "pending" ? "Awaiting admin approval" : "Submit student proof") : "Buy plan"}
             </button>}
-        </article>;
+        </article>{isFree && <section className="card panel plan-card"><p className="eyebrow">FREE PLAN LIMITS</p><h3>What Free is missing</h3><div className="grid two"><div><h4>AI Match Reports</h4><p>Structured review of supplied match result, score and observations.</p></div><div><h4>AI Monthly Reports</h4><p>Monthly summaries for Athletes, Coaches and Academies using their permitted AthleteN records.</p></div></div><p className="notice">Included with paid plans only.</p></section>}</div>;
       })}
-    </section>
-    <section className="card panel">
-      <p className="eyebrow">FREE PLAN LIMITS</p><h3>What Free is missing</h3>
-      <p>AI Match Reports and AI Monthly Reports are paid features. They are available only when the account has the matching paid plan and role entitlement.</p>
-      <div className="grid two">
-        <div><h4>AI Match Reports</h4><p>Structured review of supplied match result, score and observations.</p></div>
-        <div><h4>AI Monthly Reports</h4><p>Monthly summaries for Athletes, Coaches and Academies using their permitted AthleteN records.</p></div>
-      </div>
     </section>
     <section className="card panel"><h3>Verification and payment are separate</h3><p>Student proof must be approved by an Admin before Student checkout is available. Coach and Academy plans continue to depend on their existing verified account roles. A successful payment activates the subscription; an approval alone never charges the account.</p><p className="notice">Paid checkout remains in Free Launch mode until the payment launch switch and provider configuration are enabled.</p></section>
   </FeaturePage>;
