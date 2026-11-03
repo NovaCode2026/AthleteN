@@ -148,6 +148,9 @@ export default async function handler(request) {
   if (planId !== "free" && !roleAllowed) {
     return json("Your account type does not match this paid plan. Contact AthleteN support.", 403);
   }
+  if (["coach", "academy"].includes(planId) && !userData.user.email_confirmed_at) {
+    return json("Verify your AthleteN account email before using Coach or Academy AI features.", 403);
+  }
 
   if (planId === "student") {
     const { data: verification, error: verificationError } = await supabase
