@@ -19,6 +19,7 @@ type AttendanceMetric = { user_id:string; attended_at:string; status:string };
 type MedalMetric = { user_id:string; awarded_at:string|null; medal_type:string };
 type CompetitionMetric = { user_id:string; starts_at:string|null; result:string|null };
 function monthlySeries(rows:Array<{date:string|null}>,key:"sessions"|"records",months=6){const count=Math.max(3,Math.min(12,months));return Array.from({length:count},(_,i)=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-(count-1-i));const month=d.toLocaleDateString(undefined,{month:"short"});const prefix=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;return {month,[key]:rows.filter(x=>x.date?.startsWith(prefix)).length};});}
+async function fetchAllPages<T>(fetchPage:(from:number,to:number)=>PromiseLike<any>):Promise<T[]>{const rows:T[]=[];for(let from=0;from<100000;from+=500){const {data,error}=await fetchPage(from,from+499);if(error)throw error;const page=(data||[]) as T[];rows.push(...page);if(page.length<500)return rows;}throw new Error("Analytics result exceeded the safe 100,000-row paging limit. Narrow the date range.");}
 
 function Card({ children }: { children: React.ReactNode }) { return <section className="card panel">{children}</section>; }
 function ErrorText({ children }: { children: React.ReactNode }) { return <p className="notice" role="alert">{children}</p>; }
@@ -80,18 +81,24 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
     setNutritionEnabled(Object.fromEntries(((nutritionResult.data || []) as any[]).map((row) => [row.athlete_user_id, row.enabled === true])));
     const athleteIds=Array.from(new Set([...(profileResult.data||[]).map((a:any)=>a.user_id),...(linkResult.data||[]).filter((x:any)=>x.status==="active").map((x:any)=>x.athlete_user_id)].filter(Boolean)));
     if(athleteIds.length){
-      const [tr,ar,mr,cr]=await Promise.all([
-        supabase.from("training_sessions").select("user_id,session_date,minutes").in("user_id",athleteIds).order("session_date",{ascending:false}).limit(500),
-        supabase.from("attendance_records").select("user_id,attended_at,status").in("user_id",athleteIds).order("attended_at",{ascending:false}).limit(500),
-        supabase.from("medals").select("user_id,awarded_at,medal_type").in("user_id",athleteIds).order("awarded_at",{ascending:false}).limit(500),
-        supabase.from("tournaments").select("user_id,starts_at,result").in("user_id",athleteIds).order("starts_at",{ascending:false}).limit(500)
-      ]);
-      setTrainingMetrics((tr.data||[]) as TrainingMetric[]);setAttendanceMetrics((ar.data||[]) as AttendanceMetric[]);setMedalMetrics((mr.data||[]) as MedalMetric[]);setCompetitionMetrics((cr.data||[]) as CompetitionMetric[]);
-      setAnalyticsUnavailable(Boolean(tr.error&&ar.error&&mr.error&&cr.error));
+      const start=new Date();start.setDate(1);start.setMonth(start.getMonth()-(rangeMonths-1));
+      const startDate=[start.getFullYear(),String(start.getMonth()+1).padStart(2,"0"),"01"].join("-");
+      try{
+        const [tr,ar,mr,cr]=await Promise.all([
+          fetchAllPages<TrainingMetric>((from,to)=>supabase.from("training_sessions").select("user_id,session_date,minutes").in("user_id",athleteIds).gte("session_date",startDate).order("session_date",{ascending:false}).range(from,to)),
+          fetchAllPages<AttendanceMetric>((from,to)=>supabase.from("attendance_records").select("user_id,attended_at,status").in("user_id",athleteIds).gte("attended_at",startDate).order("attended_at",{ascending:false}).range(from,to)),
+          fetchAllPages<MedalMetric>((from,to)=>supabase.from("medals").select("user_id,awarded_at,medal_type").in("user_id",athleteIds).gte("awarded_at",startDate).order("awarded_at",{ascending:false}).range(from,to)),
+          fetchAllPages<CompetitionMetric>((from,to)=>supabase.from("tournaments").select("user_id,starts_at,result").in("user_id",athleteIds).gte("starts_at",startDate).order("starts_at",{ascending:false}).range(from,to))
+        ]);
+        setTrainingMetrics(tr);setAttendanceMetrics(ar);setMedalMetrics(mr);setCompetitionMetrics(cr);setAnalyticsUnavailable(false);
+      }catch(e){
+        setTrainingMetrics([]);setAttendanceMetrics([]);setMedalMetrics([]);setCompetitionMetrics([]);setAnalyticsUnavailable(true);
+        setError(e instanceof Error?e.message:"Coach analytics could not be loaded.");
+      }
     }else{setTrainingMetrics([]);setAttendanceMetrics([]);setMedalMetrics([]);setCompetitionMetrics([]);setAnalyticsUnavailable(false);}
     setLoading(false);
   }
-  useEffect(() => { void load(); }, [userId]);
+  useEffect(() => { void load(); }, [userId, rangeMonths]);
 
   async function findAthlete() {
     setBusy(true); setError(""); setFoundAthlete(null);
@@ -217,17 +224,24 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
     setMemberProfiles((profileResult.data || []) as Athlete[]);
     const athleteIds=(profileResult.data||[]).filter((p:any)=>p.role!=="coach"&&p.role!=="academy_admin").map((p:any)=>p.user_id).filter(Boolean);
     if(athleteIds.length){
-      const [tr,ar,mr,cr]=await Promise.all([
-        supabase.from("training_sessions").select("user_id,session_date,minutes").in("user_id",athleteIds).order("session_date",{ascending:false}).limit(1000),
-        supabase.from("attendance_records").select("user_id,attended_at,status").eq("academy_id",id).order("attended_at",{ascending:false}).limit(1000),
-        supabase.from("medals").select("user_id,awarded_at,medal_type").in("user_id",athleteIds).order("awarded_at",{ascending:false}).limit(1000),
-        supabase.from("tournaments").select("user_id,starts_at,result").in("user_id",athleteIds).order("starts_at",{ascending:false}).limit(1000)
-      ]);
-      setAcademyTraining((tr.data||[]) as TrainingMetric[]);setAcademyAttendance((ar.data||[]) as AttendanceMetric[]);setAcademyMedals((mr.data||[]) as MedalMetric[]);setAcademyCompetitions((cr.data||[]) as CompetitionMetric[]);
+      const start=new Date();start.setDate(1);start.setMonth(start.getMonth()-(rangeMonths-1));
+      const startDate=[start.getFullYear(),String(start.getMonth()+1).padStart(2,"0"),"01"].join("-");
+      try{
+        const [tr,ar,mr,cr]=await Promise.all([
+          fetchAllPages<TrainingMetric>((from,to)=>supabase.from("training_sessions").select("user_id,session_date,minutes").in("user_id",athleteIds).gte("session_date",startDate).order("session_date",{ascending:false}).range(from,to)),
+          fetchAllPages<AttendanceMetric>((from,to)=>supabase.from("attendance_records").select("user_id,attended_at,status").eq("academy_id",id).gte("attended_at",startDate).order("attended_at",{ascending:false}).range(from,to)),
+          fetchAllPages<MedalMetric>((from,to)=>supabase.from("medals").select("user_id,awarded_at,medal_type").in("user_id",athleteIds).gte("awarded_at",startDate).order("awarded_at",{ascending:false}).range(from,to)),
+          fetchAllPages<CompetitionMetric>((from,to)=>supabase.from("tournaments").select("user_id,starts_at,result").in("user_id",athleteIds).gte("starts_at",startDate).order("starts_at",{ascending:false}).range(from,to))
+        ]);
+        setAcademyTraining(tr);setAcademyAttendance(ar);setAcademyMedals(mr);setAcademyCompetitions(cr);
+      }catch(e){
+        setAcademyTraining([]);setAcademyAttendance([]);setAcademyMedals([]);setAcademyCompetitions([]);
+        setError(e instanceof Error?e.message:"Academy analytics could not be loaded.");
+      }
     }else{setAcademyTraining([]);setAcademyAttendance([]);setAcademyMedals([]);setAcademyCompetitions([]);}
     setLoading(false);
   }
-  useEffect(() => { void load(); }, [userId]);
+  useEffect(() => { void load(); }, [userId, rangeMonths]);
 
   async function createAcademy() {
     if (!supabase || !userId || !academyName.trim()) return;
