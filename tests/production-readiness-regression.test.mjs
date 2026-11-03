@@ -123,3 +123,47 @@ test('coach and academy analytics support date ranges, CSV exports, and print-to
   assert.match(dashboards, /window\.print\(\)/);
   assert.match(styles, /@media print/);
 });
+
+test('message notifications carry a source message ID and acknowledge push delivery on both clients', () => {
+  const migration = read('supabase/migrations/20261103110000_message_notification_delivery_ack.sql');
+  const mobilePush = read('AthleteN-Mobile/src/lib/push-notifications.ts');
+  const webApp = read('src/App.tsx');
+  assert.match(migration, /notifications_message_id_fkey/);
+  assert.match(migration, /message_id/);
+  assert.match(migration, /'messageId', new\.message_id::text/);
+  assert.match(mobilePush, /acknowledgeMessageDelivery/);
+  assert.match(mobilePush, /mark_messages_delivered/);
+  assert.match(webApp, /message_id\?:string\|null/);
+  assert.match(webApp, /mark_messages_delivered/);
+});
+
+test('athlete dashboard preferences are saved securely and shared through Supabase', () => {
+  const dashboard = read('src/components/dashboard/AthleteCommandCenter.tsx');
+  const migration = read('supabase/migrations/20261103110200_dashboard_widget_preferences_rpc.sql');
+  assert.match(dashboard, /from\("dashboard_widgets"\)/);
+  assert.match(dashboard, /save_my_dashboard_widgets/);
+  assert.match(dashboard, /Move .* up/);
+  assert.doesNotMatch(dashboard, /window\.localStorage/);
+  assert.match(migration, /security invoker/i);
+  assert.match(migration, /auth\.uid\(\)/);
+  assert.match(migration, /widget_key/);
+  assert.match(migration, /grant execute on function public\.save_my_dashboard_widgets\(text\[\]\) to authenticated/i);
+});
+
+test('group message receipts report partial and all-member delivery/read progress', () => {
+  const web = read('src/components/messaging/MessagingPage.tsx');
+  const mobile = read('AthleteN-Mobile/src/app/(tabs)/messages.tsx');
+  assert.match(web, /Read by all/);
+  assert.match(web, /Delivered to all/);
+  assert.match(mobile, /READ BY ALL/);
+  assert.match(mobile, /DELIVERED TO ALL/);
+});
+
+test('coach and academy range summaries use the same filtered rows as their charts', () => {
+  const dashboards = read('src/components/roles/RoleDashboards.tsx');
+  assert.match(dashboards, /filteredAttendanceMetrics\.length/);
+  assert.match(dashboards, /filteredTrainingMetrics\.length\?</);
+  assert.match(dashboards, /filteredAcademyTraining\.length\?</);
+  assert.match(dashboards, /filteredAcademyAttendance\.length\?</);
+  assert.doesNotMatch(dashboards, /<strong>\{attendanceMetrics\.length\}<\/strong><small>Recorded check-ins/);
+});
