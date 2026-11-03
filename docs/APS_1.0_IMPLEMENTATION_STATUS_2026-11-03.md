@@ -65,7 +65,7 @@ Matching migration files are in `supabase/migrations/`.
 ### AI Intelligence Reports and role-based paid plans — 3 November 2026
 - AI Match Reports and AI Monthly Reports are included in paid plans only; Free remains blocked.
 - Athlete monthly report is available to Student, Pro and Elite athlete accounts. Coach reports use active coach-to-athlete links. Academy reports use active athlete memberships in the owned Academy workspace.
-- Monthly snapshots now include recorded attendance counts and attendance-status breakdowns alongside training sessions/minutes, medals, competitions and goal status.
+- Monthly snapshots now include recorded attendance counts and attendance-status breakdowns alongside training sessions/minutes, medals, competitions and goal status. Academy snapshots also include active coach counts and new athlete/coach memberships for the selected month.
 - Reports cover the previous completed calendar month and are currently generated on demand. No scheduled month-end delivery is claimed as live.
 - Match reports use user-supplied event, result, score and observations. No automatic video analysis is claimed.
 - Saved reports live in `ai_intelligence_reports`; RLS restricts report reads/inserts to the owner with the matching paid role and an active/trialing, unexpired subscription.
