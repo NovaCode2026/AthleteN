@@ -17,7 +17,7 @@
 
 AthleteN is an athlete-first sports operating system built to connect athletes, coaches and academies. It combines sports records, training, competition preparation, communication, role dashboards, reports and controlled AI features.
 
-The first and only currently supported sport vertical is Taekwondo. Athletes choose Taekwondo first, then select Kyorugi or Poomsae. Each discipline has distinct labels, training inputs and competition records. Future sports remain hidden until their workflows are implemented and tested. See [Taekwondo Disciplines](./TAEKWONDO_DISCIPLINES.md) for the complete feature map.
+The first and only currently supported sport vertical is Taekwondo. AthleteN uses one shared product and record model across two purpose-built interfaces: Web is the full command centre for detailed understanding, graphs, history and administration; Mobile is the compact companion for essential daily information and quick actions. Supabase remains the shared data and authorization source of truth. See [Web + Mobile Experience Model](./WEB_MOBILE_EXPERIENCE_MODEL.md) for the UI responsibilities, shared-data contracts, chart standards and parity tests. Athletes choose Taekwondo first, then select Kyorugi or Poomsae. Each discipline has distinct labels, training inputs and competition records. Future sports remain hidden until their workflows are implemented and tested. See [Taekwondo Disciplines](./TAEKWONDO_DISCIPLINES.md) for the complete feature map.
 
 ## 2. Roles and account boundaries
 
