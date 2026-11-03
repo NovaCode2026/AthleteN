@@ -11,6 +11,7 @@ export default function CoachMore() {
   const items = [
     ['Tournament Scanner', 'Find and track tournament sources.', '/scanner'],
     ['Competition Center', 'Review competition results and medals.', '/coach-competition'],
+    ['AI Intelligence Reports', 'Generate match analysis and monthly coaching reports.', '/reports'],
     ['Messages', 'Private athlete, coach and group communication.', '/messages'],
     ['Coach Profile', 'Photo, name, coach code, account and security.', '/coach-profile'],
     ['Feedback', 'Report a problem or request an improvement.', '/feedback'],
