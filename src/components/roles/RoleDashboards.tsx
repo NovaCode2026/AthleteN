@@ -18,7 +18,7 @@ type TrainingMetric = { user_id:string; session_date:string; minutes:number };
 type AttendanceMetric = { user_id:string; attended_at:string; status:string };
 type MedalMetric = { user_id:string; awarded_at:string|null; medal_type:string };
 type CompetitionMetric = { user_id:string; starts_at:string|null; result:string|null };
-function monthlySeries(rows:Array<{date:string|null}>,key:"sessions"|"records"){return Array.from({length:6},(_,i)=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-(5-i));const month=d.toLocaleDateString(undefined,{month:"short"});const prefix=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;return {month,[key]:rows.filter(x=>x.date?.startsWith(prefix)).length};});}
+function monthlySeries(rows:Array<{date:string|null}>,key:"sessions"|"records",months=6){const count=Math.max(3,Math.min(12,months));return Array.from({length:count},(_,i)=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-(count-1-i));const month=d.toLocaleDateString(undefined,{month:"short"});const prefix=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;return {month,[key]:rows.filter(x=>x.date?.startsWith(prefix)).length};});}
 
 function Card({ children }: { children: React.ReactNode }) { return <section className="card panel">{children}</section>; }
 function ErrorText({ children }: { children: React.ReactNode }) { return <p className="notice" role="alert">{children}</p>; }
@@ -61,6 +61,7 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   const [medalMetrics,setMedalMetrics]=useState<MedalMetric[]>([]);
   const [competitionMetrics,setCompetitionMetrics]=useState<CompetitionMetric[]>([]);
   const [analyticsUnavailable,setAnalyticsUnavailable]=useState(false);
+  const [rangeMonths,setRangeMonths]=useState(6);
 
   async function load() {
     if (!supabase || !userId) return;
@@ -122,19 +123,24 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   }
 
   const activeLinks = links.filter((item) => item.status === "active").length;
-  const trainingByMonth=useMemo(()=>monthlySeries(trainingMetrics.map(x=>({date:x.session_date})), "sessions"),[trainingMetrics]);
-  const attendanceByMonth=useMemo(()=>monthlySeries(attendanceMetrics.map(x=>({date:x.attended_at})), "records"),[attendanceMetrics]);
-  const presentCount=attendanceMetrics.filter(x=>["present","attended","late"].includes(String(x.status).toLowerCase())).length;
-  const attendanceRate=attendanceMetrics.length?Math.round(presentCount/attendanceMetrics.length*100):null;
-  const totalMinutes=trainingMetrics.reduce((sum,x)=>sum+(Number(x.minutes)||0),0);
+  const rangeStart=useMemo(()=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-(rangeMonths-1));d.setHours(0,0,0,0);return d;},[rangeMonths]);
+  const filteredTrainingMetrics=useMemo(()=>trainingMetrics.filter(x=>new Date(x.session_date)>=rangeStart),[trainingMetrics,rangeStart]);
+  const filteredAttendanceMetrics=useMemo(()=>attendanceMetrics.filter(x=>new Date(x.attended_at)>=rangeStart),[attendanceMetrics,rangeStart]);
+  const filteredMedalMetrics=useMemo(()=>medalMetrics.filter(x=>x.awarded_at&&new Date(x.awarded_at)>=rangeStart),[medalMetrics,rangeStart]);
+  const filteredCompetitionMetrics=useMemo(()=>competitionMetrics.filter(x=>x.starts_at&&new Date(x.starts_at)>=rangeStart),[competitionMetrics,rangeStart]);
+  const trainingByMonth=useMemo(()=>monthlySeries(filteredTrainingMetrics.map(x=>({date:x.session_date})),"sessions",rangeMonths),[filteredTrainingMetrics,rangeMonths]);
+  const attendanceByMonth=useMemo(()=>monthlySeries(filteredAttendanceMetrics.map(x=>({date:x.attended_at})),"records",rangeMonths),[filteredAttendanceMetrics,rangeMonths]);
+  const presentCount=filteredAttendanceMetrics.filter(x=>["present","attended","late"].includes(String(x.status).toLowerCase())).length;
+  const attendanceRate=filteredAttendanceMetrics.length?Math.round(presentCount/filteredAttendanceMetrics.length*100):null;
+  const totalMinutes=filteredTrainingMetrics.reduce((sum,x)=>sum+(Number(x.minutes)||0),0);
   function exportCoachReport(){downloadCsv("athleten-coach-roster-report.csv",[
-    ...trainingMetrics.map(x=>({record_type:"training",athlete_user_id:x.user_id,date:x.session_date,value:x.minutes,unit:"minutes"})),
-    ...attendanceMetrics.map(x=>({record_type:"attendance",athlete_user_id:x.user_id,date:x.attended_at,value:x.status,unit:""})),
-    ...medalMetrics.map(x=>({record_type:"medal",athlete_user_id:x.user_id,date:x.awarded_at,value:x.medal_type,unit:""})),
-    ...competitionMetrics.map(x=>({record_type:"competition",athlete_user_id:x.user_id,date:x.starts_at,value:x.result,unit:""}))
+    ...filteredTrainingMetrics.map(x=>({record_type:"training",athlete_user_id:x.user_id,date:x.session_date,value:x.minutes,unit:"minutes"})),
+    ...filteredAttendanceMetrics.map(x=>({record_type:"attendance",athlete_user_id:x.user_id,date:x.attended_at,value:x.status,unit:""})),
+    ...filteredMedalMetrics.map(x=>({record_type:"medal",athlete_user_id:x.user_id,date:x.awarded_at,value:x.medal_type,unit:""})),
+    ...filteredCompetitionMetrics.map(x=>({record_type:"competition",athlete_user_id:x.user_id,date:x.starts_at,value:x.result,unit:""}))
   ]);}
-  const medalBreakdown=useMemo(()=>Array.from(new Set(medalMetrics.map(x=>String(x.medal_type||"Unspecified")))).map(name=>({name,count:medalMetrics.filter(x=>String(x.medal_type||"Unspecified")===name).length})),[medalMetrics]);
-  const competitionBreakdown=useMemo(()=>Array.from(new Set(competitionMetrics.map(x=>String(x.result||"Unrecorded")))).map(name=>({name,count:competitionMetrics.filter(x=>String(x.result||"Unrecorded")===name).length})),[competitionMetrics]);
+  const medalBreakdown=useMemo(()=>Array.from(new Set(filteredMedalMetrics.map(x=>String(x.medal_type||"Unspecified")))).map(name=>({name,count:filteredMedalMetrics.filter(x=>String(x.medal_type||"Unspecified")===name).length})),[filteredMedalMetrics]);
+  const competitionBreakdown=useMemo(()=>Array.from(new Set(filteredCompetitionMetrics.map(x=>String(x.result||"Unrecorded")))).map(name=>({name,count:filteredCompetitionMetrics.filter(x=>String(x.result||"Unrecorded")===name).length})),[filteredCompetitionMetrics]);
   async function toggleNutrition(athleteUserId: string) {
     if (!supabase || !userId) return;
     setBusy(true); setError("");
@@ -152,11 +158,11 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   }
 
   return <div className="role-dashboard">
-    <div className="page-head"><div><p className="eyebrow">Individual Coach</p><h2>Coach Command Center</h2><p>Manage your athletes, assign Taekwondo training plans, and keep coaching data separate from the athlete workspace.</p></div><button className="btn" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> {loading ? "Refreshing…" : "Refresh"}</button></div>
+    <div className="page-head"><div><p className="eyebrow">Individual Coach</p><h2>Coach Command Center</h2><p>Manage your athletes, assign Taekwondo training plans, and keep coaching data separate from the athlete workspace.</p></div><div className="role-dashboard-actions"><label className="role-range-picker"><span>Analytics range</span><select value={rangeMonths} onChange={e=>setRangeMonths(Number(e.target.value))}><option value={3}>Last 3 months</option><option value={6}>Last 6 months</option><option value={12}>Last 12 months</option></select></label><button type="button" className="btn" onClick={()=>window.print()}>Print / Save PDF</button><button className="btn" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> {loading ? "Refreshing…" : "Refresh"}</button></div></div>
     <section className="metrics"><article className="metric card"><div className="metric-icon"><Users size={18}/></div><div><p>Athletes</p><strong>{athletes.length}</strong><small>Linked athlete profiles</small></div></article><article className="metric card"><div className="metric-icon"><UserPlus size={18}/></div><div><p>Active links</p><strong>{activeLinks}</strong><small>Coach relationships</small></div></article><article className="metric card"><div className="metric-icon"><ClipboardList size={18}/></div><div><p>Plans</p><strong>{plans.length}</strong><small>Assigned training plans</small></div></article></section>
     {error && <ErrorText>{error}</ErrorText>}
     <section className="role-analytics-grid">
-      <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Roster intelligence</span><h3>Training activity</h3><p className="muted">Monthly sessions from linked athletes · latest 6 months</p></div><button className="btn" type="button" onClick={exportCoachReport}>Export CSV</button><BarChart3/></div>{trainingMetrics.length?<ResponsiveContainer width="100%" height={220}><BarChart data={trainingByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="sessions" name="Training sessions" fill="#49d7ff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No training analytics yet</strong><span>Training sessions from linked athletes will appear here when recorded and accessible.</span></div>}</article>
+      <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Roster intelligence</span><h3>Training activity</h3><p className="muted">Monthly sessions from linked athletes · latest {rangeMonths} months</p></div><button className="btn" type="button" onClick={exportCoachReport}>Export CSV</button><BarChart3/></div>{trainingMetrics.length?<ResponsiveContainer width="100%" height={220}><BarChart data={trainingByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="sessions" name="Training sessions" fill="#49d7ff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No training analytics yet</strong><span>Training sessions from linked athletes will appear here when recorded and accessible.</span></div>}</article>
       <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Participation</span><h3>Attendance overview</h3><p className="muted">Based on attendance records visible to this coach</p></div><CalendarCheck/></div><div className="role-analytics-kpis"><div><strong>{attendanceRate===null?"—":`${attendanceRate}%`}</strong><small>Attendance rate</small></div><div><strong>{attendanceMetrics.length}</strong><small>Recorded check-ins</small></div><div><strong>{Math.round(totalMinutes/60*10)/10}h</strong><small>Training hours</small></div></div>{attendanceMetrics.length?<ResponsiveContainer width="100%" height={145}><LineChart data={attendanceByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Line type="monotone" dataKey="records" name="Attendance records" stroke="#65e0b5" strokeWidth={3}/></LineChart></ResponsiveContainer>:<div className="empty"><strong>Attendance data will appear here</strong><span>No accessible attendance records were returned for this roster.</span></div>}</article>
     </section>
     {analyticsUnavailable&&<p className="muted" role="status">Some analytics sources are currently unavailable. Available charts are shown without inventing missing values.</p>}
@@ -189,6 +195,7 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
   const [academyAttendance,setAcademyAttendance]=useState<AttendanceMetric[]>([]);
   const [academyMedals,setAcademyMedals]=useState<MedalMetric[]>([]);
   const [academyCompetitions,setAcademyCompetitions]=useState<CompetitionMetric[]>([]);
+  const [rangeMonths,setRangeMonths]=useState(6);
 
   async function load() {
     if (!supabase || !userId) return;
@@ -260,28 +267,33 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
   }
 
   const selectedAcademy = useMemo(() => academies.find((academy) => academy.id === academyId), [academies, academyId]);
-  const academyTrainingByMonth=useMemo(()=>monthlySeries(academyTraining.map(x=>({date:x.session_date})),"sessions"),[academyTraining]);
-  const academyAttendanceByMonth=useMemo(()=>monthlySeries(academyAttendance.map(x=>({date:x.attended_at})),"records"),[academyAttendance]);
-  const academyPresent=academyAttendance.filter(x=>["present","attended","late"].includes(String(x.status).toLowerCase())).length;
-  const academyAttendanceRate=academyAttendance.length?Math.round(academyPresent/academyAttendance.length*100):null;
-  const academyHours=academyTraining.reduce((sum,x)=>sum+(Number(x.minutes)||0),0)/60;
+  const academyRangeStart=useMemo(()=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-(rangeMonths-1));d.setHours(0,0,0,0);return d;},[rangeMonths]);
+  const filteredAcademyTraining=useMemo(()=>academyTraining.filter(x=>new Date(x.session_date)>=academyRangeStart),[academyTraining,academyRangeStart]);
+  const filteredAcademyAttendance=useMemo(()=>academyAttendance.filter(x=>new Date(x.attended_at)>=academyRangeStart),[academyAttendance,academyRangeStart]);
+  const filteredAcademyMedals=useMemo(()=>academyMedals.filter(x=>x.awarded_at&&new Date(x.awarded_at)>=academyRangeStart),[academyMedals,academyRangeStart]);
+  const filteredAcademyCompetitions=useMemo(()=>academyCompetitions.filter(x=>x.starts_at&&new Date(x.starts_at)>=academyRangeStart),[academyCompetitions,academyRangeStart]);
+  const academyTrainingByMonth=useMemo(()=>monthlySeries(filteredAcademyTraining.map(x=>({date:x.session_date})),"sessions",rangeMonths),[filteredAcademyTraining,rangeMonths]);
+  const academyAttendanceByMonth=useMemo(()=>monthlySeries(filteredAcademyAttendance.map(x=>({date:x.attended_at})),"records",rangeMonths),[filteredAcademyAttendance,rangeMonths]);
+  const academyPresent=filteredAcademyAttendance.filter(x=>["present","attended","late"].includes(String(x.status).toLowerCase())).length;
+  const academyAttendanceRate=filteredAcademyAttendance.length?Math.round(academyPresent/filteredAcademyAttendance.length*100):null;
+  const academyHours=filteredAcademyTraining.reduce((sum,x)=>sum+(Number(x.minutes)||0),0)/60;
   function exportAcademyReport(){downloadCsv("athleten-academy-performance-report.csv",[
-    ...academyTraining.map(x=>({record_type:"training",athlete_user_id:x.user_id,date:x.session_date,value:x.minutes,unit:"minutes"})),
-    ...academyAttendance.map(x=>({record_type:"attendance",athlete_user_id:x.user_id,date:x.attended_at,value:x.status,unit:""})),
-    ...academyMedals.map(x=>({record_type:"medal",athlete_user_id:x.user_id,date:x.awarded_at,value:x.medal_type,unit:""})),
-    ...academyCompetitions.map(x=>({record_type:"competition",athlete_user_id:x.user_id,date:x.starts_at,value:x.result,unit:""}))
+    ...filteredAcademyTraining.map(x=>({record_type:"training",athlete_user_id:x.user_id,date:x.session_date,value:x.minutes,unit:"minutes"})),
+    ...filteredAcademyAttendance.map(x=>({record_type:"attendance",athlete_user_id:x.user_id,date:x.attended_at,value:x.status,unit:""})),
+    ...filteredAcademyMedals.map(x=>({record_type:"medal",athlete_user_id:x.user_id,date:x.awarded_at,value:x.medal_type,unit:""})),
+    ...filteredAcademyCompetitions.map(x=>({record_type:"competition",athlete_user_id:x.user_id,date:x.starts_at,value:x.result,unit:""}))
   ]);}
-  const medalCount=academyMedals.length;
-  const competitionCount=academyCompetitions.length;
-  const academyMedalBreakdown=useMemo(()=>Array.from(new Set(academyMedals.map(x=>String(x.medal_type||"Unspecified")))).map(name=>({name,count:academyMedals.filter(x=>String(x.medal_type||"Unspecified")===name).length})),[academyMedals]);
-  const academyCompetitionBreakdown=useMemo(()=>Array.from(new Set(academyCompetitions.map(x=>String(x.result||"Unrecorded")))).map(name=>({name,count:academyCompetitions.filter(x=>String(x.result||"Unrecorded")===name).length})),[academyCompetitions]);
+  const medalCount=filteredAcademyMedals.length;
+  const competitionCount=filteredAcademyCompetitions.length;
+  const academyMedalBreakdown=useMemo(()=>Array.from(new Set(filteredAcademyMedals.map(x=>String(x.medal_type||"Unspecified")))).map(name=>({name,count:filteredAcademyMedals.filter(x=>String(x.medal_type||"Unspecified")===name).length})),[filteredAcademyMedals]);
+  const academyCompetitionBreakdown=useMemo(()=>Array.from(new Set(filteredAcademyCompetitions.map(x=>String(x.result||"Unrecorded")))).map(name=>({name,count:filteredAcademyCompetitions.filter(x=>String(x.result||"Unrecorded")===name).length})),[filteredAcademyCompetitions]);
   return <div className="role-dashboard">
-    <div className="page-head"><div><p className="eyebrow">Academy</p><h2>Academy Command Center</h2><p>Run the academy workspace separately from individual athlete accounts: membership, coaches, athletes, and academy operations.</p></div><button className="btn" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> {loading ? "Refreshing…" : "Refresh"}</button></div>
+    <div className="page-head"><div><p className="eyebrow">Academy</p><h2>Academy Command Center</h2><p>Run the academy workspace separately from individual athlete accounts: membership, coaches, athletes, and academy operations.</p></div><div className="role-dashboard-actions"><label className="role-range-picker"><span>Analytics range</span><select value={rangeMonths} onChange={e=>setRangeMonths(Number(e.target.value))}><option value={3}>Last 3 months</option><option value={6}>Last 6 months</option><option value={12}>Last 12 months</option></select></label><button type="button" className="btn" onClick={()=>window.print()}>Print / Save PDF</button><button className="btn" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> {loading ? "Refreshing…" : "Refresh"}</button></div></div>
     {error && <ErrorText>{error}</ErrorText>}
     {!academies.length ? <Card><div className="panel-head"><div><p className="eyebrow">First setup</p><h3>Create your academy</h3><p className="muted">This creates the academy record and makes your account its academy administrator.</p></div><Building2 size={22}/></div><div className="inline-form"><input value={academyName} onChange={(e) => setAcademyName(e.target.value)} placeholder="Academy name"/><button className="btn primary" onClick={() => void createAcademy()} disabled={busy || !academyName.trim()}><Plus size={15}/> Create academy</button></div></Card> : <>
       <section className="metrics"><article className="metric card"><div className="metric-icon"><Building2 size={18}/></div><div><p>Academy</p><strong>{selectedAcademy?.name || "—"}</strong><small>{selectedAcademy?.status || "active"}</small></div></article><article className="metric card"><div className="metric-icon"><Users size={18}/></div><div><p>Members</p><strong>{members.length}</strong><small>Active and pending membership records</small></div></article><article className="metric card"><div className="metric-icon"><ShieldCheck size={18}/></div><div><p>Athletes</p><strong>{memberProfiles.length}</strong><small>Profiles connected to academy</small></div></article></section>
       <section className="role-analytics-grid">
-        <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Academy intelligence</span><h3>Training activity</h3><p className="muted">Monthly athlete sessions · latest 6 months</p></div><button className="btn" type="button" onClick={exportAcademyReport}>Export CSV</button><BarChart3/></div>{academyTraining.length?<ResponsiveContainer width="100%" height={220}><BarChart data={academyTrainingByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="sessions" name="Training sessions" fill="#49d7ff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No training data yet</strong><span>Academy athlete training records will appear here when available.</span></div>}</article>
+        <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Academy intelligence</span><h3>Training activity</h3><p className="muted">Monthly athlete sessions · latest {rangeMonths} months</p></div><button className="btn" type="button" onClick={exportAcademyReport}>Export CSV</button><BarChart3/></div>{academyTraining.length?<ResponsiveContainer width="100%" height={220}><BarChart data={academyTrainingByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="sessions" name="Training sessions" fill="#49d7ff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No training data yet</strong><span>Academy athlete training records will appear here when available.</span></div>}</article>
         <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Participation and outcomes</span><h3>Academy performance</h3><p className="muted">Metrics from accessible academy records</p></div><Trophy/></div><div className="role-analytics-kpis"><div><strong>{academyAttendanceRate===null?"—":`${academyAttendanceRate}%`}</strong><small>Attendance rate</small></div><div><strong>{medalCount}</strong><small>Medals recorded</small></div><div><strong>{competitionCount}</strong><small>Competition records</small></div><div><strong>{academyHours.toFixed(1)}h</strong><small>Training hours</small></div></div>{academyAttendance.length?<ResponsiveContainer width="100%" height={145}><LineChart data={academyAttendanceByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Line type="monotone" dataKey="records" name="Attendance records" stroke="#65e0b5" strokeWidth={3}/></LineChart></ResponsiveContainer>:<div className="empty"><strong>No attendance data yet</strong><span>Attendance records will populate this view after sessions are recorded.</span></div>}</article>
       </section>
       <section className="role-analytics-grid">
