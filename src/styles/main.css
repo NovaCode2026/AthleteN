@@ -671,3 +671,10 @@ input, select, textarea, button { max-width: 100%; }
   .role-analytics-grid{grid-template-columns:1fr 1fr!important;break-inside:avoid}
   .role-dashboard .muted,.role-dashboard .eyebrow{color:#46576b!important}
 }
+
+/* APS 1.0 — cross-device athlete dashboard personalization */
+.athlete-widget-order{display:grid;gap:7px;border-top:1px solid rgba(145,168,193,.16);padding-top:12px;margin-top:12px}
+.athlete-widget-order-row{display:flex;align-items:center;gap:8px;min-width:0}
+.athlete-widget-order-row>span{flex:1;min-width:0;color:#b8c9dc;font-size:12px}
+.athlete-widget-order-row .btn{min-width:34px;min-height:32px;padding:5px 9px}
+.athlete-widget-order small[role="alert"]{color:#ffb4bf}
