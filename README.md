@@ -15,7 +15,7 @@
 
 **Built by Nova Code** · React · TypeScript · Expo · Supabase · Netlify
 
-[Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) · [Plans & Verification](./docs/PLAN_VERIFICATION_AND_BILLING.md) · [Docs Hub](./docs/README.md) · [API](./docs/API.md) · [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) · [Mobile Guide](./AthleteN-Mobile/README.md)
+[Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) · [Taekwondo Disciplines](./docs/TAEKWONDO_DISCIPLINES.md) · [Plans & Verification](./docs/PLAN_VERIFICATION_AND_BILLING.md) · [Docs Hub](./docs/README.md) · [API](./docs/API.md) · [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) · [Mobile Guide](./AthleteN-Mobile/README.md)
 
 </div>
 
@@ -46,7 +46,7 @@ The product is **Taekwondo-first**, with Kyorugi and Poomsae workflows at its co
 ### 🥋 Athlete workspace
 - Athlete profile and sports identity
 - Training sessions and training history
-- Kyorugi and Poomsae records
+- Sport-first Taekwondo selection with separate Kyorugi and Poomsae workspaces, labels, practice logs and competition records
 - Tournaments, matches and competition history
 - Medals, achievements and certificates
 - Goals, milestones and athlete journey
