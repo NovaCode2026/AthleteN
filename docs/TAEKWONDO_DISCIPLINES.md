@@ -47,7 +47,7 @@ Canonical database values are lowercase:
 
 Human-facing labels are title-cased: **Taekwondo**, **Kyorugi · Sparring**, and **Poomsae · Forms**. Keep display labels separate from database values.
 
-The Web onboarding form and Android Profile screen use the same order: Sport first, then the discipline choices available for that sport. When more sports are implemented, add their discipline choices behind the sport selector; do not expose unsupported options early.
+The Web onboarding form and Android onboarding/Profile screens use the same two-step order: **1 · Sport** first, then **2 · Discipline** only after a supported sport is selected. New or incomplete profiles do not have a silently preselected sport or discipline. The user must select Taekwondo, then explicitly select Kyorugi or Poomsae before continuing. Changing the sport clears the dependent discipline so an old discipline cannot remain attached to a different sport. The current sport list contains only Taekwondo; do not show Football, Karate, Boxing or other unsupported options. When another sport is genuinely implemented, add only its own tested disciplines behind the same selector.
 
 ## 3. Discipline separation
 
@@ -105,7 +105,20 @@ Scores and placings are entered as recorded by the event or supplied by the athl
 
 ### 4.4 Web Poomsae workspace
 
-The Web Taekwondo Hub already offers a Poomsae mode with separate copy, Poomsae form selection, category, repetition-based practice, official score/placing entry and Poomsae-specific history. Kyorugi and Poomsae practice records remain separate.
+The Web Taekwondo Hub offers Poomsae-specific form selection, category, repetition-based practice, official event score/placing/result entry and Poomsae-specific history. The dedicated workspace label is **Poomsae Studio** (paired with **Kyorugi Hub** for sparring). Kyorugi and Poomsae practice records remain separate.
+
+### 4.5 Shared labels and tools across clients
+
+| Screen / action | Kyorugi | Poomsae |
+|---|---|---|
+| Workspace title | Kyorugi Hub | Poomsae Studio |
+| Discipline choice | Kyorugi · Sparring | Poomsae · Forms |
+| Training page (Android) | Kyorugi Training | Poomsae Training |
+| Timed session (Android) | Kyorugi Session | Poomsae Session |
+| Live session label (Android) | Live Kyorugi Session | Live Poomsae Session |
+| Primary tools | Opponent, bout, round, result, athlete/opponent score, decision | Forms library, practice focus, category, repetitions, event score, placing and medal result |
+
+Tool labels must follow the lowercase canonical profile discipline (`kyorugi` or `poomsae`), not title-case string comparisons. Both clients use the same saved Taekwondo domain records and display discipline-specific histories. Shared account features—profile, goals, documents, calendar, notifications, team connections and subscriptions—remain shared rather than being duplicated as separate Poomsae-only systems.
 
 ## 5. Kyorugi tools
 
@@ -164,11 +177,14 @@ The database also contains earlier normalized tables named kyorugi_bouts, poomsa
 
 ## 9. Acceptance checklist
 
-- [ ] New Web profile can choose Taekwondo before a discipline.
-- [ ] New Android profile can choose Taekwondo before a discipline.
+- [ ] New Web profile starts without a preselected sport or discipline.
+- [ ] New Android profile starts without a preselected sport or discipline.
+- [ ] Both clients reveal discipline choices only after Taekwondo is selected.
+- [ ] Changing the sport clears the previously selected discipline.
+- [ ] Profile save is blocked until the supported sport and a discipline are selected.
 - [ ] Database saves only lowercase canonical values.
-- [ ] Poomsae profile shows Poomsae labels and Poomsae Studio on Android.
-- [ ] Kyorugi profile shows Kyorugi labels and Kyorugi Hub on Android.
+- [ ] Poomsae profile shows Poomsae Studio, Poomsae Training and Poomsae Session labels on Web and Android.
+- [ ] Kyorugi profile shows Kyorugi Hub, Kyorugi Training and Kyorugi Session labels on Web and Android.
 - [ ] Poomsae practice saves as a non-official Poomsae training log.
 - [ ] Poomsae official result saves to the shared Poomsae performance table.
 - [ ] Poomsae records remain visible on Web after a mobile refresh, and vice versa.
