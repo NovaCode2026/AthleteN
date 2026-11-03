@@ -3,6 +3,13 @@
 
 ## [Unreleased] — 2026-11-03
 
+### Web and Mobile experience model
+- Established Web as the full master information workspace for detailed dashboards, charts, history, comparisons and complex role administration; Mobile is the compact touch-first companion for daily checks and quick actions.
+- Added shared-data and parity contracts: same Supabase records, identity, role/relationship permissions and KPI definitions across both clients.
+- Expanded the Web Athlete Command Centre with a six-month activity graph and a saved-goal progress chart, plus clearer source/meaning context.
+- Simplified Android Home into one compact discipline-aware flow, removed duplicated Poomsae panels and retained focused task routes and the short seven-day trend.
+- Documented the cross-platform experience model and acceptance checks.
+
 ### Taekwondo discipline experience
 - Made Web and Android sport/discipline selection explicit and cascading: Taekwondo first, then Kyorugi or Poomsae; unsupported sports remain hidden.
 - Removed silent Kyorugi defaults from incomplete Android onboarding/profile state and added a clear profile-selection prompt in the Taekwondo Hub.
