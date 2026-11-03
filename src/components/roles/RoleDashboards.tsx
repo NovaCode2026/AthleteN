@@ -7,13 +7,13 @@ import type { Profile } from "../../types";
 
 type Toast = { type: "success" | "error" | "warning" } | null;
 type Props = { profile: Profile; userId?: string; setToast: (toast: Toast) => void };
-type Athlete = Pick<Profile, "user_id" | "full_name" | "username" | "belt" | "discipline" | "academy_id" | "coach_user_id">;
+type Athlete = Pick<Profile, "user_id" | "full_name" | "username" | "belt" | "discipline" | "academy_id" | "coach_user_id" | "role">;
 type LinkRow = { id: string; coach_user_id: string; athlete_user_id: string; academy_id?: string | null; status: string };
 type PlanRow = { id: string; user_id: string; coach_user_id: string; title: string; focus_area?: string | null; starts_at?: string | null; ends_at?: string | null; status?: string | null; notes?: string | null };
 type Membership = { id: string; academy_id: string; user_id: string; role: string; status: string; joined_at?: string | null };
 type Academy = { id: string; owner_user_id: string; name: string; city?: string | null; state?: string | null; country?: string | null; status?: string | null };
 
-type AthleteLookup = Pick<Athlete, "user_id" | "full_name" | "username" | "discipline" | "belt">;
+type AthleteLookup = Pick<Athlete, "user_id" | "full_name" | "username" | "discipline" | "belt" | "role">;
 type TrainingMetric = { user_id:string; session_date:string; minutes:number };
 type AttendanceMetric = { user_id:string; attended_at:string; status:string };
 type MedalMetric = { user_id:string; awarded_at:string|null; medal_type:string };
@@ -30,7 +30,7 @@ async function resolveAthlete(value: string): Promise<AthleteLookup> {
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (uuid.test(input)) {
     if (!supabase) throw new Error("Supabase is not configured.");
-    const { data, error } = await supabase.from("profiles").select("user_id,full_name,username,discipline,belt").eq("user_id", input).maybeSingle();
+    const { data, error } = await supabase.from("profiles").select("user_id,full_name,username,discipline,belt,role").eq("user_id", input).maybeSingle();
     if (error) throw error;
     if (!data || data.role === "coach" || data.role === "academy_admin") throw new Error("No athlete profile was found for that user ID.");
     return data as AthleteLookup;
@@ -68,7 +68,7 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
     if (!supabase || !userId) return;
     setLoading(true); setError("");
     const [profileResult, linkResult, planResult, nutritionResult] = await Promise.all([
-      supabase.from("profiles").select("user_id,full_name,username,belt,discipline,academy_id,coach_user_id").eq("coach_user_id", userId).order("full_name"),
+      supabase.from("profiles").select("user_id,full_name,username,belt,discipline,academy_id,coach_user_id,role").eq("coach_user_id", userId).order("full_name"),
       supabase.from("coach_athlete_links").select("id,coach_user_id,athlete_user_id,academy_id,status").eq("coach_user_id", userId).order("created_at", { ascending: false }),
       supabase.from("training_plans").select("id,user_id,coach_user_id,title,focus_area,starts_at,ends_at,status,notes").eq("coach_user_id", userId).order("created_at", { ascending: false }).limit(50),
       supabase.from("athlete_feature_controls").select("athlete_user_id,enabled").eq("feature_key", "nutrition")
@@ -216,13 +216,13 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
     if (!id) { setMembers([]); setMemberProfiles([]); setLoading(false); return; }
     const [membershipResult, profileResult] = await Promise.all([
       supabase.from("academy_memberships").select("id,academy_id,user_id,role,status,joined_at").eq("academy_id", id).order("created_at", { ascending: false }),
-      supabase.from("profiles").select("user_id,full_name,username,belt,discipline,academy_id,coach_user_id").eq("academy_id", id).order("full_name")
+      supabase.from("profiles").select("user_id,full_name,username,belt,discipline,academy_id,coach_user_id,role").eq("academy_id", id).order("full_name")
     ]);
     const firstError = membershipResult.error || profileResult.error;
     if (firstError) setError(firstError.message);
     setMembers((membershipResult.data || []) as Membership[]);
     setMemberProfiles((profileResult.data || []) as Athlete[]);
-    const athleteIds=(profileResult.data||[]).filter((p:any)=>p.role!=="coach"&&p.role!=="academy_admin").map((p:any)=>p.user_id).filter(Boolean);
+    const athleteIds=(profileResult.data||[]).filter((p:any)=>!["coach","academy_admin","admin","super_admin","support_admin"].includes(String(p.role||""))).map((p:any)=>p.user_id).filter(Boolean);
     if(athleteIds.length){
       const start=new Date();start.setDate(1);start.setMonth(start.getMonth()-(rangeMonths-1));
       const startDate=[start.getFullYear(),String(start.getMonth()+1).padStart(2,"0"),"01"].join("-");
