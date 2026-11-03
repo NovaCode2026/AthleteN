@@ -57,14 +57,14 @@ Matching migration files are in `supabase/migrations/`.
 |---|---|---|
 | Web CI | PASS | Tests and production build passed on commit `fe9513a4df3f1a686ac4e2da5c87391e80f78962` (run `41626472107`). |
 | CodeQL | PASS | Analysis passed on commit `fe9513a4df3f1a686ac4e2da5c87391e80f78962` (run `41626472409`). |
-| Mobile Check | PENDING | Latest mobile source commit `fe9513a4df3f1a686ac4e2da5c87391e80f78962` has a queued check (run `41626472314`). The previous successful check on `06da641483a3492564f590f8e166d257e1236e02` predates the device-specific sign-out token fix. |
+| Mobile Check | IN PROGRESS | Latest mobile source commit `fe9513a4df3f1a686ac4e2da5c87391e80f78962` is being checked (run `41626472314`). The previous successful check on `06da641483a3492564f590f8e166d257e1236e02` predates the device-specific sign-out token fix. |
 | Android APK | IN PROGRESS | The latest APK workflow for `fe9513a4df3f1a686ac4e2da5c87391e80f78962` is running (run `41626472271`); no artifact is available yet. An older APK artifact exists for commit `bd804ec7e119fea613d29ef0df9b3ee9759de998` and is not the latest release candidate. |
 | Netlify production | READY, but STALE | Published deploy `6ae372d8d6582ed467b6b3cc` is ready, but it points to commit `6137212178dfa49a0cc19711e681d692b120b551` from 29 October 2026, not the current release candidate. |
 
 ## Open strict-release blockers
 
 1. **Live two-account messaging acceptance:** test direct and group chats with sender/recipient online, offline, backgrounded and app-terminated; validate receipts and retries on physical devices.
-2. **Push provider acceptance:** confirm Expo ticket/receipt outcomes, invalid-token handling and delivery on physical Android devices. A successful database enqueue is not proof that the push provider delivered to an OS device.
+2. **Push provider acceptance:** confirm Expo ticket/receipt outcomes, invalid-token handling and delivery on physical Android devices. The production `device_push_tokens` table currently contains zero registered devices, and there are no recorded `pg_net` HTTP responses yet; no real device push has been exercised.
 3. **Web background push:** current desktop notification behavior is tied to the web app's active realtime session; a separately configured browser Push API / service-worker subscription is not verified.
 4. **Supabase Auth:** Leaked Password Protection is disabled and must be enabled in Auth security settings.
 5. **Supabase Security Advisor:** current warnings include pg_net installed in public (non-relocatable extension), 61 authenticated-executable SECURITY DEFINER RPCs requiring a purpose/authorization review, and 121 multiple-permissive-policy warnings. These must be reviewed individually; do not bulk revoke role-gated RPCs or rewrite RLS policies blindly. A live SQL screening of all 61 authenticated-callable functions found a pinned `search_path` and an obvious auth/role/relationship guard signal in each definition; this is a static screen, not proof of full authorization correctness.
