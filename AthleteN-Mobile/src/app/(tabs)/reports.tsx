@@ -88,7 +88,7 @@ export default function Reports(){
 
  async function askAi(topic:string,prompt:string){
   if(!session?.access_token)throw new Error('Your login session expired. Sign in again.');
-  const base=(process.env.EXPO_PUBLIC_ATHLETEN_API_URL||'https://athleten.netlify.app').replace(/\\/$/,'');
+  const base=(process.env.EXPO_PUBLIC_ATHLETEN_API_URL||'https://athleten.netlify.app').replace(/\/$/,'');
   const response=await fetch(base+'/.netlify/functions/ai-coach',{
    method:'POST',
    headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},
