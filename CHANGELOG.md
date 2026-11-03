@@ -3,6 +3,13 @@
 
 ## [Unreleased] — 2026-11-03
 
+### Taekwondo discipline experience
+- Standardized sport-first selection: Taekwondo is the only currently available sport, followed by Kyorugi or Poomsae.
+- Standardized Android profile values to the lowercase database enums taekwondo, kyorugi and poomsae.
+- Corrected the mobile Taekwondo Hub discipline comparison and aligned its reads/writes with the shared Web Taekwondo domain tables.
+- Added an Android Poomsae Studio with form practice logging, category/focus/repetition inputs, official event score/placing/result entry, score history and Poomsae-specific labels.
+- Added docs/TAEKWONDO_DISCIPLINES.md documenting the sport selector, discipline feature matrix, implementation map and release acceptance checklist.
+
 ### Documentation and purchase journey
 - Added a colorful documentation hub at `docs/README.md` to make product, engineering, operations, release and legal guides easy to discover.
 - Added `docs/PLAN_VERIFICATION_AND_BILLING.md` with role-specific Student, Coach and Academy verification-to-payment diagrams, state definitions, implementation file map and launch acceptance checklist.
