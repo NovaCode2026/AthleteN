@@ -22,14 +22,14 @@ const athletePlans: Array<{
   features: string[];
 }> = [
   { id: 'free', name: 'Free', monthly: 0, yearly: 0, saving: 0, ai: 0, audience: 'Everyone', features: ['Athlete profile', 'Training log', 'Basic progress tracking', 'Tournament and medal history'] },
-  { id: 'student', name: 'Student', monthly: 99, yearly: 999, saving: 189, ai: 50, audience: 'Verified students', features: ['AI training insights', 'AI performance summaries', 'Detailed progress analysis', 'Personal goals'] },
-  { id: 'pro', name: 'Pro', monthly: 199, yearly: 1999, saving: 389, ai: 200, audience: 'Competitive athletes', features: ['Advanced performance analytics', 'Competition preparation insights', 'Advanced training analysis', 'Priority support'] },
-  { id: 'elite', name: 'Elite', monthly: 399, yearly: 3999, saving: 789, ai: 500, audience: 'Advanced athletes', features: ['Advanced competition analysis', 'Long-term performance trends', 'Advanced training planning', 'Exportable athlete reports'] },
+  { id: 'student', name: 'Student', monthly: 99, yearly: 999, saving: 189, ai: 50, audience: 'Verified students', features: ['AI Match Reports', 'AI Monthly Athlete Reports', 'AI training insights', 'AI performance summaries', 'Detailed progress analysis', 'Personal goals'] },
+  { id: 'pro', name: 'Pro', monthly: 199, yearly: 1999, saving: 389, ai: 200, audience: 'Competitive athletes', features: ['AI Match Reports', 'AI Monthly Athlete Reports', 'Advanced performance analytics', 'Competition preparation insights', 'Advanced training analysis', 'Priority support'] },
+  { id: 'elite', name: 'Elite', monthly: 399, yearly: 3999, saving: 789, ai: 500, audience: 'Advanced athletes', features: ['AI Match Reports', 'AI Monthly Athlete Reports', 'Advanced competition analysis', 'Long-term performance trends', 'Advanced training planning', 'Exportable athlete reports'] },
 ];
 
 const productPlans = {
-  coach: { name: 'Coach', monthly: 499, yearly: 4999, saving: 989, ai: 750, description: 'A dedicated coaching workspace with athlete management, training monitoring and coach reports.' },
-  academy_admin: { name: 'Academy', monthly: 799, yearly: 7999, saving: 1589, ai: 1000, description: 'A dedicated academy workspace for athletes, coaches, attendance, analytics and operations.' },
+  coach: { name: 'Coach', monthly: 499, yearly: 4999, saving: 989, ai: 750, description: 'AI Match Reports, AI Monthly Coach Reports, a dedicated coaching workspace, athlete management and training monitoring.' },
+  academy_admin: { name: 'Academy', monthly: 799, yearly: 7999, saving: 1589, ai: 1000, description: 'AI Match Reports, AI Monthly Academy Reports, athlete and coach management, attendance, analytics and operations.' },
 } as const;
 
 export default function PlansScreen() {
@@ -41,9 +41,19 @@ export default function PlansScreen() {
   const [loading, setLoading] = useState(true);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [studentStatus, setStudentStatus] = useState('not_submitted');
   const role = String(profile?.role || 'athlete');
 
   const current = ((profile as any)?.plan_id || 'free') as PlanId;
+
+  useEffect(() => {
+    let alive = true;
+    if (!session || role !== 'athlete') return;
+    void supabase.from('student_verifications').select('status')
+      .eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      .then(({ data }) => { if (alive) setStudentStatus(String(data?.status || 'not_submitted')); });
+    return () => { alive = false; };
+  }, [session, role]);
 
   useEffect(() => {
     let alive = true;
@@ -61,13 +71,31 @@ export default function PlansScreen() {
     return () => { alive = false; };
   }, [session]);
 
-  async function contactForPlan(planName: string, monthly: number, yearly: number) {
-    const price = billing === 'yearly' ? yearly : monthly;
-    const period = billing === 'yearly' ? 'year' : 'month';
-    const subject = encodeURIComponent(`AthleteN ${planName} plan subscription`);
-    const body = encodeURIComponent(`Hello AthleteN team,\n\nI would like to subscribe to the ${planName} plan.\nSelected price: ₹${price.toLocaleString('en-IN')}/${period}.\n\nPlease guide me through activation and payment.\n\nThank you.`);
-    try { await Linking.openURL(`mailto:novacode.create@gmail.com?subject=${subject}&body=${body}`); }
-    catch { setMessage('Email could not be opened. Contact novacode.create@gmail.com to request plan activation.'); }
+  async function startCheckout(planId: string) {
+    if (!session) { setMessage('Please sign in before subscribing.'); return; }
+    if (planId === 'student' && studentStatus !== 'approved') {
+      router.push('/verification');
+      return;
+    }
+    const requiredRole = ['student','pro','elite'].includes(planId) ? 'athlete' : planId === 'coach' ? 'coach' : 'academy_admin';
+    if (role !== requiredRole) { setMessage('This plan requires the matching verified account role.'); return; }
+    setBusyPlan(planId);
+    setMessage('');
+    try {
+      const baseUrl = (process.env.EXPO_PUBLIC_ATHLETEN_API_URL || 'https://athleten.netlify.app').replace(/\\/$/, '');
+      const response = await fetch(baseUrl + '/.netlify/functions/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+        body: JSON.stringify({ planId })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Checkout could not be started.');
+      if (payload.checkoutUrl) await Linking.openURL(payload.checkoutUrl);
+      else if (payload.paymentSessionId) setMessage('Payment session created. Complete checkout in the supported Cashfree payment flow.');
+      else throw new Error('The payment provider did not return a checkout link.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Checkout could not be started.');
+    } finally { setBusyPlan(null); }
   }
 
   const used = usage?.ai_requests_used ?? 0;
@@ -79,7 +107,7 @@ export default function PlansScreen() {
     <View>
       <Text style={s.kicker}>ATHLETEN • SUBSCRIPTION</Text>
       <Text style={s.title}>Choose your plan.</Text>
-      <Text style={s.subtitle}>Transparent monthly and yearly pricing for athletes, coaches and academies. Select a plan to contact the AthleteN team for subscription activation.</Text>
+      <Text style={s.subtitle}>Transparent monthly and yearly pricing. Student purchase requires Admin approval; Coach and Academy purchase follows existing account verification.</Text>
     </View>
 
     <View style={s.current}>
@@ -102,9 +130,9 @@ export default function PlansScreen() {
       {(['monthly','yearly'] as const).map((cycle) => <Pressable key={cycle} onPress={() => setBilling(cycle)} style={[s.billingOption, billing === cycle && s.billingOptionActive]}><Text style={[s.billingText, billing === cycle && s.billingTextActive]}>{cycle === 'monthly' ? 'MONTHLY' : 'YEARLY'}</Text>{cycle === 'yearly' ? <Text style={{color:c.success,fontSize:8,fontWeight:'900',marginTop:3}}>SAVE UP TO 16%</Text> : null}</Pressable>)}
     </View>
 
-    <View style={s.note}><Text style={s.noteTitle}>Subscription activation</Text><Text style={s.meta}>Prices are displayed below. Tap a paid plan to email the AthleteN team for activation and payment instructions. Your plan will not change until activation is confirmed.</Text></View>
+    <View style={s.note}><Text style={s.noteTitle}>Subscription activation</Text><Text style={s.meta}>Prices are displayed below. Select a paid plan to start the secure checkout flow. Student checkout is available only after Admin approval; Coach and Academy access uses the existing verified account role.</Text></View>
 
-    {athletePlans.map((p) => {
+    {athletePlans.filter((p) => p.id === 'free' || role === 'athlete').map((p) => {
       const active = p.id === current && role === 'athlete';
       const busy = busyPlan === p.id;
       const displayedPrice = billing === 'yearly' ? p.yearly : p.monthly;
@@ -122,8 +150,9 @@ export default function PlansScreen() {
         {billing === 'yearly' && p.saving > 0 ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
         <View style={s.aiPill}><Text style={s.aiText}>{p.ai === 0 ? 'No AI requests included' : p.ai + ' AI requests every month'}</Text></View>
         {p.features.map((feature) => <View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
-        <Pressable disabled={active || !!busyPlan || p.id === 'free'} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => void contactForPlan(p.name, p.monthly, p.yearly)}>
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : 'CONTACT TO SUBSCRIBE'}</Text>}
+        {p.id === 'student' ? <Text style={s.meta}>Student verification: {studentStatus === 'approved' ? 'Approved' : studentStatus === 'pending' ? 'Pending Admin approval' : studentStatus === 'rejected' ? 'Rejected · resubmit proof' : 'Not submitted'}</Text> : null}
+        <Pressable disabled={active || !!busyPlan || p.id === 'free' || (p.id === 'student' && studentStatus === 'pending')} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => p.id === 'student' && studentStatus !== 'approved' ? router.push('/verification') : void startCheckout(p.id)}>
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : p.id === 'student' && studentStatus === 'pending' ? 'AWAITING APPROVAL' : p.id === 'student' && studentStatus !== 'approved' ? 'SUBMIT STUDENT PROOF' : 'BUY PLAN'}</Text>}
         </Pressable>
       </View>;
     })}
@@ -147,15 +176,11 @@ export default function PlansScreen() {
           <Text style={s.meta}>{p.description}</Text>
           {billing === 'yearly' ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
           <Pressable
-            disabled={!!busyPlan}
+            disabled={!!busyPlan || (!!isCurrent && owned) || role !== (productRole === 'coach' ? 'coach' : 'academy_admin')}
             style={[s.planButton, isCurrent && s.planButtonActive]}
-            onPress={async () => {
-              if (!session) return;
-              if (isCurrent || owned) { await contactForPlan(p.name, p.monthly, p.yearly); return; }
-              await contactForPlan(p.name, p.monthly, p.yearly);
-            }}
+            onPress={() => void startCheckout(productRole === 'coach' ? 'coach' : 'academy')}
           >
-            <Text style={s.planButtonText}>{isCurrent ? 'CONTACT TO MANAGE PLAN' : 'CONTACT TO SUBSCRIBE'}</Text>
+            <Text style={s.planButtonText}>{isCurrent && owned ? 'CURRENT PLAN' : role !== (productRole === 'coach' ? 'coach' : 'academy_admin') ? (productRole === 'coach' ? 'COACH VERIFICATION REQUIRED' : 'ACADEMY VERIFICATION REQUIRED') : busyPlan === productRole ? 'STARTING CHECKOUT…' : 'BUY PLAN'}</Text>
           </Pressable>
         </View>;
       })}
@@ -166,7 +191,7 @@ export default function PlansScreen() {
 
     <View style={s.note}>
       <Text style={s.noteTitle}>Plan changes & billing</Text>
-      <Text style={s.meta}>Contact novacode.create@gmail.com to request activation and payment instructions. Do not share passwords or verification codes by email. Your account changes only after the team confirms activation.</Text>
+      <Text style={s.meta}>Checkout remains protected by server-side role and verification checks. Payment alone does not bypass account verification.</Text>
       <Text style={s.noteTitle}>AI usage</Text>
       <Text style={s.meta}>AI request allowances are monthly plan limits. Actual access depends on the entitlements enabled for your account.</Text>
     </View>
