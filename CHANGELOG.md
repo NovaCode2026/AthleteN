@@ -7,8 +7,14 @@ The project evolved from its earlier internal AthleteOS naming into the AthleteN
 ## [Unreleased]
 
 ### Product
-- Continued AthleteN web and mobile development.
-- Continued Taekwondo-first athlete, coach, and academy workflows.
+- Added role-specific AI Match Reports and previous-month AI Monthly Reports for eligible Athlete, Coach and Academy accounts.
+- Documented paid-report entitlements, Student Admin approval, existing Coach verification and Academy workspace verification.
+- Added Coach/Academy verification preflight before the checkout request in Web and Android clients.
+- Kept role, verification, active-subscription and report ownership checks at the server/database boundary.
+
+### Documentation
+- Rebuilt the main README as a visual product overview with feature catalogue, role matrix, plans, architecture, setup and release-state links.
+- Added the full AthleteN Platform Guide and expanded the Mobile and API documentation.
 
 ### Mobile
 - Hardened Expo startup by removing an optional native widget dependency from the launch path.
