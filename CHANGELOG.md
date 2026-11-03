@@ -4,6 +4,10 @@
 ## [Unreleased] — 2026-11-03
 
 ### Taekwondo discipline experience
+- Made Web and Android sport/discipline selection explicit and cascading: Taekwondo first, then Kyorugi or Poomsae; unsupported sports remain hidden.
+- Removed silent Kyorugi defaults from incomplete Android onboarding/profile state and added a clear profile-selection prompt in the Taekwondo Hub.
+- Standardized discipline-aware labels such as Kyorugi Hub, Poomsae Studio, Kyorugi Training, Poomsae Training and dedicated timed-session labels.
+- Expanded the Taekwondo discipline guide and mobile README with the Poomsae tool catalogue and sport-first acceptance criteria.
 - Standardized sport-first selection: Taekwondo is the only currently available sport, followed by Kyorugi or Poomsae.
 - Standardized Android profile values to the lowercase database enums taekwondo, kyorugi and poomsae.
 - Corrected the mobile Taekwondo Hub discipline comparison and aligned its reads/writes with the shared Web Taekwondo domain tables.
