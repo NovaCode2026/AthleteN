@@ -55,18 +55,41 @@ This report records implemented work and verified gates. A merged commit or a su
 - `optimize_rls_auth_uid_initplans_20261103`
   - Updated 30 policies to wrap direct `auth.uid()` calls in scalar SELECTs, preserving each policy's table, roles, command, USING and WITH CHECK semantics.
   - Verification query found zero remaining direct `auth.uid()` policy calls of this class.
+- `harden_ai_reports_active_subscription_academy_verification`
+  - Replaces AI report SELECT/INSERT policies with matching paid-plan, role, active-subscription and expiry checks.
+  - Student uses the latest Student verification request. Academy requires the existing verified owner workspace, active status, completed setup and verified contact email.
+  - Replaces `activate_paid_subscription` with role-specific activation checks and restricts it to `service_role` and the database owner.
 
 Matching migration files are in `supabase/migrations/`.
+
+### AI Intelligence Reports and role-based paid plans — 3 November 2026
+- AI Match Reports and AI Monthly Reports are included in paid plans only; Free remains blocked.
+- Athlete monthly report is available to Student, Pro and Elite athlete accounts. Coach reports use active coach-to-athlete links. Academy reports use active athlete memberships in the owned Academy workspace.
+- Monthly snapshots now include recorded attendance counts and attendance-status breakdowns alongside training sessions/minutes, medals, competitions and goal status.
+- Reports cover the previous completed calendar month and are currently generated on demand. No scheduled month-end delivery is claimed as live.
+- Match reports use user-supplied event, result, score and observations. No automatic video analysis is claimed.
+- Saved reports live in `ai_intelligence_reports`; RLS restricts report reads/inserts to the owner with the matching paid role and an active/trialing, unexpired subscription.
+- Student report access checks the latest verification request, not an old approval. Student requests are Athlete-only and reviewed by platform Admin.
+- Coach checkout uses the existing verified Coach account role plus confirmed account email. No duplicate Coach-verification table or workflow was added.
+- Academy checkout and report access reuse the existing Academy Admin role, active owned Academy, completed workspace setup and verified contact-email state.
+- Web and Android plan actions now run the Coach/Academy verification preflight before requesting checkout. Backend checkout repeats role/email/Academy checks.
+- Student approved state now enables the checkout action; the prior client-side disabled state was corrected.
+
+### Product and developer documentation
+- Rebuilt the root README as an illustrated/colourful product overview with feature catalogue, role matrix, plans, architecture, local setup and release links.
+- Added `docs/ATHLETEN_PLATFORM_GUIDE.md` covering roles, product features, plan entitlements, report behavior, verification flows, security boundaries and release acceptance.
+- Expanded `AthleteN-Mobile/README.md`, `docs/API.md`, `docs/Deployment.md` and `CHANGELOG.md`.
+- Deployment docs now include AI report and plan-verification acceptance checks.
 
 ## CI and build evidence
 
 | Gate | Latest observed result | Notes |
 |---|---|---|
-| Web CI | PASS | Tests and production build passed on current documentation/release-status commit `06fed37064e6da36ebf275e9abecea7c0715c589` (run `41628528132`). |
-| CodeQL | PASS | Analysis passed on current documentation/release-status commit `06fed37064e6da36ebf275e9abecea7c0715c589` (run `41628528010`). |
-| Mobile Check | PASS | Expo Doctor, TypeScript, ESLint and Android bundle check passed on mobile source commit `21416958d102db405090b3723084ca39f5252ee9` (run `41628045317`), including the per-200-message receipt batching. |
-| Android APK | IN PROGRESS | The APK workflow for mobile source commit `21416958d102db405090b3723084ca39f5252ee9` is running (run `41628045170`); no artifact is available yet. The older APK workflow `41626472271` is also still running and has no artifact. |
-| Netlify production | READY, but STALE | Published deploy `6ae372d8d6582ed467b6b3cc` is ready, but it points to commit `6137212178dfa49a0cc19711e681d692b120b551` from 29 October 2026, not the current release candidate. |
+| Web CI | PASS on source/documentation snapshot; latest rerun in progress | CI run `41683163191` passed on `bd809280c7a674b8e66af3165adde7fe285e6ad7`; the newest docs commit `3dfa7fad213964888cd4f05545f844df50459e6b` run `41683280816` was in progress at the time of this update. |
+| CodeQL | IN PROGRESS | Latest CodeQL run `41683280913` targets `3dfa7fad213964888cd4f05545f844df50459e6b`; no result is claimed yet. |
+| Mobile Check | IN PROGRESS | Mobile Check run `41683014424` targets source commit `1204ee0d3652cd84a330d1f99d07417cf0b9f0fd`; Expo Doctor, TypeScript and ESLint result not yet confirmed. |
+| Android APK | IN PROGRESS | APK workflow run `41683014360` targets `1204ee0d3652cd84a330d1f99d07417cf0b9f0fd`; scanner regression passed, APK build still in progress at time of update. No new artifact claimed. |
+| Netlify production | READY, but STALE | Published deploy `6ae372d8d6582ed467b6b3cc` is ready, but points to commit `6137212178dfa49a0cc19711e681d692b120b551` from 29 October 2026, not the current release candidate. |
 
 ## Open strict-release blockers
 
@@ -75,17 +98,21 @@ Matching migration files are in `supabase/migrations/`.
 3. **Web background push:** current desktop notification behavior is tied to the web app's active realtime session; a separately configured browser Push API / service-worker subscription is not verified.
 4. **Supabase Auth:** Leaked Password Protection is disabled and must be enabled in Auth security settings.
 5. **Supabase Security Advisor:** remaining warnings include pg_net installed in public (non-relocatable extension), 61 authenticated-executable SECURITY DEFINER functions, and disabled leaked-password protection. A live SQL screen found all 61 functions have pinned search paths and an auth/role/relationship guard signal; none is executable by `anon` or `PUBLIC`. This is a static screen, not proof of authorization correctness—retain a manual function-by-function review and enable leaked-password protection in Auth settings.
-6. **Supabase Performance Advisor:** the 30 `auth_rls_initplan` warnings were eliminated and rechecked. 80 unused-index info notices and 121 multiple-permissive-policy warnings remain. Do not drop indexes or merge/rewrite policies without workload and access-model review.
+6. **Supabase Performance Advisor:** the 30 `auth_rls_initplan` warnings were eliminated and rechecked. 81 unused-index info notices and 121 multiple-permissive-policy warnings remain. Do not drop indexes or merge/rewrite policies without workload and access-model review.
 7. **Dependency audit:** Mobile dependency install reported 36 advisories (2 low, 26 moderate, 7 high, 1 critical). Review exact dependency paths and upgrade safely; do not run a blind force-upgrade.
-8. **Production deployment:** the Netlify project is connected and its current deploy is marked ready, but the deployed commit has not been verified against this release candidate. Deploy the current `main` release candidate to Netlify and verify it. Download the Android APK artifact, install it and complete launch / login / navigation checks on a physical Android device. A GitHub build alone does not prove production deployment or device installation.
+8. **Paid billing acceptance:** the checkout server gate remains `FREE_LAUNCH = true`. Provider credentials/recurring price IDs, monthly-versus-yearly billing mapping, sandbox payment tests, failed/refunded/expired state handling and webhook acceptance must be completed before paid checkout is enabled.
+9. **Production deployment:** the Netlify project is connected and its current deploy is marked ready, but the deployed commit has not been verified against this release candidate. Deploy the current `main` release candidate to Netlify and verify it. Download the Android APK artifact, install it and complete launch / login / navigation checks on a physical Android device. A GitHub build alone does not prove production deployment or device installation.
 
 ## Additional verification performed
 
 - Supabase production project status: `ACTIVE_HEALTHY`, PostgreSQL 17.6.
+- AI report migration `20261103170000_harden_ai_reports_active_subscription_academy_verification.sql` applied successfully and confirmed present in migration history.
+- AI report policy verification: SELECT and INSERT policies require owner identity, matching role/plan and an active/trialing, unexpired subscription; Student latest approval and Academy workspace verification are part of the predicates.
+- `activate_paid_subscription` ACL verified as executable only by `service_role` and `postgres`.
 - Public schema RLS inventory: 88 tables checked; 0 public tables without RLS.
 - Receipt RPC verification: unauthenticated delivery/read acknowledgements were rejected; function search paths are empty/pinned; `mark_messages_delivered` and `mark_messages_read` are executable by `authenticated` only, while the trigger functions are not directly executable by API roles.
 - RLS optimization verification: 30 policy expressions were rewritten in place; the follow-up query returned 0 remaining direct `auth.uid()` policies in the targeted class; Performance Advisor no longer reports `auth_rls_initplan`.
-- SECURITY DEFINER screen: 61 authenticated-callable functions; 61 pinned search paths; 61 source bodies with an auth/role/relationship guard signal; 0 anon-callable and 0 PUBLIC-callable.
+- SECURITY DEFINER screen: 61 authenticated-callable functions remain under review; the new `activate_paid_subscription` function is excluded from authenticated/public execution and granted only to `service_role` and `postgres`. The existing 61 authenticated-callable functions still require manual function-by-function authorization review.
 - Netlify environment audit: production Supabase URL/publishable key, Supabase service-role secret and OpenAI API key are present. Secret values are not included in this report. `FREE_LAUNCH = true` intentionally keeps paid checkout disabled pending payment provider onboarding and testing.
 
 ## Release rule
