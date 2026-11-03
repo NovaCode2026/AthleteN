@@ -30,6 +30,7 @@ This report records implemented work and verified gates. A merged commit or a su
 ### Messaging and notifications
 - Existing message persistence and idempotent client message IDs retained.
 - Attachment retries reuse a stable path and do not intentionally create a duplicate message.
+- Mobile sign-out now removes only the current device's Expo push token, preserving registrations on other devices signed into the same account.
 - Sent, Delivered and Read receipts are separate.
 - Group message states now show partial and all-member delivery/read counts.
 - Notifications created from a message now carry a `message_id`; the Expo push payload includes `messageId`.
@@ -54,10 +55,10 @@ Matching migration files are in `supabase/migrations/`.
 
 | Gate | Latest observed result | Notes |
 |---|---|---|
-| Web CI | PASS | Tests and production build passed on latest code commit `3617ede24fa5cf900ce99c47f9caac367834c6cd` (run `41625568854`). |
-| CodeQL | IN PROGRESS | Latest code commit `3617ede24fa5cf900ce99c47f9caac367834c6cd` is being analyzed (run `41625568372`); prior CodeQL runs completed successfully. |
-| Mobile Check | PASS | Expo Doctor, TypeScript, ESLint and Android bundle check passed on `06da641483a3492564f590f8e166d257e1236e02` (run `41623373489`). No mobile source changed after that mobile gate. |
-| Android APK | IN PROGRESS | Scanner regression job passed; standalone Gradle APK build remains in progress on `06da641483a3492564f590f8e166d257e1236e02` (run `41623373182`). No downloadable artifact was present at the last check. |
+| Web CI | PASS | Tests and production build passed on commit `fe9513a4df3f1a686ac4e2da5c87391e80f78962` (run `41626472107`). |
+| CodeQL | PASS | Analysis passed on commit `fe9513a4df3f1a686ac4e2da5c87391e80f78962` (run `41626472409`). |
+| Mobile Check | PENDING | Latest mobile source commit `fe9513a4df3f1a686ac4e2da5c87391e80f78962` has a queued check (run `41626472314`). The previous successful check on `06da641483a3492564f590f8e166d257e1236e02` predates the device-specific sign-out token fix. |
+| Android APK | IN PROGRESS | The latest APK workflow for `fe9513a4df3f1a686ac4e2da5c87391e80f78962` is running (run `41626472271`); no artifact is available yet. An older APK artifact exists for commit `bd804ec7e119fea613d29ef0df9b3ee9759de998` and is not the latest release candidate. |
 | Netlify production | READY, but STALE | Published deploy `6ae372d8d6582ed467b6b3cc` is ready, but it points to commit `6137212178dfa49a0cc19711e681d692b120b551` from 29 October 2026, not the current release candidate. |
 
 ## Open strict-release blockers
