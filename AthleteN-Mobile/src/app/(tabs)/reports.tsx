@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Screen, Header, Section, Card, c, Empty } from '@/components/mobile-ui';
 
@@ -21,6 +22,7 @@ const completedMonth = () => {
 export default function Reports(){
  const {session,profile}=useAuth();
  const uid=session?.user?.id;
+ const router=useRouter();
  const role=String(profile?.role||'athlete');
  const plan=String(profile?.plan_id||'free');
  const eligible=hasReportPlan(role,plan);
@@ -156,7 +158,7 @@ export default function Reports(){
  const active=current||history[0]||null;
  return <Screen>
   <Header back eyebrow="ATHLETEN INTELLIGENCE" title="AI Reports" subtitle="Match analysis and monthly reports for your account role."/>
-  {!eligible?<Card accent><Text style={{color:c.text,fontSize:16,fontWeight:'900'}}>AI reports are a paid feature</Text><Text style={{color:c.muted,fontSize:11,lineHeight:17,marginTop:6}}>Choose the paid plan for your verified account role to unlock AI Match Reports and AI Monthly Reports.</Text><Pressable onPress={()=>{}} style={{marginTop:10,backgroundColor:c.accent,borderRadius:10,padding:12,alignItems:'center'}}><Text style={{color:'#fff',fontWeight:'900',fontSize:9}}>VIEW PLANS FROM PROFILE</Text></Pressable></Card>:<>
+  {!eligible?<Card accent><Text style={{color:c.text,fontSize:16,fontWeight:'900'}}>AI reports are a paid feature</Text><Text style={{color:c.muted,fontSize:11,lineHeight:17,marginTop:6}}>Choose the paid plan for your verified account role to unlock AI Match Reports and AI Monthly Reports.</Text><Pressable onPress={()=>router.push('/plans')} style={{marginTop:10,backgroundColor:c.accent,borderRadius:10,padding:12,alignItems:'center'}}><Text style={{color:'#fff',fontWeight:'900',fontSize:9}}>VIEW PLANS</Text></Pressable></Card>:<>
    <Section title="AI MATCH REPORT"><Card>
     <Text style={{color:c.muted,fontSize:10,lineHeight:16}}>Generate a structured review from match details and observations. AthleteN will not invent events or claim to analyse footage it has not received.</Text>
     {(['event','opponent','result','score','notes'] as const).map((key)=> <View key={key} style={{gap:5,marginTop:9}}>
