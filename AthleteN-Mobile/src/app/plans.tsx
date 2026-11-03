@@ -47,12 +47,18 @@ export default function PlansScreen() {
   const current = ((profile as any)?.plan_id || 'free') as PlanId;
 
   useEffect(() => {
-    let alive = true;
     if (!session || role !== 'athlete') return;
-    void supabase.from('student_verifications').select('status')
-      .eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
-      .then(({ data }) => { if (alive) setStudentStatus(String(data?.status || 'not_submitted')); });
-    return () => { alive = false; };
+    let alive = true;
+    const refreshStatus = async () => {
+      const { data } = await supabase.from('student_verifications').select('status')
+        .eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (alive) setStudentStatus(String(data?.status || 'not_submitted'));
+    };
+    void refreshStatus();
+    const channel = supabase.channel('mobile-plan-student-verification-' + session.user.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'student_verifications', filter: 'user_id=eq.' + session.user.id }, () => { void refreshStatus(); })
+      .subscribe();
+    return () => { alive = false; void supabase.removeChannel(channel); };
   }, [session, role]);
 
   useEffect(() => {
@@ -154,6 +160,10 @@ export default function PlansScreen() {
         <Pressable disabled={active || !!busyPlan || p.id === 'free' || (p.id === 'student' && studentStatus === 'pending')} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => p.id === 'student' && studentStatus !== 'approved' ? router.push('/verification') : void startCheckout(p.id)}>
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : p.id === 'student' && studentStatus === 'pending' ? 'AWAITING APPROVAL' : p.id === 'student' && studentStatus !== 'approved' ? 'SUBMIT STUDENT PROOF' : 'BUY PLAN'}</Text>}
         </Pressable>
+        {p.id === 'free' ? <View style={s.note}>
+          <Text style={s.noteTitle}>What Free is missing</Text>
+          <Text style={s.meta}>AI Match Reports and AI Monthly Reports are paid features for Athletes, Coaches and Academies. Free accounts can see the features but cannot generate or save reports.</Text>
+        </View> : null}
       </View>;
     })}
 
