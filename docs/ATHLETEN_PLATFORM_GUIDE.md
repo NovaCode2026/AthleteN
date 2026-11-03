@@ -17,7 +17,7 @@
 
 AthleteN is an athlete-first sports operating system built to connect athletes, coaches and academies. It combines sports records, training, competition preparation, communication, role dashboards, reports and controlled AI features.
 
-The first product vertical is Taekwondo, including Kyorugi and Poomsae. The platform is designed so future sports can use the same account, reporting and role infrastructure.
+The first and only currently supported sport vertical is Taekwondo. Athletes choose Taekwondo first, then select Kyorugi or Poomsae. Each discipline has distinct labels, training inputs and competition records. Future sports remain hidden until their workflows are implemented and tested. See [Taekwondo Disciplines](./TAEKWONDO_DISCIPLINES.md) for the complete feature map.
 
 ## 2. Roles and account boundaries
 
@@ -42,7 +42,9 @@ Each role receives access to its permitted workspace. A paid plan does not grant
 
 ### Training and progress
 - Training sessions and history
-- Kyorugi and Poomsae-specific records
+- Sport-first Taekwondo profile selection, followed by Kyorugi or Poomsae
+- Kyorugi bout and sparring records
+- Poomsae form practice, repetitions, category, event score and placing records
 - Goals, progress and checklists
 - Weight records and competition category history
 - Calendar and notifications
