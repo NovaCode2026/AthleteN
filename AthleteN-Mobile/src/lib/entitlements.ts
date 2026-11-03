@@ -20,7 +20,9 @@ export type FeatureKey =
   | 'messaging'
   | 'documents'
   | 'attendance'
-  | 'weight_verification';
+  | 'weight_verification'
+  | 'ai_match_reports'
+  | 'ai_monthly_reports';
 
 export const AI_LIMITS: Record<PlanId, number> = {
   free: 0,
@@ -91,9 +93,15 @@ export function hasFeature(
     documents: ['student','pro','elite','coach','academy'],
     attendance: ['coach','academy'],
     weight_verification: ['coach','academy'],
+    ai_match_reports: ['student','pro','elite','coach','academy'],
+    ai_monthly_reports: ['student','pro','elite','coach','academy'],
   };
 
   if (!access[feature]?.includes(p)) return false;
+
+  if (['student','pro','elite'].includes(p) && role && role !== 'athlete') return false;
+  if (p === 'coach' && role && role !== 'coach') return false;
+  if (p === 'academy' && role && role !== 'academy_admin') return false;
 
   if (feature.startsWith('coach_') && role && role !== 'coach' && role !== 'academy_admin') {
     return false;
