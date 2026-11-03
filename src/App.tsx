@@ -12,7 +12,7 @@ import AthleteCommandCenter from "./components/dashboard/AthleteCommandCenter";
 import AdminControlCenter from "./components/admin/AdminControlCenter";
 import MessageReportsPanel from "./components/admin/MessageReportsPanel";
 import MessagingPage from "./components/messaging/MessagingPage";
-import { AttendancePage, AnalyticsPage, AthleteReportPage, BadgesPage, JourneyPage, NutritionPage, MissionsPage, AthletePassportPage, SupportTicketsPage, TeamConnectionPage, TrainingSessionPage, CompetitionModePage } from "./components/parity/MobileParityPages";
+import { AttendancePage, AnalyticsPage, BadgesPage, JourneyPage, NutritionPage, MissionsPage, AthletePassportPage, SupportTicketsPage, TeamConnectionPage, TrainingSessionPage, CompetitionModePage } from "./components/parity/MobileParityPages";
 import { NotificationsPage, NotificationSettingsPage, SettingsPage, NavigationSettingsPage } from "./components/parity/NotificationPages";
 import InstagramOrganizerScanner from "./components/instagram/InstagramOrganizerScanner";
 import AgeVerificationGate, { ParentApprovalPage } from "./components/account/AgeVerificationGate";
