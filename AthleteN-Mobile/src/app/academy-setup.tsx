@@ -197,9 +197,9 @@ export default function AcademySetupScreen() {
         <View style={s.progress}><View style={s.progressActive}/><View style={s.progressInactive}/><View style={s.progressInactive}/></View>
         <Text style={s.kicker}>ATHLETEN ACADEMY</Text>
         <Text style={s.title}>Set up your academy.</Text>
-        <Text style={s.subtitle}>Your Academy plan is active. Complete your workspace details and verify your Academy email before entering the dashboard.</Text>
+        <Text style={s.subtitle}>{String(profile?.plan_id || '').toLowerCase() === 'academy' ? 'Complete your Academy workspace details and verify your Academy contact email to finish setup.' : 'Complete the existing Academy workspace setup and verify the contact email before returning to the Academy plan checkout.'}</Text>
 
-        <View style={s.badge}><Text style={s.badgeText}>ACADEMY PLAN • ACTIVE</Text></View>
+        <View style={s.badge}><Text style={s.badgeText}>{String(profile?.plan_id || '').toLowerCase() === 'academy' ? 'ACADEMY PLAN • ACTIVE' : 'ACADEMY VERIFICATION'}</Text></View>
 
         <View style={s.card}>
           <Text style={s.section}>ACADEMY DETAILS</Text>
