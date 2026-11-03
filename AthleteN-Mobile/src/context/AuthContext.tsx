@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { attachNotificationListeners, registerForPushNotifications } from '@/lib/push-notifications';
+import { attachNotificationListeners, registerForPushNotifications, unregisterPushNotifications } from '@/lib/push-notifications';
 import { refreshAthleteWidgets } from '@/lib/widget-refresh';
 
 type Profile = { id: string; user_id: string; full_name: string; discipline: 'Kyorugi' | 'Poomsae' | null; [key: string]: unknown };
@@ -152,9 +152,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // for the previous account after sign-out.
         if (userId) {
           try {
-            await supabase.from('device_push_tokens').delete().eq('user_id', userId);
+            await unregisterPushNotifications(userId);
           } catch {
-            // Do not block sign-out if token cleanup is temporarily unavailable.
+            // Do not block sign-out if this device's token cleanup is temporarily unavailable.
           }
         }
         await supabase.auth.signOut();
