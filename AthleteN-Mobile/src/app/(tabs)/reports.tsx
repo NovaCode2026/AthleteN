@@ -50,6 +50,9 @@ export default function Reports(){
  async function monthlySnapshot(){
   if(!uid)throw new Error('Please sign in again.');
   let athleteIds=[uid];
+  let coachCount=role==='coach'?1:0;
+  let newAthleteMemberships=0;
+  let newCoachMemberships=0;
   if(role==='coach'){
    const links=await supabase.from('coach_athlete_links').select('athlete_user_id').eq('coach_user_id',uid).eq('status','active');
    if(links.error)throw links.error;
@@ -62,30 +65,36 @@ export default function Reports(){
     academyId=String(a.data?.id||'');
    }
    if(academyId){
-    const m=await supabase.from('academy_memberships').select('user_id').eq('academy_id',academyId).eq('status','active').eq('role','athlete');
+    const m=await supabase.from('academy_memberships').select('user_id,role,status,created_at').eq('academy_id',academyId).eq('status','active');
     if(m.error)throw m.error;
-    athleteIds=[...new Set((m.data||[]).map((x:any)=>String(x.user_id)))];
+    const members=m.data||[];
+    athleteIds=[...new Set(members.filter((x:any)=>x.role==='athlete').map((x:any)=>String(x.user_id)))];
+    coachCount=new Set(members.filter((x:any)=>x.role==='coach').map((x:any)=>String(x.user_id))).size;
+    newAthleteMemberships=members.filter((x:any)=>x.role==='athlete'&&String(x.created_at||'')>=period.start&&String(x.created_at||'')<period.end).length;
+    newCoachMemberships=members.filter((x:any)=>x.role==='coach'&&String(x.created_at||'')>=period.start&&String(x.created_at||'')<period.end).length;
    }else athleteIds=[];
   }
   if(role==='athlete')athleteIds=[uid];
-  const facts={role,periodStart:period.start,periodEnd:period.end,athleteCount:role==='athlete'?1:athleteIds.length,sessions:0,trainingMinutes:0,medals:0,competitions:0,activeGoals:0,medalBreakdown:{} as Record<string,number>};
+  const facts:any={role,periodStart:period.start,periodEnd:period.end,athleteCount:role==='athlete'?1:athleteIds.length,coachCount,newAthleteMemberships,newCoachMemberships,sessions:0,trainingMinutes:0,attendanceRecords:0,attendanceStatusBreakdown:{},medals:0,competitions:0,activeGoals:0,medalBreakdown:{} as Record<string,number>};
   if(!athleteIds.length)return facts;
-  const [t,m,e,g]=await Promise.all([
+  const [t,a,m,e,g]=await Promise.all([
    supabase.from('training_sessions').select('user_id,session_date,minutes').in('user_id',athleteIds).gte('session_date',period.start).lt('session_date',period.end),
+   supabase.from('attendance_records').select('user_id,attended_at,status').in('user_id',athleteIds).gte('attended_at',period.start+'T00:00:00').lt('attended_at',period.end+'T00:00:00'),
    supabase.from('medals').select('user_id,awarded_at,medal_type').in('user_id',athleteIds).gte('awarded_at',period.start).lt('awarded_at',period.end),
    supabase.from('tournaments').select('user_id,starts_at,status').in('user_id',athleteIds).gte('starts_at',period.start).lt('starts_at',period.end),
    supabase.from('goals').select('user_id,status').in('user_id',athleteIds)
   ]);
-  const failed=[t,m,e,g].find((x:any)=>x.error);if(failed?.error)throw failed.error;
+  const failed=[t,a,m,e,g].find((x:any)=>x.error);if(failed?.error)throw failed.error;
   facts.sessions=(t.data||[]).length;
   facts.trainingMinutes=(t.data||[]).reduce((s:number,x:any)=>s+Number(x.minutes||0),0);
+  facts.attendanceRecords=(a.data||[]).length;
+  (a.data||[]).forEach((x:any)=>{const key=String(x.status||'Unspecified');facts.attendanceStatusBreakdown[key]=(facts.attendanceStatusBreakdown[key]||0)+1});
   facts.medals=(m.data||[]).length;
   facts.competitions=(e.data||[]).length;
   facts.activeGoals=(g.data||[]).filter((x:any)=>!['completed','cancelled'].includes(String(x.status||'').toLowerCase())).length;
   (m.data||[]).forEach((x:any)=>{const key=String(x.medal_type||'Unspecified');facts.medalBreakdown[key]=(facts.medalBreakdown[key]||0)+1});
   return facts;
  }
-
  async function askAi(topic:string,prompt:string){
   if(!session?.access_token)throw new Error('Your login session expired. Sign in again.');
   const base=(process.env.EXPO_PUBLIC_ATHLETEN_API_URL||'https://athleten.netlify.app').replace(/\/$/,'');
@@ -108,12 +117,16 @@ export default function Reports(){
     'Create an AthleteN monthly performance report for the completed period '+facts.periodStart+' to '+facts.periodEnd+'.',
     'Account role: '+roleName(role)+'. Use only the verified account-record totals below.',
     'Athletes included: '+facts.athleteCount,
+    'Active coaches in academy/team scope: '+facts.coachCount,
+    'New athlete memberships during the period: '+facts.newAthleteMemberships,
+    'New coach memberships during the period: '+facts.newCoachMemberships,
     'Training sessions: '+facts.sessions,
     'Training minutes: '+facts.trainingMinutes,
+    'Attendance records: '+facts.attendanceRecords+' ('+JSON.stringify(facts.attendanceStatusBreakdown)+')',
     'Medals: '+facts.medals+' ('+JSON.stringify(facts.medalBreakdown)+')',
     'Competitions recorded: '+facts.competitions,
     'Goals not marked completed/cancelled: '+facts.activeGoals,
-    'Write: Monthly overview, recorded highlights, consistency observations, data limitations and practical next-month priorities. Do not invent attendance, heart-rate, technical or match facts.'
+    'Write: Monthly overview, team/academy membership snapshot, training and attendance, recorded highlights, competition and medal highlights, consistency observations, data limitations and practical next-month priorities. For Academy reports, distinguish active coach and athlete membership counts from new memberships created during the month. Do not invent attendance, heart-rate, technical or match facts.'
    ].join('\\n');
    const answer=await askAi('Performance Reports',prompt);
    const title=roleName(role)+' Monthly Report · '+period.label;
@@ -173,7 +186,7 @@ export default function Reports(){
     <Text style={{color:c.text,fontSize:14,fontWeight:'900',marginTop:5}}>Your monthly performance review</Text>
     <Text style={{color:c.muted,fontSize:10,lineHeight:16,marginTop:5}}>Uses training, competition, medal and goal records visible to your account for the previous completed month.</Text>
     {stats?<View style={{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:12}}>
-     {[['Sessions',stats.sessions],['Training hours',(stats.trainingMinutes/60).toFixed(1)],['Medals',stats.medals],['Athletes',stats.athleteCount]].map(([k,v])=><View key={k} style={{minWidth:'45%',flexGrow:1,backgroundColor:c.background,borderRadius:11,padding:10}}><Text style={{color:c.text,fontSize:18,fontWeight:'900'}}>{v}</Text><Text style={{color:c.muted,fontSize:8}}>{k}</Text></View>)}
+     {[['Sessions',stats.sessions],['Training hours',(stats.trainingMinutes/60).toFixed(1)],['Attendance',stats.attendanceRecords],['Medals',stats.medals],['Athletes',stats.athleteCount],...(role!=='athlete'?[['Coaches',stats.coachCount]]:[])].map(([k,v])=><View key={k} style={{minWidth:'45%',flexGrow:1,backgroundColor:c.background,borderRadius:11,padding:10}}><Text style={{color:c.text,fontSize:18,fontWeight:'900'}}>{v}</Text><Text style={{color:c.muted,fontSize:8}}>{k}</Text></View>)}
     </View>:null}
     <Pressable disabled={!!busy} onPress={()=>void generateMonthly()} style={{marginTop:12,backgroundColor:c.accent,borderRadius:11,padding:13,alignItems:'center'}}><Text style={{color:'#fff',fontSize:9,fontWeight:'900'}}>{busy==='monthly'?'GENERATING…':'GENERATE AI MONTHLY REPORT'}</Text></Pressable>
    </Card></Section>
