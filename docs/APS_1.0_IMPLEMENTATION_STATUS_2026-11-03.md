@@ -48,6 +48,10 @@ This report records implemented work and verified gates. A merged commit or a su
   - Adds `save_my_dashboard_widgets(text[])`.
   - Enforces authenticated ownership, known widget keys, unique keys and between 1 and 8 widgets.
   - Runs as SECURITY INVOKER and uses existing RLS.
+- `harden_message_receipt_rpc_limits_and_search_path`
+  - Pins both receipt RPCs to an empty search path and keeps all table/function references schema-qualified.
+  - Limits a single delivery acknowledgement to 200 message IDs.
+  - Grants execution only to authenticated users; anonymous and PUBLIC execution remain revoked.
 
 Matching migration files are in `supabase/migrations/`.
 
@@ -55,9 +59,9 @@ Matching migration files are in `supabase/migrations/`.
 
 | Gate | Latest observed result | Notes |
 |---|---|---|
-| Web CI | PASS | Tests and production build passed on commit `fe9513a4df3f1a686ac4e2da5c87391e80f78962` (run `41626472107`). |
-| CodeQL | PASS | Analysis passed on commit `fe9513a4df3f1a686ac4e2da5c87391e80f78962` (run `41626472409`). |
-| Mobile Check | IN PROGRESS | Latest mobile source commit `fe9513a4df3f1a686ac4e2da5c87391e80f78962` is being checked (run `41626472314`). The previous successful check on `06da641483a3492564f590f8e166d257e1236e02` predates the device-specific sign-out token fix. |
+| Web CI | PASS | Tests and production build passed on commit `870a329d079e48ebe0343247eb5c2cba06d23537` (run `41627453702`). Latest docs-only commit has another CI run in progress. |
+| CodeQL | PASS | Analysis passed on commit `870a329d079e48ebe0343247eb5c2cba06d23537` (run `41627453916`). Latest docs-only commit has another analysis in progress. |
+| Mobile Check | PASS | Expo Doctor, TypeScript, ESLint and Android bundle check passed on mobile source commit `fe9513a4df3f1a686ac4e2da5c87391e80f78962` (run `41626472314`). Subsequent changes are SQL migration/docs only. |
 | Android APK | IN PROGRESS | The latest APK workflow for `fe9513a4df3f1a686ac4e2da5c87391e80f78962` is running (run `41626472271`); no artifact is available yet. An older APK artifact exists for commit `bd804ec7e119fea613d29ef0df9b3ee9759de998` and is not the latest release candidate. |
 | Netlify production | READY, but STALE | Published deploy `6ae372d8d6582ed467b6b3cc` is ready, but it points to commit `6137212178dfa49a0cc19711e681d692b120b551` from 29 October 2026, not the current release candidate. |
 
@@ -71,6 +75,13 @@ Matching migration files are in `supabase/migrations/`.
 6. **Supabase Performance Advisor:** 30 auth_rls_initplan warnings and 80 unused-index info notices remain for reviewed remediation. Do not drop unused indexes without workload evidence.
 7. **Dependency audit:** Mobile dependency install reported 36 advisories (2 low, 26 moderate, 7 high, 1 critical). Review exact dependency paths and upgrade safely; do not run a blind force-upgrade.
 8. **Production deployment:** deploy the current `main` release candidate to Netlify and verify it; the currently published Netlify deploy is behind by several days. Confirm the Android APK artifact can be downloaded, installed and launched. A GitHub build alone does not prove production deployment or device installation.
+
+## Additional verification performed
+
+- Supabase production project status: `ACTIVE_HEALTHY`, PostgreSQL 17.6.
+- Public schema RLS inventory: 88 tables checked; 0 public tables without RLS.
+- Receipt RPC verification: unauthenticated delivery/read acknowledgements were rejected; function search paths are empty/pinned; `mark_messages_delivered` and `mark_messages_read` are executable by `authenticated` only, while the trigger functions are not directly executable by API roles.
+- Netlify environment audit: core production URL/key and server-only secret variables exist. Secret values are not included in this report.
 
 ## Release rule
 
