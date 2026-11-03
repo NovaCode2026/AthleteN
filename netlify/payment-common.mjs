@@ -47,12 +47,11 @@ export async function requireApprovedStudent(supabase, userId) {
     .from("student_verifications")
     .select("id,status,reviewed_at")
     .eq("user_id", userId)
-    .eq("status", "approved")
-    .order("reviewed_at", { ascending: false })
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return data?.status === "approved" ? data : null;
 }
 
 export async function logPaymentEvent(supabase, event) {
