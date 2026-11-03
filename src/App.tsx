@@ -233,11 +233,39 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
   async function startCheckout(planId: string) {
     if (!supabase || !userId) { onToast({ type: "error", message: "Sign in before requesting a subscription." }); return; }
     if (planId === "student" && studentStatus !== "approved") { openPage("/verification"); return; }
+    const requiredRole = ["student", "pro", "elite"].includes(planId) ? "athlete" : planId === "coach" ? "coach" : "academy_admin";
+    if (role !== requiredRole) {
+      onToast({ type: "warning", message: planId === "coach"
+        ? "Coach plan requires an existing verified Coach account. Sign in with your Coach account or contact AthleteN Admin for account verification."
+        : planId === "academy"
+          ? "Academy plan requires an existing verified Academy Admin account. Complete Academy account verification first."
+          : "This plan is available only to Athlete accounts." });
+      return;
+    }
     setBusyPlan(planId);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (!token) throw new Error("Your session expired. Sign in again.");
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error("Your sign-in could not be verified. Sign in again.");
+      if (planId === "coach" && !authData.user.email_confirmed_at) {
+        throw new Error("Verify your AthleteN account email first. Your existing Coach role is checked again by the server.");
+      }
+      if (planId === "academy") {
+        let academyQuery = supabase.from("academies")
+          .select("id,status,setup_completed,contact_email_verified_at")
+          .eq("owner_user_id", userId)
+          .eq("status", "active")
+          .eq("setup_completed", true)
+          .not("contact_email_verified_at", "is", null);
+        if (profile.academy_id) academyQuery = academyQuery.eq("id", profile.academy_id);
+        const { data: academy, error: academyError } = await academyQuery.limit(1).maybeSingle();
+        if (academyError) throw new Error("Academy verification could not be checked. Please try again.");
+        if (!authData.user.email_confirmed_at || !academy) {
+          throw new Error("Complete the existing Academy setup and verify its contact email before continuing to payment.");
+        }
+      }
       const response = await fetch("/.netlify/functions/create-checkout", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify({ planId })
@@ -287,9 +315,9 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
           <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
           {plan.id === "student" && <p className="notice" role="status">{studentLoading ? "Checking verification…" : statusLabel}</p>}
           {isFree ? <button className="btn primary" type="button" disabled>Free plan included</button> :
-            <button className="btn primary" type="button" disabled={isCurrent || !!busyPlan || (!canBuy && !studentNeedsApproval) || studentLoading || (plan.id === "student" && studentStatus === "pending") || (plan.id !== "student" && !isFree) || (plan.id === "student" && studentStatus === "approved")}
+            <button className="btn primary" type="button" disabled={isCurrent || !!busyPlan || isFree || studentLoading || (plan.id === "student" && studentStatus === "pending")}
               onClick={() => studentNeedsApproval && plan.id === "student" ? openPage("/verification") : void startCheckout(plan.id)}>
-              {busyPlan === plan.id ? "Starting checkout…" : isCurrent ? "Current plan" : !canBuy && !studentNeedsApproval ? (plan.id === "coach" ? "Coach verification required" : plan.id === "academy" ? "Academy verification required" : "Athletes only") : studentNeedsApproval ? (studentStatus === "pending" ? "Awaiting admin approval" : "Submit student proof") : plan.id === "student" && studentStatus === "approved" ? "Approved · purchase coming soon" : "Paid checkout coming soon"}
+              {busyPlan === plan.id ? "Verifying account…" : isCurrent ? "Current plan" : plan.id === "student" && studentStatus === "pending" ? "Awaiting Admin approval" : plan.id === "student" && studentStatus !== "approved" ? "Submit student proof" : plan.id === "coach" ? "Verify Coach account & continue" : plan.id === "academy" ? "Verify Academy & continue" : "Continue to checkout"}
             </button>}
         </article>{isFree && <section className="card panel plan-card"><p className="eyebrow">FREE PLAN LIMITS</p><h3>What Free is missing</h3><div className="grid two"><div><h4>AI Match Reports</h4><p>Structured review of supplied match result, score and observations.</p></div><div><h4>AI Monthly Reports</h4><p>Monthly summaries for Athletes, Coaches and Academies using their permitted AthleteN records.</p></div></div><p className="notice">Included with paid plans only.</p></section>}</div>;
       })}
