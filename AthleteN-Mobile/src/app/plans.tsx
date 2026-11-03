@@ -160,7 +160,7 @@ export default function PlansScreen() {
     <View style={s.productSection}>
       <Text style={s.sectionKicker}>PROFESSIONAL PRODUCTS</Text>
       <Text style={s.productTitle}>Coach & Academy</Text>
-      <Text style={s.meta}>Coach and Academy pricing is listed below. Contact the AthleteN team for activation; selecting a product does not automatically change account permissions.</Text>
+      <Text style={s.meta}>Coach and Academy pricing is listed below. Purchase requires the matching existing verified account role.</Text>
       {(['coach','academy_admin'] as const).map((productRole) => {
         const p = productPlans[productRole];
         const owned = activeProducts.has(productRole === 'coach' ? 'coach' : 'academy');
@@ -180,7 +180,7 @@ export default function PlansScreen() {
             style={[s.planButton, isCurrent && s.planButtonActive]}
             onPress={() => void startCheckout(productRole === 'coach' ? 'coach' : 'academy')}
           >
-            <Text style={s.planButtonText}>{isCurrent && owned ? 'CURRENT PLAN' : role !== (productRole === 'coach' ? 'coach' : 'academy_admin') ? (productRole === 'coach' ? 'COACH VERIFICATION REQUIRED' : 'ACADEMY VERIFICATION REQUIRED') : busyPlan === productRole ? 'STARTING CHECKOUT…' : 'BUY PLAN'}</Text>
+            <Text style={s.planButtonText}>{isCurrent && owned ? 'CURRENT PLAN' : role !== (productRole === 'coach' ? 'coach' : 'academy_admin') ? (productRole === 'coach' ? 'COACH VERIFICATION REQUIRED' : 'ACADEMY VERIFICATION REQUIRED') : busyPlan === (productRole === 'coach' ? 'coach' : 'academy') ? 'STARTING CHECKOUT…' : 'BUY PLAN'}</Text>
           </Pressable>
         </View>;
       })}
