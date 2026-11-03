@@ -15,7 +15,7 @@
 
 **Built by Nova Code** · React · TypeScript · Expo · Supabase · Netlify
 
-[Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) · [API](./docs/API.md) · [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) · [Mobile Guide](./AthleteN-Mobile/README.md)
+[Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) · [Plans & Verification](./docs/PLAN_VERIFICATION_AND_BILLING.md) · [Docs Hub](./docs/README.md) · [API](./docs/API.md) · [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) · [Mobile Guide](./AthleteN-Mobile/README.md)
 
 </div>
 
@@ -417,9 +417,13 @@ Netlify deployment is intentionally a manual owner action for this project. Do n
 
 ## 📚 Documentation
 
+The documentation is organized as a product handbook, developer manual and release checklist. Start with the [Documentation Hub](./docs/README.md) if you are new to the repository.
+
 | Document | What it explains |
 |---|---|
-| [AthleteN Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) | Product, roles, features, plans, verification and reports |
+| [AthleteN Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) | Product, roles, features, workspaces and reports |
+| [Plans, Verification & Billing](./docs/PLAN_VERIFICATION_AND_BILLING.md) | Full Student, Coach and Academy eligibility, verification, payment and subscription journeys |
+| [Documentation Hub](./docs/README.md) | Find the right guide by role and task |
 | [API Guide](./docs/API.md) | Netlify AI endpoint, data modules and server rules |
 | [Mobile Guide](./AthleteN-Mobile/README.md) | Expo development, mobile screens and app configuration |
 | [Deployment Guide](./docs/Deployment.md) | Environment setup and deployment |
