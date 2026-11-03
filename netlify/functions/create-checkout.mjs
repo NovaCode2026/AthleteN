@@ -128,6 +128,17 @@ export default async function handler(request) {
     if (!providers.has(provider)) return json({ error: "Unsupported payment provider." }, 400);
 
     const supabase = serverSupabase();
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (profileError || !profile) return json({ error: "Unable to verify this account for the selected plan." }, 503);
+    const roleAllowed =
+      (["student", "pro", "elite"].includes(planId) && profile.role === "athlete") ||
+      (planId === "coach" && profile.role === "coach") ||
+      (planId === "academy" && profile.role === "academy_admin");
+    if (!roleAllowed) return json({ error: "This plan is only available to the matching verified account type." }, 403);
     const verification = planId === "student" ? await requireApprovedStudent(supabase, user.id) : null;
     if (planId === "student" && !verification) return json({ error: "Student ID approval is required before payment." }, 403);
 
