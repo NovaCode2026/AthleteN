@@ -23,6 +23,7 @@ This report records implemented work and verified gates. A merged commit or a su
 - 3-, 6- and 12-month date filters.
 - CSV export and browser print / Save as PDF.
 - Group analytics use the same filtered rows as their charts; academy member cards distinguish active and pending memberships.
+- Coach and academy analytics fetch the selected date window at the database and page through results in batches of 500 (up to a defensive 100,000-row ceiling), avoiding the prior 500/1,000-row truncation.
 - Empty states explain when there is no data, rather than showing fabricated metrics.
 
 ### Messaging and notifications
@@ -52,10 +53,11 @@ Matching migration files are in `supabase/migrations/`.
 
 | Gate | Latest observed result | Notes |
 |---|---|---|
-| Web CI | PASS | Tests and production build passed on commit `67bd2fb4be46963a6b69e20d72a90614f25efee7`. |
-| Mobile Check | PASS | Expo Doctor, TypeScript, ESLint and Android bundle check passed on commit `06da641483a3492564f590f8e166d257e1236e02`. |
-| CodeQL | In progress at snapshot | Must be green on the latest release candidate. |
-| Android APK | In progress at snapshot | APK build/upload was not yet confirmed complete. |
+| Web CI | PASS | Tests and production build passed on `aae35c7bf1505e6afe3103800a546d1f7d42207d` (run `41624948370`). |
+| CodeQL | PASS | CodeQL completed successfully on `aae35c7bf1505e6afe3103800a546d1f7d42207d` (run `41624948178`). |
+| Mobile Check | PASS | Expo Doctor, TypeScript, ESLint and Android bundle check passed on `06da641483a3492564f590f8e166d257e1236e02` (run `41623373489`). No mobile source changed after that mobile gate. |
+| Android APK | IN PROGRESS | Scanner regression job passed; standalone Gradle APK build remains in progress on `06da641483a3492564f590f8e166d257e1236e02` (run `41623373182`). No downloadable artifact was present at the last check. |
+| Netlify production | READY, but STALE | Published deploy `6ae372d8d6582ed467b6b3cc` is ready, but it points to commit `6137212178dfa49a0cc19711e681d692b120b551` from 29 October 2026, not the current release candidate. |
 
 ## Open strict-release blockers
 
@@ -66,7 +68,7 @@ Matching migration files are in `supabase/migrations/`.
 5. **Supabase Security Advisor:** current warnings include pg_net installed in public (non-relocatable extension), 61 authenticated-executable SECURITY DEFINER RPCs requiring a purpose/authorization review, and 121 multiple-permissive-policy warnings. These must be reviewed individually; do not bulk revoke role-gated RPCs or rewrite RLS policies blindly.
 6. **Supabase Performance Advisor:** 30 auth_rls_initplan warnings and 80 unused-index info notices remain for reviewed remediation. Do not drop unused indexes without workload evidence.
 7. **Dependency audit:** Mobile dependency install reported 36 advisories (2 low, 26 moderate, 7 high, 1 critical). Review exact dependency paths and upgrade safely; do not run a blind force-upgrade.
-8. **Production deployment:** verify the deployed Web release and Android release artifact separately; a GitHub build alone does not prove production deployment or device installation.
+8. **Production deployment:** deploy the current `main` release candidate to Netlify and verify it; the currently published Netlify deploy is behind by several days. Confirm the Android APK artifact can be downloaded, installed and launched. A GitHub build alone does not prove production deployment or device installation.
 
 ## Release rule
 
