@@ -88,6 +88,8 @@ The checkout Netlify Function currently has a server-side `FREE_LAUNCH = true` g
 
 Set `PAYMENT_PROVIDER` only after the server secrets and plan IDs are configured and tested. Never expose payment secrets to the browser.
 
+**Billing-cycle blocker:** the current checkout API does not accept a monthly/yearly selector. The UI displays both cycles, and the server has a single provider plan key per product. Do not enable paid checkout until monthly and yearly provider plan IDs, amounts, renewal periods and the selected cycle are wired end to end and verified in provider sandbox.
+
 ## Supabase Auth URLs
 
 In Supabase Authentication URL Configuration, verify:
