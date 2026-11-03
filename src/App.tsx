@@ -280,13 +280,6 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
     } finally { setBusyPlan(null); }
   }
   const visiblePlans = plans.filter((plan) => plan.id !== "student" || role === "athlete");
-  const eligible = (planId: string) => {
-    if (planId === "free") return false;
-    if (["student", "pro", "elite"].includes(planId)) return role === "athlete";
-    if (planId === "coach") return role === "coach";
-    if (planId === "academy") return role === "academy_admin";
-    return false;
-  };
   const statusLabel = studentStatus === "approved" ? "Approved" : studentStatus === "pending" ? "Pending admin approval" : studentStatus === "rejected" ? "Rejected · resubmit proof" : "Verification required";
   return <FeaturePage title="Plans and billing">
     <section className="card panel billing-note">
@@ -302,7 +295,6 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
       {visiblePlans.map((plan) => {
         const isFree = plan.id === "free";
         const isCurrent = currentPlan === plan.id;
-        const canBuy = eligible(plan.id);
         const studentNeedsApproval = plan.id === "student" && studentStatus !== "approved";
         return <div key={plan.id} style={{ display: "contents" }}><article className={`card plan-card ${isCurrent ? "active" : ""}`}>
           <div className="plan-card-head">
