@@ -11,23 +11,23 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
   const [name,setName]=useState('');
   const [dob,setDob]=useState('');
   const [gender,setGender]=useState('');
-  const [sport,setSport]=useState('Taekwondo');
+  const [sport,setSport]=useState<'taekwondo'>('taekwondo');
   const [club,setClub]=useState('');
   const [coach,setCoach]=useState('');
   const [connectionCode,setConnectionCode]=useState('');
-  const [discipline,setDiscipline]=useState<'Kyorugi'|'Poomsae'>('Kyorugi');
+  const [discipline,setDiscipline]=useState<'kyorugi'|'poomsae'>('kyorugi');
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
 
   async function save() {
-    if (!name.trim()||!dob.trim()||!gender.trim()||!sport.trim()) {
-      setError('Name, date of birth, gender, and sport are required.'); return;
+    if (!name.trim()||!dob.trim()||!gender.trim()||sport!=='taekwondo'||!['kyorugi','poomsae'].includes(discipline)) {
+      setError('Name, date of birth, gender, Taekwondo sport and a discipline are required.'); return;
     }
     if (!isValidDob(dob)) { setError('Enter a valid date of birth in YYYY-MM-DD format, for example 2013-10-23.'); return; }
     setBusy(true); setError('');
     const { error: insertError } = await supabase.from('profiles').upsert({
       user_id:userId, full_name:name.trim(), date_of_birth:dob.trim(), gender:gender.trim(),
-      sport:sport.trim(), club:club.trim(), coach:coach.trim(), discipline:discipline.toLowerCase(),
+      sport:'taekwondo', club:club.trim(), coach:coach.trim(), discipline,
     }, { onConflict:'user_id' });
     if (insertError) { setBusy(false); setError(insertError.message); return; }
     if (connectionCode.trim()) {
@@ -46,13 +46,30 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
       {label:'Full name',value:name,set:setName,required:true},
       {label:'Date of birth (YYYY-MM-DD)',value:dob,set:setDob,required:true},
       {label:'Gender',value:gender,set:setGender,required:true},
-      {label:'Sport',value:sport,set:setSport,required:true},
       {label:'Club / Academy name (optional)',value:club,set:setClub,required:false},
       {label:'Coach name (optional)',value:coach,set:setCoach,required:false},
     ] as const).map(field=><View key={field.label} style={styles.field}><Text style={styles.label}>{field.label}{field.required?' *':''}</Text><TextInput value={field.value} onChangeText={field.label.startsWith('Date of birth')?value=>setDob(formatDobInput(value)):field.set} placeholder={field.label} placeholderTextColor={Colors.dark.muted} style={styles.input} keyboardType={field.label.startsWith('Date of birth')?'numeric':'default'} autoCapitalize={field.label==='Full name'?'words':'sentences'} />{field.label.startsWith('Date of birth')&&<Text style={styles.hint}>Type YYYYMMDD or YYYY-MM-DD; AthleteN formats and validates the date.</Text>}</View>)}
     <View style={styles.field}><Text style={styles.label}>Academy or Coach connection code (optional)</Text><Text style={styles.hint}>Enter the code shared by your academy or coach to connect your account. You can skip this and connect later.</Text><TextInput value={connectionCode} onChangeText={setConnectionCode} autoCapitalize="characters" autoCorrect={false} placeholder="e.g. SRTAEKWONDO" placeholderTextColor={Colors.dark.muted} style={styles.input}/></View>
-    <Text style={styles.label}>Taekwondo discipline *</Text>
-    <View style={styles.row}><Pressable onPress={()=>setDiscipline('Kyorugi')} style={[styles.choice,discipline==='Kyorugi'&&styles.choiceActive]}><Text style={styles.choiceText}>Kyorugi</Text></Pressable><Pressable onPress={()=>setDiscipline('Poomsae')} style={[styles.choice,discipline==='Poomsae'&&styles.choiceActive]}><Text style={styles.choiceText}>Poomsae</Text></Pressable></View>
+    <View style={styles.field}>
+      <Text style={styles.label}>1 · SPORT *</Text>
+      <View style={styles.row}>
+        <Pressable onPress={()=>setSport('taekwondo')} style={[styles.choice,sport==='taekwondo'&&styles.choiceActive]} accessibilityRole="radio" accessibilityState={{selected:sport==='taekwondo'}}>
+          <Text style={styles.choiceText}>🥋 Taekwondo</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.hint}>Taekwondo is the only supported sport in this release. Other sports will appear when their tools and records are ready.</Text>
+    </View>
+    <View style={styles.field}>
+      <Text style={styles.label}>2 · TAEKWONDO DISCIPLINE *</Text>
+      {sport==='taekwondo'?<View style={styles.row}>
+        <Pressable onPress={()=>setDiscipline('kyorugi')} style={[styles.choice,discipline==='kyorugi'&&styles.choiceActive]} accessibilityRole="radio" accessibilityState={{selected:discipline==='kyorugi'}}>
+          <Text style={styles.choiceText}>Kyorugi · Sparring</Text>
+        </Pressable>
+        <Pressable onPress={()=>setDiscipline('poomsae')} style={[styles.choice,discipline==='poomsae'&&styles.choiceActive]} accessibilityRole="radio" accessibilityState={{selected:discipline==='poomsae'}}>
+          <Text style={styles.choiceText}>Poomsae · Forms</Text>
+        </Pressable>
+      </View>:<Text style={styles.hint}>Choose a sport first to see its disciplines.</Text>}
+    </View>
     {!!error&&<Text style={styles.error}>{error}</Text>}
     <Pressable onPress={save} disabled={busy} style={styles.primary}>{busy?<ActivityIndicator color="#fff"/>:<Text style={styles.primaryText}>CONTINUE</Text>}</Pressable>
   </ScrollView></SafeAreaView>;
