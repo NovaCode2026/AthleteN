@@ -34,9 +34,9 @@ export default function ProfileScreen() {
   const [name,setName]=useState(profile?.full_name||'');
   const [dob,setDob]=useState(String(profile?.date_of_birth||''));
   const [gender,setGender]=useState(String(profile?.gender||''));
-  const [sport,setSport]=useState<'taekwondo'>('taekwondo');
+  const [sport,setSport]=useState<'taekwondo'|''>(String(profile?.sport||'').toLowerCase()==='taekwondo'?'taekwondo':'');
   const [connectionCode,setConnectionCode]=useState('');
-  const [discipline,setDiscipline]=useState<'kyorugi'|'poomsae'>(String(profile?.discipline||'kyorugi').toLowerCase()==='poomsae'?'poomsae':'kyorugi');
+  const [discipline,setDiscipline]=useState<'kyorugi'|'poomsae'|null>(()=>{const current=String(profile?.discipline||'').toLowerCase();return current==='poomsae'?'poomsae':current==='kyorugi'?'kyorugi':null});
   const [weight,setWeight]=useState('');
   const [target,setTarget]=useState('');
   const [weights,setWeights]=useState<any[]>([]);
@@ -62,7 +62,7 @@ export default function ProfileScreen() {
     setWeights(w.data||[]); setGoals(g.data||[]); setNutritionEnabled((n.data?.role||profile?.role)==='athlete');
   },[session]);
   useEffect(()=>{void load()},[load]);
-  useEffect(()=>{setSport('taekwondo');setDiscipline(String(profile?.discipline||'kyorugi').toLowerCase()==='poomsae'?'poomsae':'kyorugi')},[profile?.sport,profile?.discipline]);
+  useEffect(()=>{setSport(String(profile?.sport||'').toLowerCase()==='taekwondo'?'taekwondo':'');const current=String(profile?.discipline||'').toLowerCase();setDiscipline(current==='poomsae'?'poomsae':current==='kyorugi'?'kyorugi':null)},[profile?.sport,profile?.discipline]);
 
   async function changePhoto(){
     if(!session)return;
@@ -84,7 +84,7 @@ export default function ProfileScreen() {
   }
 
   async function saveProfile(){
-    if(!session||!name.trim()||!dob.trim()||!gender.trim()||sport!=='taekwondo'||!['kyorugi','poomsae'].includes(discipline)){setMessage('Complete your identity, choose Taekwondo, then choose Kyorugi or Poomsae.');return}
+    if(!session||!name.trim()||!dob.trim()||!gender.trim()||sport!=='taekwondo'||!discipline||!['kyorugi','poomsae'].includes(discipline)){setMessage('Complete your identity, choose Taekwondo, then choose Kyorugi or Poomsae.');return}
     setBusy(true);setMessage('');
     try{
       const {error}=await supabase.from('profiles').update({full_name:name.trim(),date_of_birth:dob.trim(),gender:gender.trim(),sport:'taekwondo',discipline}).eq('user_id',session.user.id);
@@ -139,12 +139,12 @@ export default function ProfileScreen() {
 
   return <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
     <View style={s.brandRow}><Image source={require('@/assets/logo.png')} style={s.logo} contentFit="cover"/><View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>ATHLETE PROFILE</Text></View></View>
-    <View style={s.profileHero}><Pressable onPress={()=>void changePhoto()} disabled={avatarBusy} style={s.profileHero}>{avatarUrl?<Image source={{uri:avatarUrl}} style={s.avatar} contentFit="cover"/>:<View style={s.avatar}><Text style={s.avatarText}>{String(profile?.full_name||'A').slice(0,1).toUpperCase()}</Text></View>}<View style={s.liveDot}><Text style={s.avatarText}>{avatarBusy?'…':'+'}</Text></View></Pressable><View style={s.heroCopy}><Text style={s.name}>{String(profile?.full_name||'Athlete')}</Text><Text style={s.meta}>{discipline==='poomsae'?'Poomsae':'Kyorugi'} • {String(profile?.plan_id||'free')} plan</Text><Pressable onPress={()=>void changePhoto()}><Text style={s.meta}>CHANGE PROFILE PHOTO</Text></Pressable></View><View style={s.liveDot}/></View>
+    <View style={s.profileHero}><Pressable onPress={()=>void changePhoto()} disabled={avatarBusy} style={s.profileHero}>{avatarUrl?<Image source={{uri:avatarUrl}} style={s.avatar} contentFit="cover"/>:<View style={s.avatar}><Text style={s.avatarText}>{String(profile?.full_name||'A').slice(0,1).toUpperCase()}</Text></View>}<View style={s.liveDot}><Text style={s.avatarText}>{avatarBusy?'…':'+'}</Text></View></Pressable><View style={s.heroCopy}><Text style={s.name}>{String(profile?.full_name||'Athlete')}</Text><Text style={s.meta}>{discipline==='poomsae'?'Poomsae':discipline==='kyorugi'?'Kyorugi':'Discipline not selected'} • {String(profile?.plan_id||'free')} plan</Text><Pressable onPress={()=>void changePhoto()}><Text style={s.meta}>CHANGE PROFILE PHOTO</Text></Pressable></View><View style={s.liveDot}/></View>
 
     <Section title="ATHLETE IDENTITY"><View style={s.card}>
-      <Field label="Full name" value={name} onChangeText={setName} placeholder="Your full name"/><Field label="Date of birth" value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD"/><Field label="Gender" value={gender} onChangeText={setGender} placeholder="Gender"/><Text style={s.label}>1 · SPORT</Text><View style={s.choiceRow}><Choice title="Taekwondo" active={sport==='taekwondo'} onPress={()=>setSport('taekwondo')}/></View><Text style={s.meta}>Taekwondo is the only supported sport at this stage. More sports can be added when their workflows are ready.</Text>
+      <Field label="Full name" value={name} onChangeText={setName} placeholder="Your full name"/><Field label="Date of birth" value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD"/><Field label="Gender" value={gender} onChangeText={setGender} placeholder="Gender"/><Text style={s.label}>1 · SPORT</Text><View style={s.choiceRow}><Choice title="🥋 Taekwondo" active={sport==='taekwondo'} onPress={()=>{if(sport!=='taekwondo'){setSport('taekwondo');setDiscipline(null)}}}/></View><Text style={s.meta}>Taekwondo is the only supported sport in this release. Additional sports will appear only after their own disciplines and tools are ready.</Text>
       <Field label="Coach / Academy connection code (optional)" value={connectionCode} onChangeText={setConnectionCode} placeholder="Enter coach or academy code" autoCapitalize="characters" autoCorrect={false}/><Text style={s.meta}>You can add the code later. Use the code provided by your coach or academy to connect your account.</Text>
-      <Text style={s.label}>2 · DISCIPLINE</Text>{sport==='taekwondo'?<><View style={s.choiceRow}><Choice title="Kyorugi · Sparring" active={discipline==='kyorugi'} onPress={()=>setDiscipline('kyorugi')}/><Choice title="Poomsae · Forms" active={discipline==='poomsae'} onPress={()=>setDiscipline('poomsae')}/></View><Text style={s.meta}>Your Taekwondo discipline controls the labels, training tools and competition records shown in AthleteN.</Text></>:<Text style={s.meta}>Choose a sport first to see its available disciplines.</Text>}<Button title="SAVE PROFILE" onPress={saveProfile} busy={busy}/>
+      <Text style={s.label}>2 · TAEKWONDO DISCIPLINE</Text>{sport==='taekwondo'?<><View style={s.choiceRow}><Choice title="Kyorugi · Sparring" active={discipline==='kyorugi'} onPress={()=>setDiscipline('kyorugi')}/><Choice title="Poomsae · Forms" active={discipline==='poomsae'} onPress={()=>setDiscipline('poomsae')}/></View><Text style={s.meta}>Kyorugi opens sparring and bout tools. Poomsae opens form practice, repetitions, categories, score and placing records.</Text></>:<Text style={s.meta}>Select a sport first to see its available disciplines.</Text>}<Button title="SAVE PROFILE" onPress={saveProfile} busy={busy}/>
     </View></Section>
 
     <Section title="WEIGHT"><View style={s.card}>
