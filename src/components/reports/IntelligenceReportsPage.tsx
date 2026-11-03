@@ -6,7 +6,7 @@ import type { Profile } from "../../types";
 
 type Toast = (toast: { type: "success" | "error" | "warning"; message: string }) => void;
 type ReportRow = { id: string; report_type: "match" | "monthly"; title: string; period_start?: string | null; period_end?: string | null; content: string; created_at: string };
-type MonthlySnapshot = { role: string; periodStart: string; periodEnd: string; athleteCount: number; sessions: number; trainingMinutes: number; attendanceRecords: number; attendanceStatusBreakdown: Record<string, number>; medals: number; competitions: number; activeGoals: number; medalBreakdown: Record<string, number> };
+type MonthlySnapshot = { role: string; periodStart: string; periodEnd: string; athleteCount: number; coachCount: number; newAthleteMemberships: number; newCoachMemberships: number; sessions: number; trainingMinutes: number; attendanceRecords: number; attendanceStatusBreakdown: Record<string, number>; medals: number; competitions: number; activeGoals: number; medalBreakdown: Record<string, number> };
 
 const roleLabel = (role: string) => role === "academy_admin" ? "Academy" : role === "coach" ? "Coach" : "Athlete";
 const paidPlanForRole = (role: string, plan: string) => role === "coach" ? plan === "coach" : role === "academy_admin" ? plan === "academy" : ["student", "pro", "elite"].includes(plan);
@@ -48,6 +48,9 @@ export default function IntelligenceReportsPage({ setToast, profile }: { setToas
   async function getMonthlySnapshot(): Promise<MonthlySnapshot> {
     if (!uid) throw new Error("Sign in to generate a report.");
     let athleteIds = [uid];
+    let coachCount = role === "coach" ? 1 : 0;
+    let newAthleteMemberships = 0;
+    let newCoachMemberships = 0;
     if (role === "coach") {
       const links = await supabase.from("coach_athlete_links").select("athlete_user_id").eq("coach_user_id", uid).eq("status", "active");
       if (links.error) throw links.error;
@@ -60,13 +63,20 @@ export default function IntelligenceReportsPage({ setToast, profile }: { setToas
         academyId = String(academy.data?.id || "");
       }
       if (academyId) {
-        const members = await supabase.from("academy_memberships").select("user_id").eq("academy_id", academyId).eq("status", "active").eq("role", "athlete");
+        const members = await supabase.from("academy_memberships")
+          .select("user_id,role,status,created_at")
+          .eq("academy_id", academyId)
+          .eq("status", "active");
         if (members.error) throw members.error;
-        athleteIds = [...new Set((members.data || []).map((x: any) => String(x.user_id)))];
+        const activeMembers = members.data || [];
+        athleteIds = [...new Set(activeMembers.filter((x: any) => x.role === "athlete").map((x: any) => String(x.user_id)))];
+        coachCount = new Set(activeMembers.filter((x: any) => x.role === "coach").map((x: any) => String(x.user_id))).size;
+        newAthleteMemberships = activeMembers.filter((x: any) => x.role === "athlete" && String(x.created_at || "") >= period.start && String(x.created_at || "") < period.end).length;
+        newCoachMemberships = activeMembers.filter((x: any) => x.role === "coach" && String(x.created_at || "") >= period.start && String(x.created_at || "") < period.end).length;
       } else athleteIds = [];
     }
     if (role === "athlete") athleteIds = [uid];
-    if (!athleteIds.length) return { role, periodStart: period.start, periodEnd: period.end, athleteCount: 0, sessions: 0, trainingMinutes: 0, attendanceRecords: 0, attendanceStatusBreakdown: {}, medals: 0, competitions: 0, activeGoals: 0, medalBreakdown: {} };
+    if (!athleteIds.length) return { role, periodStart: period.start, periodEnd: period.end, athleteCount: 0, coachCount, newAthleteMemberships, newCoachMemberships, sessions: 0, trainingMinutes: 0, attendanceRecords: 0, attendanceStatusBreakdown: {}, medals: 0, competitions: 0, activeGoals: 0, medalBreakdown: {} };
 
     const [training, attendance, medals, competitions, goals] = await Promise.all([
       supabase.from("training_sessions").select("user_id,session_date,minutes").in("user_id", athleteIds).gte("session_date", period.start).lt("session_date", period.end),
@@ -84,6 +94,9 @@ export default function IntelligenceReportsPage({ setToast, profile }: { setToas
     return {
       role, periodStart: period.start, periodEnd: period.end,
       athleteCount: role === "athlete" ? 1 : athleteIds.length,
+      coachCount,
+      newAthleteMemberships,
+      newCoachMemberships,
       sessions: (training.data || []).length,
       trainingMinutes: (training.data || []).reduce((sum: number, x: any) => sum + Number(x.minutes || 0), 0),
       attendanceRecords: (attendance.data || []).length,
@@ -118,13 +131,16 @@ export default function IntelligenceReportsPage({ setToast, profile }: { setToas
         "Create an AthleteN monthly performance report for the completed period " + facts.periodStart + " to " + facts.periodEnd + ".",
         "Account role: " + roleLabel(role) + ". Use only these verified account-record totals; do not infer missing data.",
         "Athletes included: " + facts.athleteCount,
+        "Active coaches in the academy/team scope: " + facts.coachCount,
+        "New athlete memberships during the period: " + facts.newAthleteMemberships,
+        "New coach memberships during the period: " + facts.newCoachMemberships,
         "Training sessions: " + facts.sessions,
         "Training minutes: " + facts.trainingMinutes,
         "Attendance records: " + facts.attendanceRecords + " (" + JSON.stringify(facts.attendanceStatusBreakdown) + ")",
         "Medals: " + facts.medals + " (" + JSON.stringify(facts.medalBreakdown) + ")",
         "Competitions recorded: " + facts.competitions,
         "Goals not marked completed/cancelled: " + facts.activeGoals,
-        "Write sections: Monthly overview, training and attendance, competition and medal highlights, goal status, recorded highlights, consistency observations, what the data cannot tell us, and practical next-month priorities. Do not invent heart-rate, technical or match facts. Report attendance only from the supplied attendance records."
+        "Write sections: Monthly overview, team/academy membership snapshot, training and attendance, competition and medal highlights, goal status, recorded highlights, consistency observations, what the data cannot tell us, and practical next-month priorities. Do not invent heart-rate, technical or match facts. Report attendance only from the supplied attendance records. For Academy reports, distinguish active coach and athlete membership counts from new memberships created during the month."
       ].join("\n");
       const answer = await callAi("Performance Reports", prompt);
       const title = roleLabel(role) + " Monthly Report · " + period.label;
@@ -192,7 +208,7 @@ export default function IntelligenceReportsPage({ setToast, profile }: { setToas
         </section>
         <section className="card panel"><div className="section-heading"><Sparkles size={20}/><div><h3>AI Monthly Report</h3><p className="messaging-help">Completed month: {period.label}</p></div></div>
           <p>Summarises sessions, training time, competition entries, medals and current goals for the {roleLabel(role).toLowerCase()} workspace.</p>
-          {snapshot&&<div className="metrics"><div><strong>{snapshot.sessions}</strong><span>Sessions</span></div><div><strong>{Math.round(snapshot.trainingMinutes/60*10)/10} h</strong><span>Training time</span></div><div><strong>{snapshot.medals}</strong><span>Medals</span></div><div><strong>{snapshot.attendanceRecords}</strong><span>Attendance</span></div><div><strong>{snapshot.athleteCount}</strong><span>Athletes</span></div></div>}
+          {snapshot&&<div className="metrics"><div><strong>{snapshot.sessions}</strong><span>Sessions</span></div><div><strong>{Math.round(snapshot.trainingMinutes/60*10)/10} h</strong><span>Training time</span></div><div><strong>{snapshot.medals}</strong><span>Medals</span></div><div><strong>{snapshot.attendanceRecords}</strong><span>Attendance</span></div><div><strong>{snapshot.athleteCount}</strong><span>Athletes</span></div>{role!=="athlete"&&<div><strong>{snapshot.coachCount}</strong><span>Coaches</span></div>}</div>}
           <button className="btn primary" disabled={!!busy} onClick={()=>void generateMonthly()}>{busy==="monthly"?"Generating…":"Generate AI Monthly Report"}</button>
         </section>
       </div>
