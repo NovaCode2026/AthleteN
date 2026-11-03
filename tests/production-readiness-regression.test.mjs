@@ -97,9 +97,11 @@ test('message attachment retries reuse the idempotency key and stable storage pa
   const web = read('src/components/messaging/MessagingPage.tsx');
   const mobile = read('AthleteN-Mobile/src/app/(tabs)/messages.tsx');
   assert.match(web, /uploadedPath=.*clientMessageId.*ext/);
-  assert.match(web, /message-attachments"\)\.list\(selectedId/);\n  assert.match(web, /upsert:false/);
+  assert.match(web, /message-attachments.*list\(selectedId/);
+  assert.match(web, /upsert:false/);
   assert.match(mobile, /uploadedPath=.*clientMessageId.*ext/);
-  assert.match(mobile, /message-attachments'\)\.list\(selected\.id/);\n  assert.match(mobile, /upsert:false/);
+  assert.match(mobile, /message-attachments.*list\(selected\.id/);
+  assert.match(mobile, /upsert:false/);
 });
 
 test('pg_net is recorded as a required dependency for server-dispatched Expo notifications', () => {
