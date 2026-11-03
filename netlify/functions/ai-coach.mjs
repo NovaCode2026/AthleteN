@@ -133,21 +133,47 @@ export default async function handler(request) {
   const userId = userData.user.id;
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("user_id, plan_id")
+    .select("user_id, plan_id, role")
     .eq("user_id", userId)
     .maybeSingle();
   if (profileError) return json("Unable to verify your AI entitlement.", 503);
   if (!profile) return json("Complete onboarding before using AI Coach.", 403);
 
-  const { data: subscription, error: subscriptionError } = await supabase
+  const role = String(profile.role || "athlete");
+  const planId = String(profile.plan_id || "free");
+  const roleAllowed =
+    (["student", "pro", "elite"].includes(planId) && role === "athlete") ||
+    (planId === "coach" && role === "coach") ||
+    (planId === "academy" && role === "academy_admin");
+  if (planId !== "free" && !roleAllowed) {
+    return json("Your account type does not match this paid plan. Contact AthleteN support.", 403);
+  }
+
+  if (planId === "student") {
+    const { data: verification, error: verificationError } = await supabase
+      .from("student_verifications")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("status", "approved")
+      .limit(1)
+      .maybeSingle();
+    if (verificationError) return json("Unable to verify Student plan approval.", 503);
+    if (!verification) return json("Admin approval for Student verification is required for AI reports.", 403);
+  }
+
+  // Multiple product subscriptions can coexist. Resolve only the subscription
+  // matching the user's current profile plan rather than assuming one row per user.
+  const { error: subscriptionError } = await supabase
     .from("subscriptions")
-    .select("plan_id, status")
+    .select("id")
     .eq("user_id", userId)
+    .eq("plan_id", planId)
     .in("status", ["active", "trialing"])
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (subscriptionError) return json("Unable to verify your subscription.", 503);
 
-  const planId = subscription?.plan_id || profile.plan_id || "free";
   const monthlyLimit = planLimits[planId] ?? 0;
   if (monthlyLimit <= 0) return json("AI Coach is not available on the Free plan.", 403);
 
