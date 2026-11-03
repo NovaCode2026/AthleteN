@@ -85,11 +85,12 @@ Matching migration files are in `supabase/migrations/`.
 
 | Gate | Latest observed result | Notes |
 |---|---|---|
-| Web CI | PASS on source/documentation snapshot; latest rerun in progress | CI run `41683163191` passed on `bd809280c7a674b8e66af3165adde7fe285e6ad7`; the newest docs commit `3dfa7fad213964888cd4f05545f844df50459e6b` run `41683280816` was in progress at the time of this update. |
-| CodeQL | IN PROGRESS | Latest CodeQL run `41683280913` targets `3dfa7fad213964888cd4f05545f844df50459e6b`; no result is claimed yet. |
-| Mobile Check | IN PROGRESS | Mobile Check run `41683014424` targets source commit `1204ee0d3652cd84a330d1f99d07417cf0b9f0fd`; Expo Doctor, TypeScript and ESLint result not yet confirmed. |
-| Android APK | IN PROGRESS | APK workflow run `41683014360` targets `1204ee0d3652cd84a330d1f99d07417cf0b9f0fd`; scanner regression passed, APK build still in progress at time of update. No new artifact claimed. |
+| Web CI | PASS | Tests and production build passed on source commit `ac5d1c834948a26d9336322cf2f1b4e7dc7c4d6d` (run `41684263783`). |
+| CodeQL | PASS | Analysis passed on source commit `ac5d1c834948a26d9336322cf2f1b4e7dc7c4d6d` (run `41684263545`). |
+| Mobile Check | PASS | Expo Doctor, TypeScript, ESLint and Android bundle check passed on commit `ac5d1c834948a26d9336322cf2f1b4e7dc7c4d6d` (run `41684263644`). |
+| Android APK | IN PROGRESS | APK workflow run `41684263568` targets `ac5d1c834948a26d9336322cf2f1b4e7dc7c4d6d`; scanner regression passed and standalone release APK build was still running. No artifact is claimed until the upload step completes. |
 | Netlify production | READY, but STALE | Published deploy `6ae372d8d6582ed467b6b3cc` is ready, but points to commit `6137212178dfa49a0cc19711e681d692b120b551` from 29 October 2026, not the current release candidate. |
+
 
 ## Open strict-release blockers
 
