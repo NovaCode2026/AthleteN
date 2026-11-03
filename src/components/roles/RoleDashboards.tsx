@@ -30,9 +30,9 @@ async function resolveAthlete(value: string): Promise<AthleteLookup> {
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (uuid.test(input)) {
     if (!supabase) throw new Error("Supabase is not configured.");
-    const { data, error } = await supabase.from("profiles").select("user_id,full_name,username,discipline,belt,role").eq("user_id", input).maybeSingle();
+    const { data, error } = await supabase.from("profiles").select("user_id,full_name,username,discipline,belt,role,sport").eq("user_id", input).maybeSingle();
     if (error) throw error;
-    if (!data || data.role === "coach" || data.role === "academy_admin") throw new Error("No athlete profile was found for that user ID.");
+    if (!data || data.role !== "athlete" || String(data.sport || "").toLowerCase() !== "taekwondo") throw new Error("No Taekwondo athlete profile was found for that user ID.");
     return data as AthleteLookup;
   }
   if (!supabase) throw new Error("Supabase is not configured.");
@@ -40,7 +40,7 @@ async function resolveAthlete(value: string): Promise<AthleteLookup> {
   if (error) throw error;
   const athlete = Array.isArray(data) ? data[0] : data;
   if (!athlete) throw new Error("No Taekwondo athlete was found with that username.");
-  return athlete as AthleteLookup;
+  return { ...athlete, role: "athlete" } as AthleteLookup;
 }
 
 export function CoachDashboard({ profile, userId, setToast }: Props) {
