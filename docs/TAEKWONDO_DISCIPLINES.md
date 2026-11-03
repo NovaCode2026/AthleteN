@@ -152,7 +152,8 @@ The database also contains earlier normalized tables named kyorugi_bouts, poomsa
 | src/App.tsx | Web sport-first onboarding and profile editor |
 | src/components/taekwondo/TaekwondoHub.tsx | Web discipline switcher, Kyorugi/Poomsae forms and result history |
 | src/types.ts | Canonical Web discipline and record types |
-| AthleteN-Mobile/src/app/profile.tsx | Android sport and discipline selection |
+| AthleteN-Mobile/src/components/onboarding-screen.tsx | First-time Android onboarding: Taekwondo sport selection, then discipline |
+| AthleteN-Mobile/src/app/profile.tsx | Android sport and discipline selection in Profile |
 | AthleteN-Mobile/src/context/AuthContext.tsx | Android canonical profile types |
 | AthleteN-Mobile/src/app/home.tsx | Discipline-aware Android home labels and shortcuts |
 | AthleteN-Mobile/src/app/taekwondo.tsx | Android Kyorugi Hub and Poomsae Studio |
