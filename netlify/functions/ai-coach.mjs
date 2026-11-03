@@ -133,7 +133,7 @@ export default async function handler(request) {
   const userId = userData.user.id;
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("user_id, plan_id, role")
+    .select("user_id, plan_id, role, academy_id")
     .eq("user_id", userId)
     .maybeSingle();
   if (profileError) return json("Unable to verify your AI entitlement.", 503);
@@ -152,20 +152,38 @@ export default async function handler(request) {
   if (planId === "student") {
     const { data: verification, error: verificationError } = await supabase
       .from("student_verifications")
-      .select("id")
+      .select("id,status")
       .eq("user_id", userId)
-      .eq("status", "approved")
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     if (verificationError) return json("Unable to verify Student plan approval.", 503);
-    if (!verification) return json("Admin approval for Student verification is required for AI reports.", 403);
+    if (verification?.status !== "approved") {
+      return json("Admin approval for Student verification is required for AI reports.", 403);
+    }
   }
 
-  // Multiple product subscriptions can coexist. Resolve only the subscription
-  // matching the user's current profile plan rather than assuming one row per user.
-  const { error: subscriptionError } = await supabase
+  // Coach accounts rely on the existing verified Coach role workflow.
+  // Academy accounts must also complete the existing Academy setup and email verification.
+  if (planId === "academy") {
+    let academyQuery = supabase
+      .from("academies")
+      .select("id")
+      .eq("owner_user_id", userId)
+      .eq("status", "active")
+      .eq("setup_completed", true)
+      .not("contact_email_verified_at", "is", null);
+    if (profile.academy_id) academyQuery = academyQuery.eq("id", profile.academy_id);
+    const { data: academy, error: academyError } = await academyQuery.limit(1).maybeSingle();
+    if (academyError) return json("Unable to verify Academy setup.", 503);
+    if (!academy) return json("Complete the existing Academy verification and setup before using Academy AI reports.", 403);
+  }
+
+  // Multiple product subscriptions can coexist. Require a live subscription
+  // for the exact product currently assigned to this profile.
+  const { data: activeSubscription, error: subscriptionError } = await supabase
     .from("subscriptions")
-    .select("id")
+    .select("id,current_period_end")
     .eq("user_id", userId)
     .eq("plan_id", planId)
     .in("status", ["active", "trialing"])
@@ -173,6 +191,10 @@ export default async function handler(request) {
     .limit(1)
     .maybeSingle();
   if (subscriptionError) return json("Unable to verify your subscription.", 503);
+  if (!activeSubscription) return json("An active subscription for this plan is required to use AthleteN AI.", 403);
+  if (activeSubscription.current_period_end && new Date(activeSubscription.current_period_end).getTime() <= Date.now()) {
+    return json("Your subscription has expired. Renew your plan to use AthleteN AI.", 403);
+  }
 
   const monthlyLimit = planLimits[planId] ?? 0;
   if (monthlyLimit <= 0) return json("AI Coach is not available on the Free plan.", 403);
