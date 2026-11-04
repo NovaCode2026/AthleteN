@@ -10,10 +10,15 @@ export default function ResetPasswordScreen(){
  const router=useRouter(); const [password,setPassword]=useState(''); const [confirm,setConfirm]=useState(''); const [busy,setBusy]=useState(false); const [error,setError]=useState(''); const [done,setDone]=useState(false);
  async function update(){
   setError('');
-  if(password.length<6){setError('Password must be at least 6 characters.');return}
+  if(password.length<8){setError('Password must be at least 8 characters.');return}
   if(password!==confirm){setError('Passwords do not match.');return}
-  setBusy(true); const {error}=await supabase.auth.updateUser({password}); setBusy(false);
-  if(error)setError(error.message); else setDone(true);
+  setBusy(true);
+  try {
+   const {error}=await supabase.auth.updateUser({password});
+   if(error)setError(error.message); else setDone(true);
+  } catch (error) {
+   setError(error instanceof Error?error.message:'Password could not be updated. Check your connection and try again.');
+  } finally { setBusy(false); }
  }
  return <SafeAreaView style={s.screen}><View style={s.content}>
   <Text style={s.brand}>AthleteN</Text><Text style={s.title}>{done?'Password updated':'Choose a new password'}</Text>
