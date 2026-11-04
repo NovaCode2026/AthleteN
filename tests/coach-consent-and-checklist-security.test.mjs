@@ -7,7 +7,6 @@ const inboxMigration = fs.readFileSync('supabase/migrations/20261104130500_list_
 const announcementMigration = fs.readFileSync('supabase/migrations/20261104131000_academy_announcements_and_receipts.sql', 'utf8');
 const lookupMigration = fs.readFileSync('supabase/migrations/20261104131500_restrict_coach_athlete_lookup.sql', 'utf8');
 const mobileAnnouncements = fs.readFileSync('AthleteN-Mobile/src/components/announcement-overlay.tsx', 'utf8');
-const inboxMigration = fs.readFileSync('supabase/migrations/20261104130500_list_my_coach_invitations.sql', 'utf8');
 const roles = fs.readFileSync('src/components/roles/RoleDashboards.tsx', 'utf8');
 const app = fs.readFileSync('src/App.tsx', 'utf8');
 
@@ -15,9 +14,6 @@ test('coach relationship invitations are pending until the athlete accepts', () 
   assert.match(migration, /request_coach_athlete_link/);
   assert.match(migration, /status\s*=\s*'pending'/);
   assert.match(migration, /respond_to_coach_invitation/);
-  assert.match(inboxMigration, /list_my_coach_invitations/);
-  assert.match(inboxMigration, /l.athlete_user_id = v_athlete_id/);
-  assert.match(inboxMigration, /l.status = 'pending'/);
   assert.match(inboxMigration, /list_my_coach_invitations/);
   assert.match(inboxMigration, /l.athlete_user_id = v_athlete_id/);
   assert.match(inboxMigration, /l.status = 'pending'/);
@@ -30,8 +26,8 @@ test('coach relationship invitations are pending until the athlete accepts', () 
 });
 
 test('coach invitations require age approval and the correct Taekwondo roles', () => {
-  assert.match(migration, /v_coach_role <> 'coach'/);
-  assert.match(migration, /v_athlete_role <> 'athlete'/);
+  assert.match(migration, /v_coach_role is distinct from 'coach'/);
+  assert.match(migration, /v_athlete_role is distinct from 'athlete'/);
   assert.match(migration, /lower\(coalesce\(v_athlete_sport, ''\)\) <> 'taekwondo'/);
   assert.match(migration, /is_age_approved\(p_athlete_user_id\)/);
   assert.match(migration, /is_age_approved\(v_coach_id\)/);
