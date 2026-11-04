@@ -61,7 +61,7 @@ test('messaging RPCs require approval, bounded search terms and respect blocks',
 });
 
 test('announcements are filtered by audience in database RLS', () => {
-  const migration = read('supabase/migrations/20261104104500_enforce_announcement_audience_reads.sql');
+  const migration = read('supabase/migrations/20261104103647_enforce_announcement_audience_reads.sql');
   assert.match(migration, /drop policy if exists "age approval required" on public\.announcements/i);
   assert.match(migration, /create policy "announcements_select_published_audience"/i);
   for (const audience of ['all','athletes','coaches','academies','admins']) {
