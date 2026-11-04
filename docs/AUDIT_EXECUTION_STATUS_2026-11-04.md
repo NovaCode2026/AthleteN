@@ -14,6 +14,7 @@ This document tracks work performed against *AthleteN: Audit, Action Plan and Pi
 - [x] Updated the root README and deployment instructions to use pnpm for Web. The isolated `AthleteN-Mobile` package retains its own `package-lock.json` and npm workflow.
 - [x] Updated `netlify.toml` to use `pnpm run build` for the Web build.
 - [x] Added a Web Coach class-attendance panel using the existing `training_groups`, `training_group_sessions`, `training_group_members`, and `training_group_attendance` model. It supports one-tap mark-all-present and individual Present/Late/Absent/Excused correction, with an unmark action.
+- [x] Added a Web Coach attention list for athletes with at least two recorded absences in the prior 30 days and linked athlete competitions within 14 days. It does not surface weight targets or injury details.
 - [x] Restored three migrations already present in the live Supabase migration ledger but absent from the repository migration directory:
   - `20261104101337_competition_checklists_tournament_scope.sql`
   - `20261104103042_secure_messaging_and_coach_rpcs.sql`
@@ -46,7 +47,7 @@ This document tracks work performed against *AthleteN: Audit, Action Plan and Pi
 ### Gate 2 — pilot operations
 
 - [ ] Verify the new Coach attendance panel against Coach-owned groups using a Coach test account; test batch marking, one-person correction, unmark, refresh and an unrelated Coach account's denial.
-- [ ] Add/verify the coach-facing needs-attention queue. Use safe follow-up signals such as repeated missed sessions and upcoming events; do not create weight-pressure alerts for minors.
+- [ ] Verify the new coach attention list with a Coach test account, including empty states and unrelated-Coach denial. The UI implementation is present; the real-account RLS and date-window acceptance test remains open.
 - [ ] Add/verify a coach/academy announcement workflow with recipient-scoped seen counts. The live database has `announcements` and `announcement_reads`; the current Mobile overlay only handles global announcements and does not establish Coach announcement analytics.
 - [ ] Verify each tournament checklist is attached to the correct athlete and tournament on both Web and Mobile. The live database migration adds `tournament_id`, but cross-client acceptance is still required.
 - [ ] Design and implement a genuinely read-only parent view only after guardian identity, verifiable consent, authorized athlete linkage and field-level disclosure rules are defined. Do not expose a child record by email matching alone.
