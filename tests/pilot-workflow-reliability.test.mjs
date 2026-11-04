@@ -38,7 +38,7 @@ test('coach attendance validates server reads and restores the previous value on
   assert.match(source, /setAttendance\(current\s*=>\s*\(\{\.\.\.current,\s*\[id\]:\s*previous\}\)\)/);
   assert.match(source, /finally\s*\{\s*setAttendanceBusy\(false\);\s*\}/);
   assert.match(source, /Attendance saved/);
-  assert.doesNotMatch(source, /^\\/\\/\\s*@ts-nocheck/m);
-  assert.match(source, /minutes<15\\|\\|minutes>360/);
+  assert.ok(!source.startsWith('// @ts-nocheck'));
+  assert.ok(source.includes('minutes<15||minutes>360'));
   assert.match(source, /Confirm session cancellation/);
 });
