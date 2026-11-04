@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { Screen,Header,Card,c } from '@/components/mobile-ui';
 
 export default function SettingsScreen(){
- const {session,profile,signOut}=useAuth(); const [blocked,setBlocked]=useState<any[]>([]); const [message,setMessage]=useState('');
+ const {session,profile,signOut}=useAuth(); const [blocked,setBlocked]=useState<any[]>([]); const [blockedOpen,setBlockedOpen]=useState(false); const [message,setMessage]=useState('');
  const load=useCallback(async()=>{if(!session)return;const {data,error}=await supabase.from('user_blocks').select('blocked_user_id,created_at').eq('blocker_user_id',session.user.id);if(error){setMessage(error.message);return}const ids=(data||[]).map((x:any)=>x.blocked_user_id);if(!ids.length){setBlocked([]);return}const {data:people,error:e}=await supabase.from('profiles').select('user_id,full_name,username,account_code').in('user_id',ids);if(e)setMessage(e.message);setBlocked((people||[]).map((p:any)=>({...p,created_at:(data||[]).find((b:any)=>b.blocked_user_id===p.user_id)?.created_at})));},[session]);
  useEffect(()=>{void load()},[load]);
  async function unblock(id:string){const {error}=await supabase.rpc('unblock_messaging_user',{p_user_id:id});if(error)setMessage(error.message);else await load();}
@@ -16,7 +16,7 @@ export default function SettingsScreen(){
   <Text style={section}>ACCOUNT</Text>
   <Card><Row title="Profile & athlete identity" desc="Name, sport, club, coach, discipline and profile photo." onPress={()=>router.push('/profile')}/><Row title="Plan & billing" desc="Subscription, features and AI usage." onPress={()=>router.push('/plans')}/><Row title="Change password" desc="Update your account password." onPress={()=>router.push('/change-password')}/></Card>
   <Text style={section}>MESSAGING & PRIVACY</Text>
-  <Card><Row title="Messages" desc="Username search, chats and conversation controls." onPress={()=>router.push('/messages')}/><Row title="Blocked accounts" desc="Review blocked users and unblock them." onPress={()=>{}}/>{blocked.length?blocked.map((p:any)=><View key={p.user_id} style={blockedRow}><View style={{flex:1}}><Text style={name}>@{p.username||'unknown'}</Text><Text style={muted}>AthleteN username</Text></View><Pressable onPress={()=>void unblock(p.user_id)} style={unblock}><Text style={unblockText}>UNBLOCK</Text></Pressable></View>):<Text style={muted}>No blocked accounts.</Text>}</Card>
+  <Card><Row title="Messages" desc="Username search, chats and conversation controls." onPress={()=>router.push('/messages')}/><Row title="Blocked accounts" desc="Review blocked users and unblock them." onPress={()=>setBlockedOpen((open)=>!open)}/>{blockedOpen?(blocked.length?blocked.map((p:any)=><View key={p.user_id} style={blockedRow}><View style={{flex:1}}><Text style={name}>@{p.username||'unknown'}</Text><Text style={muted}>AthleteN username</Text></View><Pressable onPress={()=>void unblock(p.user_id)} style={unblock}><Text style={unblockText}>UNBLOCK</Text></Pressable></View>):<Text style={muted}>No blocked accounts.</Text>):null}</Card>
   <Text style={section}>ALERTS & PERSONALIZATION</Text>
   <Card><Row title="Notification settings" desc="Training, competition, coach and account alerts." onPress={()=>router.push('/notification-settings')}/><Row title="Navigation settings" desc="Choose and reorder your bottom navigation." onPress={()=>router.push('/navigation-settings')}/></Card>
   <Text style={section}>TEAM</Text>
