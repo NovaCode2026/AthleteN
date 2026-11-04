@@ -99,9 +99,71 @@ export function TrainingSessionPage({setToast}:{setToast:Toast}){
 }
 
 export function CompetitionModePage({setToast}:{setToast:Toast}){
- const uid=useAuth().user?.id;const [events,setEvents]=useState<any[]>([]);const [checklist,setChecklist]=useState<any[]>([]);const [loading,setLoading]=useState(true);
- const load=useCallback(async()=>{if(!uid)return;setLoading(true);const [t,c]=await Promise.all([supabase.from("tournaments").select("id,name,starts_at,location,status").eq("user_id",uid).order("starts_at",{ascending:true}),supabase.from("competition_checklists").select("id,item,category,completed").eq("user_id",uid).order("created_at",{ascending:true})]);const bad=[t,c].find(x=>x.error);if(bad)setToast({type:"error",message:bad.error.message});else{setEvents(t.data||[]);setChecklist(c.data||[]);}setLoading(false)},[uid,setToast]);
+ const uid=useAuth().user?.id;
+ const [events,setEvents]=useState<any[]>([]);
+ const [checklist,setChecklist]=useState<any[]>([]);
+ const [selectedEvent,setSelectedEvent]=useState("");
+ const [item,setItem]=useState("");
+ const [category,setCategory]=useState("entry");
+ const [loading,setLoading]=useState(true);
+ const [busy,setBusy]=useState(false);
+ const categories=["entry","weigh_in","documents","travel","equipment","other"];
+ const load=useCallback(async()=>{
+  if(!uid)return;
+  setLoading(true);
+  try{
+   const [t,c]=await Promise.all([
+    supabase.from("tournaments").select("id,name,starts_at,location,status").eq("user_id",uid).order("starts_at",{ascending:true}),
+    supabase.from("competition_checklists").select("id,tournament_id,item,category,completed").eq("user_id",uid).order("created_at",{ascending:true})
+   ]);
+   const bad=[t,c].find(x=>x.error);
+   if(bad)throw bad.error;
+   const nextEvents=t.data||[];
+   setEvents(nextEvents);
+   setChecklist(c.data||[]);
+   setSelectedEvent(current=>nextEvents.some(x=>x.id===current)?current:(nextEvents[0]?.id||""));
+  }catch(error){
+   setToast({type:"error",message:error instanceof Error?error.message:"Competition data could not be loaded."});
+  }finally{setLoading(false);}
+ },[uid,setToast]);
  useEffect(()=>{void load()},[load]);
- async function toggle(row:any){const {error}=await supabase.from("competition_checklists").update({completed:!row.completed}).eq("id",row.id).eq("user_id",uid);if(error)setToast({type:"error",message:error.message});else await load();}
- return <Page title="Competition Mode" subtitle="A web companion for upcoming events and your competition checklist." actions={<button className="btn" onClick={()=>void load()}><RefreshCw size={15}/> Refresh</button>}><section className="card panel"><h3>Upcoming competitions</h3>{loading?<p>Loading…</p>:events.length?events.map(x=><div className="parity-row" key={x.id}><div><strong>{x.name}</strong><p>{x.starts_at||"Date not set"} · {x.location||"Venue not set"}</p></div><span>{x.status||"planned"}</span></div>):<p className="empty-copy">No competitions recorded. Add one in Tournaments.</p>}<a className="btn" href="/tournaments">Manage tournaments</a></section><section className="card panel"><h3>Competition checklist</h3>{checklist.length?checklist.map(x=><label key={x.id} className="checklist-row"><input type="checkbox" checked={Boolean(x.completed)} onChange={()=>void toggle(x)}/> {x.item} <small>{x.category}</small></label>):<p className="empty-copy">No checklist items yet.</p>}<a className="btn" href="/checklist">Manage checklist</a></section></Page>
+ const selectedItems=checklist.filter(x=>x.tournament_id===selectedEvent);
+ async function addItem(){
+  if(!uid||!selectedEvent){setToast({type:"warning",message:"Select a tournament before adding checklist items."});return;}
+  if(!item.trim()){setToast({type:"warning",message:"Enter a checklist item."});return;}
+  setBusy(true);
+  const {error}=await supabase.from("competition_checklists").insert({user_id:uid,tournament_id:selectedEvent,item:item.trim(),category,completed:false});
+  setBusy(false);
+  if(error){setToast({type:"error",message:error.message});return;}
+  setItem("");
+  setToast({type:"success",message:"Checklist item added to this tournament."});
+  await load();
+ }
+ async function toggle(row:any){
+  const {error}=await supabase.from("competition_checklists").update({completed:!row.completed}).eq("id",row.id).eq("user_id",uid).eq("tournament_id",selectedEvent);
+  if(error)setToast({type:"error",message:error.message});else await load();
+ }
+ return <Page title="Competition Mode" subtitle="The full web view of upcoming events and event-by-event preparation." actions={<button className="btn" onClick={()=>void load()} disabled={loading}><RefreshCw size={15}/> Refresh</button>}>
+  <section className="card panel">
+   <h3>Upcoming competitions</h3>
+   {loading?<p>Loading…</p>:events.length?events.map(event=><div className="parity-row" key={event.id}>
+    <div><strong>{event.name}</strong><p>{event.starts_at||"Date not set"} · {event.location||"Venue not set"}</p></div>
+    <span>{event.status||"planned"}</span>
+    <button type="button" className="btn" aria-pressed={selectedEvent===event.id} onClick={()=>setSelectedEvent(event.id)}>{selectedEvent===event.id?"Selected":"Open event"}</button>
+   </div>):<p className="empty-copy">No competitions recorded. Add one in Tournaments.</p>}
+   <a className="btn" href="/tournaments">Manage tournaments</a>
+  </section>
+  <section className="card panel">
+   <h3>{events.find(x=>x.id===selectedEvent)?.name||"Tournament"} checklist</h3>
+   {selectedEvent?<>
+    <p className="messaging-help">Checklist items are private to your athlete account and saved against this tournament. Use them for entry, official weigh-in timing, documents and travel arrangements.</p>
+    <div className="form-grid">
+     <label className="field"><span>Category</span><select value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(x=><option key={x} value={x}>{x.replace("_"," ")}</option>)}</select></label>
+     <label className="field"><span>Checklist item</span><input value={item} onChange={e=>setItem(e.target.value)} maxLength={160} placeholder="Entry deadline / weigh-in time / travel"/></label>
+    </div>
+    <button className="btn primary" disabled={busy||!item.trim()} onClick={()=>void addItem()}>{busy?"Saving…":"Add to this tournament"}</button>
+    {selectedItems.length?selectedItems.map(row=><label key={row.id} className="checklist-row"><input type="checkbox" checked={Boolean(row.completed)} onChange={()=>void toggle(row)}/> {row.item} <small>{String(row.category||"other").replace("_"," ")}</small></label>):<p className="empty-copy">No checklist items for this tournament yet.</p>}
+   </>:<p className="empty-copy">Create or select a tournament to start its checklist.</p>}
+  </section>
+ </Page>
 }
