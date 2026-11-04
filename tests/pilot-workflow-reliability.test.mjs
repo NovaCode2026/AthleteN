@@ -24,18 +24,18 @@ test('announcement read receipt failures do not silently dismiss the announcemen
 
 test('coach session membership is separate from new-group athlete selection', () => {
   const source = read('AthleteN-Mobile/src/app/coach-training.tsx');
-  assert.match(source, /const \[selectedAthletes, setSelectedAthletes\]/);
-  assert.match(source, /const \[sessionAthleteIds, setSessionAthleteIds\]/);
-  assert.match(source, /athletes\.filter\(a => sessionAthleteIds\.includes\(a\.user_id\)\)/);
-  assert.match(source, /const selectedMemberCount = selectedSession \? sessionAthleteIds\.length : 0/);
+  assert.match(source, /const \[selectedAthletes\s*,\s*setSelectedAthletes\]/);
+  assert.match(source, /const \[sessionAthleteIds\s*,\s*setSessionAthleteIds\]/);
+  assert.match(source, /athletes\.filter\(a\s*=>\s*sessionAthleteIds\.includes\(a\.user_id\)\)/);
+  assert.match(source, /selectedMemberCount\s*=\s*selectedSession\s*\?\s*sessionAthleteIds\.length\s*:\s*0/);
 });
 
 test('coach attendance validates server reads and restores the previous value on save failure', () => {
   const source = read('AthleteN-Mobile/src/app/coach-training.tsx');
-  assert.match(source, /if \(m\.error\) throw m\.error;/);
-  assert.match(source, /if \(attendanceResult\.error\) throw attendanceResult\.error;/);
-  assert.match(source, /if \(membersResult\.error\) throw membersResult\.error;/);
-  assert.match(source, /setAttendance\(current => \(\{\.\.\.current, \[id\]: previous\}\)\)/);
-  assert.match(source, /finally\s*\{setAttendanceBusy\(false\);\}/);
+  assert.match(source, /if\s*\(m\.error\)\s*throw\s+m\.error;/);
+  assert.match(source, /if\s*\(attendanceResult\.error\)\s*throw\s+attendanceResult\.error;/);
+  assert.match(source, /if\s*\(membersResult\.error\)\s*throw\s+membersResult\.error;/);
+  assert.match(source, /setAttendance\(current\s*=>\s*\(\{\.\.\.current,\s*\[id\]:\s*previous\}\)\)/);
+  assert.match(source, /finally\s*\{\s*setAttendanceBusy\(false\);\s*\}/);
   assert.match(source, /Attendance saved/);
 });
