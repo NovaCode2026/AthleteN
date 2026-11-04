@@ -59,6 +59,13 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [nutritionEnabled, setNutritionEnabled] = useState<Record<string, boolean>>({});
+  const [checklistTournaments, setChecklistTournaments] = useState<Array<{id:string;name:string}>>([]);
+  const [coachChecklistRows, setCoachChecklistRows] = useState<Array<{id:string;tournament_id:string|null;item:string;category:string;completed:boolean}>>([]);
+  const [checklistTournamentId, setChecklistTournamentId] = useState("");
+  const [coachChecklistItem, setCoachChecklistItem] = useState("");
+  const [coachChecklistCategory, setCoachChecklistCategory] = useState("equipment");
+  const [checklistBusy, setChecklistBusy] = useState(false);
+  const [checklistMessage, setChecklistMessage] = useState("");
   const [trainingMetrics,setTrainingMetrics]=useState<TrainingMetric[]>([]);
   const [attendanceMetrics,setAttendanceMetrics]=useState<AttendanceMetric[]>([]);
   const [medalMetrics,setMedalMetrics]=useState<MedalMetric[]>([]);
@@ -69,6 +76,31 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   const [analyticsUnavailable,setAnalyticsUnavailable]=useState(false);
   const [rangeMonths,setRangeMonths]=useState(6);
 
+  async function loadAthleteChecklist(athleteId: string) {
+    if (!supabase || !athleteId) {
+      setChecklistTournaments([]); setCoachChecklistRows([]); setChecklistTournamentId(""); return;
+    }
+    setChecklistBusy(true); setChecklistMessage("");
+    try {
+      const [tournamentsResult, checklistResult] = await Promise.all([
+        supabase.from("tournaments").select("id,name").eq("user_id", athleteId).order("starts_at", { ascending: true }).limit(100),
+        supabase.from("competition_checklists").select("id,tournament_id,item,category,completed").eq("user_id", athleteId).order("created_at", { ascending: true }).limit(300)
+      ]);
+      if (tournamentsResult.error) throw tournamentsResult.error;
+      if (checklistResult.error) throw checklistResult.error;
+      const tournaments = (tournamentsResult.data || []) as Array<{id:string;name:string}>;
+      setChecklistTournaments(tournaments);
+      setCoachChecklistRows((checklistResult.data || []) as Array<{id:string;tournament_id:string|null;item:string;category:string;completed:boolean}>);
+      setChecklistTournamentId(current => tournaments.some(item => item.id === current) ? current : (tournaments[0]?.id || ""));
+    } catch (e) { setChecklistMessage(e instanceof Error ? e.message : "The athlete checklist could not be loaded."); }
+    finally { setChecklistBusy(false); }
+  }
+
+  useEffect(() => {
+    if (selectedAthlete) void loadAthleteChecklist(selectedAthlete);
+    else { setChecklistTournaments([]); setCoachChecklistRows([]); setChecklistTournamentId(""); }
+  }, [selectedAthlete]);
+
   async function load() {
     if (!supabase || !userId) return;
     setLoading(true); setError("");
@@ -78,13 +110,20 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
       supabase.from("training_plans").select("id,user_id,coach_user_id,title,focus_area,starts_at,ends_at,status,notes").eq("coach_user_id", userId).order("created_at", { ascending: false }).limit(50),
       supabase.from("athlete_feature_controls").select("athlete_user_id,enabled").eq("feature_key", "nutrition")
     ]);
-    const firstError = profileResult.error || linkResult.error || planResult.error || nutritionResult.error;
+    const activeLinkIds = Array.from(new Set((linkResult.data || []).filter((item:any) => item.status === "active").map((item:any) => item.athlete_user_id).filter(Boolean)));
+    const linkedProfilesResult = activeLinkIds.length
+      ? await supabase.from("profiles").select("user_id,full_name,username,belt,discipline,academy_id,coach_user_id,role").in("user_id", activeLinkIds)
+      : { data: [], error: null };
+    const rosterById = new Map<string, Athlete>();
+    for (const athlete of [...(profileResult.data || []), ...(linkedProfilesResult.data || [])] as Athlete[]) rosterById.set(String(athlete.user_id), athlete);
+    const roster = Array.from(rosterById.values());
+    const firstError = profileResult.error || linkedProfilesResult.error || linkResult.error || planResult.error || nutritionResult.error;
     if (firstError) setError(firstError.message);
-    setAthletes((profileResult.data || []) as Athlete[]);
+    setAthletes(roster);
     setLinks((linkResult.data || []) as LinkRow[]);
     setPlans((planResult.data || []) as PlanRow[]);
     setNutritionEnabled(Object.fromEntries(((nutritionResult.data || []) as any[]).map((row) => [row.athlete_user_id, row.enabled === true])));
-    const athleteIds=Array.from(new Set([...(profileResult.data||[]).map((a:any)=>a.user_id),...(linkResult.data||[]).filter((x:any)=>x.status==="active").map((x:any)=>x.athlete_user_id)].filter(Boolean)));
+    const athleteIds=Array.from(new Set([...roster.map((a:any)=>a.user_id),...activeLinkIds].filter(Boolean)));
     if(athleteIds.length){
       const start=new Date();start.setDate(1);start.setMonth(start.getMonth()-(rangeMonths-1));
       const startDate=[start.getFullYear(),String(start.getMonth()+1).padStart(2,"0"),"01"].join("-");
@@ -121,10 +160,10 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
     if (!supabase || !userId || !foundAthlete?.user_id) return;
     setBusy(true); setError("");
     try {
-      const { error: e } = await supabase.from("coach_athlete_links").insert({ coach_user_id: userId, athlete_user_id: foundAthlete.user_id, status: "active" });
+      const { error: e } = await supabase.rpc("request_coach_athlete_link", { p_athlete_user_id: foundAthlete.user_id });
       if (e) throw e;
-      setAthleteQuery(""); setFoundAthlete(null); setToast({ type: "success", message: "Athlete linked to your coach workspace." }); await load();
-    } catch (e) { setError(e instanceof Error ? e.message : "Athlete could not be linked."); }
+      setAthleteQuery(""); setFoundAthlete(null); setToast({ type: "success", message: "Invitation sent. The athlete must accept before their records are shared." }); await load();
+    } catch (e) { setError(e instanceof Error ? e.message : "Coach invitation could not be sent."); }
     finally { setBusy(false); }
   }
 
