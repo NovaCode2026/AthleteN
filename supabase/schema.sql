@@ -201,6 +201,7 @@ create table if not exists public.notifications (
 create table if not exists public.competition_checklists (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
+  tournament_id uuid references public.tournaments(id) on delete cascade,
   item text not null,
   category text not null default 'equipment',
   completed boolean not null default false,
