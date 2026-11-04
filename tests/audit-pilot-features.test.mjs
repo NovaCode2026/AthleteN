@@ -30,7 +30,7 @@ test('coach attendance confirms bulk action and only updates local state after s
   assert.match(source, /Attendance not saved/);
   assert.match(source, /training_group_attendance/);
   assert.match(source, /setAttendance\(current=>\(\{\.\.\.current/);
-  assert.match(source, /finally.*setBusy\\(false\\)/);
+  assert.match(source, /finally.*setBusy\(false\)/);
 });
 
 test('Web and Android competition checklists are scoped to a selected tournament', () => {
