@@ -167,6 +167,30 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
     finally { setBusy(false); }
   }
 
+  async function addCoachChecklistItem() {
+    if (!supabase || !selectedAthlete || !checklistTournamentId || !coachChecklistItem.trim()) return;
+    setChecklistBusy(true); setChecklistMessage("");
+    try {
+      const { error: e } = await supabase.from("competition_checklists").insert({ user_id: selectedAthlete, tournament_id: checklistTournamentId, item: coachChecklistItem.trim(), category: coachChecklistCategory, completed: false });
+      if (e) throw e;
+      setCoachChecklistItem(""); setChecklistMessage("Checklist item added."); await loadAthleteChecklist(selectedAthlete);
+    } catch (e) { setChecklistMessage(e instanceof Error ? e.message : "Checklist item could not be saved."); }
+    finally { setChecklistBusy(false); }
+  }
+
+  async function updateCoachChecklistItem(row: {id:string;completed:boolean}, remove = false) {
+    if (!supabase || !selectedAthlete) return;
+    setChecklistBusy(true); setChecklistMessage("");
+    try {
+      const result = remove
+        ? await supabase.from("competition_checklists").delete().eq("id", row.id).eq("user_id", selectedAthlete)
+        : await supabase.from("competition_checklists").update({ completed: !row.completed }).eq("id", row.id).eq("user_id", selectedAthlete);
+      if (result.error) throw result.error;
+      await loadAthleteChecklist(selectedAthlete);
+    } catch (e) { setChecklistMessage(e instanceof Error ? e.message : "Checklist update failed."); }
+    finally { setChecklistBusy(false); }
+  }
+
   async function createPlan() {
     if (!supabase || !userId || !selectedAthlete || !title.trim()) return;
     setBusy(true); setError("");
@@ -265,10 +289,23 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
       <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Competition outcomes</span><h3>Recorded results</h3><p className="muted">Only outcomes explicitly saved in athlete records</p></div><Award/></div>{competitionBreakdown.length?<ResponsiveContainer width="100%" height={190}><BarChart data={competitionBreakdown}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="name" tick={{fill:"#91a8c1",fontSize:10}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="count" name="Competition records" fill="#7c8cff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No recorded outcomes yet</strong><span>Competition result summaries will appear here when athletes save results.</span></div>}</article>
     </section>
     <div className="grid two">
-      <Card><div className="panel-head"><div><p className="eyebrow">Roster</p><h3>Link an athlete</h3><p className="muted">Search by the athlete's username or paste their user ID from their profile.</p></div><UserPlus size={20}/></div><div className="inline-form"><input value={athleteQuery} onChange={(e) => { setAthleteQuery(e.target.value); setFoundAthlete(null); }} placeholder="@athlete_username or user ID"/><button className="btn" onClick={() => void findAthlete()} disabled={busy || !athleteQuery.trim()}><Search size={15}/> Find</button></div>{foundAthlete && <div className="detail-row"><div><strong>{foundAthlete.full_name || foundAthlete.username}</strong><small>@{foundAthlete.username || "username not set"} · {foundAthlete.discipline?.toUpperCase() || "Taekwondo"} · {foundAthlete.belt || "Belt not set"}</small></div><button className="btn primary" onClick={() => void connectAthlete()} disabled={busy}><UserPlus size={15}/> Link athlete</button></div>}{athletes.length ? <DataList rows={athletes} empty="No athletes linked yet." render={(athlete) => <div><strong>{athlete.full_name || athlete.username || athlete.user_id}</strong><small>{athlete.discipline ? athlete.discipline.toUpperCase() : "Taekwondo"} · {athlete.belt || "Belt not set"}</small></div>}/> : <p className="muted">No athletes linked yet.</p>}</Card>
+      <Card><div className="panel-head"><div><p className="eyebrow">Roster</p><h3>Invite an athlete</h3><p className="muted">Search by the athlete's username or paste their user ID. The athlete must accept before a coach relationship becomes active.</p></div><UserPlus size={20}/></div><div className="inline-form"><input value={athleteQuery} onChange={(e) => { setAthleteQuery(e.target.value); setFoundAthlete(null); }} placeholder="@athlete_username or user ID"/><button className="btn" onClick={() => void findAthlete()} disabled={busy || !athleteQuery.trim()}><Search size={15}/> Find</button></div>{foundAthlete && <div className="detail-row"><div><strong>{foundAthlete.full_name || foundAthlete.username}</strong><small>@{foundAthlete.username || "username not set"} · {foundAthlete.discipline?.toUpperCase() || "Taekwondo"} · {foundAthlete.belt || "Belt not set"}</small></div><button className="btn primary" onClick={() => void connectAthlete()} disabled={busy}><UserPlus size={15}/> Send invitation</button></div>}{athletes.length ? <DataList rows={athletes} empty="No athletes linked yet." render={(athlete) => <div><strong>{athlete.full_name || athlete.username || athlete.user_id}</strong><small>{athlete.discipline ? athlete.discipline.toUpperCase() : "Taekwondo"} · {athlete.belt || "Belt not set"}</small></div>}/> : <p className="muted">No athletes linked yet.</p>}</Card>
       <Card><div className="panel-head"><div><p className="eyebrow">Training plans</p><h3>Assign a plan</h3></div><ClipboardList size={20}/></div><label className="field"><span>Athlete</span><select value={selectedAthlete} onChange={(e) => setSelectedAthlete(e.target.value)}><option value="">Choose athlete</option>{athletes.map((athlete) => <option key={athlete.user_id} value={athlete.user_id}>{athlete.full_name || athlete.username || athlete.user_id}</option>)}</select></label><label className="field"><span>Plan title</span><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Competition preparation"/></label><label className="field"><span>Focus</span><input value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="Kyorugi performance"/></label><label className="field"><span>Coach notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}/></label><button className="btn primary" onClick={() => void createPlan()} disabled={busy || !selectedAthlete || !title.trim()}><Plus size={15}/> Assign plan</button></Card>
     </div>
     <Card><div className="panel-head"><div><p className="eyebrow">Nutrition</p><h3>Coach-controlled nutrition</h3><p className="muted">Enable nutrition, hydration and optional calorie logging only for athletes you choose.</p></div></div>{athletes.length ? <DataList rows={athletes} empty="No athletes linked yet." render={(athlete) => <div className="membership-row"><div><strong>{athlete.full_name || athlete.username || athlete.user_id}</strong><small>{nutritionEnabled[athlete.user_id] ? "Nutrition enabled" : "Nutrition not enabled"}</small></div><button className="btn" onClick={() => void toggleNutrition(athlete.user_id)} disabled={busy}>{nutritionEnabled[athlete.user_id] ? "Disable" : "Enable"}</button></div>}/> : <p className="muted">Link athletes first.</p>}</Card>
+    <Card>
+      <div className="panel-head"><div><p className="eyebrow">Tournament preparation</p><h3>Coach-managed checklist</h3><p className="muted">Add preparation tasks to a linked athlete's competition. This is available only after the athlete accepts your invitation.</p></div><ClipboardList size={20}/></div>
+      <label className="field"><span>Athlete</span><select value={selectedAthlete} onChange={(e) => setSelectedAthlete(e.target.value)}><option value="">Choose linked athlete</option>{athletes.map((athlete) => <option key={athlete.user_id} value={athlete.user_id}>{athlete.full_name || athlete.username || athlete.user_id}</option>)}</select></label>
+      {selectedAthlete && <>
+        <label className="field"><span>Tournament</span><select value={checklistTournamentId} onChange={(e) => setChecklistTournamentId(e.target.value)}><option value="">Choose tournament</option>{checklistTournaments.map((event) => <option key={event.id} value={event.id}>{event.name}</option>)}</select></label>
+        <div className="inline-form"><input value={coachChecklistItem} onChange={e=>setCoachChecklistItem(e.target.value)} placeholder="Add a preparation task"/><select value={coachChecklistCategory} onChange={e=>setCoachChecklistCategory(e.target.value)}><option value="entry">Entry</option><option value="weigh_in">Weigh-in</option><option value="documents">Documents</option><option value="travel">Travel</option><option value="equipment">Equipment</option><option value="other">Other</option></select><button type="button" className="btn primary" onClick={()=>void addCoachChecklistItem()} disabled={checklistBusy || !checklistTournamentId || !coachChecklistItem.trim()}>Add item</button></div>
+        {checklistMessage && <p className="muted" role="status">{checklistMessage}</p>}
+        {checklistBusy && <p className="muted">Saving checklist…</p>}
+        {coachChecklistRows.filter(row=>row.tournament_id===checklistTournamentId).map(row=><div className="detail-row" key={row.id}><div><strong>{row.item}</strong><small>{String(row.category||"other").replace("_"," ").toUpperCase()} · {row.completed ? "Complete" : "Open"}</small></div><div className="inline-actions"><button type="button" className="btn" onClick={()=>void updateCoachChecklistItem(row)} disabled={checklistBusy}>{row.completed ? "Reopen" : "Mark done"}</button><button type="button" className="btn" onClick={()=>void updateCoachChecklistItem(row,true)} disabled={checklistBusy}>Remove</button></div></div>)}
+        {!checklistBusy && checklistTournamentId && !coachChecklistRows.some(row=>row.tournament_id===checklistTournamentId) && <p className="muted">No checklist tasks for this tournament yet.</p>}
+        {!checklistTournaments.length && <p className="muted">This athlete has no tournaments saved yet. Ask them to add the event first.</p>}
+      </>}
+    </Card>
     <Card><h3>Assigned plans</h3>{plans.length ? <DataList rows={plans} empty="No plans yet." render={(plan) => <div><strong>{plan.title}</strong><small>{athletes.find((a) => a.user_id === plan.user_id)?.full_name || plan.user_id} · {plan.focus_area || "General"} · {plan.status || "active"}</small></div>}/> : <p className="muted">Your assigned plans will appear here.</p>}</Card>
   </div>;
 }
