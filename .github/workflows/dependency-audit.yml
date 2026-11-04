@@ -1,0 +1,68 @@
+name: Dependency Security Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "pnpm-lock.yaml"
+      - "AthleteN-Mobile/package-lock.json"
+      - "package.json"
+      - "AthleteN-Mobile/package.json"
+      - ".github/workflows/dependency-audit.yml"
+  schedule:
+    - cron: "30 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+
+      - name: Install web dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit web dependencies
+        continue-on-error: true
+        run: |
+          pnpm audit --json > web-dependency-audit.json || true
+          node -e "const r=require('./web-dependency-audit.json'); const m=r.metadata?.vulnerabilities||{}; console.log('Web advisories:', JSON.stringify(m));" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Install Android dependencies
+        working-directory: AthleteN-Mobile
+        run: npm ci
+
+      - name: Audit Android dependencies
+        working-directory: AthleteN-Mobile
+        continue-on-error: true
+        run: |
+          npm audit --json > mobile-dependency-audit.json || true
+          node -e "const r=require('./mobile-dependency-audit.json'); const m=r.metadata?.vulnerabilities||{}; console.log('Android advisories:', JSON.stringify(m));" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload advisory reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: athleten-dependency-audit-${{ github.run_number }}
+          path: |
+            web-dependency-audit.json
+            AthleteN-Mobile/mobile-dependency-audit.json
+          if-no-files-found: warn
+          retention-days: 30
