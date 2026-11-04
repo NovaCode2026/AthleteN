@@ -5,6 +5,14 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
 const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function isValidDateOnly(value:string){
+ const match=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(value);
+ if(!match)return false;
+ const year=Number(match[1]);const month=Number(match[2]);const day=Number(match[3]);
+ if(month<1||month>12||day<1||day>31)return false;
+ const date=new Date(Date.UTC(year,month-1,day));
+ return date.getUTCFullYear()===year&&date.getUTCMonth()===month-1&&date.getUTCDate()===day;
+}
 type Athlete={user_id:string;full_name?:string|null};
 type Group={id:string;name:string;focus_area?:string|null;recurrence_days:string[];start_time?:string|null;duration_minutes:number;active:boolean};
 type Session={id:string;group_id:string;session_date:string;start_time?:string|null;title:string;status:string;training_type?:string|null;locked?:boolean};
