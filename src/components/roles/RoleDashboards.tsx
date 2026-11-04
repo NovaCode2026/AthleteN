@@ -363,6 +363,62 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
   const [academyMedals,setAcademyMedals]=useState<MedalMetric[]>([]);
   const [academyCompetitions,setAcademyCompetitions]=useState<CompetitionMetric[]>([]);
   const [rangeMonths,setRangeMonths]=useState(6);
+  const [academyAnnouncementRows, setAcademyAnnouncementRows] = useState<Array<{id:string;title:string;body:string;published_at:string;read_count:number|null}>>([]);
+  const [academyAnnouncementTitle, setAcademyAnnouncementTitle] = useState("");
+  const [academyAnnouncementBody, setAcademyAnnouncementBody] = useState("");
+  const [academyAnnouncementBusy, setAcademyAnnouncementBusy] = useState(false);
+  const [academyAnnouncementMessage, setAcademyAnnouncementMessage] = useState("");
+
+  async function loadAcademyAnnouncements() {
+    if (!supabase || !academyId || !userId) {
+      setAcademyAnnouncementRows([]);
+      return;
+    }
+    const { data, error: loadError } = await supabase
+      .from("announcements")
+      .select("id,title,body,published_at")
+      .eq("academy_id", academyId)
+      .eq("created_by", userId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (loadError) {
+      setAcademyAnnouncementMessage("Announcements could not be loaded: " + loadError.message);
+      return;
+    }
+    const rows = await Promise.all((data || []).map(async (row:any) => {
+      const receipt = await supabase.from("announcement_reads")
+        .select("id", { count: "exact", head: true })
+        .eq("announcement_id", row.id);
+      return { ...row, read_count: receipt.error ? null : (receipt.count || 0) };
+    }));
+    setAcademyAnnouncementRows(rows as Array<{id:string;title:string;body:string;published_at:string;read_count:number|null}>);
+  }
+
+  useEffect(() => {
+    void loadAcademyAnnouncements();
+  }, [academyId, userId]);
+
+  async function publishAcademyAnnouncement() {
+    if (!supabase || !academyId || !academyAnnouncementTitle.trim() || !academyAnnouncementBody.trim()) return;
+    setAcademyAnnouncementBusy(true);
+    setAcademyAnnouncementMessage("");
+    try {
+      const { error: publishError } = await supabase.rpc("publish_academy_announcement", {
+        p_academy_id: academyId,
+        p_title: academyAnnouncementTitle.trim(),
+        p_body: academyAnnouncementBody.trim()
+      });
+      if (publishError) throw publishError;
+      setAcademyAnnouncementTitle("");
+      setAcademyAnnouncementBody("");
+      setAcademyAnnouncementMessage("Announcement published to your academy.");
+      await loadAcademyAnnouncements();
+    } catch (e) {
+      setAcademyAnnouncementMessage(e instanceof Error ? e.message : "Announcement could not be published.");
+    } finally {
+      setAcademyAnnouncementBusy(false);
+    }
+  }
 
   async function load() {
     if (!supabase || !userId) return;
@@ -474,6 +530,17 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
         <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Achievements</span><h3>Medal distribution</h3><p className="muted">Recorded medal types across academy athletes</p></div><Trophy/></div>{academyMedalBreakdown.length?<ResponsiveContainer width="100%" height={190}><BarChart data={academyMedalBreakdown} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis type="number" allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><YAxis type="category" dataKey="name" width={75} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="count" name="Medals" fill="#f4c45e" radius={[0,6,6,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No medals recorded yet</strong><span>Academy athlete achievements will appear here.</span></div>}</article>
         <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Competition outcomes</span><h3>Recorded results</h3><p className="muted">Based on saved competition records</p></div><Award/></div>{academyCompetitionBreakdown.length?<ResponsiveContainer width="100%" height={190}><BarChart data={academyCompetitionBreakdown}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="name" tick={{fill:"#91a8c1",fontSize:10}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="count" name="Competition records" fill="#7c8cff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No competition results yet</strong><span>Recorded results will appear here when saved.</span></div>}</article>
       </section>
+      <Card>
+        <div className="panel-head"><div><p className="eyebrow">Academy communication</p><h3>Announcements</h3><p className="muted">Publish an update to active academy members. You can see aggregate reads for your own announcements, not individual reader identities.</p></div><Users size={20}/></div>
+        {selectedAcademy && <>
+          <label className="field"><span>Title</span><input value={academyAnnouncementTitle} onChange={e=>setAcademyAnnouncementTitle(e.target.value)} maxLength={120} placeholder="Training schedule update"/></label>
+          <label className="field"><span>Message</span><textarea value={academyAnnouncementBody} onChange={e=>setAcademyAnnouncementBody(e.target.value)} maxLength={2000} rows={3} placeholder="Write an update for your academy members."/></label>
+          <button type="button" className="btn primary" onClick={()=>void publishAcademyAnnouncement()} disabled={academyAnnouncementBusy || !academyAnnouncementTitle.trim() || !academyAnnouncementBody.trim()}>{academyAnnouncementBusy ? "Publishing…" : "Publish announcement"}</button>
+          {academyAnnouncementMessage && <p className="muted" role="status">{academyAnnouncementMessage}</p>}
+          <div className="details-list">{academyAnnouncementRows.map(item=><div className="detail-row" key={item.id}><div><strong>{item.title}</strong><small>{item.read_count===null ? "Read count unavailable" : item.read_count+" member(s) viewed"} · {new Date(item.published_at).toLocaleString()}</small><p>{item.body}</p></div></div>)}</div>
+          {!academyAnnouncementRows.length && <p className="muted">No announcements published by your account in this academy yet.</p>}
+        </>}
+      </Card>
       <div className="grid two"><Card><div className="panel-head"><div><p className="eyebrow">Membership</p><h3>Add member</h3><p className="muted">Find an athlete by username or user ID, then add them to the academy.</p></div><UserPlus size={20}/></div><div className="inline-form"><input value={memberQuery} onChange={(e) => { setMemberQuery(e.target.value); setFoundMember(null); }} placeholder="@athlete_username or user ID"/><button className="btn" onClick={() => void findMember()} disabled={busy || !memberQuery.trim()}><Search size={15}/> Find</button></div>{foundMember && <div className="detail-row"><div><strong>{foundMember.full_name || foundMember.username}</strong><small>@{foundMember.username || "username not set"} · {foundMember.discipline?.toUpperCase() || "Taekwondo"} · {foundMember.belt || "Belt not set"}</small></div><button className="btn primary" onClick={() => void addMember()} disabled={busy}><UserPlus size={15}/> Add</button></div>}<label className="field"><span>Role</span><select value={memberRole} onChange={(e) => setMemberRole(e.target.value)}><option value="athlete">Athlete</option><option value="coach">Coach</option></select></label></Card><Card><div className="panel-head"><div><p className="eyebrow">Athlete roster</p><h3>Academy athletes</h3></div><Users size={20}/></div>{memberProfiles.length ? <DataList rows={memberProfiles} empty="No athletes yet." render={(member) => <div><strong>{member.full_name || member.username || member.user_id}</strong><small>{member.discipline ? member.discipline.toUpperCase() : "Taekwondo"} · {member.belt || "Belt not set"}</small></div>}/> : <p className="muted">Add athlete memberships to build the roster.</p>}</Card></div>
       <Card><h3>Membership management</h3>{members.length ? <DataList rows={members} empty="No membership records." render={(member) => <div className="membership-row"><div><strong>{memberProfiles.find((p) => p.user_id === member.user_id)?.full_name || member.user_id}</strong><small>{member.role} · {member.status}</small></div>{member.user_id !== userId && <div className="inline-actions"><button className="btn" onClick={() => void updateMember(member.id, member.status === "active" ? "suspended" : "active")}>{member.status === "active" ? "Suspend" : "Activate"}</button></div>}</div>}/> : <p className="muted">No membership records.</p>}</Card>
     </>}
