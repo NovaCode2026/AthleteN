@@ -29,20 +29,15 @@ function ErrorText({ children }: { children: React.ReactNode }) { return <p clas
 async function resolveAthlete(value: string): Promise<AthleteLookup> {
   const input = value.trim();
   if (!input) throw new Error("Enter an athlete username or user ID.");
-  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (uuid.test(input)) {
-    if (!supabase) throw new Error("Supabase is not configured.");
-    const { data, error } = await supabase.from("profiles").select("user_id,full_name,username,discipline,belt,role,sport").eq("user_id", input).maybeSingle();
-    if (error) throw error;
-    if (!data || data.role !== "athlete" || String(data.sport || "").toLowerCase() !== "taekwondo") throw new Error("No Taekwondo athlete profile was found for that user ID.");
-    return data as AthleteLookup;
-  }
   if (!supabase) throw new Error("Supabase is not configured.");
-  const { data, error } = await supabase.rpc("find_athlete_by_username", { p_username: input.replace(/^@/, "") });
+
+  const { data, error } = await supabase.rpc("lookup_taekwondo_athlete_for_coach", {
+    p_search: input
+  });
   if (error) throw error;
   const athlete = Array.isArray(data) ? data[0] : data;
-  if (!athlete) throw new Error("No Taekwondo athlete was found with that username.");
-  return { ...athlete, role: "athlete" } as AthleteLookup;
+  if (!athlete) throw new Error("No approved Taekwondo athlete was found with that username or user ID.");
+  return athlete as AthleteLookup;
 }
 
 export function CoachDashboard({ profile, userId, setToast }: Props) {
