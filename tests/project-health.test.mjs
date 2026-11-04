@@ -12,7 +12,7 @@ test('production package is configured for Node 22', () => {
   const pkg = readJson('package.json');
   assert.equal(pkg.engines?.node, '22.x');
   assert.equal(pkg.scripts?.build, expectedBuild);
-  assert.equal(pkg.scripts?.check, 'npm run build && npm test');
+  assert.equal(pkg.scripts?.check, 'pnpm run build && pnpm test');
 });
 
 test('deployment configuration is present', () => {
