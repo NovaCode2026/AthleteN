@@ -123,7 +123,6 @@ export default function CoachAttendancePanel({ userId }: { userId?: string }) {
           .eq("session_id", sessionId)
           .in("athlete_user_id", athleteIds),
       ]);
-      if (profilesResult.error) throw profilesResult.error;
       if (attendanceResult.error) throw attendanceResult.error;
 
       const profiles = new Map(((profilesResult.data || []) as ProfileRow[]).map((profile) => [profile.user_id, profile]));
