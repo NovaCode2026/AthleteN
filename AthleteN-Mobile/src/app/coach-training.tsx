@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Screen, Header, Section, Card, Button, c } from '@/components/mobile-ui';
+import { Screen, Header, Section, Card, Button, RefreshButton, c } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -28,6 +28,7 @@ export default function CoachTraining(){
 
  const load=useCallback(async()=>{
   if(!profile?.user_id)return false;
+  setLoading(true);
   try{
    const links=await supabase.from('coach_athlete_links').select('athlete_user_id').eq('coach_user_id',profile.user_id).eq('status','active');
    if(links.error)throw links.error;
@@ -50,7 +51,7 @@ export default function CoachTraining(){
   }catch(error){
    Alert.alert('Training data could not be loaded',error instanceof Error?error.message:'Check your connection and retry.');
    return false;
-  }
+  }finally{setLoading(false);}
  },[profile?.user_id]);
 
  useEffect(()=>{void load()},[load]);
@@ -187,7 +188,7 @@ export default function CoachTraining(){
  const selectedMemberCount=selectedSession?sessionAthleteIds.length:0; const attendanceCounts=useMemo(()=>{const vals=Object.values(attendance);return {present:vals.filter(v=>v==='present').length,late:vals.filter(v=>v==='late').length,absent:vals.filter(v=>v==='absent').length,excused:vals.filter(v=>v==='excused').length}},[attendance]); const selectedGroupName=useMemo(()=>selectedSession?groups.find(g=>g.id===selectedSession.group_id)?.name:'', [selectedSession,groups]); const TYPES=['sparring','poomsae','technique','kicking','footwork','defense','pads','strength','endurance','mobility','tactics','tournament','grading','camp','recovery','other'];
 
  return <Screen>
-  <Header back eyebrow="COACH / TRAINING" title="Training Control" subtitle="Build regular weekly training, assign athletes, and mark attendance session by session."/>
+  <Header back eyebrow="COACH / TRAINING" title="Training Control" subtitle="Build regular weekly training, assign athletes, and mark attendance session by session." right={<RefreshButton onPress={()=>void load()} busy={loading}/>} />
   <Section title="CREATE REGULAR TRAINING">
    <Card>
     <TextInput value={name} onChangeText={setName} placeholder="Training group name" placeholderTextColor={c.muted} style={input}/>
