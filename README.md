@@ -292,8 +292,9 @@ AthleteN/
 
 ### Requirements
 
-- Node.js version from the repository `.nvmrc`
-- npm
+- Node.js 22 (matches `.nvmrc`)
+- Corepack with pnpm 10.30.3 for the web repository root
+- npm for the isolated `AthleteN-Mobile` project
 - Git
 - Expo-compatible Android device or emulator for mobile testing
 - Supabase project credentials for connected functionality
@@ -301,14 +302,17 @@ AthleteN/
 ### Web
 
 ```bash
-npm ci
-npm run dev
+corepack enable
+corepack prepare pnpm@10.30.3 --activate
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
 Production build:
 
 ```bash
-npm run build
+pnpm run build
+pnpm test
 ```
 
 ### Android
