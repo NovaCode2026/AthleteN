@@ -6,6 +6,7 @@ const migration = fs.readFileSync('supabase/migrations/20261104130000_coach_cons
 const inboxMigration = fs.readFileSync('supabase/migrations/20261104130500_list_my_coach_invitations.sql', 'utf8');
 const announcementMigration = fs.readFileSync('supabase/migrations/20261104131000_academy_announcements_and_receipts.sql', 'utf8');
 const lookupMigration = fs.readFileSync('supabase/migrations/20261104131500_restrict_coach_athlete_lookup.sql', 'utf8');
+const connectionsMigration = fs.readFileSync('supabase/migrations/20261104132000_list_my_coach_connections.sql', 'utf8');
 const mobileAnnouncements = fs.readFileSync('AthleteN-Mobile/src/components/announcement-overlay.tsx', 'utf8');
 const roles = fs.readFileSync('src/components/roles/RoleDashboards.tsx', 'utf8');
 const app = fs.readFileSync('src/App.tsx', 'utf8');
@@ -50,6 +51,10 @@ test('coach dashboard no longer activates a relationship by direct table insert'
 test('athlete dashboard exposes the coach invitation inbox', () => {
   assert.match(roles, /AthleteConnectionInbox/);
   assert.match(app, /AthleteConnectionInbox/);
+  assert.match(roles, /revoke_coach_athlete_link/);
+  assert.match(connectionsMigration, /l\.athlete_user_id = v_athlete_id/);
+  assert.match(connectionsMigration, /l\.status = 'active'/);
+  assert.match(connectionsMigration, /list_my_coach_connections/);
 });
 
 test('academy announcement publishing and reads are scoped to active academy relationships', () => {
