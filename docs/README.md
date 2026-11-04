@@ -49,6 +49,7 @@
 
 | Guide | What is inside |
 |---|---|
+| 🛡️ [Reliability Release Gate — 4 November 2026](./RELIABILITY_RELEASE_GATE_2026-11-04.md) | Live evidence snapshot, security and migration risks, and hard release acceptance gates |
 | 🚦 [APS 1.0 Implementation Status](./APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) | Evidence-based status, passed checks, known blockers and release gates |
 | 🚀 [Deployment](./Deployment.md) | Netlify and environment configuration |
 | 🔐 [Security](./SECURITY.md) | Secrets, authentication, RLS and security practices |

@@ -15,7 +15,7 @@
 
 **Built by Nova Code** · React · TypeScript · Expo · Supabase · Netlify
 
-[Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) · [Web + Mobile Experience](./docs/WEB_MOBILE_EXPERIENCE_MODEL.md) · [Taekwondo Disciplines](./docs/TAEKWONDO_DISCIPLINES.md) · [Plans & Verification](./docs/PLAN_VERIFICATION_AND_BILLING.md) · [Docs Hub](./docs/README.md) · [API](./docs/API.md) · [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) · [Mobile Guide](./AthleteN-Mobile/README.md)
+[Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) · [Web + Mobile Experience](./docs/WEB_MOBILE_EXPERIENCE_MODEL.md) · [Taekwondo Disciplines](./docs/TAEKWONDO_DISCIPLINES.md) · [Plans & Verification](./docs/PLAN_VERIFICATION_AND_BILLING.md) · [Docs Hub](./docs/README.md) · [API](./docs/API.md) · [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) · [Reliability Release Gate](./docs/RELIABILITY_RELEASE_GATE_2026-11-04.md) · [Mobile Guide](./AthleteN-Mobile/README.md)
 
 </div>
 
@@ -292,8 +292,9 @@ AthleteN/
 
 ### Requirements
 
-- Node.js version from the repository `.nvmrc`
-- npm
+- Node.js 22 (from the repository `.nvmrc`)
+- Corepack with pnpm 10.30.3 (pinned in the root `package.json`)
+- npm for the separate Android project
 - Git
 - Expo-compatible Android device or emulator for mobile testing
 - Supabase project credentials for connected functionality
@@ -301,14 +302,18 @@ AthleteN/
 ### Web
 
 ```bash
-npm ci
-npm run dev
+corepack enable
+corepack prepare pnpm@10.30.3 --activate
+pnpm install --frozen-lockfile
+pnpm run dev
 ```
+
+The full Netlify development environment (including Netlify Functions) is available at `http://localhost:8888`. For the Vite frontend only, run `pnpm run dev:vite` and open `http://localhost:5173`.
 
 Production build:
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 ### Android
@@ -359,9 +364,11 @@ Payment-provider credentials and recurring-plan identifiers are provider-specifi
 Web:
 
 ```bash
-npm ci
-npm test
-npm run build
+corepack enable
+corepack prepare pnpm@10.30.3 --activate
+pnpm install --frozen-lockfile
+pnpm test
+pnpm run build
 ```
 
 Mobile:

@@ -7,6 +7,19 @@ on:
       - 'AthleteN-Mobile/**'
       - 'netlify/functions/**'
       - 'tests/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/android-apk.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'AthleteN-Mobile/**'
+      - 'netlify/functions/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 
@@ -24,14 +37,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Enable Corepack and activate pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+          pnpm --version
       - name: Install server test dependencies
-        run: npm install --no-package-lock --ignore-scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Check scanner JavaScript syntax
         run: node --check netlify/functions/tournament-scan.mjs && node --check netlify/functions/instagram-tournament-scan.mjs
       - name: Run scanner regression tests
         run: node --test tests/athleten-mobile-scanner-regression.test.mjs
 
   build-apk:
+    if: github.event_name != 'pull_request'
     needs: scanner-regression
     runs-on: ubuntu-latest
     timeout-minutes: 30
