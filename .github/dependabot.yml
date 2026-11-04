@@ -1,12 +1,30 @@
 version: 2
 updates:
-  - package-ecosystem: pnpm
+  # pnpm projects use Dependabot's npm ecosystem identifier.
+  - package-ecosystem: npm
     directory: "/"
     schedule:
       interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: Asia/Kolkata
     open-pull-requests-limit: 5
+
+  # Android is a separate npm project with its own package-lock.json.
+  - package-ecosystem: npm
+    directory: "/AthleteN-Mobile"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:15"
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 5
+
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
+      day: monday
+      time: "04:30"
+      timezone: Asia/Kolkata
     open-pull-requests-limit: 5
