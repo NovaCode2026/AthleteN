@@ -17,7 +17,9 @@ export default function CoachTraining(){
  const [sessions,setSessions]=useState<Session[]>([]);
  const [selectedAthletes,setSelectedAthletes]=useState<string[]>([]);
  const [selectedSession,setSelectedSession]=useState<Session|null>(null);
+ const [sessionAthleteIds,setSessionAthleteIds]=useState<string[]>([]);
  const [attendance,setAttendance]=useState<Record<string,string>>({});
+ const [attendanceBusy,setAttendanceBusy]=useState(false);
  const [name,setName]=useState('Regular Kyorugi Training');
  const [focus,setFocus]=useState('Kyorugi');
  const [duration,setDuration]=useState('90');
@@ -58,19 +60,80 @@ export default function CoachTraining(){
 
  async function createExtra(){ const gid=extraGroup||groups[0]?.id; if(!gid)return Alert.alert('No training group','Create a regular group first.'); const {error}=await supabase.rpc('create_coach_extra_training',{p_group_id:gid,p_session_date:extraDate,p_start_time:extraTime,p_duration_minutes:Number(duration)||90,p_training_type:extraType,p_title:extraTitle.trim()||'Extra training',p_focus:null,p_venue:extraVenue.trim()||null,p_notes:extraNotes.trim()||null}); if(error)Alert.alert('Could not add extra training',error.message); else {await load();Alert.alert('Extra training added','The session is now on the group schedule.');} }
  async function cancelDate(){ const {data,error}=await supabase.rpc('cancel_coach_training_date',{p_date:holidayDate,p_group_id:holidayGroup||null,p_reason:holidayReason.trim()||'Academy holiday'}); if(error)Alert.alert('Could not cancel training',error.message); else {await load();Alert.alert('Training cancelled',String(data||0)+' session(s) cancelled. The group chat and notifications were updated automatically.');} }
- async function markAllPresent(){ if(!selectedSession||selectedSession.status==='cancelled'||selectedSession.locked)return; const m=await supabase.from('training_group_members').select('athlete_user_id').eq('group_id',selectedSession.group_id).eq('status','active'); const ids=(m.data||[]).map((x:any)=>x.athlete_user_id); const {error}=await supabase.from('training_group_attendance').upsert(ids.map(id=>({session_id:selectedSession.id,athlete_user_id:id,status:'present',updated_at:new Date().toISOString()})),{onConflict:'session_id,athlete_user_id'}); if(error)Alert.alert('Attendance not saved',error.message); else setAttendance(Object.fromEntries(ids.map(id=>[id,'present']))); }
- async function lockAttendance(){ if(!selectedSession)return; const {error}=await supabase.from('training_group_sessions').update({locked:true,updated_at:new Date().toISOString()}).eq('id',selectedSession.id).eq('locked',false); if(error)Alert.alert('Could not lock attendance',error.message); else {setSelectedSession({...selectedSession,locked:true});Alert.alert('Attendance locked','This session can no longer be edited.');} }
+ async function markAllPresent(){
+  const session=selectedSession;
+  if(!session||session.status==='cancelled'||session.locked||attendanceBusy)return;
+  setAttendanceBusy(true);
+  try{
+   const m=await supabase.from('training_group_members').select('athlete_user_id').eq('group_id',session.group_id).eq('status','active');
+   if(m.error)throw m.error;
+   const ids=[...new Set((m.data||[]).map((x:any)=>x.athlete_user_id).filter(Boolean))];
+   if(!ids.length){Alert.alert('No active athletes','There are no active athletes in this training group.');return;}
+   const {error}=await supabase.from('training_group_attendance').upsert(
+    ids.map(id=>({session_id:session.id,athlete_user_id:id,status:'present',updated_at:new Date().toISOString()})),
+    {onConflict:'session_id,athlete_user_id'}
+   );
+   if(error)throw error;
+   setAttendance(current=>({...current,...Object.fromEntries(ids.map(id=>[id,'present']))}));
+   Alert.alert('Attendance saved',ids.length+' active athlete(s) marked present.');
+  }catch(error){Alert.alert('Attendance not saved',error instanceof Error?error.message:'The attendance update failed.');}
+  finally{setAttendanceBusy(false);}
+ }
+ async function lockAttendance(){
+  const session=selectedSession;
+  if(!session||attendanceBusy||session.locked||session.status==='cancelled')return;
+  setAttendanceBusy(true);
+  try{
+   const {data,error}=await supabase.from('training_group_sessions').update({locked:true,updated_at:new Date().toISOString()}).eq('id',session.id).eq('locked',false).select('id,locked').maybeSingle();
+   if(error)throw error;
+   if(!data?.locked)throw new Error('The session could not be locked. Refresh attendance and try again.');
+   setSelectedSession({...session,locked:true});
+   Alert.alert('Attendance locked','This session can no longer be edited.');
+  }catch(error){Alert.alert('Could not lock attendance',error instanceof Error?error.message:'The session could not be locked.');}
+  finally{setAttendanceBusy(false);}
+ }
  async function openAttendance(s:Session){
+  if(attendanceBusy)return;
+  setAttendanceBusy(true);
   setSelectedSession(s);
-  const {data}=await supabase.from('training_group_attendance').select('athlete_user_id,status').eq('session_id',s.id);
-  const map:Record<string,string>={}; for(const a of data||[])map[a.athlete_user_id]=a.status||'absent'; setAttendance(map);
-  const m=await supabase.from('training_group_members').select('athlete_user_id').eq('group_id',s.group_id).eq('status','active');
-  setSelectedAthletes((m.data||[]).map((x:any)=>x.athlete_user_id));
+  setAttendance({});
+  setSessionAthleteIds([]);
+  try{
+   const [attendanceResult,membersResult]=await Promise.all([
+    supabase.from('training_group_attendance').select('athlete_user_id,status').eq('session_id',s.id),
+    supabase.from('training_group_members').select('athlete_user_id').eq('group_id',s.group_id).eq('status','active')
+   ]);
+   if(attendanceResult.error)throw attendanceResult.error;
+   if(membersResult.error)throw membersResult.error;
+   const map:Record<string,string>={};
+   for(const row of attendanceResult.data||[])map[row.athlete_user_id]=row.status||'absent';
+   setAttendance(map);
+   setSessionAthleteIds([...new Set((membersResult.data||[]).map((row:any)=>row.athlete_user_id).filter(Boolean))]);
+  }catch(error){
+   setSelectedSession(null);
+   Alert.alert('Attendance could not be loaded',error instanceof Error?error.message:'Refresh and try again.');
+  }finally{setAttendanceBusy(false);}
  }
 
- async function toggleAttendance(id:string){ const next=attendance[id]==='present'?'absent':'present'; setAttendance(v=>({...v,[id]:next})); const {error}=await supabase.from('training_group_attendance').upsert({session_id:selectedSession?.id,athlete_user_id:id,status:next,updated_at:new Date().toISOString()},{onConflict:'session_id,athlete_user_id'}); if(error)Alert.alert('Attendance not saved',error.message); }
+ async function setAttendanceStatus(id:string,status:string){
+  const session=selectedSession;
+  if(!session||attendanceBusy||session.locked||session.status==='cancelled')return;
+  const previous=attendance[id]||'absent';
+  setAttendanceBusy(true);
+  setAttendance(current=>({...current,[id]:status}));
+  try{
+   const {error}=await supabase.from('training_group_attendance').upsert(
+    {session_id:session.id,athlete_user_id:id,status,updated_at:new Date().toISOString()},
+    {onConflict:'session_id,athlete_user_id'}
+   );
+   if(error)throw error;
+  }catch(error){
+   setAttendance(current=>({...current,[id]:previous}));
+   Alert.alert('Attendance not saved',error instanceof Error?error.message:'The attendance update failed.');
+  }finally{setAttendanceBusy(false);}
+ }
 
- const selectedMemberCount=selectedSession?selectedAthletes.length:0; const attendanceCounts=useMemo(()=>{const vals=Object.values(attendance);return {present:vals.filter(v=>v==='present').length,late:vals.filter(v=>v==='late').length,absent:vals.filter(v=>v==='absent').length,excused:vals.filter(v=>v==='excused').length}},[attendance]); const selectedGroupName=useMemo(()=>selectedSession?groups.find(g=>g.id===selectedSession.group_id)?.name:'', [selectedSession,groups]); const TYPES=['sparring','poomsae','technique','kicking','footwork','defense','pads','strength','endurance','mobility','tactics','tournament','grading','camp','recovery','other'];
+ const selectedMemberCount=selectedSession?sessionAthleteIds.length:0; const attendanceCounts=useMemo(()=>{const vals=Object.values(attendance);return {present:vals.filter(v=>v==='present').length,late:vals.filter(v=>v==='late').length,absent:vals.filter(v=>v==='absent').length,excused:vals.filter(v=>v==='excused').length}},[attendance]); const selectedGroupName=useMemo(()=>selectedSession?groups.find(g=>g.id===selectedSession.group_id)?.name:'', [selectedSession,groups]); const TYPES=['sparring','poomsae','technique','kicking','footwork','defense','pads','strength','endurance','mobility','tactics','tournament','grading','camp','recovery','other'];
 
  return <Screen>
   <Header back eyebrow="COACH / TRAINING" title="Training Control" subtitle="Build regular weekly training, assign athletes, and mark attendance session by session."/>
@@ -92,9 +155,9 @@ export default function CoachTraining(){
    {groups.length?groups.map(g=><Card key={g.id}><View style={{flexDirection:'row',justifyContent:'space-between',gap:10}}><View style={{flex:1}}><Text style={{color:c.text,fontSize:15,fontWeight:'900'}}>{g.name}</Text><Text style={{color:c.muted,fontSize:10,marginTop:3}}>{g.focus_area||'Training'} · {g.recurrence_days.join(' · ')} · {g.start_time||'Time not set'}</Text></View><Text style={{color:c.accentBright,fontWeight:'900'}}>{g.duration_minutes}m</Text></View></Card>):<Card accent><Text style={{color:c.text,fontWeight:'900'}}>No regular groups yet</Text><Text style={{color:c.muted,fontSize:10,marginTop:3}}>Create one above and AthleteN will generate recurring sessions.</Text></Card>}
   </Section>
   <Section title="SESSIONS / ATTENDANCE">
-   {sessions.length?sessions.map(s=><Pressable key={s.id} onPress={()=>void openAttendance(s)}><Card><View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><View style={{flex:1}}><Text style={{color:c.text,fontWeight:'900'}}>{s.title}</Text><Text style={{color:c.muted,fontSize:10,marginTop:3}}>{s.session_date} · {s.start_time||'Time not set'} · {(s.training_type||'regular').toUpperCase()}</Text></View><Text style={{color:s.status==='cancelled'?'#ff7082':c.accentBright,fontWeight:'900'}}>{s.status==='cancelled'?'OFF':'ATTEND ›'}</Text></View></Card></Pressable>):<Card><Text style={{color:c.muted}}>No training sessions yet.</Text></Card>}
+   {sessions.length?sessions.map(s=><Pressable key={s.id} disabled={attendanceBusy} onPress={()=>void openAttendance(s)}><Card><View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><View style={{flex:1}}><Text style={{color:c.text,fontWeight:'900'}}>{s.title}</Text><Text style={{color:c.muted,fontSize:10,marginTop:3}}>{s.session_date} · {s.start_time||'Time not set'} · {(s.training_type||'regular').toUpperCase()}</Text></View><Text style={{color:s.status==='cancelled'?'#ff7082':c.accentBright,fontWeight:'900'}}>{s.status==='cancelled'?'OFF':'ATTEND ›'}</Text></View></Card></Pressable>):<Card><Text style={{color:c.muted}}>No training sessions yet.</Text></Card>}
   </Section>
-  {selectedSession?<Section title={'ATTENDANCE · '+selectedGroupName}><Card><Text style={{color:c.text,fontWeight:'900'}}>{selectedSession.title}</Text><Text style={{color:c.muted,fontSize:10,marginBottom:8}}>{selectedSession.session_date} · {selectedMemberCount} athletes · {selectedSession.locked?'Attendance locked':'Tap a status to update.'}</Text><View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:10}}><Text style={{color:c.success,fontSize:9,fontWeight:'900'}}>PRESENT {attendanceCounts.present}</Text><Text style={{color:c.warning,fontSize:9,fontWeight:'900'}}>LATE {attendanceCounts.late}</Text><Text style={{color:c.danger,fontSize:9,fontWeight:'900'}}>ABSENT {attendanceCounts.absent}</Text><Text style={{color:c.muted,fontSize:9,fontWeight:'900'}}>EXCUSED {attendanceCounts.excused}</Text></View><Pressable disabled={selectedSession.locked||selectedSession.status==='cancelled'} onPress={()=>void markAllPresent()}><Text style={{color:c.accentBright,fontWeight:'900',fontSize:10,marginBottom:8}}>MARK ALL PRESENT</Text></Pressable>{athletes.filter(a=>selectedAthletes.includes(a.user_id)).map(a=><View key={a.user_id} style={{padding:10,borderRadius:11,borderWidth:1,borderColor:c.border,marginBottom:6}}><View style={{flexDirection:'row',justifyContent:'space-between'}}><Text style={{color:c.text,fontWeight:'900'}}>{a.full_name||'Athlete'}</Text><Text style={{color:c.muted,fontSize:9,fontWeight:'900'}}>{(attendance[a.user_id]||'absent').toUpperCase()}</Text></View><View style={{flexDirection:'row',gap:5,marginTop:8}}>{['present','late','absent','excused'].map(st=><Pressable key={st} disabled={selectedSession.locked||selectedSession.status==='cancelled'} onPress={()=>void (async()=>{setAttendance(v=>({...v,[a.user_id]:st}));const {error}=await supabase.from('training_group_attendance').upsert({session_id:selectedSession.id,athlete_user_id:a.user_id,status:st,updated_at:new Date().toISOString()},{onConflict:'session_id,athlete_user_id'});if(error)Alert.alert('Attendance not saved',error.message);})()} style={{paddingVertical:6,paddingHorizontal:7,borderRadius:8,borderWidth:1,borderColor:attendance[a.user_id]===st?c.accent:c.border}}><Text style={{color:attendance[a.user_id]===st?c.accentBright:c.muted,fontSize:8,fontWeight:'900'}}>{st.toUpperCase()}</Text></Pressable>)}</View></View>)}<Button title="LOCK ATTENDANCE" onPress={()=>void lockAttendance()} busy={busy}/></Card></Section>:null}
+  {selectedSession?<Section title={'ATTENDANCE · '+selectedGroupName}><Card><Text style={{color:c.text,fontWeight:'900'}}>{selectedSession.title}</Text><Text style={{color:c.muted,fontSize:10,marginBottom:8}}>{selectedSession.session_date} · {selectedMemberCount} athletes · {selectedSession.locked?'Attendance locked':'Tap a status to update.'}</Text><View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:10}}><Text style={{color:c.success,fontSize:9,fontWeight:'900'}}>PRESENT {attendanceCounts.present}</Text><Text style={{color:c.warning,fontSize:9,fontWeight:'900'}}>LATE {attendanceCounts.late}</Text><Text style={{color:c.danger,fontSize:9,fontWeight:'900'}}>ABSENT {attendanceCounts.absent}</Text><Text style={{color:c.muted,fontSize:9,fontWeight:'900'}}>EXCUSED {attendanceCounts.excused}</Text></View><Pressable disabled={attendanceBusy||selectedSession.locked||selectedSession.status==='cancelled'} onPress={()=>void markAllPresent()}><Text style={{color:c.accentBright,fontWeight:'900',fontSize:10,marginBottom:8}}>MARK ALL PRESENT</Text></Pressable>{athletes.filter(a=>sessionAthleteIds.includes(a.user_id)).map(a=><View key={a.user_id} style={{padding:10,borderRadius:11,borderWidth:1,borderColor:c.border,marginBottom:6}}><View style={{flexDirection:'row',justifyContent:'space-between'}}><Text style={{color:c.text,fontWeight:'900'}}>{a.full_name||'Athlete'}</Text><Text style={{color:c.muted,fontSize:9,fontWeight:'900'}}>{(attendance[a.user_id]||'absent').toUpperCase()}</Text></View><View style={{flexDirection:'row',gap:5,marginTop:8}}>{['present','late','absent','excused'].map(st=><Pressable key={st} disabled={attendanceBusy||selectedSession.locked||selectedSession.status==='cancelled'} onPress={()=>void setAttendanceStatus(a.user_id,st)} style={{paddingVertical:6,paddingHorizontal:7,borderRadius:8,borderWidth:1,borderColor:attendance[a.user_id]===st?c.accent:c.border}}><Text style={{color:attendance[a.user_id]===st?c.accentBright:c.muted,fontSize:8,fontWeight:'900'}}>{st.toUpperCase()}</Text></Pressable>)}</View></View>)}<Button title="LOCK ATTENDANCE" onPress={()=>void lockAttendance()} busy={busy}/></Card></Section>:null}
  
   
 </Screen>;
