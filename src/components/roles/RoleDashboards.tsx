@@ -546,21 +546,26 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
 }
 
 export function AthleteConnectionInbox({ userId }: { userId?: string }) {
-  const [invitations, setInvitations] = useState<Array<{link_id:string;coach_user_id:string;coach_name:string|null;coach_username:string|null;academy_name:string|null;invited_at:string}>>([]);
+  type ConnectionRow = {link_id:string;coach_user_id:string;coach_name:string|null;coach_username:string|null;academy_name:string|null;connected_at:string};
+  type InvitationRow = {link_id:string;coach_user_id:string;coach_name:string|null;coach_username:string|null;academy_name:string|null;invited_at:string};
+  const [invitations, setInvitations] = useState<InvitationRow[]>([]);
+  const [connections, setConnections] = useState<ConnectionRow[]>([]);
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  async function loadInvitations() {
+  async function loadConnections() {
     if (!supabase || !userId) return;
-    const { data, error } = await supabase.rpc("list_my_coach_invitations");
-    if (error) {
-      setMessage("Coach invitations could not be loaded. " + error.message);
-      return;
-    }
-    setInvitations((data || []) as Array<{link_id:string;coach_user_id:string;coach_name:string|null;coach_username:string|null;academy_name:string|null;invited_at:string}>);
+    const [invitationResult, connectionResult] = await Promise.all([
+      supabase.rpc("list_my_coach_invitations"),
+      supabase.rpc("list_my_coach_connections")
+    ]);
+    if (invitationResult.error) setMessage("Coach invitations could not be loaded. " + invitationResult.error.message);
+    else setInvitations((invitationResult.data || []) as InvitationRow[]);
+    if (connectionResult.error) setMessage("Coach connections could not be loaded. " + connectionResult.error.message);
+    else setConnections((connectionResult.data || []) as ConnectionRow[]);
   }
 
-  useEffect(() => { void loadInvitations(); }, [userId]);
+  useEffect(() => { void loadConnections(); }, [userId]);
 
   async function respond(linkId: string, accept: boolean) {
     if (!supabase) return;
@@ -569,14 +574,29 @@ export function AthleteConnectionInbox({ userId }: { userId?: string }) {
     const { error } = await supabase.rpc("respond_to_coach_invitation", { p_link_id: linkId, p_accept: accept });
     if (error) setMessage(error.message);
     else setMessage(accept ? "Coach connection accepted." : "Invitation declined.");
-    await loadInvitations();
+    await loadConnections();
+    setBusyId(null);
+  }
+
+  async function disconnect(linkId: string) {
+    if (!supabase) return;
+    if (!window.confirm("Disconnect this coach? They will no longer be able to access athlete records through this relationship.")) return;
+    setBusyId(linkId);
+    setMessage("");
+    const { error } = await supabase.rpc("revoke_coach_athlete_link", { p_link_id: linkId });
+    if (error) setMessage(error.message);
+    else setMessage("Coach connection disconnected.");
+    await loadConnections();
     setBusyId(null);
   }
 
   return <Card>
-    <div className="panel-head"><div><p className="eyebrow">Connections</p><h3>Coach invitations</h3><p className="muted">A coach cannot access connected athlete records until the athlete accepts.</p></div><Users size={20}/></div>
+    <div className="panel-head"><div><p className="eyebrow">Connections</p><h3>Coach connections</h3><p className="muted">You decide which coaches can access records through AthleteN. Accept a request to connect, or disconnect an existing coach at any time.</p></div><Users size={20}/></div>
     {message && <p className="muted" role="status">{message}</p>}
+    <h4>Pending invitations</h4>
     {invitations.length ? <div className="details-list">{invitations.map(invitation=><div className="detail-row" key={invitation.link_id}><div><strong>{invitation.coach_name || invitation.coach_username || "AthleteN coach"}</strong><small>{invitation.coach_username ? "@"+invitation.coach_username+" · " : ""}{invitation.academy_name || "Coach connection request"}</small></div><div className="inline-actions"><button type="button" className="btn primary" onClick={()=>void respond(invitation.link_id,true)} disabled={busyId===invitation.link_id}>Accept</button><button type="button" className="btn" onClick={()=>void respond(invitation.link_id,false)} disabled={busyId===invitation.link_id}>Decline</button></div></div>)}</div> : <p className="muted">No pending coach invitations.</p>}
+    <h4>Connected coaches</h4>
+    {connections.length ? <div className="details-list">{connections.map(connection=><div className="detail-row" key={connection.link_id}><div><strong>{connection.coach_name || connection.coach_username || "AthleteN coach"}</strong><small>{connection.coach_username ? "@"+connection.coach_username+" · " : ""}{connection.academy_name || "Active coach connection"}</small></div><button type="button" className="btn" onClick={()=>void disconnect(connection.link_id)} disabled={busyId===connection.link_id}>Disconnect</button></div>)}</div> : <p className="muted">No active coach connections.</p>}
   </Card>;
 }
 
