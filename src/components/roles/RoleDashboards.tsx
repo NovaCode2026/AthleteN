@@ -4,6 +4,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 function downloadCsv(filename:string,rows:Array<Record<string,unknown>>){if(!rows.length)return;const columns=Array.from(new Set(rows.flatMap(row=>Object.keys(row))));const quote=(value:unknown)=>`"${String(value??"").replace(/"/g,'""')}"`;const csv=[columns.map(quote).join(","),...rows.map(row=>columns.map(key=>quote(row[key])).join(","))].join("\r\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const anchor=document.createElement("a");anchor.href=url;anchor.download=filename;anchor.click();URL.revokeObjectURL(url);}
 import { supabase } from "../../lib/supabase";
 import type { Profile } from "../../types";
+import CoachAttentionPanel from "./CoachAttentionPanel";
 
 type Toast = { type: "success" | "error" | "warning" } | null;
 type Props = { profile: Profile; userId?: string; setToast: (toast: Toast) => void };
@@ -130,6 +131,22 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   }
 
   const activeLinks = links.filter((item) => item.status === "active").length;
+  const attentionAthletes = useMemo(() => {
+    const byId = new Map<string, { user_id: string; full_name?: string | null; username?: string | null }>();
+    for (const athlete of athletes) {
+      if (athlete.user_id) byId.set(athlete.user_id, {
+        user_id: athlete.user_id,
+        full_name: athlete.full_name,
+        username: athlete.username
+      });
+    }
+    for (const link of links) {
+      if (link.status === "active" && link.athlete_user_id && !byId.has(link.athlete_user_id)) {
+        byId.set(link.athlete_user_id, { user_id: link.athlete_user_id });
+      }
+    }
+    return Array.from(byId.values());
+  }, [athletes, links]);
   const rangeStart=useMemo(()=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-(rangeMonths-1));d.setHours(0,0,0,0);return d;},[rangeMonths]);
   const filteredTrainingMetrics=useMemo(()=>trainingMetrics.filter(x=>new Date(x.session_date)>=rangeStart),[trainingMetrics,rangeStart]);
   const filteredAttendanceMetrics=useMemo(()=>attendanceMetrics.filter(x=>new Date(x.attended_at)>=rangeStart),[attendanceMetrics,rangeStart]);
@@ -168,6 +185,7 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
     <div className="page-head"><div><p className="eyebrow">Individual Coach</p><h2>Coach Command Center</h2><p>Manage your athletes, assign Taekwondo training plans, and keep coaching data separate from the athlete workspace.</p></div><div className="role-dashboard-actions"><label className="role-range-picker"><span>Analytics range</span><select value={rangeMonths} onChange={e=>setRangeMonths(Number(e.target.value))}><option value={3}>Last 3 months</option><option value={6}>Last 6 months</option><option value={12}>Last 12 months</option></select></label><button type="button" className="btn" onClick={()=>window.print()}>Print / Save PDF</button><button className="btn" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> {loading ? "Refreshing…" : "Refresh"}</button></div></div>
     <section className="metrics"><article className="metric card"><div className="metric-icon"><Users size={18}/></div><div><p>Athletes</p><strong>{athletes.length}</strong><small>Linked athlete profiles</small></div></article><article className="metric card"><div className="metric-icon"><UserPlus size={18}/></div><div><p>Active links</p><strong>{activeLinks}</strong><small>Coach relationships</small></div></article><article className="metric card"><div className="metric-icon"><ClipboardList size={18}/></div><div><p>Plans</p><strong>{plans.length}</strong><small>Assigned training plans</small></div></article></section>
     {error && <ErrorText>{error}</ErrorText>}
+    {userId && <CoachAttentionPanel userId={userId} athletes={attentionAthletes} />}
     <section className="role-analytics-grid">
       <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Roster intelligence</span><h3>Training activity</h3><p className="muted">Monthly sessions from linked athletes · latest {rangeMonths} months</p></div><button className="btn" type="button" onClick={exportCoachReport}>Export CSV</button><BarChart3/></div>{filteredTrainingMetrics.length?<ResponsiveContainer width="100%" height={220}><BarChart data={trainingByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="sessions" name="Training sessions" fill="#49d7ff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No training analytics yet</strong><span>Training sessions from linked athletes will appear here when recorded and accessible.</span></div>}</article>
       <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Participation</span><h3>Attendance overview</h3><p className="muted">Based on attendance records visible to this coach</p></div><CalendarCheck/></div><div className="role-analytics-kpis"><div><strong>{attendanceRate===null?"—":`${attendanceRate}%`}</strong><small>Attendance rate</small></div><div><strong>{filteredAttendanceMetrics.length}</strong><small>Recorded check-ins in this range</small></div><div><strong>{Math.round(totalMinutes/60*10)/10}h</strong><small>Training hours</small></div></div>{attendanceMetrics.length?<ResponsiveContainer width="100%" height={145}><LineChart data={attendanceByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Line type="monotone" dataKey="records" name="Attendance records" stroke="#65e0b5" strokeWidth={3}/></LineChart></ResponsiveContainer>:<div className="empty"><strong>Attendance data will appear here</strong><span>No accessible attendance records were returned for this roster.</span></div>}</article>
