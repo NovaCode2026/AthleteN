@@ -17,7 +17,8 @@ type AthleteLookup = Pick<Athlete, "user_id" | "full_name" | "username" | "disci
 type TrainingMetric = { user_id:string; session_date:string; minutes:number };
 type AttendanceMetric = { user_id:string; attended_at:string; status:string };
 type MedalMetric = { user_id:string; awarded_at:string|null; medal_type:string };
-type CompetitionMetric = { user_id:string; starts_at:string|null; result:string|null };
+type CompetitionMetric = { user_id:string; name?:string|null; starts_at:string|null; result:string|null };
+type InjuryMetric = { user_id:string; recovery_status:string|null; occurred_at:string|null };
 function monthlySeries(rows:Array<{date:string|null}>,key:"sessions"|"records",months=6){const count=Math.max(3,Math.min(12,months));return Array.from({length:count},(_,i)=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-(count-1-i));const month=d.toLocaleDateString(undefined,{month:"short"});const prefix=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;return {month,[key]:rows.filter(x=>x.date?.startsWith(prefix)).length};});}
 async function fetchAllPages<T>(fetchPage:(from:number,to:number)=>PromiseLike<any>):Promise<T[]>{const rows:T[]=[];for(let from=0;from<100000;from+=500){const {data,error}=await fetchPage(from,from+499);if(error)throw error;const page=(data||[]) as T[];rows.push(...page);if(page.length<500)return rows;}throw new Error("Analytics result exceeded the safe 100,000-row paging limit. Narrow the date range.");}
 
@@ -528,6 +529,7 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   const [attendanceMetrics,setAttendanceMetrics]=useState<AttendanceMetric[]>([]);
   const [medalMetrics,setMedalMetrics]=useState<MedalMetric[]>([]);
   const [competitionMetrics,setCompetitionMetrics]=useState<CompetitionMetric[]>([]);
+  const [injuryMetrics,setInjuryMetrics]=useState<InjuryMetric[]>([]);
   const [analyticsUnavailable,setAnalyticsUnavailable]=useState(false);
   const [rangeMonths,setRangeMonths]=useState(6);
 
@@ -551,18 +553,19 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
       const start=new Date();start.setDate(1);start.setMonth(start.getMonth()-(rangeMonths-1));
       const startDate=[start.getFullYear(),String(start.getMonth()+1).padStart(2,"0"),"01"].join("-");
       try{
-        const [tr,ar,mr,cr]=await Promise.all([
+        const [tr,ar,mr,cr,ir]=await Promise.all([
           fetchAllPages<TrainingMetric>((from,to)=>supabase.from("training_sessions").select("user_id,session_date,minutes").in("user_id",athleteIds).gte("session_date",startDate).order("session_date",{ascending:false}).range(from,to)),
           fetchAllPages<AttendanceMetric>((from,to)=>supabase.from("attendance_records").select("user_id,attended_at,status").in("user_id",athleteIds).gte("attended_at",startDate).order("attended_at",{ascending:false}).range(from,to)),
           fetchAllPages<MedalMetric>((from,to)=>supabase.from("medals").select("user_id,awarded_at,medal_type").in("user_id",athleteIds).gte("awarded_at",startDate).order("awarded_at",{ascending:false}).range(from,to)),
-          fetchAllPages<CompetitionMetric>((from,to)=>supabase.from("tournaments").select("user_id,starts_at,result").in("user_id",athleteIds).gte("starts_at",startDate).order("starts_at",{ascending:false}).range(from,to))
+          fetchAllPages<CompetitionMetric>((from,to)=>supabase.from("tournaments").select("user_id,name,starts_at,result").in("user_id",athleteIds).gte("starts_at",startDate).order("starts_at",{ascending:false}).range(from,to)),
+          fetchAllPages<InjuryMetric>((from,to)=>supabase.from("injuries").select("user_id,recovery_status,occurred_at").in("user_id",athleteIds).order("occurred_at",{ascending:false}).range(from,to))
         ]);
-        setTrainingMetrics(tr);setAttendanceMetrics(ar);setMedalMetrics(mr);setCompetitionMetrics(cr);setAnalyticsUnavailable(false);
+        setTrainingMetrics(tr);setAttendanceMetrics(ar);setMedalMetrics(mr);setCompetitionMetrics(cr);setInjuryMetrics(ir);setAnalyticsUnavailable(false);
       }catch(e){
-        setTrainingMetrics([]);setAttendanceMetrics([]);setMedalMetrics([]);setCompetitionMetrics([]);setAnalyticsUnavailable(true);
+        setTrainingMetrics([]);setAttendanceMetrics([]);setMedalMetrics([]);setCompetitionMetrics([]);setInjuryMetrics([]);setAnalyticsUnavailable(true);
         setError(e instanceof Error?e.message:"Coach analytics could not be loaded.");
       }
-    }else{setTrainingMetrics([]);setAttendanceMetrics([]);setMedalMetrics([]);setCompetitionMetrics([]);setAnalyticsUnavailable(false);}
+    }else{setTrainingMetrics([]);setAttendanceMetrics([]);setMedalMetrics([]);setCompetitionMetrics([]);setInjuryMetrics([]);setAnalyticsUnavailable(false);}
     setLoading(false);
   }
   useEffect(() => { void load(); }, [userId, rangeMonths]);
@@ -615,6 +618,41 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   ]);}
   const medalBreakdown=useMemo(()=>Array.from(new Set(filteredMedalMetrics.map(x=>String(x.medal_type||"Unspecified")))).map(name=>({name,count:filteredMedalMetrics.filter(x=>String(x.medal_type||"Unspecified")===name).length})),[filteredMedalMetrics]);
   const competitionBreakdown=useMemo(()=>Array.from(new Set(filteredCompetitionMetrics.map(x=>String(x.result||"Unrecorded")))).map(name=>({name,count:filteredCompetitionMetrics.filter(x=>String(x.result||"Unrecorded")===name).length})),[filteredCompetitionMetrics]);
+
+  const needsAttention=useMemo(()=>{
+    const now=new Date();
+    const today=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+    const cutoff=now.getTime()-30*24*60*60*1000;
+    const names=new Map(athletes.map(a=>[a.user_id,a.full_name||a.username||a.user_id]));
+    const items:Array<{key:string;athlete:string;reason:string;detail:string}>=[];
+    const absences:Record<string,number>={};
+    for(const row of attendanceMetrics){
+      const time=new Date(row.attended_at).getTime();
+      if(String(row.status).toLowerCase()==="absent" && Number.isFinite(time) && time>=cutoff){
+        absences[row.user_id]=(absences[row.user_id]||0)+1;
+      }
+    }
+    for(const [athleteId,count] of Object.entries(absences)){
+      if(count>=2) items.push({key:"absence-"+athleteId,athlete:names.get(athleteId)||athleteId,reason:"Repeated absences",detail:`${count} recorded absences in the past 30 days`});
+    }
+    for(const row of competitionMetrics){
+      if(!row.starts_at) continue;
+      const eventTime=new Date(String(row.starts_at).slice(0,10)+"T00:00:00").getTime();
+      if(!Number.isFinite(eventTime)) continue;
+      const days=Math.round((eventTime-today)/(24*60*60*1000));
+      if(days>=0 && days<=14){
+        items.push({key:"event-"+row.user_id+"-"+row.starts_at,athlete:names.get(row.user_id)||row.user_id,reason:"Competition coming up",detail:`${row.name||"Competition"} · ${days===0?"today":`in ${days} day(s)`}`});
+      }
+    }
+    for(const row of injuryMetrics){
+      const status=String(row.recovery_status||"").trim().toLowerCase();
+      if(status && !/(recover|resolved|closed|complete)/.test(status)){
+        items.push({key:"injury-"+row.user_id+"-"+(row.occurred_at||"record"),athlete:names.get(row.user_id)||row.user_id,reason:"Injury follow-up",detail:"Check the athlete's recorded recovery status with the athlete and guardian"});
+      }
+    }
+    return items.slice(0,30);
+  },[athletes,attendanceMetrics,competitionMetrics,injuryMetrics]);
+
   async function toggleNutrition(athleteUserId: string) {
     if (!supabase || !userId) return;
     setBusy(true); setError("");
@@ -637,6 +675,36 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
     {error && <ErrorText>{error}</ErrorText>}
     <CoachAttendancePanel userId={userId || ""} athletes={athletes} setToast={setToast} />
     <CoachAnnouncementsPanel userId={userId || ""} setToast={setToast} />
+    <Card>
+      <div className="panel-head">
+        <div>
+          <p className="eyebrow">Coach attention</p>
+          <h3>Needs attention</h3>
+          <p className="muted">Follow-up flags from recorded athlete activity, upcoming events and recovery status.</p>
+        </div>
+        <strong>{needsAttention.length} flags</strong>
+      </div>
+      {needsAttention.length ? (
+        <div className="grid two">
+          {needsAttention.map((item)=>(
+            <div className="detail-row" key={item.key}>
+              <div>
+                <strong>{item.athlete}</strong>
+                <small>{item.reason}</small>
+                <small>{item.detail}</small>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="empty">
+          <strong>No follow-up flags from the available records</strong>
+          <p>Flags appear for 2 or more recorded absences in the last 30 days, competitions within 14 days, or non-closed injury records.</p>
+        </div>
+      )}
+      <p className="muted">This pilot view does not calculate or alert on athlete weight targets.</p>
+    </Card>
+
     <section className="role-analytics-grid">
       <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Roster intelligence</span><h3>Training activity</h3><p className="muted">Monthly sessions from linked athletes · latest {rangeMonths} months</p></div><button className="btn" type="button" onClick={exportCoachReport}>Export CSV</button><BarChart3/></div>{filteredTrainingMetrics.length?<ResponsiveContainer width="100%" height={220}><BarChart data={trainingByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="sessions" name="Training sessions" fill="#49d7ff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No training analytics yet</strong><span>Training sessions from linked athletes will appear here when recorded and accessible.</span></div>}</article>
       <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Participation</span><h3>Attendance overview</h3><p className="muted">Based on attendance records visible to this coach</p></div><CalendarCheck/></div><div className="role-analytics-kpis"><div><strong>{attendanceRate===null?"—":`${attendanceRate}%`}</strong><small>Attendance rate</small></div><div><strong>{filteredAttendanceMetrics.length}</strong><small>Recorded check-ins in this range</small></div><div><strong>{Math.round(totalMinutes/60*10)/10}h</strong><small>Training hours</small></div></div>{attendanceMetrics.length?<ResponsiveContainer width="100%" height={145}><LineChart data={attendanceByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Line type="monotone" dataKey="records" name="Attendance records" stroke="#65e0b5" strokeWidth={3}/></LineChart></ResponsiveContainer>:<div className="empty"><strong>Attendance data will appear here</strong><span>No accessible attendance records were returned for this roster.</span></div>}</article>
