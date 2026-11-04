@@ -1,0 +1,73 @@
+name: AthleteN Android E2E
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "AthleteN-Mobile/**"
+      - ".maestro/**"
+      - ".github/workflows/e2e-mobile.yml"
+  push:
+    branches: [main]
+    paths:
+      - "AthleteN-Mobile/**"
+      - ".maestro/**"
+      - ".github/workflows/e2e-mobile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  maestro:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: AthleteN-Mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install mobile dependencies
+        working-directory: AthleteN-Mobile
+        run: npm ci
+      - name: Generate Android project
+        working-directory: AthleteN-Mobile
+        run: npx expo prebuild --platform android --non-interactive
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJleGFtcGxlIiwicmVmIjoiZXhhbXBsZSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjIwMDAwMDAwMDB9.test-only-placeholder
+      - name: Build debug APK
+        working-directory: AthleteN-Mobile/android
+        run: ./gradlew assembleDebug
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Run on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            adb install AthleteN-Mobile/android/app/build/outputs/apk/debug/app-debug.apk
+            maestro test .maestro/flows/auth-smoke.yaml --format junit --output maestro-results.xml
+      - name: Upload Maestro evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: athleten-android-e2e-${{ github.run_number }}
+          path: maestro-results.xml
+          if-no-files-found: ignore
+          retention-days: 14
