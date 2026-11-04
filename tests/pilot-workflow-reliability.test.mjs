@@ -38,6 +38,9 @@ test('coach attendance validates server reads and restores the previous value on
   assert.match(source, /setAttendance\(current\s*=>\s*\(\{\.\.\.current,\s*\[id\]:\s*previous\}\)\)/);
   assert.match(source, /finally\s*\{\s*setAttendanceBusy\(false\);\s*\}/);
   assert.match(source, /Attendance saved/);
+  assert.match(source, /const vals=sessionAthleteIds\.map\(id=>attendance\[id\]\|\|'absent'\)/);
+  assert.match(source, /existingOverrides=sessionAthleteIds\.filter/);
+  assert.match(source, /Replace existing attendance\?/);
   assert.ok(!source.startsWith('// @ts-nocheck'));
   assert.ok(source.includes('minutes<15||minutes>360'));
   assert.ok(source.includes('/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(startTime)'));
