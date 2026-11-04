@@ -66,6 +66,11 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   const [coachChecklistCategory, setCoachChecklistCategory] = useState("equipment");
   const [checklistBusy, setChecklistBusy] = useState(false);
   const [checklistMessage, setChecklistMessage] = useState("");
+  const [academyAnnouncements, setAcademyAnnouncements] = useState<Array<{id:string;title:string;body:string;published_at:string;read_count:number|null}>>([]);
+  const [announcementTitle, setAnnouncementTitle] = useState("");
+  const [announcementBody, setAnnouncementBody] = useState("");
+  const [announcementBusy, setAnnouncementBusy] = useState(false);
+  const [announcementMessage, setAnnouncementMessage] = useState("");
   const [trainingMetrics,setTrainingMetrics]=useState<TrainingMetric[]>([]);
   const [attendanceMetrics,setAttendanceMetrics]=useState<AttendanceMetric[]>([]);
   const [medalMetrics,setMedalMetrics]=useState<MedalMetric[]>([]);
@@ -75,6 +80,31 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   const [attentionUnavailable,setAttentionUnavailable]=useState(false);
   const [analyticsUnavailable,setAnalyticsUnavailable]=useState(false);
   const [rangeMonths,setRangeMonths]=useState(6);
+
+  async function loadAcademyAnnouncements() {
+    if (!supabase || !userId || !profile.academy_id) { setAcademyAnnouncements([]); return; }
+    const { data, error: loadError } = await supabase.from("announcements").select("id,title,body,published_at").eq("academy_id", profile.academy_id).eq("created_by", userId).order("created_at", { ascending: false }).limit(10);
+    if (loadError) { setAnnouncementMessage("Announcements could not be loaded: " + loadError.message); return; }
+    const rows = await Promise.all((data || []).map(async (row:any) => {
+      const receipt = await supabase.from("announcement_reads").select("id", { count: "exact", head: true }).eq("announcement_id", row.id);
+      return { ...row, read_count: receipt.error ? null : (receipt.count || 0) };
+    }));
+    setAcademyAnnouncements(rows as Array<{id:string;title:string;body:string;published_at:string;read_count:number|null}>);
+  }
+
+  useEffect(() => { void loadAcademyAnnouncements(); }, [userId, profile.academy_id]);
+
+  async function publishAcademyAnnouncement() {
+    if (!supabase || !profile.academy_id || !announcementTitle.trim() || !announcementBody.trim()) return;
+    setAnnouncementBusy(true); setAnnouncementMessage("");
+    try {
+      const { error: publishError } = await supabase.rpc("publish_academy_announcement", { p_academy_id: profile.academy_id, p_title: announcementTitle.trim(), p_body: announcementBody.trim() });
+      if (publishError) throw publishError;
+      setAnnouncementTitle(""); setAnnouncementBody(""); setAnnouncementMessage("Announcement published to your academy.");
+      await loadAcademyAnnouncements();
+    } catch (e) { setAnnouncementMessage(e instanceof Error ? e.message : "Announcement could not be published."); }
+    finally { setAnnouncementBusy(false); }
+  }
 
   async function loadAthleteChecklist(athleteId: string) {
     if (!supabase || !athleteId) {
@@ -277,6 +307,17 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
       {attentionUnavailable&&<p className="notice" role="status">Some follow-up records could not be checked. Refresh or verify the source records before relying on this list.</p>}
       {loading?<p className="muted">Checking linked-athlete records…</p>:attentionItems.length?<div className="data-list">{attentionItems.slice(0,12).map(item=><div className="detail-row" key={item.id}><div><strong>{item.name}</strong><small>{item.reasons.join(" · ")}</small></div></div>)}</div>:<div className="empty"><strong>No follow-up flags from available records</strong><span>Flags use 2+ absences in 30 days, tournaments in the next 14 days and injury records not marked resolved.</span></div>}
       <p className="muted">This view does not score athletes by body weight or prescribe medical action. It is a reminder to check records and speak with the athlete and guardian.</p>
+    </Card>
+    <Card>
+      <div className="panel-head"><div><p className="eyebrow">Academy communication</p><h3>Announcements</h3><p className="muted">Published to active members of your academy. The sender sees only the read count, not individual private activity.</p></div><Users size={20}/></div>
+      {profile.academy_id ? <>
+        <label className="field"><span>Title</span><input value={announcementTitle} onChange={e=>setAnnouncementTitle(e.target.value)} maxLength={120} placeholder="Training schedule update"/></label>
+        <label className="field"><span>Message</span><textarea value={announcementBody} onChange={e=>setAnnouncementBody(e.target.value)} maxLength={2000} rows={3} placeholder="Write an update for your academy members."/></label>
+        <button type="button" className="btn primary" onClick={()=>void publishAcademyAnnouncement()} disabled={announcementBusy || !announcementTitle.trim() || !announcementBody.trim()}>{announcementBusy ? "Publishing…" : "Publish announcement"}</button>
+        {announcementMessage && <p className="muted" role="status">{announcementMessage}</p>}
+        <div className="details-list">{academyAnnouncements.map(item=><div className="detail-row" key={item.id}><div><strong>{item.title}</strong><small>{item.read_count===null ? "Read count unavailable" : item.read_count+" member(s) viewed"} · {new Date(item.published_at).toLocaleString()}</small><p>{item.body}</p></div></div>)}</div>
+        {!academyAnnouncements.length && <p className="muted">No academy announcements published by you yet.</p>}
+      </> : <p className="muted">Your coach profile is not assigned to an academy yet. An academy administrator must complete that membership before you can publish academy announcements.</p>}
     </Card>
     {error && <ErrorText>{error}</ErrorText>}
     <section className="role-analytics-grid">
