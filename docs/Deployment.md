@@ -10,14 +10,14 @@ This guide applies to the **AthleteN** repository and its existing production Su
 - Production URL: `https://athleten.netlify.app`
 - Supabase project: `wjegokgtrewtoopbsiol` (Mumbai region)
 
-The current Supabase project already has the production schema and migrations applied. **Do not re-run the baseline schema/policy/storage SQL files against this live database.** Use the versioned migration files for future database changes and verify applied migrations before deploying code that depends on them.
+The current Supabase project already has the production schema and migrations applied. **Do not re-run the baseline schema/policy/storage SQL files against this live database.** Use the versioned migration files for future database changes and verify applied migrations before deploying code that depends on them. As of 4 November 2026, the live migration history contains three 4-Nov migrations that are not yet present in the Git repository; reconcile those source files before treating a fresh database rebuild as reproducible.
 
 ## Netlify build settings
 
-The repository's `netlify.toml` already defines these settings:
+The root workspace pins `pnpm@10.30.3` in `package.json` and uses `pnpm-lock.yaml`. Android remains a separate npm project with its own `AthleteN-Mobile/package-lock.json`. The repository's `netlify.toml` defines these settings:
 
 - Base directory: repository root
-- Build command: `npm run build`
+- Build command: `pnpm run build`
 - Publish directory: `dist`
 - Functions directory: `netlify/functions`
 - SPA fallback: generated as `dist/_redirects`
