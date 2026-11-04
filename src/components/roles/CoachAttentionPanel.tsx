@@ -106,7 +106,6 @@ export default function CoachAttentionPanel({ userId }: { userId?: string }) {
       const profilesResult = athleteIds.length
         ? await supabase.from("profiles").select("user_id,full_name,username").in("user_id", athleteIds)
         : { data: [], error: null };
-      if (profilesResult.error) throw profilesResult.error;
       const profiles = new Map(((profilesResult.data || []) as Profile[]).map((profile) => [profile.user_id, profile]));
 
       const next: AttentionItem[] = [];
