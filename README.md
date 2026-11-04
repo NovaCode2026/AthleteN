@@ -15,7 +15,7 @@
 
 **Built by Nova Code** · React · TypeScript · Expo · Supabase · Netlify
 
-[Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) · [Web + Mobile Experience](./docs/WEB_MOBILE_EXPERIENCE_MODEL.md) · [Taekwondo Disciplines](./docs/TAEKWONDO_DISCIPLINES.md) · [Plans & Verification](./docs/PLAN_VERIFICATION_AND_BILLING.md) · [Docs Hub](./docs/README.md) · [API](./docs/API.md) · [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) · [Mobile Guide](./AthleteN-Mobile/README.md)
+[Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) · [Web + Mobile Experience](./docs/WEB_MOBILE_EXPERIENCE_MODEL.md) · [Taekwondo Disciplines](./docs/TAEKWONDO_DISCIPLINES.md) · [Plans & Verification](./docs/PLAN_VERIFICATION_AND_BILLING.md) · [Docs Hub](./docs/README.md) · [API](./docs/API.md) · [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) · [Audit Execution](./docs/AUDIT_EXECUTION_STATUS_2026-11-04.md) · [Mobile Guide](./AthleteN-Mobile/README.md)
 
 </div>
 
