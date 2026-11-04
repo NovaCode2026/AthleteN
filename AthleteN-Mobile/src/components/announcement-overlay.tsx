@@ -13,7 +13,7 @@ export default function AnnouncementOverlay(){
 
  const load=useCallback(async()=>{
   if(!session){setItem(null);return;}
-  const {data:announcements}=await supabase.from('announcements').select('id,title,body,published_at').eq('audience','all').not('published_at','is',null).lte('published_at',new Date().toISOString()).order('published_at',{ascending:false}).limit(20);
+  const {data:announcements}=await supabase.from('announcements').select('id,title,body,published_at,audience,target_group_id').not('published_at','is',null).lte('published_at',new Date().toISOString()).order('published_at',{ascending:false}).limit(20);
   if(!announcements?.length){setItem(null);return;}
   const ids=announcements.map((a:any)=>a.id);
   const {data:reads}=await supabase.from('announcement_reads').select('announcement_id').eq('user_id',session.user.id).in('announcement_id',ids);
@@ -28,8 +28,7 @@ export default function AnnouncementOverlay(){
    .on('postgres_changes',{event:'INSERT',schema:'public',table:'announcements'},(payload:any)=>{
     const announcement=payload.new;
     if(!announcement?.published_at || new Date(announcement.published_at).getTime()>Date.now())return;
-    if(announcement.audience!=='all')return;
-    // Published announcements create durable notification rows server-side.
+    // RLS returns only announcements this athlete is authorised to see.
     void load();
    })
    .subscribe();
