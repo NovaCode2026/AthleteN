@@ -430,7 +430,7 @@ The documentation is organized as a product handbook, developer manual and relea
 | [API Guide](./docs/API.md) | Netlify AI endpoint, data modules and server rules |
 | [Mobile Guide](./AthleteN-Mobile/README.md) | Expo development, mobile screens and app configuration |
 | [Deployment Guide](./docs/Deployment.md) | Environment setup and deployment |
-| [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) | Evidence, blockers and release gates |
+| [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) | Evidence, blockers and release gates |\n| [Production Execution Tracker](./docs/PRODUCTION_EXECUTION_TRACKER_2026-11-04.md) | Current audit gates, verified findings and pilot acceptance plan |
 | [Changelog](./CHANGELOG.md) | Product and engineering changes |
 | [Privacy Policy](./docs/PRIVACY_POLICY.md) | Data and privacy terms |
 | [Terms](./docs/TERMS_OF_SERVICE.md) | Product usage terms |
