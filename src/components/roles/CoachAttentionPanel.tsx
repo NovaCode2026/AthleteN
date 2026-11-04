@@ -58,8 +58,6 @@ export default function CoachAttentionPanel({ userId }: { userId?: string }) {
 
       const groups = (groupsResult.data || []) as Group[];
       const links = (linksResult.data || []) as Link[];
-      const queries: Array<PromiseLike<any>> = [];
-
       const sessionPromise = groups.length
         ? supabase.from("training_group_sessions")
           .select("id,group_id,session_date")
