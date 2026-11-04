@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const migration = fs.readFileSync('supabase/migrations/20261104130000_coach_consent_and_checklist_permissions.sql', 'utf8');
+const inboxMigration = fs.readFileSync('supabase/migrations/20261104130500_list_my_coach_invitations.sql', 'utf8');
 const roles = fs.readFileSync('src/components/roles/RoleDashboards.tsx', 'utf8');
 const app = fs.readFileSync('src/App.tsx', 'utf8');
 
@@ -10,6 +11,9 @@ test('coach relationship invitations are pending until the athlete accepts', () 
   assert.match(migration, /request_coach_athlete_link/);
   assert.match(migration, /status\s*=\s*'pending'/);
   assert.match(migration, /respond_to_coach_invitation/);
+  assert.match(inboxMigration, /list_my_coach_invitations/);
+  assert.match(inboxMigration, /l.athlete_user_id = v_athlete_id/);
+  assert.match(inboxMigration, /l.status = 'pending'/);
   assert.match(migration, /athlete_user_id\s*=\s*v_athlete_id/);
   assert.match(migration, /case when p_accept then 'active' else 'declined' end/);
   assert.match(migration, /revoke_coach_athlete_link/);
