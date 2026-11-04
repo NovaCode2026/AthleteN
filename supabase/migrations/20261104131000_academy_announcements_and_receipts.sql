@@ -120,15 +120,42 @@ using (
   )
 );
 
+-- Keep read identities private. Senders receive only a count from this narrowly scoped RPC.
 drop policy if exists "announcement_reads_select_sender" on public.announcement_reads;
-create policy "announcement_reads_select_sender"
-on public.announcement_reads
-for select to authenticated
-using (
-  exists (
-    select 1 from public.announcements a
-    where a.id = announcement_reads.announcement_id
-      and a.created_by = (select auth.uid())
-      and a.academy_id is not null
-  )
-);
+
+create or replace function public.count_my_announcement_reads(p_announcement_id uuid)
+returns bigint
+language plpgsql
+security definer
+set search_path = public, private
+as $function$
+declare
+  v_user_id uuid := auth.uid();
+  v_read_count bigint;
+  v_owned_count bigint;
+begin
+  if v_user_id is null then
+    raise exception 'Authentication required';
+  end if;
+  if p_announcement_id is null then
+    raise exception 'Announcement is required';
+  end if;
+
+  select count(r.id), count(distinct a.id)
+    into v_read_count, v_owned_count
+  from public.announcements a
+  left join public.announcement_reads r on r.announcement_id = a.id
+  where a.id = p_announcement_id
+    and a.created_by = v_user_id
+    and a.academy_id is not null;
+
+  if coalesce(v_owned_count, 0) = 0 then
+    raise exception 'Announcement not found or access denied';
+  end if;
+
+  return coalesce(v_read_count, 0);
+end;
+$function$;
+
+revoke all on function public.count_my_announcement_reads(uuid) from public, anon;
+grant execute on function public.count_my_announcement_reads(uuid) to authenticated;
