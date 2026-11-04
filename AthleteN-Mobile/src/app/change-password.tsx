@@ -18,15 +18,20 @@ export default function ChangePasswordScreen() {
   async function updatePassword() {
     setMessage('');
     setError('');
-    if (password.length < 6) return setError('Password must be at least 6 characters.');
+    if (password.length < 8) return setError('Password must be at least 8 characters.');
     if (password !== confirm) return setError('Passwords do not match.');
     setBusy(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    setBusy(false);
-    if (updateError) return setError(updateError.message);
-    setPassword('');
-    setConfirm('');
-    setMessage('Password changed successfully.');
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) return setError(updateError.message);
+      setPassword('');
+      setConfirm('');
+      setMessage('Password changed successfully.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Password could not be changed. Check your connection and try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
