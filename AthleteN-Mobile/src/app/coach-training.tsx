@@ -88,7 +88,7 @@ export default function CoachTraining(){
   const gid=extraGroup||groups[0]?.id;
   const minutes=Number(duration);
   if(!gid)return Alert.alert('No training group','Create a regular group first.');
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(extraDate)||Number.isNaN(Date.parse(extraDate+'T00:00:00')))return Alert.alert('Invalid date','Enter the date as YYYY-MM-DD.');
+  if(!isValidDateOnly(extraDate))return Alert.alert('Invalid date','Enter the date as YYYY-MM-DD.');
   if(!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(extraTime))return Alert.alert('Invalid start time','Use 24-hour HH:MM format, for example 19:00.');
   if(!Number.isInteger(minutes)||minutes<15||minutes>360)return Alert.alert('Invalid duration','Enter a whole-number duration between 15 and 360 minutes.');
   setBusy(true);
@@ -114,7 +114,7 @@ export default function CoachTraining(){
  }
 
  function cancelDate(){
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(holidayDate)||Number.isNaN(Date.parse(holidayDate+'T00:00:00')))return Alert.alert('Invalid date','Enter the date as YYYY-MM-DD.');
+  if(!isValidDateOnly(holidayDate))return Alert.alert('Invalid date','Enter the date as YYYY-MM-DD.');
   const scope=holidayGroup?'the selected group':'all active groups';
   Alert.alert('Confirm session cancellation','This will cancel '+scope+' scheduled for '+holidayDate+'. Continue?',[
    {text:'Keep sessions',style:'cancel'},
