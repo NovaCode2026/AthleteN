@@ -4,6 +4,8 @@ import fs from 'node:fs';
 
 const migration = fs.readFileSync('supabase/migrations/20261104130000_coach_consent_and_checklist_permissions.sql', 'utf8');
 const inboxMigration = fs.readFileSync('supabase/migrations/20261104130500_list_my_coach_invitations.sql', 'utf8');
+const announcementMigration = fs.readFileSync('supabase/migrations/20261104131000_academy_announcements_and_receipts.sql', 'utf8');
+const mobileAnnouncements = fs.readFileSync('AthleteN-Mobile/src/components/announcement-overlay.tsx', 'utf8');
 const inboxMigration = fs.readFileSync('supabase/migrations/20261104130500_list_my_coach_invitations.sql', 'utf8');
 const roles = fs.readFileSync('src/components/roles/RoleDashboards.tsx', 'utf8');
 const app = fs.readFileSync('src/App.tsx', 'utf8');
@@ -51,4 +53,17 @@ test('coach dashboard no longer activates a relationship by direct table insert'
 test('athlete dashboard exposes the coach invitation inbox', () => {
   assert.match(roles, /AthleteConnectionInbox/);
   assert.match(app, /AthleteConnectionInbox/);
+});
+
+test('academy announcement publishing and reads are scoped to active academy relationships', () => {
+  assert.match(announcementMigration, /publish_academy_announcement/);
+  assert.match(announcementMigration, /m\.status = 'active'/);
+  assert.match(announcementMigration, /m\.role in \('coach', 'academy_admin'\)/);
+  assert.match(announcementMigration, /created_by = \(select auth\.uid\(\)\)/);
+  assert.match(announcementMigration, /announcement_reads_select_sender/);
+  assert.match(announcementMigration, /l\.status = 'active'/);
+  assert.match(roles, /publish_academy_announcement/);
+  assert.match(roles, /announcement_reads/);
+  assert.match(mobileAnnouncements, /eq\('audience','all'\)/);
+  assert.match(mobileAnnouncements, /announcement_reads/);
 });
