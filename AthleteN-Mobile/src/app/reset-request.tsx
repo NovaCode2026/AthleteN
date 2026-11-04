@@ -12,9 +12,13 @@ export default function ResetRequestScreen(){
   const e=email.trim().toLowerCase(); setError(''); setMessage('');
   if(!e||!e.includes('@')){setError('Enter a valid email address.');return}
   setBusy(true);
-  const redirectTo='athleten://auth/callback?next=reset-password'; const {error}=await supabase.auth.resetPasswordForEmail(e,{redirectTo});
-  setBusy(false);
-  if(error)setError(error.message); else setMessage('If an account uses this email, a password reset email has been sent. Check your inbox and spam folder.');
+  try {
+   const redirectTo='athleten://auth/callback?next=reset-password';
+   const {error}=await supabase.auth.resetPasswordForEmail(e,{redirectTo});
+   if(error)setError(error.message); else setMessage('If an account uses this email, a password reset email has been sent. Check your inbox and spam folder.');
+  } catch (error) {
+   setError(error instanceof Error?error.message:'Password reset could not be requested. Check your connection and try again.');
+  } finally { setBusy(false); }
  }
  return <SafeAreaView style={s.screen}><View style={s.content}>
   <Text style={s.brand}>ATHLETEN</Text><Text style={s.title}>Reset your password</Text><Text style={s.sub}>Enter the email on your AthleteN account and we’ll send a secure reset link.</Text>
