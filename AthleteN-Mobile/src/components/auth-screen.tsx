@@ -58,8 +58,8 @@ export default function AuthScreen() {
       return;
     }
 
-    if (!cleanEmail || !cleanEmail.includes('@') || password.length < 6 || (register && !name.trim())) {
-      setError(register ? 'Enter your name, a valid email and a 6+ character password.' : 'Enter your email and password.');
+    if (!cleanEmail || !cleanEmail.includes('@') || !password.trim() || (register && (password.length < 8 || !name.trim()))) {
+      setError(register ? 'Enter your name, a valid email and a password with at least 8 characters.' : 'Enter your email and password.');
       return;
     }
 
@@ -90,6 +90,8 @@ export default function AuthScreen() {
             : result.error.message);
         }
       }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Authentication could not be completed. Please try again.');
     } finally {
       setBusy(false);
     }
