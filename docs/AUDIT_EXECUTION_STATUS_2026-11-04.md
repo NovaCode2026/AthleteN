@@ -10,6 +10,7 @@ This document tracks work performed against *AthleteN: Audit, Action Plan and Pi
 ## Completed on this branch
 
 - [x] Removed repository-only temporary files: `test-temp.txt`, `netlify-trigger.txt`, and `netlify-trigger-2.txt`.
+- [x] Consolidated the split root `test/` and `tests/` directories into `tests/` while preserving the smoke test's root-relative package metadata read.
 - [x] Pinned the repository-root Web workspace to `pnpm@10.30.3`.
 - [x] Updated the root README and deployment instructions to use pnpm for Web. The isolated `AthleteN-Mobile` package retains its own `package-lock.json` and npm workflow.
 - [x] Updated `netlify.toml` to use `pnpm run build` for the Web build.
