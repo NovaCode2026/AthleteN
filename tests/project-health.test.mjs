@@ -11,12 +11,17 @@ const expectedBuild = 'vite build && node scripts/write-netlify-redirects.mjs';
 test('production package is configured for Node 22', () => {
   const pkg = readJson('package.json');
   assert.equal(pkg.engines?.node, '22.x');
+  assert.equal(pkg.packageManager, 'pnpm@10.30.3');
   assert.equal(pkg.scripts?.build, expectedBuild);
-  assert.equal(pkg.scripts?.check, 'npm run build && npm test');
+  assert.equal(pkg.scripts?.check, 'pnpm run build && pnpm test');
+  assert.ok(fs.existsSync(path.join(root, 'pnpm-lock.yaml')));
+  assert.ok(fs.existsSync(path.join(root, 'pnpm-workspace.yaml')));
 });
 
 test('deployment configuration is present', () => {
-  assert.ok(fs.existsSync(path.join(root, 'netlify.toml')));
+  const netlifyConfig = fs.readFileSync(path.join(root, 'netlify.toml'), 'utf8');
+  assert.match(netlifyConfig, /command = "pnpm run build"/);
+  assert.match(netlifyConfig, /NODE_VERSION = "22"/);
   assert.ok(fs.existsSync(path.join(root, 'netlify/functions/ai-coach.mjs')));
   assert.ok(fs.existsSync(path.join(root, 'netlify/functions/tournament-scan.mjs')));
   assert.ok(fs.existsSync(path.join(root, 'netlify/functions/tournament-scan-scheduled.mjs')));
