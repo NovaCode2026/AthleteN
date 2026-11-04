@@ -5,7 +5,7 @@ function downloadCsv(filename:string,rows:Array<Record<string,unknown>>){if(!row
 import { supabase } from "../../lib/supabase";
 import type { Profile } from "../../types";
 
-type Toast = { type: "success" | "error" | "warning" } | null;
+type Toast = { type: "success" | "error" | "warning"; message: string } | null;
 type Props = { profile: Profile; userId?: string; setToast: (toast: Toast) => void };
 type Athlete = Pick<Profile, "user_id" | "full_name" | "username" | "belt" | "discipline" | "academy_id" | "coach_user_id" | "role">;
 type LinkRow = { id: string; coach_user_id: string; athlete_user_id: string; academy_id?: string | null; status: string };
@@ -117,6 +117,7 @@ function CoachAttendancePanel({ userId, athletes, setToast }: {
   useEffect(() => { void load(); }, [userId]);
 
   async function openSession(session: CoachGroupSession) {
+    if (!supabase) return;
     if (expanded === session.id) {
       setExpanded(null);
       return;
@@ -143,7 +144,7 @@ function CoachAttendancePanel({ userId, athletes, setToast }: {
   }
 
   async function setAthleteStatus(session: CoachGroupSession, athleteId: string, status: string) {
-    if (session.locked || session.status === "cancelled" || busy) return;
+    if (!supabase || session.locked || session.status === "cancelled" || busy) return;
     const previous = attendance[session.id]?.[athleteId];
     setBusy(true);
     setError("");
@@ -170,7 +171,7 @@ function CoachAttendancePanel({ userId, athletes, setToast }: {
   }
 
   async function markRemainingPresent(session: CoachGroupSession) {
-    if (session.locked || session.status === "cancelled" || busy) return;
+    if (!supabase || session.locked || session.status === "cancelled" || busy) return;
     let athleteIds = members[session.id];
     if (!athleteIds) {
       const result = await supabase
@@ -219,7 +220,7 @@ function CoachAttendancePanel({ userId, athletes, setToast }: {
   }
 
   async function lockSession(session: CoachGroupSession) {
-    if (session.locked || session.status === "cancelled" || busy) return;
+    if (!supabase || session.locked || session.status === "cancelled" || busy) return;
     setBusy(true);
     setError("");
     const { error: lockError } = await supabase
