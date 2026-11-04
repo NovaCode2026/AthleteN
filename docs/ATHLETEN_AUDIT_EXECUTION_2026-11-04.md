@@ -24,12 +24,20 @@
 | Android event checklist | Android Compete scopes an athlete's checklist to the selected tournament and exposes the same preparation categories. | Code added; CI pending |
 | Repository cleanup | Removed `test-temp.txt`, `netlify-trigger.txt` and `netlify-trigger-2.txt`. | Confirmed removed from branch |
 | Package management | Root Web and Netlify now use pnpm 10.30.3 and the root `pnpm-lock.yaml`; the separate Expo project continues using `npm ci` and its own `package-lock.json`. | Files updated; CI pending |
-| Mobile dependency visibility | Mobile CI now prints `npm audit` advisory severity and package details, rather than only the totals. | Workflow added; report pending first PR run |
+| Mobile dependency visibility | Mobile CI prints both full-tree and production-only npm audit detail. The branch tests two patch-level overrides (`shell-quote@1.11.0`, `source-map-js@1.2.2`) without changing Expo SDK 57. | Audit runs completed; regenerated lockfile and latest CI still pending |
+| Messaging RPCs | Added database-side age-approval, bounded profile-search, blocked-pair, authentication and coach-ownership checks for sensitive messaging/coach RPCs. | Migration applied; regression tests added; full 61-function review remains open |
+| Announcement audience | Replaced the broad age-approval read bypass with role/audience-aware RLS for published announcements (`all`, `athletes`, `coaches`, `academies`, `admins`). | Migration applied; live policy verified |
 | Documentation | Root README, development, deployment, documentation hub and changelog updated to describe the Web-master / Android-companion model and correct package-manager commands. | Files updated |
+
+## 3. Mobile dependency review (4 November CI)
+
+The first full-tree npm audit reported **36 findings**: 1 critical, 7 high, 26 moderate and 2 low. The production-only `npm audit --omit=dev` run reported **23 findings**: 1 critical, 7 high, 13 moderate and 2 low. The production-only tree still contains Expo CLI/configuration and build tooling through the Expo dependency graph; it is not a direct inventory of code shipped inside the APK.
+
+The branch adds patch-level overrides for `shell-quote@1.11.0` (the published fix for the critical GHSA-pqg4-j6r4-53mv) and `source-map-js@1.2.2` (the published fix for GHSA-68fv-2mgg-jv7q). A CI step regenerates a candidate lockfile to test those overrides. Do not treat these as resolved until the candidate lockfile is committed, the app checks pass, and a fresh audit confirms the resulting counts. Node-forge, decode-uri-component, Zod, minimatch and Expo SDK 57 transitive findings remain under review. Do not downgrade Expo 57 to Expo 51 or force major package changes as an automated npm fix.
 
 ## 3. Features already present before this branch
 
-- `announcement_reads` exists and the Android announcement overlay records the signed-in user's read receipt. This branch does not claim that a coach/admin-wide 'who has seen it' dashboard is complete.
+- `announcement_reads` exists and the Android announcement overlay records the signed-in user's read receipt. Announcement RLS now checks the announcement audience against the authenticated profile role. This branch does not claim that a coach/admin-wide 'who has seen it' dashboard is complete.
 - Parent email approval exists through the age-verification flow. The live schema has a parent email field but no verified guardian-account relationship. A read-only guardian dashboard is therefore **not** enabled by this change.
 - Coach group training, recurring sessions, attendance statuses (present, late, absent, excused), session locking and cancellation notices already exist.
 - Messaging persistence, sent/delivered/read receipt handling and generic notification previews were implemented in the 3 November release work. Real-device acceptance is still open.
@@ -42,7 +50,7 @@
 | Supabase project | `ACTIVE_HEALTHY`, PostgreSQL 17.6 | Continue monitoring |
 | Public database RLS | 88 public tables; no public table found without RLS | Preserve; verify policies for each new data path |
 | Auth leaked-password protection | Disabled; Security Advisor warning remains | Supabase project owner must enable it in Auth security settings |
-| Authenticated `SECURITY DEFINER` functions | 61 warnings remain | Review one function at a time, prioritizing messaging, athlete records/documents, attendance, memberships and roles. Do not mass-revoke. |
+| Authenticated `SECURITY DEFINER` functions | 61 warnings remain. A static inventory confirmed pinned search paths, `auth.uid()` references and no execute grants to anon/PUBLIC; it is not a substitute for per-function ownership/relationship review. | Sensitive messaging and coach RPCs were hardened with explicit caller/approval/ownership checks. All 61 still require manual wrong-user/right-user tests. Do not mass-revoke. |
 | Extension placement | `pg_net` remains installed in `public` and is reported by the Security Advisor | Review with the Supabase project owner before any move; it is not changed here |
 | Performance Advisor | 81 unused-index notices and 121 multiple-permissive-policy notices | Review against workload and access model; no blind index/policy deletion |
 | Device push tokens | No registered production device was observed in the release snapshot | Register a real device, send a test, inspect Expo receipts and confirm token lifecycle |
@@ -54,7 +62,7 @@
 ### Gate 1 — before the academy pilot
 
 - [ ] Supabase owner enables leaked-password protection and confirms the Security Advisor warning is gone.
-- [ ] Review the exact mobile `npm audit` output, fix critical/high issues through compatible upgrades, then make the dependency audit a blocking CI gate. No blind `--force` upgrades.
+- [ ] Commit and validate the regenerated mobile lockfile for the patch-level overrides; review the remaining production-only and full-tree critical/high advisories. Make a justified dependency audit a blocking CI gate only after SDK-compatible fixes are proven. No blind `--force` upgrades.
 - [ ] Complete a manual review of all 61 authenticated-callable `SECURITY DEFINER` functions, with wrong-user and correct-user tests for the sensitive functions.
 - [ ] Deploy the reviewed `main` commit to Netlify and verify the deployment SHA, login, password-reset route and main role workspaces.
 - [ ] Install the APK on a physical Android device; verify startup, signup/login, email confirmation, password reset, logout and role navigation.
@@ -132,3 +140,10 @@ Use these states precisely:
 - **Production signed off:** all required security, privacy, reliability, deployment and device gates have evidence.
 
 A successful build or APK artifact is not, by itself, production sign-off.
+
+## 10. CI evidence and current branch status
+
+- The 4 November workflow run on commit `e4747776461614d1060d52bd2b9c7175a8715179` completed successfully for Web CI, CodeQL and Mobile Check. Mobile Check reported Expo Doctor 21/21, TypeScript, lint and Android bundle export passing.
+- Subsequent commits add the announcement-audience migration, dependency overrides and lockfile regeneration step. Treat those newest commits as pending fresh verification until their PR workflows complete.
+- PR #22 remains a draft and is intentionally not merged while dependency, security, deployment and physical-device gates remain open.
+- Supabase migrations applied on 4 November: `20261104101337_competition_checklists_tournament_scope`, `20261104103042_secure_messaging_and_coach_rpcs`, and `20261104103647_enforce_announcement_audience_reads`.
