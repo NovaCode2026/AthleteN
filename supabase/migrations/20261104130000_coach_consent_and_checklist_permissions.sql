@@ -30,19 +30,19 @@ begin
 
   select role, academy_id into v_coach_role, v_academy_id
   from public.profiles where user_id = v_coach_id;
-  if v_coach_role <> 'coach' then
+  if v_coach_role is distinct from 'coach' then
     raise exception 'Coach account required';
   end if;
-  if not public.is_age_approved(v_coach_id) then
+  if not coalesce(public.is_age_approved(v_coach_id), false) then
     raise exception 'Coach account must complete age approval';
   end if;
 
   select role, sport into v_athlete_role, v_athlete_sport
   from public.profiles where user_id = p_athlete_user_id;
-  if v_athlete_role <> 'athlete' or lower(coalesce(v_athlete_sport, '')) <> 'taekwondo' then
+  if v_athlete_role is distinct from 'athlete' or lower(coalesce(v_athlete_sport, '')) <> 'taekwondo' then
     raise exception 'A Taekwondo athlete account is required';
   end if;
-  if not public.is_age_approved(p_athlete_user_id) then
+  if not coalesce(public.is_age_approved(p_athlete_user_id), false) then
     raise exception 'Athlete account must complete age/guardian approval first';
   end if;
 
@@ -92,7 +92,7 @@ begin
   if p_link_id is null then
     raise exception 'Invitation is required';
   end if;
-  if not public.is_age_approved(v_athlete_id) then
+  if not coalesce(public.is_age_approved(v_athlete_id), false) then
     raise exception 'Athlete account must complete age/guardian approval first';
   end if;
 
