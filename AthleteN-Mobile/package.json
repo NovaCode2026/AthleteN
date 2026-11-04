@@ -43,7 +43,8 @@
     "eslint-config-expo": "~57.0.2"
   },
   "scripts": {
-    "test": "node --test",
+    "test": "node --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",

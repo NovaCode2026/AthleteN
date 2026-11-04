@@ -17,12 +17,12 @@ The current Supabase project already has the production schema and migrations ap
 The repository's `netlify.toml` already defines these settings:
 
 - Base directory: repository root
-- Build command: `npm run build`
+- Build command: `pnpm run build` (the root repository uses the committed `pnpm-lock.yaml`)
 - Publish directory: `dist`
 - Functions directory: `netlify/functions`
 - SPA fallback: generated as `dist/_redirects`
 
-For a Git-based deployment, select `NovaCode2026/AthleteN` and deploy branch `main`. Keep the existing site name `athleten`; do not create a duplicate site or rename the production site.
+For a Git-based deployment, select `NovaCode2026/AthleteN` and deploy branch `main`. The root web project uses pnpm 10.30.3, declared in `package.json`, and the committed `pnpm-lock.yaml`; Netlify should install from that lockfile and run `pnpm run build`. Keep the existing site name `athleten`; do not create a duplicate site or rename the production site. The separate `AthleteN-Mobile` workspace uses its own `package-lock.json` and `npm ci`.
 
 ## Required Netlify environment variables
 
