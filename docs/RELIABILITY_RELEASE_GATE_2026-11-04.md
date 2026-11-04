@@ -105,6 +105,7 @@ Use two test accounts, one coach and one athlete, on a physical Android phone (a
 - [ ] Install the APK, launch, register/login, verify email, reset password, log out and log back in.
 - [ ] Verify role-aware routes, deep links, camera/file permission denial and recovery, and session restoration.
 - [ ] Verify a message arrives once when the recipient is in-chat, elsewhere in app, backgrounded, terminated and temporarily offline.
+- [ ] Verify the coach attendance summary counts unmarked active members as absent and bulk Present warns before replacing saved non-present statuses.
 - [ ] Verify Sent / Delivered / Read states and group counts, plus attachment retry without duplicate messages.
 - [ ] Confirm a device token is registered after permission and login; verify push arrives with app closed, generic preview, correct tap destination, Expo receipt handling and invalid-token cleanup.
 - [ ] Confirm logging out removes only that device's token; another device on the same account remains registered.
