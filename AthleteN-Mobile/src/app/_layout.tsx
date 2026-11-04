@@ -45,13 +45,24 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBou
 }
 
 
+const PUBLIC_AUTH_PATHS = new Set([
+  '/',
+  '/auth/callback',
+  '/reset-request',
+  '/reset-password',
+  '/policies',
+]);
+
 function AuthRouteGuard() {
   const { session, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   React.useEffect(() => {
     if (loading || session) return;
-    if (pathname !== '/') router.replace('/');
+    // Supabase email confirmation and recovery links must reach the callback
+    // before an authenticated session exists. Redirecting these routes to "/"
+    // would break password reset and email verification.
+    if (!PUBLIC_AUTH_PATHS.has(pathname)) router.replace('/');
   }, [loading, session?.user.id, pathname, router]);
   return null;
 }
