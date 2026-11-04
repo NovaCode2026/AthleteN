@@ -1,7 +1,8 @@
 [build]
-  command = "npm run build"
+  command = "pnpm run build"
   publish = "dist"
   functions = "netlify/functions"
+  environment = { NODE_VERSION = "22" }
 
 [dev]
   command = "npm run dev:vite"
