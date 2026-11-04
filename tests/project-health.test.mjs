@@ -41,3 +41,17 @@ test('security-sensitive repository hygiene is intact', () => {
   assert.ok(!/service_role/i.test(envExample), 'service_role must not be present in .env.example');
   assert.ok(fs.existsSync(path.join(root, 'SECURITY.md')));
 });
+
+test('automated maintenance watches both package managers and GitHub Actions', () => {
+  const config = fs.readFileSync(path.join(root, '.github/dependabot.yml'), 'utf8');
+  assert.match(config, /package-ecosystem: npm[\s\S]*directory: "\/"/);
+  assert.match(config, /package-ecosystem: npm[\s\S]*directory: "\/AthleteN-Mobile"/);
+  assert.match(config, /package-ecosystem: github-actions/);
+});
+
+test('scanner regression runs on pull requests without building a release APK', () => {
+  const workflow = fs.readFileSync(path.join(root, '.github/workflows/android-apk.yml'), 'utf8');
+  assert.match(workflow, /pull_request:/);
+  assert.match(workflow, /pnpm install --frozen-lockfile --ignore-scripts/);
+  assert.match(workflow, /if: github\.event_name != 'pull_request'/);
+});
