@@ -81,8 +81,8 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
     const { data, error: loadError } = await supabase.from("announcements").select("id,title,body,published_at").eq("academy_id", profile.academy_id).eq("created_by", userId).order("created_at", { ascending: false }).limit(10);
     if (loadError) { setAnnouncementMessage("Announcements could not be loaded: " + loadError.message); return; }
     const rows = await Promise.all((data || []).map(async (row:any) => {
-      const receipt = await supabase.from("announcement_reads").select("id", { count: "exact", head: true }).eq("announcement_id", row.id);
-      return { ...row, read_count: receipt.error ? null : (receipt.count || 0) };
+      const receipt = await supabase.rpc("count_my_announcement_reads", { p_announcement_id: row.id });
+      return { ...row, read_count: receipt.error ? null : Number(receipt.data || 0) };
     }));
     setAcademyAnnouncements(rows as Array<{id:string;title:string;body:string;published_at:string;read_count:number|null}>);
   }
@@ -386,10 +386,8 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
       return;
     }
     const rows = await Promise.all((data || []).map(async (row:any) => {
-      const receipt = await supabase.from("announcement_reads")
-        .select("id", { count: "exact", head: true })
-        .eq("announcement_id", row.id);
-      return { ...row, read_count: receipt.error ? null : (receipt.count || 0) };
+      const receipt = await supabase.rpc("count_my_announcement_reads", { p_announcement_id: row.id });
+      return { ...row, read_count: receipt.error ? null : Number(receipt.data || 0) };
     }));
     setAcademyAnnouncementRows(rows as Array<{id:string;title:string;body:string;published_at:string;read_count:number|null}>);
   }
