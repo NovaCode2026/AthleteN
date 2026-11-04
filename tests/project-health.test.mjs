@@ -8,11 +8,12 @@ const readJson = (file) => JSON.parse(fs.readFileSync(path.join(root, file), 'ut
 
 const expectedBuild = 'vite build && node scripts/write-netlify-redirects.mjs';
 
-test('production package is configured for Node 22', () => {
+test('production package is configured for Node 22 and pnpm', () => {
   const pkg = readJson('package.json');
   assert.equal(pkg.engines?.node, '22.x');
   assert.equal(pkg.scripts?.build, expectedBuild);
-  assert.equal(pkg.scripts?.check, 'npm run build && npm test');
+  assert.equal(pkg.packageManager, 'pnpm@10.30.3');
+  assert.equal(pkg.scripts?.check, 'pnpm run build && pnpm test');
 });
 
 test('deployment configuration is present', () => {
