@@ -28,20 +28,30 @@ export default function CoachTraining(){
  const [busy,setBusy]=useState(false); const [extraDate,setExtraDate]=useState(new Date().toISOString().slice(0,10)); const [extraType,setExtraType]=useState('sparring'); const [extraTitle,setExtraTitle]=useState('Extra Sparring'); const [extraTime,setExtraTime]=useState('19:00'); const [extraVenue,setExtraVenue]=useState(''); const [extraNotes,setExtraNotes]=useState(''); const [holidayDate,setHolidayDate]=useState(new Date().toISOString().slice(0,10)); const [holidayReason,setHolidayReason]=useState('Academy holiday'); const [holidayGroup,setHolidayGroup]=useState<string>(''); const [extraGroup,setExtraGroup]=useState<string>('');
 
  const load=useCallback(async()=>{
-  if(!profile?.user_id)return;
-  const links=await supabase.from('coach_athlete_links').select('athlete_user_id').eq('coach_user_id',profile.user_id).eq('status','active');
-  const ids=(links.data||[]).map((x:any)=>x.athlete_user_id);
-  if(ids.length){
-   const p=await supabase.from('profiles').select('user_id,full_name').in('user_id',ids);
-   setAthletes((p.data||[]) as Athlete[]);
-  } else setAthletes([]);
-  const g=await supabase.from('training_groups').select('id,name,focus_area,recurrence_days,start_time,duration_minutes,active').eq('coach_user_id',profile.user_id).eq('active',true).order('created_at',{ascending:false});
-  setGroups((g.data||[]) as Group[]);
-  const gids=(g.data||[]).map((x:any)=>x.id);
-  if(gids.length){
-   const s=await supabase.from('training_group_sessions').select('id,group_id,session_date,start_time,title,status,training_type,venue,notes,locked').in('group_id',gids).order('session_date',{ascending:false}).limit(100);
-   setSessions((s.data||[]) as Session[]);
-  } else setSessions([]);
+  if(!profile?.user_id)return false;
+  try{
+   const links=await supabase.from('coach_athlete_links').select('athlete_user_id').eq('coach_user_id',profile.user_id).eq('status','active');
+   if(links.error)throw links.error;
+   const ids=(links.data||[]).map((x:any)=>x.athlete_user_id).filter(Boolean);
+   if(ids.length){
+    const p=await supabase.from('profiles').select('user_id,full_name').in('user_id',ids);
+    if(p.error)throw p.error;
+    setAthletes((p.data||[]) as Athlete[]);
+   }else setAthletes([]);
+   const g=await supabase.from('training_groups').select('id,name,focus_area,recurrence_days,start_time,duration_minutes,active').eq('coach_user_id',profile.user_id).eq('active',true).order('created_at',{ascending:false});
+   if(g.error)throw g.error;
+   setGroups((g.data||[]) as Group[]);
+   const gids=(g.data||[]).map((x:any)=>x.id);
+   if(gids.length){
+    const s=await supabase.from('training_group_sessions').select('id,group_id,session_date,start_time,title,status,training_type,venue,notes,locked').in('group_id',gids).order('session_date',{ascending:false}).limit(100);
+    if(s.error)throw s.error;
+    setSessions((s.data||[]) as Session[]);
+   }else setSessions([]);
+   return true;
+  }catch(error){
+   Alert.alert('Training data could not be loaded',error instanceof Error?error.message:'Check your connection and retry.');
+   return false;
+  }
  },[profile?.user_id]);
 
  useEffect(()=>{void load()},[load]);
@@ -50,16 +60,58 @@ export default function CoachTraining(){
  const toggleAthlete=(id:string)=>setSelectedAthletes(v=>v.includes(id)?v.filter(x=>x!==id):[...v,id]);
 
  async function createGroup(){
+  const minutes=Number(duration);
   if(!profile?.user_id||!name.trim()||!days.length||!selectedAthletes.length)return Alert.alert('Complete training setup','Choose a name, at least one weekly day and at least one athlete.');
+  if(!Number.isInteger(minutes)||minutes<15||minutes>360)return Alert.alert('Invalid duration','Enter a whole-number duration between 15 and 360 minutes.');
+  if(!/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(startTime))return Alert.alert('Invalid start time','Use 24-hour HH:MM format, for example 17:00.');
   setBusy(true);
-  const {data,error}=await supabase.rpc('create_coach_training_group',{p_name:name.trim(),p_focus:focus.trim(),p_recurrence_days:days,p_start_time:startTime,p_duration_minutes:Number(duration)||90,p_athlete_ids:selectedAthletes});
-  setBusy(false);
-  if(error)Alert.alert('Could not create training group',error.message);
-  else{setSelectedAthletes([]);await load();Alert.alert('Training group created','AthleteN generated the next 8 weeks of regular sessions.');}
+  try{
+   const {data,error}=await supabase.rpc('create_coach_training_group',{p_name:name.trim(),p_focus:focus.trim(),p_recurrence_days:days,p_start_time:startTime,p_duration_minutes:minutes,p_athlete_ids:selectedAthletes});
+   if(error)throw error;
+   if(!data)throw new Error('The server did not confirm creation of the training group.');
+   setSelectedAthletes([]);
+   const refreshed=await load();
+   Alert.alert('Training group created',refreshed?'AthleteN generated the regular sessions.':'The group was created, but the list could not refresh. Use refresh or reopen this screen.');
+  }catch(error){Alert.alert('Could not create training group',error instanceof Error?error.message:'The request failed.');}
+  finally{setBusy(false);}
  }
 
- async function createExtra(){ const gid=extraGroup||groups[0]?.id; if(!gid)return Alert.alert('No training group','Create a regular group first.'); const {error}=await supabase.rpc('create_coach_extra_training',{p_group_id:gid,p_session_date:extraDate,p_start_time:extraTime,p_duration_minutes:Number(duration)||90,p_training_type:extraType,p_title:extraTitle.trim()||'Extra training',p_focus:null,p_venue:extraVenue.trim()||null,p_notes:extraNotes.trim()||null}); if(error)Alert.alert('Could not add extra training',error.message); else {await load();Alert.alert('Extra training added','The session is now on the group schedule.');} }
- async function cancelDate(){ const {data,error}=await supabase.rpc('cancel_coach_training_date',{p_date:holidayDate,p_group_id:holidayGroup||null,p_reason:holidayReason.trim()||'Academy holiday'}); if(error)Alert.alert('Could not cancel training',error.message); else {await load();Alert.alert('Training cancelled',String(data||0)+' session(s) cancelled. The group chat and notifications were updated automatically.');} }
+ async function createExtra(){
+  const gid=extraGroup||groups[0]?.id;
+  const minutes=Number(duration);
+  if(!gid)return Alert.alert('No training group','Create a regular group first.');
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(extraDate)||Number.isNaN(Date.parse(extraDate+'T00:00:00')))return Alert.alert('Invalid date','Enter the date as YYYY-MM-DD.');
+  if(!/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(extraTime))return Alert.alert('Invalid start time','Use 24-hour HH:MM format, for example 19:00.');
+  if(!Number.isInteger(minutes)||minutes<15||minutes>360)return Alert.alert('Invalid duration','Enter a whole-number duration between 15 and 360 minutes.');
+  setBusy(true);
+  try{
+   const {error}=await supabase.rpc('create_coach_extra_training',{p_group_id:gid,p_session_date:extraDate,p_start_time:extraTime,p_duration_minutes:minutes,p_training_type:extraType,p_title:extraTitle.trim()||'Extra training',p_focus:null,p_venue:extraVenue.trim()||null,p_notes:extraNotes.trim()||null});
+   if(error)throw error;
+   const refreshed=await load();
+   Alert.alert('Extra training added',refreshed?'The session is on the group schedule.':'The session was created, but the list could not refresh.');
+  }catch(error){Alert.alert('Could not add extra training',error instanceof Error?error.message:'The request failed.');}
+  finally{setBusy(false);}
+ }
+
+ async function performCancelDate(){
+  setBusy(true);
+  try{
+   const {data,error}=await supabase.rpc('cancel_coach_training_date',{p_date:holidayDate,p_group_id:holidayGroup||null,p_reason:holidayReason.trim()||'Academy holiday'});
+   if(error)throw error;
+   const refreshed=await load();
+   Alert.alert('Training cancelled',String(data||0)+' session(s) cancelled.'+(refreshed?'':' The list could not refresh.'));
+  }catch(error){Alert.alert('Could not cancel training',error instanceof Error?error.message:'The request failed.');}
+  finally{setBusy(false);}
+ }
+
+ function cancelDate(){
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(holidayDate)||Number.isNaN(Date.parse(holidayDate+'T00:00:00')))return Alert.alert('Invalid date','Enter the date as YYYY-MM-DD.');
+  const scope=holidayGroup?'the selected group':'all active groups';
+  Alert.alert('Confirm session cancellation','This will cancel '+scope+' scheduled for '+holidayDate+'. Continue?',[
+   {text:'Keep sessions',style:'cancel'},
+   {text:'Cancel training',style:'destructive',onPress:()=>void performCancelDate()}
+  ]);
+ }
  async function markAllPresent(){
   const session=selectedSession;
   if(!session||session.status==='cancelled'||session.locked||attendanceBusy)return;
