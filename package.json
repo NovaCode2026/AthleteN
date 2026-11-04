@@ -2,7 +2,7 @@
   "name": "athleten-taekwondo",
   "version": "2.0.0",
   "description": "Taekwondo-first athlete platform for Web and Android, built with React, TypeScript, Expo, Supabase, and Netlify.",
-  "private": false,
+  "private": true,
   "type": "module",
   "keywords": [
     "athleten",
