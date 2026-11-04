@@ -22,6 +22,7 @@ test('deployment configuration is present', () => {
   const netlifyConfig = fs.readFileSync(path.join(root, 'netlify.toml'), 'utf8');
   assert.match(netlifyConfig, /command = "pnpm run build"/);
   assert.match(netlifyConfig, /NODE_VERSION = "22"/);
+  assert.match(netlifyConfig, /command = "pnpm run dev:vite"/);
   assert.ok(fs.existsSync(path.join(root, 'netlify/functions/ai-coach.mjs')));
   assert.ok(fs.existsSync(path.join(root, 'netlify/functions/tournament-scan.mjs')));
   assert.ok(fs.existsSync(path.join(root, 'netlify/functions/tournament-scan-scheduled.mjs')));
