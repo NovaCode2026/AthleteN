@@ -15,7 +15,7 @@
 
 **Built by Nova Code** · React · TypeScript · Expo · Supabase · Netlify
 
-[Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) · [Web + Mobile Experience](./docs/WEB_MOBILE_EXPERIENCE_MODEL.md) · [Taekwondo Disciplines](./docs/TAEKWONDO_DISCIPLINES.md) · [Plans & Verification](./docs/PLAN_VERIFICATION_AND_BILLING.md) · [Docs Hub](./docs/README.md) · [API](./docs/API.md) · [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) · [Mobile Guide](./AthleteN-Mobile/README.md)
+[Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) · [Web + Mobile Experience](./docs/WEB_MOBILE_EXPERIENCE_MODEL.md) · [Taekwondo Disciplines](./docs/TAEKWONDO_DISCIPLINES.md) · [Plans & Verification](./docs/PLAN_VERIFICATION_AND_BILLING.md) · [Docs Hub](./docs/README.md) · [API](./docs/API.md) · [Audit Execution](./docs/ATHLETEN_AUDIT_EXECUTION_2026-11-04.md) · [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) · [Mobile Guide](./AthleteN-Mobile/README.md)
 
 </div>
 
@@ -199,7 +199,7 @@ AthleteN has two connected clients:
 | 🌐 Web | React, TypeScript, Vite | Full Athlete, Coach, Academy and Admin experience |
 | 📱 Android | Expo SDK 57, React Native, Expo Router | Mobile athlete and role workspaces |
 
-The product goal is **feature parity where the platform supports it**. Native capabilities such as push notifications, device permissions and Android widgets remain platform-specific.
+The product has one shared information source. **Web is the master management and intelligence workspace** for complete records, graphs, analytics, reports, configuration and complex administration. **Android is the compact operational companion** for daily use, training capture, attendance, competition tasks, messaging and essential role workflows. Both clients use the same identities, permissions and Supabase records, with the same essential workflows where the device supports them. The screens are intentionally optimized for their different purposes; the underlying facts must stay consistent.
 
 ---
 
@@ -293,7 +293,7 @@ AthleteN/
 ### Requirements
 
 - Node.js version from the repository `.nvmrc`
-- npm
+- pnpm 10.30.3 (activated through Corepack)
 - Git
 - Expo-compatible Android device or emulator for mobile testing
 - Supabase project credentials for connected functionality
@@ -301,14 +301,16 @@ AthleteN/
 ### Web
 
 ```bash
-npm ci
-npm run dev
+corepack enable
+corepack prepare pnpm@10.30.3 --activate
+pnpm install --frozen-lockfile
+pnpm run dev
 ```
 
 Production build:
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 ### Android
@@ -359,9 +361,11 @@ Payment-provider credentials and recurring-plan identifiers are provider-specifi
 Web:
 
 ```bash
-npm ci
-npm test
-npm run build
+corepack enable
+corepack prepare pnpm@10.30.3 --activate
+pnpm install --frozen-lockfile
+pnpm test
+pnpm run build
 ```
 
 Mobile:
@@ -402,7 +406,7 @@ For health, injury, nutrition and recovery matters, AthleteN is not a medical se
 
 AthleteN is under active development. A green CI job or successful APK build is not the same as production acceptance.
 
-Check the [latest implementation and release status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) for:
+Check the [4 November audit execution board](./docs/ATHLETEN_AUDIT_EXECUTION_2026-11-04.md) and [3 November implementation snapshot](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) for:
 
 - Current CI and CodeQL evidence
 - Supabase migration and security status
