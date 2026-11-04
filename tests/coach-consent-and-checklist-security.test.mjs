@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const migration = fs.readFileSync('supabase/migrations/20261104130000_coach_consent_and_checklist_permissions.sql', 'utf8');
 const inboxMigration = fs.readFileSync('supabase/migrations/20261104130500_list_my_coach_invitations.sql', 'utf8');
 const announcementMigration = fs.readFileSync('supabase/migrations/20261104131000_academy_announcements_and_receipts.sql', 'utf8');
+const lookupMigration = fs.readFileSync('supabase/migrations/20261104131500_restrict_coach_athlete_lookup.sql', 'utf8');
 const mobileAnnouncements = fs.readFileSync('AthleteN-Mobile/src/components/announcement-overlay.tsx', 'utf8');
 const inboxMigration = fs.readFileSync('supabase/migrations/20261104130500_list_my_coach_invitations.sql', 'utf8');
 const roles = fs.readFileSync('src/components/roles/RoleDashboards.tsx', 'utf8');
@@ -66,4 +67,14 @@ test('academy announcement publishing and reads are scoped to active academy rel
   assert.match(roles, /announcement_reads/);
   assert.match(mobileAnnouncements, /eq\('audience','all'\)/);
   assert.match(mobileAnnouncements, /announcement_reads/);
+});
+
+test('coach lookup uses a role-checked, minimal-field Taekwondo RPC', () => {
+  assert.match(lookupMigration, /lookup_taekwondo_athlete_for_coach/);
+  assert.match(lookupMigration, /v_coach_role is distinct from 'coach'/);
+  assert.match(lookupMigration, /public\.is_age_approved\(p\.user_id\)/);
+  assert.match(lookupMigration, /lower\(coalesce\(p\.sport, ''\)\) = 'taekwondo'/);
+  assert.match(lookupMigration, /revoke all on function public\.lookup_taekwondo_athlete_for_coach\(text\) from public, anon/);
+  assert.match(roles, /lookup_taekwondo_athlete_for_coach/);
+  assert.doesNotMatch(roles, /find_athlete_by_username/);
 });
