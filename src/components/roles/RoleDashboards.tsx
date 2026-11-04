@@ -17,7 +17,9 @@ type AthleteLookup = Pick<Athlete, "user_id" | "full_name" | "username" | "disci
 type TrainingMetric = { user_id:string; session_date:string; minutes:number };
 type AttendanceMetric = { user_id:string; attended_at:string; status:string };
 type MedalMetric = { user_id:string; awarded_at:string|null; medal_type:string };
-type CompetitionMetric = { user_id:string; starts_at:string|null; result:string|null };
+type CompetitionMetric = { user_id:string; starts_at:string|null; result:string|null; name?:string|null };
+type GroupAttendanceMetric = { athlete_user_id:string; status:string; training_group_sessions?:{session_date:string;status:string}|null };
+type InjuryAttentionMetric = { user_id:string; occurred_at:string|null; recovery_status:string|null };
 function monthlySeries(rows:Array<{date:string|null}>,key:"sessions"|"records",months=6){const count=Math.max(3,Math.min(12,months));return Array.from({length:count},(_,i)=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-(count-1-i));const month=d.toLocaleDateString(undefined,{month:"short"});const prefix=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;return {month,[key]:rows.filter(x=>x.date?.startsWith(prefix)).length};});}
 async function fetchAllPages<T>(fetchPage:(from:number,to:number)=>PromiseLike<any>):Promise<T[]>{const rows:T[]=[];for(let from=0;from<100000;from+=500){const {data,error}=await fetchPage(from,from+499);if(error)throw error;const page=(data||[]) as T[];rows.push(...page);if(page.length<500)return rows;}throw new Error("Analytics result exceeded the safe 100,000-row paging limit. Narrow the date range.");}
 
@@ -61,6 +63,9 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   const [attendanceMetrics,setAttendanceMetrics]=useState<AttendanceMetric[]>([]);
   const [medalMetrics,setMedalMetrics]=useState<MedalMetric[]>([]);
   const [competitionMetrics,setCompetitionMetrics]=useState<CompetitionMetric[]>([]);
+  const [groupAttendanceMetrics,setGroupAttendanceMetrics]=useState<GroupAttendanceMetric[]>([]);
+  const [injuryAttentionMetrics,setInjuryAttentionMetrics]=useState<InjuryAttentionMetric[]>([]);
+  const [attentionUnavailable,setAttentionUnavailable]=useState(false);
   const [analyticsUnavailable,setAnalyticsUnavailable]=useState(false);
   const [rangeMonths,setRangeMonths]=useState(6);
 
@@ -84,18 +89,23 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
       const start=new Date();start.setDate(1);start.setMonth(start.getMonth()-(rangeMonths-1));
       const startDate=[start.getFullYear(),String(start.getMonth()+1).padStart(2,"0"),"01"].join("-");
       try{
-        const [tr,ar,mr,cr]=await Promise.all([
+        const [tr,ar,mr,cr,groupAttendanceResult,injuryResult]=await Promise.all([
           fetchAllPages<TrainingMetric>((from,to)=>supabase.from("training_sessions").select("user_id,session_date,minutes").in("user_id",athleteIds).gte("session_date",startDate).order("session_date",{ascending:false}).range(from,to)),
           fetchAllPages<AttendanceMetric>((from,to)=>supabase.from("attendance_records").select("user_id,attended_at,status").in("user_id",athleteIds).gte("attended_at",startDate).order("attended_at",{ascending:false}).range(from,to)),
           fetchAllPages<MedalMetric>((from,to)=>supabase.from("medals").select("user_id,awarded_at,medal_type").in("user_id",athleteIds).gte("awarded_at",startDate).order("awarded_at",{ascending:false}).range(from,to)),
-          fetchAllPages<CompetitionMetric>((from,to)=>supabase.from("tournaments").select("user_id,starts_at,result").in("user_id",athleteIds).gte("starts_at",startDate).order("starts_at",{ascending:false}).range(from,to))
+          fetchAllPages<CompetitionMetric>((from,to)=>supabase.from("tournaments").select("user_id,starts_at,result,name").in("user_id",athleteIds).gte("starts_at",startDate).order("starts_at",{ascending:false}).range(from,to)),
+          fetchAllPages<GroupAttendanceMetric>((from,to)=>supabase.from("training_group_attendance").select("athlete_user_id,status,training_group_sessions!inner(session_date,status)").in("athlete_user_id",athleteIds).gte("training_group_sessions.session_date",startDate).order("marked_at",{ascending:false}).range(from,to)).then(data=>({data,error:false})).catch(()=>({data:[] as GroupAttendanceMetric[],error:true})),
+          fetchAllPages<InjuryAttentionMetric>((from,to)=>supabase.from("injuries").select("user_id,occurred_at,recovery_status").in("user_id",athleteIds).order("occurred_at",{ascending:false}).range(from,to)).then(data=>({data,error:false})).catch(()=>({data:[] as InjuryAttentionMetric[],error:true}))
         ]);
-        setTrainingMetrics(tr);setAttendanceMetrics(ar);setMedalMetrics(mr);setCompetitionMetrics(cr);setAnalyticsUnavailable(false);
+        setTrainingMetrics(tr);setAttendanceMetrics(ar);setMedalMetrics(mr);setCompetitionMetrics(cr);
+        setGroupAttendanceMetrics(groupAttendanceResult.data);setInjuryAttentionMetrics(injuryResult.data);
+        setAttentionUnavailable(groupAttendanceResult.error||injuryResult.error);setAnalyticsUnavailable(false);
       }catch(e){
-        setTrainingMetrics([]);setAttendanceMetrics([]);setMedalMetrics([]);setCompetitionMetrics([]);setAnalyticsUnavailable(true);
+        setTrainingMetrics([]);setAttendanceMetrics([]);setMedalMetrics([]);setCompetitionMetrics([]);
+        setGroupAttendanceMetrics([]);setInjuryAttentionMetrics([]);setAttentionUnavailable(true);setAnalyticsUnavailable(true);
         setError(e instanceof Error?e.message:"Coach analytics could not be loaded.");
       }
-    }else{setTrainingMetrics([]);setAttendanceMetrics([]);setMedalMetrics([]);setCompetitionMetrics([]);setAnalyticsUnavailable(false);}
+    }else{setTrainingMetrics([]);setAttendanceMetrics([]);setMedalMetrics([]);setCompetitionMetrics([]);setGroupAttendanceMetrics([]);setInjuryAttentionMetrics([]);setAttentionUnavailable(false);setAnalyticsUnavailable(false);}
     setLoading(false);
   }
   useEffect(() => { void load(); }, [userId, rangeMonths]);
@@ -148,6 +158,38 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   ]);}
   const medalBreakdown=useMemo(()=>Array.from(new Set(filteredMedalMetrics.map(x=>String(x.medal_type||"Unspecified")))).map(name=>({name,count:filteredMedalMetrics.filter(x=>String(x.medal_type||"Unspecified")===name).length})),[filteredMedalMetrics]);
   const competitionBreakdown=useMemo(()=>Array.from(new Set(filteredCompetitionMetrics.map(x=>String(x.result||"Unrecorded")))).map(name=>({name,count:filteredCompetitionMetrics.filter(x=>String(x.result||"Unrecorded")===name).length})),[filteredCompetitionMetrics]);
+  const attentionItems=useMemo(()=>{
+    const today=new Date();today.setHours(0,0,0,0);
+    const dateKey=(value:Date)=>[value.getFullYear(),String(value.getMonth()+1).padStart(2,"0"),String(value.getDate()).padStart(2,"0")].join("-");
+    const todayKey=dateKey(today);
+    const cutoff=new Date(today);cutoff.setDate(cutoff.getDate()-30);
+    const cutoffKey=dateKey(cutoff);
+    const horizon=new Date(today);horizon.setDate(horizon.getDate()+14);
+    const horizonKey=dateKey(horizon);
+    const reasons=new Map<string,Set<string>>();
+    const add=(id:string,reason:string)=>{if(!reasons.has(id))reasons.set(id,new Set());reasons.get(id)!.add(reason);};
+    const absences=new Map<string,number>();
+    for(const row of groupAttendanceMetrics){
+      const session=row.training_group_sessions;
+      if(row.status!=="absent"||!session||session.status==="cancelled"||session.session_date<cutoffKey||session.session_date>todayKey)continue;
+      absences.set(row.athlete_user_id,(absences.get(row.athlete_user_id)||0)+1);
+    }
+    for(const [id,count] of absences)if(count>=2)add(id,String(count)+" missed sessions in the last 30 days");
+    for(const row of competitionMetrics){
+      const date=String(row.starts_at||"").slice(0,10);
+      if(date>=todayKey&&date<=horizonKey)add(row.user_id,"Tournament within 14 days"+(row.name?": "+row.name:""));
+    }
+    const resolved=/^(resolved|closed|cleared|recovered|fully recovered|returned to training|completed)$/i;
+    for(const row of injuryAttentionMetrics){
+      if(!resolved.test(String(row.recovery_status||"").trim()))add(row.user_id,"Injury record needs follow-up");
+    }
+    const knownIds=new Set([...athletes.map(a=>a.user_id),...links.filter(x=>x.status==="active").map(x=>x.athlete_user_id)]);
+    return Array.from(reasons.entries()).filter(([id])=>knownIds.has(id)).map(([id,items])=>{
+      const athlete=athletes.find(a=>a.user_id===id);
+      const name=athlete?.full_name||(athlete?.username?"@"+athlete.username:"Linked athlete "+id.slice(0,8));
+      return {id,name,reasons:Array.from(items)};
+    }).sort((a,b)=>b.reasons.length-a.reasons.length||a.name.localeCompare(b.name));
+  },[groupAttendanceMetrics,competitionMetrics,injuryAttentionMetrics,athletes,links]);
   async function toggleNutrition(athleteUserId: string) {
     if (!supabase || !userId) return;
     setBusy(true); setError("");
@@ -167,6 +209,12 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   return <div className="role-dashboard">
     <div className="page-head"><div><p className="eyebrow">Individual Coach</p><h2>Coach Command Center</h2><p>Manage your athletes, assign Taekwondo training plans, and keep coaching data separate from the athlete workspace.</p></div><div className="role-dashboard-actions"><label className="role-range-picker"><span>Analytics range</span><select value={rangeMonths} onChange={e=>setRangeMonths(Number(e.target.value))}><option value={3}>Last 3 months</option><option value={6}>Last 6 months</option><option value={12}>Last 12 months</option></select></label><button type="button" className="btn" onClick={()=>window.print()}>Print / Save PDF</button><button className="btn" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> {loading ? "Refreshing…" : "Refresh"}</button></div></div>
     <section className="metrics"><article className="metric card"><div className="metric-icon"><Users size={18}/></div><div><p>Athletes</p><strong>{athletes.length}</strong><small>Linked athlete profiles</small></div></article><article className="metric card"><div className="metric-icon"><UserPlus size={18}/></div><div><p>Active links</p><strong>{activeLinks}</strong><small>Coach relationships</small></div></article><article className="metric card"><div className="metric-icon"><ClipboardList size={18}/></div><div><p>Plans</p><strong>{plans.length}</strong><small>Assigned training plans</small></div></article></section>
+    <Card>
+      <div className="panel-head"><div><p className="eyebrow">Coach follow-up</p><h3>Needs attention</h3><p className="muted">Signals from linked-athlete records. Review privately with the athlete and guardian where appropriate.</p></div><ShieldCheck size={20}/></div>
+      {attentionUnavailable&&<p className="notice" role="status">Some follow-up records could not be checked. Refresh or verify the source records before relying on this list.</p>}
+      {loading?<p className="muted">Checking linked-athlete records…</p>:attentionItems.length?<div className="data-list">{attentionItems.slice(0,12).map(item=><div className="detail-row" key={item.id}><div><strong>{item.name}</strong><small>{item.reasons.join(" · ")}</small></div></div>)}</div>:<div className="empty"><strong>No follow-up flags from available records</strong><span>Flags use 2+ absences in 30 days, tournaments in the next 14 days and injury records not marked resolved.</span></div>}
+      <p className="muted">This view does not score athletes by body weight or prescribe medical action. It is a reminder to check records and speak with the athlete and guardian.</p>
+    </Card>
     {error && <ErrorText>{error}</ErrorText>}
     <section className="role-analytics-grid">
       <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Roster intelligence</span><h3>Training activity</h3><p className="muted">Monthly sessions from linked athletes · latest {rangeMonths} months</p></div><button className="btn" type="button" onClick={exportCoachReport}>Export CSV</button><BarChart3/></div>{filteredTrainingMetrics.length?<ResponsiveContainer width="100%" height={220}><BarChart data={trainingByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="sessions" name="Training sessions" fill="#49d7ff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No training analytics yet</strong><span>Training sessions from linked athletes will appear here when recorded and accessible.</span></div>}</article>
