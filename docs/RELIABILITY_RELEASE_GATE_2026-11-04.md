@@ -29,6 +29,18 @@ The live Supabase Security Advisor reported:
 - `pg_net` is installed in the `public` schema. Do not try to move a non-relocatable extension without a supported migration plan.
 - Performance Advisor reported 121 multiple-permissive-policy warnings and 82 unused-index information notices. Do not merge policies or drop indexes solely to reduce warning counts; first prove the authorization semantics and workload impact.
 
+### Announcement and coach-training policy screen
+
+The live database policy screen was checked for the announcement and coach training tables:
+
+- Announcement SELECT policy is role-targeted (all, athletes, coaches, academies, admins), requires published announcements and approved age status, and includes the platform-admin exception.
+- Announcement read receipts are SELECT/INSERT scoped to the signed-in user's own `user_id`.
+- Coach attendance writes require the caller to own the training group and the athlete to remain an active member of that group. Athlete attendance reads are scoped to the athlete's own user ID.
+
+These policy definitions support the updated mobile announcement query: it requests currently published rows and lets RLS determine which announcements the signed-in user may see. This is a policy-definition review, not a substitute for testing with real non-admin accounts.
+
+A separate live RPC review found that `create_coach_training_group` returns a group UUID and requires a coach profile, but the server-side input contract does not currently enforce an upper bound on duration or require every supplied athlete ID to be an active link; invalid/unlinked athlete IDs are skipped. The mobile client now validates duration and time, but **client validation is not a security boundary**. Add server-side bounds and all-or-nothing linked-athlete validation only after recovering the source migration that owns this RPC and reconciling the three missing applied migration files. Do not patch production from guessed SQL.
+
 ### Mandatory negative authorization tests
 
 Use two ordinary test accounts and separate coach/academy test accounts. Do not use real athletes' records for destructive testing.
@@ -73,6 +85,7 @@ The reliability changes prepared in [PR #29](https://github.com/NovaCode2026/Ath
 - [ ] Enable leaked-password protection in Supabase Auth.
 - [ ] Recover and reconcile the three missing 4 November migration files.
 - [ ] Complete the function-by-function `SECURITY DEFINER` review and correct-actor/wrong-actor tests.
+- [ ] Harden `create_coach_training_group` server-side input limits and active-coach-link validation from the reconciled source migration (the mobile input validation alone is insufficient).
 - [ ] Complete the two-account RLS and relationship-boundary tests.
 - [ ] Review overlapping policies for semantic correctness; leave harmless warnings documented rather than weakening access.
 - [ ] Review data minimization, retention, deletion, access requests, parental/guardian consent and the privacy notice with a qualified adult/legal reviewer before collecting data from minors.
