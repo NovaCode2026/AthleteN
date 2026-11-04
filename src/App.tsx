@@ -89,7 +89,7 @@ function VerificationCallback() {
 function AuthScreen({ initialMode }: { initialMode?: AuthMode }) {
   const auth = useAuth();
   const [mode, setMode] = useState<AuthMode>(initialMode || (isPasswordResetRoute() ? "reset" : "login"));
-  const [form, setForm] = useState({ email: "", password: "", name: "" });
+  const [form, setForm] = useState({ email: "", password: "", confirmPassword: "", name: "" });
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [policiesAccepted, setPoliciesAccepted] = useState(false);
@@ -99,6 +99,14 @@ function AuthScreen({ initialMode }: { initialMode?: AuthMode }) {
     setMessage("");
     if (mode === "register" && !policiesAccepted) {
       setMessage("Please review and accept the Privacy Policy and Terms of Service before creating an account.");
+      return;
+    }
+    if ((mode === "register" || mode === "reset") && form.password.length < 8) {
+      setMessage("Use a password with at least 8 characters.");
+      return;
+    }
+    if (mode === "reset" && form.password !== form.confirmPassword) {
+      setMessage("The new passwords do not match.");
       return;
     }
     setBusy(true);
@@ -173,17 +181,17 @@ function AuthScreen({ initialMode }: { initialMode?: AuthMode }) {
     <span className="eyebrow">Nova Code</span>
     <h1>AthleteN - Taekwondo Edition</h1>
     <p>Secure cloud command center for training, tournaments, documents, medals, goals, verification, plans, and AI coaching.</p>
-    <button type="button" className="btn oauth-btn" onClick={() => void signInWithGoogle()} disabled={busy || (mode === "register" && !policiesAccepted)}>Continue with Google</button>
-    <div className="oauth-divider"><span>or use email</span></div>
+    {mode !== "reset" && <><button type="button" className="btn oauth-btn" onClick={() => void signInWithGoogle()} disabled={busy || (mode === "register" && !policiesAccepted)}>Continue with Google</button>
+    <div className="oauth-divider"><span>or use email</span></div></>}
     <form onSubmit={submit}>
       {mode === "register" && <Field label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />}
       {mode !== "reset" && <Field label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />}
-      {mode !== "forgot" && <Field label="Password" type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />}
+      {mode !== "forgot" && <Field label={mode === "reset" ? "New password" : "Password"} type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />}
+      {mode === "reset" && <Field label="Confirm new password" type="password" minLength={8} value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} required />}
       {mode === "register" && <label className="remember" style={{ alignItems: "flex-start", gap: 10 }}>
         <input type="checkbox" checked={policiesAccepted} onChange={(e) => setPoliciesAccepted(e.target.checked)} required />
         <span>I have reviewed and accept the AthleteN <a href="/privacy-policy.html" target="_blank" rel="noreferrer">Privacy Policy</a> and <a href="/terms-of-service.html" target="_blank" rel="noreferrer">Terms of Service</a>.</span>
       </label>}
-      <label className="remember"><input type="checkbox" defaultChecked /> Remember me on this device</label>
       <button className="btn primary" disabled={busy || (mode === "register" && !policiesAccepted)}>{busy ? "Please wait..." : mode === "register" ? "Create account" : mode === "forgot" ? "Send reset email" : mode === "reset" ? "Update password" : "Log in"}</button>
     </form>
     {message && <p className="notice" role="status">{message}</p>}
@@ -192,7 +200,7 @@ function AuthScreen({ initialMode }: { initialMode?: AuthMode }) {
       <button type="button" onClick={() => { setMessage(""); setMode("register"); setPoliciesAccepted(false); }}>Register</button>
       <button type="button" onClick={() => { setMessage(""); setMode("forgot"); setPoliciesAccepted(false); }}>Forgot password</button>
       {mode === "register" && <button type="button" onClick={resendVerification} disabled={busy}>Resend verification</button>}
-      {mode === "reset" && <button type="button" onClick={() => { setMessage(""); setMode("reset"); }}>Reset password</button>}
+      {mode === "reset" && <button type="button" onClick={() => { setMessage(""); setForm({ ...form, password: "", confirmPassword: "" }); setMode("login"); }}>Back to login</button>}
     </div>
   </section></main>;
 }
