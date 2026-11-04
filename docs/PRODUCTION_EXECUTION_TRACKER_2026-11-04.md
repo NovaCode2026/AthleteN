@@ -16,7 +16,7 @@ This tracker translates **AthleteN: Audit, Action Plan and Pilot Kit** into exec
 
 - [x] Create an isolated execution branch from the observed `main` commit.
 - [x] Align root README install/test commands with pnpm workspace CI; keep Android npm commands scoped to `AthleteN-Mobile`.
-- [ ] Remove `test-temp.txt`, `netlify-trigger.txt`, and `netlify-trigger-2.txt` after confirming no deployment automation still consumes them.
+- [x] Remove `test-temp.txt`, `netlify-trigger.txt`, and `netlify-trigger-2.txt` (confirmed they were only temporary trigger/test text files; no workflow references were found in the repository tree).
 - [ ] Consolidate `test/` and `tests/` without losing tests or changing test discovery.
 - [ ] Reconcile the three 4 November applied Supabase migrations with exact, reviewed SQL source files in Git.
 - [ ] Confirm branch protection and required CI checks on `main`.
