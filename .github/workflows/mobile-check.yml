@@ -35,6 +35,9 @@ jobs:
           cache: npm
           cache-dependency-path: AthleteN-Mobile/package-lock.json
 
+      - name: Resolve patched transitive dependencies
+        run: npm install --package-lock-only --ignore-scripts --no-audit
+
       - name: Install dependencies
         run: npm ci
 
@@ -59,6 +62,15 @@ jobs:
 
       - name: Android bundle check
         run: npx expo export --platform android --output-dir .expo/ci-export
+
+      - name: Upload generated mobile lockfile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-lockfile-candidate
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Remove CI export
         if: always()
