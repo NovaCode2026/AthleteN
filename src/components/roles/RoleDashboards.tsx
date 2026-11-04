@@ -444,6 +444,41 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
   </div>;
 }
 
+export function AthleteConnectionInbox({ userId }: { userId?: string }) {
+  const [invitations, setInvitations] = useState<Array<{link_id:string;coach_user_id:string;coach_name:string|null;coach_username:string|null;academy_name:string|null;invited_at:string}>>([]);
+  const [message, setMessage] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function loadInvitations() {
+    if (!supabase || !userId) return;
+    const { data, error } = await supabase.rpc("list_my_coach_invitations");
+    if (error) {
+      setMessage("Coach invitations could not be loaded. " + error.message);
+      return;
+    }
+    setInvitations((data || []) as Array<{link_id:string;coach_user_id:string;coach_name:string|null;coach_username:string|null;academy_name:string|null;invited_at:string}>);
+  }
+
+  useEffect(() => { void loadInvitations(); }, [userId]);
+
+  async function respond(linkId: string, accept: boolean) {
+    if (!supabase) return;
+    setBusyId(linkId);
+    setMessage("");
+    const { error } = await supabase.rpc("respond_to_coach_invitation", { p_link_id: linkId, p_accept: accept });
+    if (error) setMessage(error.message);
+    else setMessage(accept ? "Coach connection accepted." : "Invitation declined.");
+    await loadInvitations();
+    setBusyId(null);
+  }
+
+  return <Card>
+    <div className="panel-head"><div><p className="eyebrow">Connections</p><h3>Coach invitations</h3><p className="muted">A coach cannot access connected athlete records until the athlete accepts.</p></div><Users size={20}/></div>
+    {message && <p className="muted" role="status">{message}</p>}
+    {invitations.length ? <div className="details-list">{invitations.map(invitation=><div className="detail-row" key={invitation.link_id}><div><strong>{invitation.coach_name || invitation.coach_username || "AthleteN coach"}</strong><small>{invitation.coach_username ? "@"+invitation.coach_username+" · " : ""}{invitation.academy_name || "Coach connection request"}</small></div><div className="inline-actions"><button type="button" className="btn primary" onClick={()=>void respond(invitation.link_id,true)} disabled={busyId===invitation.link_id}>Accept</button><button type="button" className="btn" onClick={()=>void respond(invitation.link_id,false)} disabled={busyId===invitation.link_id}>Decline</button></div></div>)}</div> : <p className="muted">No pending coach invitations.</p>}
+  </Card>;
+}
+
 function DataList<T>({ rows, render }: { rows: T[]; empty: string; render: (row: T) => React.ReactNode }) {
   if (!rows.length) return <p className="muted">No records.</p>;
   return <div className="details-list">{rows.map((row, index) => <div className="detail-row" key={(row as { id?: string }).id || index}>{render(row)}</div>)}</div>;
