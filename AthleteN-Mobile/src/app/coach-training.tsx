@@ -135,7 +135,7 @@ export default function CoachTraining(){
   };
 
   // A "mark all" tap must not silently erase existing absence, late or excused records.
-  const existingOverrides=Object.values(attendance).filter(status=>status!=='present').length;
+  const existingOverrides=sessionAthleteIds.filter(id=>Boolean(attendance[id])&&attendance[id]!=='present').length;
   if(existingOverrides>0){
    Alert.alert(
     'Replace existing attendance?',
