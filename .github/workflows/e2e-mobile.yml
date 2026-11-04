@@ -49,6 +49,9 @@ jobs:
       - name: Build debug APK
         working-directory: AthleteN-Mobile/android
         run: ./gradlew assembleDebug
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJleGFtcGxlIiwicmVmIjoiZXhhbXBsZSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjIwMDAwMDAwMDB9.test-only-placeholder
       - name: Install Maestro
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
