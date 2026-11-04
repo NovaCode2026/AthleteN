@@ -84,9 +84,14 @@ export default function CoachTraining(){
  async function setAttendanceStatus(id:string,status:string){
   const session=selectedSession;
   if(!session||session.status==='cancelled'||session.locked||busy)return;
-  const {error}=await supabase.from('training_group_attendance').upsert({session_id:session.id,athlete_user_id:id,status,updated_at:new Date().toISOString()},{onConflict:'session_id,athlete_user_id'});
-  if(error){Alert.alert('Attendance not saved',error.message);return;}
-  setAttendance(current=>({...current,[id]:status}));
+  setBusy(true);
+  try{
+   const {error}=await supabase.from('training_group_attendance').upsert({session_id:session.id,athlete_user_id:id,status,updated_at:new Date().toISOString()},{onConflict:'session_id,athlete_user_id'});
+   if(error)throw error;
+   setAttendance(current=>({...current,[id]:status}));
+  }catch(error){
+   Alert.alert('Attendance not saved',error instanceof Error?error.message:'Please retry this athlete status.');
+  }finally{setBusy(false);}
  }
  async function lockAttendance(){ if(!selectedSession)return; const {error}=await supabase.from('training_group_sessions').update({locked:true,updated_at:new Date().toISOString()}).eq('id',selectedSession.id).eq('locked',false); if(error)Alert.alert('Could not lock attendance',error.message); else {setSelectedSession({...selectedSession,locked:true});Alert.alert('Attendance locked','This session can no longer be edited.');} }
  async function openAttendance(s:Session){
