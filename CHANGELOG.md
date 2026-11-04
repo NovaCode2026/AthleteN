@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased] — 2026-11-04
+
+### Pilot readiness and reliability
+- Added a coach-facing Needs Attention view based on linked athletes' missed group sessions, upcoming tournaments and unresolved injury records; excluded body-weight alerts from youth-athlete triage.
+- Hardened mobile group attendance loading and saves with explicit error handling, confirmation for bulk mark-present and state changes only after successful writes.
+- Added optional tournament scope to athlete competition checklists, preserving legacy unassigned rows; updated Web and Android event workflows to keep checklists per tournament.
+- Standardized the root Web and Netlify toolchain on pnpm 10.30.3 while retaining npm for the isolated Expo mobile project.
+- Added the audit execution board and documented the remaining device, security, privacy and deployment gates.
+
 
 ## [Unreleased] — 2026-11-03
 
