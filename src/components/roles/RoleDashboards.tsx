@@ -322,6 +322,175 @@ function CoachAttendancePanel({ userId, athletes, setToast }: {
   );
 }
 
+
+type CoachGroupAnnouncement = {
+  id: string;
+  title: string;
+  body: string;
+  published_at: string | null;
+  target_group_id: string;
+};
+
+function CoachAnnouncementsPanel({ userId, setToast }: {
+  userId: string;
+  setToast: (toast: Toast) => void;
+}) {
+  const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
+  const [announcements, setAnnouncements] = useState<CoachGroupAnnouncement[]>([]);
+  const [seenCounts, setSeenCounts] = useState<Record<string, { seen: number; total: number }>>({});
+  const [groupId, setGroupId] = useState("");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function load() {
+    if (!supabase || !userId) return;
+    setLoading(true);
+    setError("");
+    try {
+      const [groupResult, announcementResult] = await Promise.all([
+        supabase.from("training_groups").select("id,name").eq("coach_user_id", userId).eq("active", true).order("name"),
+        supabase.from("announcements").select("id,title,body,published_at,target_group_id").eq("created_by", userId).eq("audience", "group").order("published_at", { ascending: false }).limit(20),
+      ]);
+      if (groupResult.error) throw groupResult.error;
+      if (announcementResult.error) throw announcementResult.error;
+
+      const nextGroups = groupResult.data || [];
+      const nextAnnouncements = (announcementResult.data || []) as CoachGroupAnnouncement[];
+      setGroups(nextGroups);
+      setAnnouncements(nextAnnouncements);
+      if (!groupId && nextGroups.length) setGroupId(nextGroups[0].id);
+
+      const groupIds = nextGroups.map((group: any) => group.id);
+      if (!groupIds.length) {
+        setSeenCounts({});
+        return;
+      }
+
+      const [memberResult, readResult] = await Promise.all([
+        supabase.from("training_group_members").select("group_id,athlete_user_id").in("group_id", groupIds).eq("status", "active"),
+        nextAnnouncements.length
+          ? supabase.from("announcement_reads").select("announcement_id,user_id,read_at").in("announcement_id", nextAnnouncements.map((item) => item.id))
+          : Promise.resolve({ data: [], error: null } as any),
+      ]);
+      if (memberResult.error) throw memberResult.error;
+      if (readResult.error) throw readResult.error;
+
+      const totals: Record<string, number> = {};
+      for (const member of memberResult.data || []) {
+        totals[member.group_id] = (totals[member.group_id] || 0) + 1;
+      }
+      const reads: Record<string, number> = {};
+      const uniqueReads = new Set<string>();
+      for (const row of readResult.data || []) {
+        const key = row.announcement_id + ":" + row.user_id;
+        if (uniqueReads.has(key)) continue;
+        uniqueReads.add(key);
+        reads[row.announcement_id] = (reads[row.announcement_id] || 0) + 1;
+      }
+      setSeenCounts(Object.fromEntries(nextAnnouncements.map((item) => [
+        item.id,
+        { seen: reads[item.id] || 0, total: totals[item.target_group_id] || 0 },
+      ])));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Group announcements could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { void load(); }, [userId]);
+
+  async function publish() {
+    if (!supabase || !userId || busy) return;
+    if (!groupId || !title.trim() || !body.trim()) {
+      setError("Choose a training group and enter both a title and message.");
+      return;
+    }
+    if (title.trim().length > 160 || body.trim().length > 5000) {
+      setError("The title limit is 160 characters and the message limit is 5,000 characters.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    const { error: insertError } = await supabase.from("announcements").insert({
+      title: title.trim(),
+      body: body.trim(),
+      audience: "group",
+      target_group_id: groupId,
+      created_by: userId,
+      published_at: new Date().toISOString(),
+    });
+    setBusy(false);
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+    setTitle("");
+    setBody("");
+    setToast({ type: "success", message: "Announcement published to the selected training group." });
+    await load();
+  }
+
+  return (
+    <Card>
+      <div className="panel-head">
+        <div>
+          <p className="eyebrow">Coach pilot workflow</p>
+          <h3>Group announcements</h3>
+          <p className="muted">Publish to one of your training groups and see how many active members marked it as seen.</p>
+        </div>
+        <button className="btn" type="button" onClick={() => void load()} disabled={loading}>
+          <RefreshCw size={15}/> {loading ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+      {error && <ErrorText>{error}</ErrorText>}
+      {groups.length ? (
+        <div className="grid two">
+          <div>
+            <label className="field">
+              <span>Training group</span>
+              <select value={groupId} onChange={(event) => setGroupId(event.target.value)}>
+                {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+              </select>
+            </label>
+            <label className="field">
+              <span>Announcement title</span>
+              <input value={title} maxLength={160} onChange={(event) => setTitle(event.target.value)} placeholder="Saturday training update"/>
+            </label>
+            <label className="field">
+              <span>Message</span>
+              <textarea value={body} maxLength={5000} rows={4} onChange={(event) => setBody(event.target.value)} placeholder="Share the schedule, venue or tournament update."/>
+            </label>
+            <button className="btn primary" type="button" disabled={busy || !groupId || !title.trim() || !body.trim()} onClick={() => void publish()}>
+              {busy ? "Publishing…" : "Publish announcement"}
+            </button>
+          </div>
+          <div>
+            <h4>Recent announcements</h4>
+            {announcements.length ? announcements.map((item) => (
+              <div className="detail-row" key={item.id}>
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>{groups.find((group) => group.id === item.target_group_id)?.name || "Training group"} · {item.published_at ? new Date(item.published_at).toLocaleString() : "Draft"}</small>
+                  <small><CheckCircle2 size={13} /> Seen by {seenCounts[item.id]?.seen || 0} of {seenCounts[item.id]?.total || 0} active members</small>
+                </div>
+              </div>
+            )) : <p className="muted">No group announcements have been published yet.</p>}
+          </div>
+        </div>
+      ) : (
+        <div className="empty">
+          <strong>No active training groups</strong>
+          <p>Create a training group before publishing a group announcement.</p>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 async function resolveAthlete(value: string): Promise<AthleteLookup> {
   const input = value.trim();
   if (!input) throw new Error("Enter an athlete username or user ID.");
@@ -467,6 +636,7 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
     <section className="metrics"><article className="metric card"><div className="metric-icon"><Users size={18}/></div><div><p>Athletes</p><strong>{athletes.length}</strong><small>Linked athlete profiles</small></div></article><article className="metric card"><div className="metric-icon"><UserPlus size={18}/></div><div><p>Active links</p><strong>{activeLinks}</strong><small>Coach relationships</small></div></article><article className="metric card"><div className="metric-icon"><ClipboardList size={18}/></div><div><p>Plans</p><strong>{plans.length}</strong><small>Assigned training plans</small></div></article></section>
     {error && <ErrorText>{error}</ErrorText>}
     <CoachAttendancePanel userId={userId || ""} athletes={athletes} setToast={setToast} />
+    <CoachAnnouncementsPanel userId={userId || ""} setToast={setToast} />
     <section className="role-analytics-grid">
       <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Roster intelligence</span><h3>Training activity</h3><p className="muted">Monthly sessions from linked athletes · latest {rangeMonths} months</p></div><button className="btn" type="button" onClick={exportCoachReport}>Export CSV</button><BarChart3/></div>{filteredTrainingMetrics.length?<ResponsiveContainer width="100%" height={220}><BarChart data={trainingByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="sessions" name="Training sessions" fill="#49d7ff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No training analytics yet</strong><span>Training sessions from linked athletes will appear here when recorded and accessible.</span></div>}</article>
       <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Participation</span><h3>Attendance overview</h3><p className="muted">Based on attendance records visible to this coach</p></div><CalendarCheck/></div><div className="role-analytics-kpis"><div><strong>{attendanceRate===null?"—":`${attendanceRate}%`}</strong><small>Attendance rate</small></div><div><strong>{filteredAttendanceMetrics.length}</strong><small>Recorded check-ins in this range</small></div><div><strong>{Math.round(totalMinutes/60*10)/10}h</strong><small>Training hours</small></div></div>{attendanceMetrics.length?<ResponsiveContainer width="100%" height={145}><LineChart data={attendanceByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Line type="monotone" dataKey="records" name="Attendance records" stroke="#65e0b5" strokeWidth={3}/></LineChart></ResponsiveContainer>:<div className="empty"><strong>Attendance data will appear here</strong><span>No accessible attendance records were returned for this roster.</span></div>}</article>
