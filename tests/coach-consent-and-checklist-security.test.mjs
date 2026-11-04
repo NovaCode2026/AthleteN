@@ -57,10 +57,13 @@ test('academy announcement publishing and reads are scoped to active academy rel
   assert.match(announcementMigration, /m\.status = 'active'/);
   assert.match(announcementMigration, /m\.role in \('coach', 'academy_admin'\)/);
   assert.match(announcementMigration, /created_by = \(select auth\.uid\(\)\)/);
-  assert.match(announcementMigration, /announcement_reads_select_sender/);
+  assert.match(announcementMigration, /count_my_announcement_reads/);
+  assert.match(announcementMigration, /drop policy if exists "announcement_reads_select_sender"/);
+  assert.doesNotMatch(announcementMigration, /create policy "announcement_reads_select_sender"/);
   assert.match(announcementMigration, /l\.status = 'active'/);
   assert.match(roles, /publish_academy_announcement/);
-  assert.match(roles, /announcement_reads/);
+  assert.match(roles, /count_my_announcement_reads/);
+  assert.doesNotMatch(roles, /from\("announcement_reads"\)/);
   assert.match(mobileAnnouncements, /eq\('audience','all'\)/);
   assert.match(mobileAnnouncements, /announcement_reads/);
 });
