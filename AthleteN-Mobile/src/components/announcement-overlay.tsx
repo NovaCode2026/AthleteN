@@ -114,7 +114,7 @@ export default function AnnouncementOverlay() {
 
           {item ? (
             <Pressable disabled={busy} onPress={() => void close()} style={{ backgroundColor: c.accent, borderRadius: 13, paddingVertical: 14, alignItems: 'center', marginTop: 4, opacity: busy ? 0.6 : 1 }}>
-              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 1 }}>{busy ? 'SAVING…' : 'CLOSE ANNOUNCEMENT'}</Text>
+              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 1 }}>{busy ? 'SAVING…' : loadError ? 'RETRY SAVE' : 'CLOSE ANNOUNCEMENT'}</Text>
             </Pressable>
           ) : (
             <View style={{ flexDirection: 'row', gap: 8 }}>
