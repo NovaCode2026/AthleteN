@@ -12,6 +12,7 @@ test('production package is configured for Node 22', () => {
   const pkg = readJson('package.json');
   assert.equal(pkg.engines?.node, '22.x');
   assert.equal(pkg.packageManager, 'pnpm@10.30.3');
+  assert.equal(pkg.private, true, 'the application must not be published as an npm package');
   assert.equal(pkg.scripts?.build, expectedBuild);
   assert.equal(pkg.scripts?.check, 'pnpm run build && pnpm test');
   assert.ok(fs.existsSync(path.join(root, 'pnpm-lock.yaml')));
