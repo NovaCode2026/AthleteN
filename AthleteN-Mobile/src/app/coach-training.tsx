@@ -116,21 +116,38 @@ export default function CoachTraining(){
  async function markAllPresent(){
   const session=selectedSession;
   if(!session||session.status==='cancelled'||session.locked||attendanceBusy)return;
-  setAttendanceBusy(true);
-  try{
-   const m=await supabase.from('training_group_members').select('athlete_user_id').eq('group_id',session.group_id).eq('status','active');
-   if(m.error)throw m.error;
-   const ids=[...new Set((m.data||[]).map((x:any)=>x.athlete_user_id).filter(Boolean))];
-   if(!ids.length){Alert.alert('No active athletes','There are no active athletes in this training group.');return;}
-   const {error}=await supabase.from('training_group_attendance').upsert(
-    ids.map(id=>({session_id:session.id,athlete_user_id:id,status:'present',updated_at:new Date().toISOString()})),
-    {onConflict:'session_id,athlete_user_id'}
+  const saveAll=async()=>{
+   setAttendanceBusy(true);
+   try{
+    const m=await supabase.from('training_group_members').select('athlete_user_id').eq('group_id',session.group_id).eq('status','active');
+    if(m.error)throw m.error;
+    const ids=[...new Set((m.data||[]).map((x:any)=>x.athlete_user_id).filter(Boolean))];
+    if(!ids.length){Alert.alert('No active athletes','There are no active athletes in this training group.');return;}
+    const {error}=await supabase.from('training_group_attendance').upsert(
+     ids.map(id=>({session_id:session.id,athlete_user_id:id,status:'present',updated_at:new Date().toISOString()})),
+     {onConflict:'session_id,athlete_user_id'}
+    );
+    if(error)throw error;
+    setAttendance(current=>({...current,...Object.fromEntries(ids.map(id=>[id,'present']))}));
+    Alert.alert('Attendance saved',ids.length+' active athlete(s) marked present.');
+   }catch(error){Alert.alert('Attendance not saved',error instanceof Error?error.message:'The attendance update failed.');}
+   finally{setAttendanceBusy(false);}
+  };
+
+  // A "mark all" tap must not silently erase existing absence, late or excused records.
+  const existingOverrides=Object.values(attendance).filter(status=>status!=='present').length;
+  if(existingOverrides>0){
+   Alert.alert(
+    'Replace existing attendance?',
+    'This will replace '+existingOverrides+' saved non-present status(es) with Present. Continue only if every active athlete was present.',
+    [
+     {text:'Keep current records',style:'cancel'},
+     {text:'Mark everyone present',style:'destructive',onPress:()=>void saveAll()}
+    ]
    );
-   if(error)throw error;
-   setAttendance(current=>({...current,...Object.fromEntries(ids.map(id=>[id,'present']))}));
-   Alert.alert('Attendance saved',ids.length+' active athlete(s) marked present.');
-  }catch(error){Alert.alert('Attendance not saved',error instanceof Error?error.message:'The attendance update failed.');}
-  finally{setAttendanceBusy(false);}
+   return;
+  }
+  await saveAll();
  }
  async function lockAttendance(){
   const session=selectedSession;
@@ -186,7 +203,7 @@ export default function CoachTraining(){
   }finally{setAttendanceBusy(false);}
  }
 
- const selectedMemberCount=selectedSession?sessionAthleteIds.length:0; const attendanceCounts=useMemo(()=>{const vals=Object.values(attendance);return {present:vals.filter(v=>v==='present').length,late:vals.filter(v=>v==='late').length,absent:vals.filter(v=>v==='absent').length,excused:vals.filter(v=>v==='excused').length}},[attendance]); const selectedGroupName=useMemo(()=>selectedSession?groups.find(g=>g.id===selectedSession.group_id)?.name:'', [selectedSession,groups]); const TYPES=['sparring','poomsae','technique','kicking','footwork','defense','pads','strength','endurance','mobility','tactics','tournament','grading','camp','recovery','other'];
+ const selectedMemberCount=selectedSession?sessionAthleteIds.length:0; const attendanceCounts=useMemo(()=>{const vals=sessionAthleteIds.map(id=>attendance[id]||'absent');return {present:vals.filter(v=>v==='present').length,late:vals.filter(v=>v==='late').length,absent:vals.filter(v=>v==='absent').length,excused:vals.filter(v=>v==='excused').length}},[sessionAthleteIds,attendance]); const selectedGroupName=useMemo(()=>selectedSession?groups.find(g=>g.id===selectedSession.group_id)?.name:'', [selectedSession,groups]); const TYPES=['sparring','poomsae','technique','kicking','footwork','defense','pads','strength','endurance','mobility','tactics','tournament','grading','camp','recovery','other'];
 
  return <Screen>
   <Header back eyebrow="COACH / TRAINING" title="Training Control" subtitle="Build regular weekly training, assign athletes, and mark attendance session by session." right={<RefreshButton onPress={()=>void load()} busy={loading}/>} />
