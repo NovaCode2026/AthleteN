@@ -12,6 +12,16 @@ This tracker translates **AthleteN: Audit, Action Plan and Pilot Kit** into exec
 - The live Supabase Security Advisor still reports authenticated-callable `SECURITY DEFINER` functions and leaked-password protection disabled. A function-name/definition screen is not a substitute for wrong-user authorization tests.
 - The audit snapshot reports no real-device push or two-account messaging acceptance, and a stale Netlify deployment. Recheck the latest deployment and workflow artifacts before release.
 
+## Pilot feature inventory observed in the repository
+
+This is a code-presence screen only; each item still needs end-to-end and authorization acceptance:
+
+- **Tournament checklist:** `competition_checklists` is present in the schema and used by the Mobile Compete/checklist screens. The live database also records the 4 November tournament-scope migration.
+- **Coach attendance:** the Mobile Coach Training screen contains a bulk “mark all present” action and individual present/absent toggles using `training_group_attendance`. Verify correction states, audit history and session locking on real accounts.
+- **Announcements:** `announcement_reads` is used by the Mobile announcement overlay. Verify audience enforcement and seen-state reporting for coach/academy users.
+- **Parent view:** no parent/guardian relationship table was found in the current public schema inventory; the current parent-approval email setup is not itself a read-only parent dashboard. This remains unimplemented/unverified and requires a properly scoped relationship model.
+- **Needs-attention dashboard:** no implementation was found by repository search for the missed-session/tournament/injury triage view. Treat as outstanding until a source-code and role-boundary review confirms otherwise.
+
 ## Gate 0 — repository and migration integrity
 
 - [x] Create an isolated execution branch from the observed `main` commit.
