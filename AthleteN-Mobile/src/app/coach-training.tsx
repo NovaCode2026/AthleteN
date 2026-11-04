@@ -63,7 +63,7 @@ export default function CoachTraining(){
   const minutes=Number(duration);
   if(!profile?.user_id||!name.trim()||!days.length||!selectedAthletes.length)return Alert.alert('Complete training setup','Choose a name, at least one weekly day and at least one athlete.');
   if(!Number.isInteger(minutes)||minutes<15||minutes>360)return Alert.alert('Invalid duration','Enter a whole-number duration between 15 and 360 minutes.');
-  if(!/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(startTime))return Alert.alert('Invalid start time','Use 24-hour HH:MM format, for example 17:00.');
+  if(!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(startTime))return Alert.alert('Invalid start time','Use 24-hour HH:MM format, for example 17:00.');
   setBusy(true);
   try{
    const {data,error}=await supabase.rpc('create_coach_training_group',{p_name:name.trim(),p_focus:focus.trim(),p_recurrence_days:days,p_start_time:startTime,p_duration_minutes:minutes,p_athlete_ids:selectedAthletes});
@@ -80,8 +80,8 @@ export default function CoachTraining(){
   const gid=extraGroup||groups[0]?.id;
   const minutes=Number(duration);
   if(!gid)return Alert.alert('No training group','Create a regular group first.');
-  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(extraDate)||Number.isNaN(Date.parse(extraDate+'T00:00:00')))return Alert.alert('Invalid date','Enter the date as YYYY-MM-DD.');
-  if(!/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(extraTime))return Alert.alert('Invalid start time','Use 24-hour HH:MM format, for example 19:00.');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(extraDate)||Number.isNaN(Date.parse(extraDate+'T00:00:00')))return Alert.alert('Invalid date','Enter the date as YYYY-MM-DD.');
+  if(!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(extraTime))return Alert.alert('Invalid start time','Use 24-hour HH:MM format, for example 19:00.');
   if(!Number.isInteger(minutes)||minutes<15||minutes>360)return Alert.alert('Invalid duration','Enter a whole-number duration between 15 and 360 minutes.');
   setBusy(true);
   try{
@@ -105,7 +105,7 @@ export default function CoachTraining(){
  }
 
  function cancelDate(){
-  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(holidayDate)||Number.isNaN(Date.parse(holidayDate+'T00:00:00')))return Alert.alert('Invalid date','Enter the date as YYYY-MM-DD.');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(holidayDate)||Number.isNaN(Date.parse(holidayDate+'T00:00:00')))return Alert.alert('Invalid date','Enter the date as YYYY-MM-DD.');
   const scope=holidayGroup?'the selected group':'all active groups';
   Alert.alert('Confirm session cancellation','This will cancel '+scope+' scheduled for '+holidayDate+'. Continue?',[
    {text:'Keep sessions',style:'cancel'},
