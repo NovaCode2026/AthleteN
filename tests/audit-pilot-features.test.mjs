@@ -50,3 +50,12 @@ test('competition checklist migration keeps tournament link optional and indexed
   assert.match(migration, /references public\.tournaments\(id\) on delete cascade/i);
   assert.match(migration, /idx_competition_checklists_tournament_user/i);
 });
+test('messaging RPCs require approval, bounded search terms and respect blocks', () => {
+  const migration = read('supabase/migrations/20261104103042_secure_messaging_and_coach_rpcs.sql');
+  assert.ok(migration.includes("length(btrim(coalesce(p_query,''))) between 2 and 40"));
+  assert.ok(migration.includes('public.is_age_approved(auth.uid())'));
+  assert.ok(migration.includes('public.is_age_approved(p.user_id)'));
+  assert.ok(migration.includes('public.user_blocks'));
+  assert.ok(migration.includes('if not public.is_age_approved(v_user)'));
+  assert.ok(migration.includes('if not public.is_age_approved(p_recipient_id)'));
+});
