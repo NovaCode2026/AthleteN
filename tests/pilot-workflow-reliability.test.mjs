@@ -44,9 +44,10 @@ test('coach attendance validates server reads and restores the previous value on
   assert.ok(!source.startsWith('// @ts-nocheck'));
   assert.ok(source.includes('minutes<15||minutes>360'));
   assert.ok(source.includes('/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(startTime)'));
-  assert.match(source, /function isValidDateOnly\\(value:string\\)[\\s\\S]*?date\\.getUTCFullYear\\(\\)===year&&date\\.getUTCMonth\\(\\)===month-1&&date\\.getUTCDate\\(\\)===day/);
-  assert.match(source, /if\\(!isValidDateOnly\\(extraDate\\)\\)/);
-  assert.match(source, /if\\(!isValidDateOnly\\(holidayDate\\)\\)/);
+  assert.ok(source.includes('function isValidDateOnly(value:string)'));
+  assert.ok(source.includes('date.getUTCFullYear()===year&&date.getUTCMonth()===month-1&&date.getUTCDate()===day'));
+  assert.ok(source.includes('if(!isValidDateOnly(extraDate))'));
+  assert.ok(source.includes('if(!isValidDateOnly(holidayDate))'));
   assert.match(source, /The server did not confirm creation of the extra session/);
   assert.match(source, /busy=\{busy\|\|attendanceBusy\}/);
   assert.match(source, /Confirm session cancellation/);
