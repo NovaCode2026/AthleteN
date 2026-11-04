@@ -293,7 +293,8 @@ AthleteN/
 ### Requirements
 
 - Node.js version from the repository `.nvmrc`
-- npm
+- Corepack + pnpm (root workspace)
+- npm (Android workspace, which currently owns its own package-lock.json)
 - Git
 - Expo-compatible Android device or emulator for mobile testing
 - Supabase project credentials for connected functionality
@@ -301,8 +302,9 @@ AthleteN/
 ### Web
 
 ```bash
-npm ci
-npm run dev
+corepack enable
+pnpm install --frozen-lockfile
+pnpm run dev
 ```
 
 Production build:
@@ -359,9 +361,10 @@ Payment-provider credentials and recurring-plan identifiers are provider-specifi
 Web:
 
 ```bash
-npm ci
-npm test
-npm run build
+corepack enable
+pnpm install --frozen-lockfile
+pnpm test
+pnpm run build
 ```
 
 Mobile:
