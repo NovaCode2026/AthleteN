@@ -293,7 +293,8 @@ AthleteN/
 ### Requirements
 
 - Node.js version from the repository `.nvmrc`
-- npm
+- pnpm 10.30.3 for the repository-root Web workspace
+- npm for the independently locked `AthleteN-Mobile` package
 - Git
 - Expo-compatible Android device or emulator for mobile testing
 - Supabase project credentials for connected functionality
@@ -301,8 +302,10 @@ AthleteN/
 ### Web
 
 ```bash
-npm ci
-npm run dev
+corepack enable
+corepack prepare pnpm@10.30.3 --activate
+pnpm install --frozen-lockfile
+pnpm run dev
 ```
 
 Production build:
@@ -359,9 +362,9 @@ Payment-provider credentials and recurring-plan identifiers are provider-specifi
 Web:
 
 ```bash
-npm ci
-npm test
-npm run build
+pnpm install --frozen-lockfile
+pnpm test
+pnpm run build
 ```
 
 Mobile:
