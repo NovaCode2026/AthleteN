@@ -157,6 +157,7 @@ begin
           where m.group_id = new.target_group_id
             and m.athlete_user_id = p.user_id
             and m.status = 'active'
+            and (select public.is_age_approved(p.user_id))
         )
       )
     )
