@@ -43,5 +43,7 @@ test('coach attendance validates server reads and restores the previous value on
   assert.ok(source.includes('/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(startTime)'));
   assert.ok(source.includes('/^\\d{4}-\\d{2}-\\d{2}$/.test(extraDate)'));
   assert.ok(source.includes('/^\\d{4}-\\d{2}-\\d{2}$/.test(holidayDate)'));
+  assert.match(source, /The server did not confirm creation of the extra session/);
+  assert.match(source, /busy=\{busy\|\|attendanceBusy\}/);
   assert.match(source, /Confirm session cancellation/);
 });
