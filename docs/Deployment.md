@@ -97,8 +97,12 @@ In Supabase Authentication URL Configuration, verify:
 - Site URL: `https://athleten.netlify.app`
 - Allowed redirect URL: `https://athleten.netlify.app/auth/callback`
 - Allowed redirect URL: `https://athleten.netlify.app/reset-password`
+- Mobile app redirect URL pattern: `athleten://**` (the Expo scheme declared in `AthleteN-Mobile/app.json`).
+- Mobile recovery and email-verification callback: `athleten://auth/callback`.
 
-Keep local development callbacks only if they are still needed. Do not add broad wildcard production redirects.
+The mobile redirect must be present in Supabase's Auth redirect allow list. The app uses this scheme for password recovery and signup verification; allowing only the two web URLs is not sufficient for mobile email links. Verify this in the live Auth URL Configuration before releasing an APK.
+
+Keep local development callbacks only if they are still needed. Do not add unrelated wildcard production redirects.
 
 ## Pre-deploy checks
 
