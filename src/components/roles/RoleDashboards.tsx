@@ -24,6 +24,303 @@ async function fetchAllPages<T>(fetchPage:(from:number,to:number)=>PromiseLike<a
 function Card({ children }: { children: React.ReactNode }) { return <section className="card panel">{children}</section>; }
 function ErrorText({ children }: { children: React.ReactNode }) { return <p className="notice" role="alert">{children}</p>; }
 
+
+type CoachGroupSession = {
+  id: string;
+  group_id: string;
+  session_date: string;
+  start_time?: string | null;
+  title: string;
+  status: string;
+  locked: boolean;
+};
+
+function CoachAttendancePanel({ userId, athletes, setToast }: {
+  userId: string;
+  athletes: Athlete[];
+  setToast: (toast: Toast) => void;
+}) {
+  const [sessions, setSessions] = useState<CoachGroupSession[]>([]);
+  const [groupNames, setGroupNames] = useState<Record<string, string>>({});
+  const [attendance, setAttendance] = useState<Record<string, Record<string, string>>>({});
+  const [members, setMembers] = useState<Record<string, string[]>>({});
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function load() {
+    if (!supabase || !userId) return;
+    setLoading(true);
+    setError("");
+    try {
+      const groupResult = await supabase
+        .from("training_groups")
+        .select("id,name")
+        .eq("coach_user_id", userId)
+        .eq("active", true);
+      if (groupResult.error) throw groupResult.error;
+
+      const nextGroups = groupResult.data || [];
+      const ids = nextGroups.map((group: any) => group.id);
+      setGroupNames(Object.fromEntries(nextGroups.map((group: any) => [group.id, group.name])));
+
+      if (!ids.length) {
+        setSessions([]);
+        setAttendance({});
+        setMembers({});
+        return;
+      }
+
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 21);
+      const today = new Date();
+      const sessionResult = await supabase
+        .from("training_group_sessions")
+        .select("id,group_id,session_date,start_time,title,status,locked")
+        .in("group_id", ids)
+        .gte("session_date", cutoff.toISOString().slice(0, 10))
+        .lte("session_date", today.toISOString().slice(0, 10))
+        .order("session_date", { ascending: false })
+        .limit(30);
+      if (sessionResult.error) throw sessionResult.error;
+
+      const nextSessions = (sessionResult.data || []) as CoachGroupSession[];
+      setSessions(nextSessions);
+      const sessionIds = nextSessions.map((session) => session.id);
+      if (!sessionIds.length) {
+        setAttendance({});
+        setMembers({});
+        return;
+      }
+
+      const attendanceResult = await supabase
+        .from("training_group_attendance")
+        .select("session_id,athlete_user_id,status")
+        .in("session_id", sessionIds);
+      if (attendanceResult.error) throw attendanceResult.error;
+
+      const nextAttendance: Record<string, Record<string, string>> = {};
+      for (const row of attendanceResult.data || []) {
+        nextAttendance[row.session_id] ||= {};
+        nextAttendance[row.session_id][row.athlete_user_id] = row.status;
+      }
+      setAttendance(nextAttendance);
+      setMembers({});
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Class attendance could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { void load(); }, [userId]);
+
+  async function openSession(session: CoachGroupSession) {
+    if (expanded === session.id) {
+      setExpanded(null);
+      return;
+    }
+    setExpanded(session.id);
+    if (members[session.id]) return;
+
+    setBusy(true);
+    setError("");
+    const result = await supabase
+      .from("training_group_members")
+      .select("athlete_user_id")
+      .eq("group_id", session.group_id)
+      .eq("status", "active");
+    setBusy(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setMembers((current) => ({
+      ...current,
+      [session.id]: (result.data || []).map((row: any) => row.athlete_user_id),
+    }));
+  }
+
+  async function setAthleteStatus(session: CoachGroupSession, athleteId: string, status: string) {
+    if (session.locked || session.status === "cancelled" || busy) return;
+    const previous = attendance[session.id]?.[athleteId];
+    setBusy(true);
+    setError("");
+    const { error: saveError } = await supabase
+      .from("training_group_attendance")
+      .upsert({
+        session_id: session.id,
+        athlete_user_id: athleteId,
+        status,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "session_id,athlete_user_id" });
+    setBusy(false);
+    if (saveError) {
+      setError(saveError.message);
+      return;
+    }
+    setAttendance((current) => ({
+      ...current,
+      [session.id]: { ...(current[session.id] || {}), [athleteId]: status },
+    }));
+    if (previous !== status) {
+      setToast({ type: "success", message: "Attendance saved. Athlete history and analytics will use this record." });
+    }
+  }
+
+  async function markRemainingPresent(session: CoachGroupSession) {
+    if (session.locked || session.status === "cancelled" || busy) return;
+    let athleteIds = members[session.id];
+    if (!athleteIds) {
+      const result = await supabase
+        .from("training_group_members")
+        .select("athlete_user_id")
+        .eq("group_id", session.group_id)
+        .eq("status", "active");
+      if (result.error) {
+        setError(result.error.message);
+        return;
+      }
+      athleteIds = (result.data || []).map((row: any) => row.athlete_user_id);
+      setMembers((current) => ({ ...current, [session.id]: athleteIds || [] }));
+    }
+
+    const current = attendance[session.id] || {};
+    const unmarkedIds = (athleteIds || []).filter((id) => !current[id]);
+    if (!unmarkedIds.length) {
+      setToast({ type: "success", message: "All athletes already have an attendance status. Existing corrections were preserved." });
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    const { error: saveError } = await supabase
+      .from("training_group_attendance")
+      .upsert(unmarkedIds.map((athleteId) => ({
+        session_id: session.id,
+        athlete_user_id: athleteId,
+        status: "present",
+        updated_at: new Date().toISOString(),
+      })), { onConflict: "session_id,athlete_user_id" });
+    setBusy(false);
+    if (saveError) {
+      setError(saveError.message);
+      return;
+    }
+    setAttendance((state) => ({
+      ...state,
+      [session.id]: {
+        ...(state[session.id] || {}),
+        ...Object.fromEntries(unmarkedIds.map((id) => [id, "present"])),
+      },
+    }));
+    setToast({ type: "success", message: `Marked ${unmarkedIds.length} unmarked athlete(s) present. Existing statuses were left unchanged.` });
+  }
+
+  async function lockSession(session: CoachGroupSession) {
+    if (session.locked || session.status === "cancelled" || busy) return;
+    setBusy(true);
+    setError("");
+    const { error: lockError } = await supabase
+      .from("training_group_sessions")
+      .update({ locked: true, updated_at: new Date().toISOString() })
+      .eq("id", session.id)
+      .eq("locked", false);
+    setBusy(false);
+    if (lockError) {
+      setError(lockError.message);
+      return;
+    }
+    setSessions((current) => current.map((row) => row.id === session.id ? { ...row, locked: true } : row));
+    setToast({ type: "success", message: "Attendance locked. Further changes are disabled." });
+  }
+
+  const athleteNames = useMemo(
+    () => Object.fromEntries(athletes.map((athlete) => [athlete.user_id, athlete.full_name || athlete.username || athlete.user_id])),
+    [athletes]
+  );
+
+  return (
+    <Card>
+      <div className="panel-head">
+        <div>
+          <p className="eyebrow">Coach pilot workflow</p>
+          <h3>Class attendance</h3>
+          <p className="muted">Mark a class once, correct individual statuses, then lock the record.</p>
+        </div>
+        <button className="btn" type="button" onClick={() => void load()} disabled={loading}>
+          <RefreshCw size={15}/> {loading ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+      {error && <ErrorText>{error}</ErrorText>}
+      {loading ? <p className="muted">Loading recent classes…</p> : sessions.length ? (
+        <div className="grid">
+          {sessions.map((session) => {
+            const sessionAttendance = attendance[session.id] || {};
+            const marked = Object.keys(sessionAttendance).length;
+            const total = members[session.id]?.length;
+            const isUnavailable = session.locked || session.status === "cancelled";
+            return (
+              <div className="card" key={session.id}>
+                <div className="panel-head">
+                  <div>
+                    <strong>{session.title}</strong>
+                    <small className="muted">{groupNames[session.group_id] || "Training group"} · {session.session_date} · {session.start_time || "Time not set"}</small>
+                    <small className="muted">{marked} marked{total === undefined ? "" : ` / ${total} athletes`} · {session.locked ? "Locked" : session.status === "cancelled" ? "Cancelled" : "Open"}</small>
+                  </div>
+                  <button className="btn" type="button" onClick={() => void openSession(session)}>
+                    {expanded === session.id ? "Close" : "Manage"}
+                  </button>
+                </div>
+                {expanded === session.id && (
+                  <div>
+                    <div className="inline-actions">
+                      <button className="btn primary" type="button" disabled={isUnavailable || busy} onClick={() => void markRemainingPresent(session)}>
+                        Mark remaining present
+                      </button>
+                      <button className="btn" type="button" disabled={isUnavailable || busy} onClick={() => void lockSession(session)}>
+                        Lock attendance
+                      </button>
+                    </div>
+                    {isUnavailable && <p className="muted">This session is locked or cancelled. Attendance is read-only.</p>}
+                    {(members[session.id] || []).map((athleteId) => (
+                      <div className="membership-row" key={athleteId}>
+                        <div>
+                          <strong>{athleteNames[athleteId] || "Athlete"}</strong>
+                          <small>{(sessionAttendance[athleteId] || "Unmarked").toString().toUpperCase()}</small>
+                        </div>
+                        <div className="inline-actions">
+                          {["present", "late", "absent", "excused"].map((status) => (
+                            <button
+                              key={status}
+                              className={sessionAttendance[athleteId] === status ? "btn primary" : "btn"}
+                              type="button"
+                              disabled={isUnavailable || busy}
+                              onClick={() => void setAthleteStatus(session, athleteId, status)}
+                            >
+                              {status}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="empty">
+          <strong>No recent training-group sessions</strong>
+          <p>Create a group and schedule sessions in the Coach Training workspace. Past 21 days and today are shown here.</p>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 async function resolveAthlete(value: string): Promise<AthleteLookup> {
   const input = value.trim();
   if (!input) throw new Error("Enter an athlete username or user ID.");
@@ -168,6 +465,7 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
     <div className="page-head"><div><p className="eyebrow">Individual Coach</p><h2>Coach Command Center</h2><p>Manage your athletes, assign Taekwondo training plans, and keep coaching data separate from the athlete workspace.</p></div><div className="role-dashboard-actions"><label className="role-range-picker"><span>Analytics range</span><select value={rangeMonths} onChange={e=>setRangeMonths(Number(e.target.value))}><option value={3}>Last 3 months</option><option value={6}>Last 6 months</option><option value={12}>Last 12 months</option></select></label><button type="button" className="btn" onClick={()=>window.print()}>Print / Save PDF</button><button className="btn" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> {loading ? "Refreshing…" : "Refresh"}</button></div></div>
     <section className="metrics"><article className="metric card"><div className="metric-icon"><Users size={18}/></div><div><p>Athletes</p><strong>{athletes.length}</strong><small>Linked athlete profiles</small></div></article><article className="metric card"><div className="metric-icon"><UserPlus size={18}/></div><div><p>Active links</p><strong>{activeLinks}</strong><small>Coach relationships</small></div></article><article className="metric card"><div className="metric-icon"><ClipboardList size={18}/></div><div><p>Plans</p><strong>{plans.length}</strong><small>Assigned training plans</small></div></article></section>
     {error && <ErrorText>{error}</ErrorText>}
+    <CoachAttendancePanel userId={userId || ""} athletes={athletes} setToast={setToast} />
     <section className="role-analytics-grid">
       <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Roster intelligence</span><h3>Training activity</h3><p className="muted">Monthly sessions from linked athletes · latest {rangeMonths} months</p></div><button className="btn" type="button" onClick={exportCoachReport}>Export CSV</button><BarChart3/></div>{filteredTrainingMetrics.length?<ResponsiveContainer width="100%" height={220}><BarChart data={trainingByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="sessions" name="Training sessions" fill="#49d7ff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No training analytics yet</strong><span>Training sessions from linked athletes will appear here when recorded and accessible.</span></div>}</article>
       <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Participation</span><h3>Attendance overview</h3><p className="muted">Based on attendance records visible to this coach</p></div><CalendarCheck/></div><div className="role-analytics-kpis"><div><strong>{attendanceRate===null?"—":`${attendanceRate}%`}</strong><small>Attendance rate</small></div><div><strong>{filteredAttendanceMetrics.length}</strong><small>Recorded check-ins in this range</small></div><div><strong>{Math.round(totalMinutes/60*10)/10}h</strong><small>Training hours</small></div></div>{attendanceMetrics.length?<ResponsiveContainer width="100%" height={145}><LineChart data={attendanceByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Line type="monotone" dataKey="records" name="Attendance records" stroke="#65e0b5" strokeWidth={3}/></LineChart></ResponsiveContainer>:<div className="empty"><strong>Attendance data will appear here</strong><span>No accessible attendance records were returned for this roster.</span></div>}</article>
