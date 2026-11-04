@@ -199,3 +199,67 @@ using (
       and s.status <> 'cancelled'
   )
 );
+
+-- Make the session lock irreversible through the public Data API. Coaches can
+-- read locked sessions, but can edit/delete only sessions that are still open.
+drop policy if exists "coach manages group sessions"
+  on public.training_group_sessions;
+
+create policy "coach views own group sessions"
+on public.training_group_sessions
+for select
+to authenticated
+using (
+  exists (
+    select 1 from public.training_groups g
+    where g.id = training_group_sessions.group_id
+      and g.coach_user_id = (select auth.uid())
+  )
+);
+
+create policy "coach inserts own group sessions"
+on public.training_group_sessions
+for insert
+to authenticated
+with check (
+  exists (
+    select 1 from public.training_groups g
+    where g.id = training_group_sessions.group_id
+      and g.coach_user_id = (select auth.uid())
+  )
+);
+
+create policy "coach updates unlocked group sessions"
+on public.training_group_sessions
+for update
+to authenticated
+using (
+  locked = false
+  and status <> 'cancelled'
+  and exists (
+    select 1 from public.training_groups g
+    where g.id = training_group_sessions.group_id
+      and g.coach_user_id = (select auth.uid())
+  )
+)
+with check (
+  exists (
+    select 1 from public.training_groups g
+    where g.id = training_group_sessions.group_id
+      and g.coach_user_id = (select auth.uid())
+  )
+);
+
+create policy "coach deletes unlocked group sessions"
+on public.training_group_sessions
+for delete
+to authenticated
+using (
+  locked = false
+  and status <> 'cancelled'
+  and exists (
+    select 1 from public.training_groups g
+    where g.id = training_group_sessions.group_id
+      and g.coach_user_id = (select auth.uid())
+  )
+);
