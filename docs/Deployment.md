@@ -100,7 +100,9 @@ In Supabase Authentication URL Configuration, verify:
 - Mobile app redirect URL pattern: `athleten://**` (the Expo scheme declared in `AthleteN-Mobile/app.json`).
 - Mobile recovery and email-verification callback: `athleten://auth/callback`.
 
-The mobile redirect must be present in Supabase's Auth redirect allow list. The app uses this scheme for password recovery and signup verification; allowing only the two web URLs is not sufficient for mobile email links. Verify this in the live Auth URL Configuration before releasing an APK.
+The mobile redirect must be present in Supabase's Auth redirect allow list. Installed Android builds use the `athleten://auth/callback` scheme for password recovery and signup verification; allowing only the two web URLs is not sufficient for installed-app deep links.
+
+Expo Go email links must not use a temporary `exp://<LAN-host>:<port>` URL because that address depends on the development server remaining reachable when the user opens the email. The mobile app therefore sends Expo Go password-recovery emails to the stable web route `https://athleten.netlify.app/reset-password`, and signup-verification emails to `https://athleten.netlify.app/auth/callback`. The web app detects the Supabase recovery session and displays the password form. Google OAuth remains a separate in-session development-client flow.
 
 Keep local development callbacks only if they are still needed. Do not add unrelated wildcard production redirects.
 
