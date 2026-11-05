@@ -69,7 +69,7 @@ function VerificationCallback() {
         window.sessionStorage.removeItem("athleten_policy_acceptance");
       }
       if (!cancelled) {
-        const target = auth.emailVerified ? "/" : "/onboarding";
+        const target = params.get("next") === "reset-password" ? "/reset-password" : auth.emailVerified ? "/" : "/onboarding";
         // Force the app shell to mount on the destination route after OAuth.
         // replaceState alone changes the URL but does not trigger a React render.
         window.location.replace(target);
