@@ -15,9 +15,9 @@ function callbackPath(next?: string) {
  */
 export function getEmailAuthRedirect(next?: string) {
   if (Constants.executionEnvironment === 'storeClient') {
-    const url = new URL(WEB_AUTH_CALLBACK);
-    if (next) url.searchParams.set('next', next);
-    return url.toString();
+    return next
+      ? `${WEB_AUTH_CALLBACK}?next=${encodeURIComponent(next)}`
+      : WEB_AUTH_CALLBACK;
   }
 
   return Linking.createURL(callbackPath(next));
