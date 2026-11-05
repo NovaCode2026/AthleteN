@@ -15,8 +15,10 @@ function callbackPath(next?: string) {
  */
 export function getEmailAuthRedirect(next?: string) {
   if (Constants.executionEnvironment === 'storeClient') {
-    return next
-      ? `${WEB_AUTH_CALLBACK}?next=${encodeURIComponent(next)}`
+    // The deployed web app already handles /reset-password directly and
+    // Supabase allows this exact URL. Do not route recovery through a LAN host.
+    return next === 'reset-password'
+      ? 'https://athleten.netlify.app/reset-password'
       : WEB_AUTH_CALLBACK;
   }
 
