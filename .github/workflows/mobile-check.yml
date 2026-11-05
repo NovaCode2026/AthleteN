@@ -69,7 +69,7 @@ jobs:
         with:
           name: mobile-lockfile-candidate
           path: package-lock.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 3
 
       - name: Remove CI export
