@@ -179,7 +179,7 @@ function AuthScreen({ initialMode }: { initialMode?: AuthMode }) {
 
   return <main className="auth-page"><section className="auth-card">
     <span className="eyebrow">Nova Code</span>
-    <h1>AthleteN - Taekwondo Edition</h1>
+    <h1>AthleteN</h1>
     <p>Secure cloud command center for training, tournaments, documents, medals, goals, verification, plans, and AI coaching.</p>
     {mode !== "reset" && <><button type="button" className="btn oauth-btn" onClick={() => void signInWithGoogle()} disabled={busy || (mode === "register" && !policiesAccepted)}>Continue with Google</button>
     <div className="oauth-divider"><span>or use email</span></div></>}
