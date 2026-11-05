@@ -68,8 +68,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mobile-lockfile-candidate
-          path: package-lock.json
-          if-no-files-found: warn
+          path: AthleteN-Mobile/package-lock.json
+          if-no-files-found: error
           retention-days: 3
 
       - name: Remove CI export
