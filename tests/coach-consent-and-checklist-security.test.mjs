@@ -199,3 +199,11 @@ test('academy managers are told to use athlete-initiated academy code joining', 
   assert.match(dashboard, /profile\.role==="academy_admin"\?[\s\S]*?Share your Academy connection code/);
   assert.match(dashboard, /The athlete must accept before appearing in your roster/);
 });
+
+
+test('super administrators can inspect but cannot directly mutate coach-athlete relationships', () => {
+  const relationshipMigration = fs.readFileSync('supabase/migrations/20261107110000_tighten_relationship_revocation_and_approval_rls.sql', 'utf8');
+  assert.match(relationshipMigration, /drop policy if exists "super admin full access" on public\.coach_athlete_links/);
+  assert.match(relationshipMigration, /create policy "super admins can view coach athlete links"[\s\S]*?for select to authenticated/);
+  assert.doesNotMatch(relationshipMigration, /create policy "super admins can view coach athlete links"[\s\S]*?for all/i);
+});
