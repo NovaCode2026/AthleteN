@@ -7,7 +7,6 @@
 do $migration$
 declare
   v_table record;
-  v_policy_exists boolean;
 begin
   for v_table in
     select distinct tablename
@@ -33,6 +32,18 @@ begin
 end;
 $migration$;
 
--- Fail closed if a future schema migration creates the legacy gate again
--- as a permissive policy. This is a verification query only; the static
--- regression suite independently enforces the intended migration pattern.
+do $verification$
+begin
+  if exists (
+    select 1
+    from pg_policy p
+    join pg_class c on c.oid = p.polrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and p.polname = 'age approval required'
+      and p.polpermissive
+  ) then
+    raise exception 'A public age approval policy is still permissive';
+  end if;
+end;
+$verification$;
