@@ -49,6 +49,7 @@
 
 | Guide | What is inside |
 |---|---|
+| 🧭 [4 November Audit Execution](./ATHLETEN_AUDIT_EXECUTION_2026-11-04.md) | Implementation progress, decisions, remaining external gates and pilot readiness |
 | 🚦 [APS 1.0 Implementation Status](./APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) | Evidence-based status, passed checks, known blockers and release gates |
 | 🚀 [Deployment](./Deployment.md) | Netlify and environment configuration |
 | 🔐 [Security](./SECURITY.md) | Secrets, authentication, RLS and security practices |
@@ -71,6 +72,8 @@ docs/
   API.md                          Server API reference
   Deployment.md                   Deployment instructions
   SECURITY.md                     Security controls and expectations
+  ATHLETEN_AUDIT_EXECUTION_2026-11-04.md
+                                  Current audit execution board
   APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md
                                   Current release evidence and blockers
 AthleteN-Mobile/README.md         Android / Expo development guide

@@ -190,8 +190,24 @@ after insert or delete on public.roadmap_votes
 for each row execute function public.refresh_roadmap_vote_count();
 
 drop policy if exists "announcements public published read" on public.announcements;
+drop policy if exists "announcements_select_active_or_admin" on public.announcements;
+drop policy if exists "age approval required" on public.announcements;
 drop policy if exists "announcements admin manage" on public.announcements;
-create policy "announcements public published read" on public.announcements for select using (published_at is not null or public.is_platform_admin());
+create policy "announcements_select_published_audience" on public.announcements
+for select to authenticated using (
+  (select public.is_platform_admin())
+  or (
+    (select public.is_age_approved((select auth.uid())))
+    and published_at is not null and published_at <= now()
+    and (
+      audience = 'all'
+      or (audience = 'athletes' and exists(select 1 from public.profiles p where p.user_id=(select auth.uid()) and p.role='athlete'))
+      or (audience = 'coaches' and exists(select 1 from public.profiles p where p.user_id=(select auth.uid()) and p.role='coach'))
+      or (audience = 'academies' and exists(select 1 from public.profiles p where p.user_id=(select auth.uid()) and p.role='academy_admin'))
+      or (audience = 'admins' and (select public.is_platform_admin()))
+    )
+  )
+);
 create policy "announcements admin manage" on public.announcements for all to authenticated using (public.is_platform_admin()) with check (public.is_platform_admin());
 
 drop policy if exists "feature flags authenticated read" on public.feature_flags;
@@ -206,7 +222,7 @@ create policy "audit logs admin insert" on public.audit_logs for insert to authe
 
 grant usage on schema public to anon, authenticated;
 grant select on public.roadmap_items to anon, authenticated;
-grant select on public.announcements to anon, authenticated;
+grant select on public.announcements to authenticated;
 grant select on public.feature_flags to authenticated;
 
 grant select, insert, update, delete on public.profiles to authenticated;

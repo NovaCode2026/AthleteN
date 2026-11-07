@@ -35,8 +35,21 @@ jobs:
           cache: npm
           cache-dependency-path: AthleteN-Mobile/package-lock.json
 
+      - name: Resolve patched transitive dependencies
+        run: npm install --package-lock-only --ignore-scripts --no-audit
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Report mobile dependency advisories
+        run: |
+          npm audit --json > mobile-npm-audit.json || true
+          node -e 'const fs=require("node:fs"); const r=JSON.parse(fs.readFileSync("mobile-npm-audit.json","utf8")); console.log("Mobile dependency advisory summary:", JSON.stringify(r.metadata?.vulnerabilities || {})); for (const [name,v] of Object.entries(r.vulnerabilities || {})) console.log(JSON.stringify({name,severity:v.severity,isDirect:v.isDirect,range:v.range,fixAvailable:v.fixAvailable,via:(v.via||[]).map(x=>typeof x==="string"?x:{title:x.title,url:x.url,range:x.range})}));'
+
+      - name: Report shipped mobile dependency advisories
+        run: |
+          npm audit --omit=dev --json > mobile-production-audit.json || true
+          node -e 'const fs=require("node:fs"); const r=JSON.parse(fs.readFileSync("mobile-production-audit.json","utf8")); console.log("Shipped mobile dependency advisory summary:", JSON.stringify(r.metadata?.vulnerabilities || {})); for (const [name,v] of Object.entries(r.vulnerabilities || {})) console.log(JSON.stringify({name,severity:v.severity,isDirect:v.isDirect,range:v.range,fixAvailable:v.fixAvailable,via:(v.via||[]).map(x=>typeof x==="string"?x:{title:x.title,url:x.url,range:x.range})}));'
 
       - name: Expo doctor
         run: npx expo-doctor
@@ -49,6 +62,15 @@ jobs:
 
       - name: Android bundle check
         run: npx expo export --platform android --output-dir .expo/ci-export
+
+      - name: Upload generated mobile lockfile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-lockfile-candidate
+          path: AthleteN-Mobile/package-lock.json
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Remove CI export
         if: always()

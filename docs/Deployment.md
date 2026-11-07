@@ -17,7 +17,7 @@ The current Supabase project already has the production schema and migrations ap
 The repository's `netlify.toml` already defines these settings:
 
 - Base directory: repository root
-- Build command: `npm run build`
+- Build command: `pnpm run build`
 - Publish directory: `dist`
 - Functions directory: `netlify/functions`
 - SPA fallback: generated as `dist/_redirects`

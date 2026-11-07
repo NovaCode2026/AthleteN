@@ -3,6 +3,7 @@
   "version": "2.0.0",
   "description": "Production-ready AthleteN V2 Taekwondo Edition with React, TypeScript, Supabase, Netlify, and secure OpenAI coaching.",
   "private": false,
+  "packageManager": "pnpm@10.30.3",
   "type": "module",
   "keywords": [
     "athleten",
@@ -28,7 +29,7 @@
     "dev": "npx --yes netlify-cli dev",
     "build": "vite build && node scripts/write-netlify-redirects.mjs",
     "preview": "vite preview",
-    "check": "npm run build && npm test",
+    "check": "pnpm run build && pnpm test",
     "test": "node --test",
     "dev:netlify": "npx --yes netlify-cli dev",
     "dev:vite": "vite"

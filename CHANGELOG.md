@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased] — 2026-11-04
+
+### Security hardening
+- Enforced published announcement audience checks in RLS and removed the broad age-approved announcement read policy that bypassed audience filtering.
+- Hardened messaging search, direct/group conversation membership and coach RPC validation with server-side age approval, blocked-pair, authentication and ownership checks.
+- Added a CI candidate lockfile flow for patch-level shell-quote and source-map-js security overrides; final lockfile and dependency audit remain pending.
+
+### Pilot readiness and reliability
+- Added a coach-facing Needs Attention view based on linked athletes' missed group sessions, upcoming tournaments and unresolved injury records; excluded body-weight alerts from youth-athlete triage.
+- Hardened mobile group attendance loading and saves with explicit error handling, confirmation for bulk mark-present and state changes only after successful writes.
+- Added optional tournament scope to athlete competition checklists, preserving legacy unassigned rows; updated Web and Android event workflows to keep checklists per tournament.
+- Standardized the root Web and Netlify toolchain on pnpm 10.30.3 while retaining npm for the isolated Expo mobile project.
+- Added the audit execution board and documented the remaining device, security, privacy and deployment gates.
+
 
 ## [Unreleased] — 2026-11-03
 

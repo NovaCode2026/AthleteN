@@ -8,6 +8,13 @@ on:
       - 'netlify/functions/**'
       - 'tests/**'
       - '.github/workflows/android-apk.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'AthleteN-Mobile/**'
+      - 'netlify/functions/**'
+      - 'tests/**'
+      - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 
 permissions:
@@ -62,14 +69,14 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --no-install --non-interactive
 
-      - name: Build standalone release APK
+      - name: Build installable Android release-variant validation APK (not store-signed)
         working-directory: AthleteN-Mobile/android
         run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AthleteN-release-apk
+          name: AthleteN-validation-apk
           path: AthleteN-Mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
