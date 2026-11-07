@@ -183,3 +183,19 @@ test('coach approval requests require a real active link and cannot be reviewed 
   assert.doesNotMatch(relationshipMigration, /p\.coach_user_id = p\.coach_user_id/);
   assert.doesNotMatch(relationshipMigration, /p\.academy_id = p\.academy_id/);
 });
+
+
+test('revoking one academy-scoped coach link preserves separate active academy authority', () => {
+  const relationshipMigration = fs.readFileSync('supabase/migrations/20261107110000_tighten_relationship_revocation_and_approval_rls.sql', 'utf8');
+  const body = relationshipMigration.match(/create or replace function public\.revoke_coach_athlete_link\([\s\S]*?\$function\$;/i)?.[0] || '';
+  assert.match(body, /v_link_academy_id uuid/);
+  assert.match(body, /academy_id is not distinct from v_link_academy_id/);
+  assert.match(body, /join public\.academy_memberships athlete_m[\s\S]*?coach_m\.status = 'active'[\s\S]*?athlete_m\.status = 'active'/);
+  assert.match(body, /not exists \([\s\S]*?public\.academy_memberships coach_m/);
+});
+
+test('academy managers are told to use athlete-initiated academy code joining', () => {
+  const dashboard = fs.readFileSync('src/components/coach/CoachAcademyDashboard.tsx', 'utf8');
+  assert.match(dashboard, /profile\.role==="academy_admin"\?[\s\S]*?Share your Academy connection code/);
+  assert.match(dashboard, /The athlete must accept before appearing in your roster/);
+});
