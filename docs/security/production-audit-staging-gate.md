@@ -11,6 +11,7 @@ Latest Supabase Security Advisor observation reviewed on 2026-11-07:
 - `authenticated_security_definer_function_executable`: 61 findings.
 - `extension_in_public`: `pg_net` is installed in the `public` schema.
 - Auth leaked-password protection remains disabled.
+- Performance Advisor reports 121 multiple-permissive-policy findings and 81 unused-index candidates (informational); these need a separate careful review rather than a blanket policy/index rewrite.
 
 A read-only catalog inventory of `public` functions returned:
 
@@ -60,7 +61,7 @@ The following migrations are committed on the audit/pilot PR branch but are **no
 - `20261107100000_harden_legacy_coach_connection_consent`
 - `20261107110000_tighten_relationship_revocation_and_approval_rls`
 
-Do not apply these directly to production as a substitute for staging. The new `20261107100000_harden_legacy_coach_connection_consent` migration replaces the legacy coach account-code RPC with a pending invitation and adds age-approval checks to athlete code redemption. It remains unverified in a database runtime and must pass staging positive/negative tests before production application. The coach-link table's observed unique index includes `(coach_user_id, athlete_user_id, academy_id)`; the migration handles this exact tuple explicitly. The `20261107110000_tighten_relationship_revocation_and_approval_rls` migration removes legacy profile/plan fallbacks from the coach-management helper, makes web coach linking invitation-based, updates legacy profile display fields on acceptance, and revokes dependent coach access: pending approvals are withdrawn, training-group membership is removed when the last active coach link is revoked, and training-plan/group-member and coach-approval RLS require a current relationship. This migration is also unverified in a database runtime.
+Do not apply these directly to production as a substitute for staging. The new `20261107100000_harden_legacy_coach_connection_consent` migration replaces the legacy coach account-code RPC with a pending invitation and adds age-approval checks to athlete code redemption. It remains unverified in a database runtime and must pass staging positive/negative tests before production application. The coach-link table's observed unique index includes `(coach_user_id, athlete_user_id, academy_id)`; the migration handles this exact tuple explicitly. The `20261107110000_tighten_relationship_revocation_and_approval_rls` migration removes legacy profile/plan fallbacks from the coach-management helper, makes web coach linking invitation-based, updates legacy profile display fields on acceptance, and revokes dependent coach access: pending approvals are withdrawn, training-group membership is removed when the last active coach link is revoked, and training-plan/group-member and coach-approval RLS require a current relationship. This migration is also unverified in a database runtime. It also makes Super Admin visibility on coach-athlete links read-only and routes coach approval updates through a role-checked server RPC rather than direct table updates.
 
 ## Explicit staging gate (deferred; no paid branch)
 
@@ -73,10 +74,10 @@ When staging is eventually approved and available:
 3. Run schema and Security Advisor checks; review every new warning.
 4. Use separate athlete, coach, academy-admin, and unrelated-user test identities.
 5. Test positive and negative cases:
-   - Coach cannot create an active athlete link through any table policy or RPC without athlete acceptance, including the legacy account-code RPC.
+   - Coach cannot create an active athlete link through any table policy or RPC without athlete acceptance, including the legacy account-code RPC; Super Admin can inspect but cannot directly mutate link rows.
    - Athlete code redemption requires the athlete's own age/guardian approval and a valid active code owned by an approved coach or academy administrator.
    - After either party revokes a coach link, the former coach cannot continue editing training plans, managing group members, reading approval requests, reviewing approvals, or receiving group-message access through stale profile fields.
-   - Pending coach approval requests are withdrawn on revocation; a new approval request requires the same active coach-athlete relationship and exact academy scope.
+   - Pending coach approval requests are withdrawn on revocation; a new approval request requires the same active coach-athlete relationship and exact academy scope. Coach review writes must go through the role-checked RPC; direct table updates are denied.
    - Athlete can accept or decline a pending coach invitation.
    - Either party can revoke an established link.
    - A coach cannot list, read, or mutate another coach's athlete connections.
