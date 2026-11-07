@@ -121,3 +121,65 @@ test('mobile coach screens describe new account-code connections as pending invi
   assert.doesNotMatch(roster, /connected successfully/);
   assert.doesNotMatch(tournaments, /connected\./);
 });
+
+
+test('coach management authorization is based on active relationship or academy membership, not stale profile fields', () => {
+  const relationshipMigration = fs.readFileSync('supabase/migrations/20261107110000_tighten_relationship_revocation_and_approval_rls.sql', 'utf8');
+  const body = relationshipMigration.match(/create or replace function public\.can_manage_athlete_feature\([\s\S]*?\$function\$;/i)?.[0] || '';
+  assert.ok(body, 'current relationship helper must be replaced');
+  assert.match(body, /private\.user_can_manage_athlete\(target_user_id\)/);
+  assert.match(body, /private\.is_super_admin\(\)/);
+  assert.doesNotMatch(body, /profiles p[\s\S]*?coach_user_id/);
+  assert.doesNotMatch(body, /training_plans tp[\s\S]*?coach_user_id/);
+});
+
+test('coach revocation withdraws pending approvals, removes group membership and clears stale coach profile fields', () => {
+  const relationshipMigration = fs.readFileSync('supabase/migrations/20261107110000_tighten_relationship_revocation_and_approval_rls.sql', 'utf8');
+  const body = relationshipMigration.match(/create or replace function public\.revoke_coach_athlete_link\([\s\S]*?\$function\$;/i)?.[0] || '';
+  assert.ok(body, 'revocation function must be replaced');
+  assert.match(body, /status = 'revoked'/);
+  assert.match(body, /update public\.coach_approval_requests[\s\S]*?status = 'withdrawn'/);
+  assert.match(body, /delete from public\.training_group_members/);
+  assert.match(body, /not exists \([\s\S]*?status = 'active'/);
+  assert.match(body, /set coach_user_id = v_next_coach_id/);
+  assert.match(body, /set coach = v_next_coach_name/);
+});
+
+test('web coach roster sends an invitation and never claims immediate activation', () => {
+  const dashboard = fs.readFileSync('src/components/coach/CoachAcademyDashboard.tsx', 'utf8');
+  assert.match(dashboard, /Invitation sent\. The athlete must accept before appearing in your roster/);
+  assert.match(dashboard, /Send invitation/);
+  assert.match(dashboard, /profile\.role==="academy_admin"\?[\s\S]*?Share your Academy connection code/);
+  assert.doesNotMatch(dashboard, /Athlete linked to your coaching roster/);
+});
+
+test('coach connection RPC always requests consent and rejects academy-admin username linking', () => {
+  const relationshipMigration = fs.readFileSync('supabase/migrations/20261107110000_tighten_relationship_revocation_and_approval_rls.sql', 'utf8');
+  const body = relationshipMigration.match(/create or replace function public\.coach_connect_athlete\([\s\S]*?\$function\$;/i)?.[0] || '';
+  assert.ok(body, 'coach connection RPC must be replaced');
+  assert.match(body, /v_role = 'academy_admin'/);
+  assert.match(body, /public\.lookup_taekwondo_athlete_for_coach/);
+  assert.match(body, /public\.request_coach_athlete_link\(v_athlete_id\)/);
+  assert.doesNotMatch(body, /insert into public\.coach_athlete_links/i);
+});
+
+test('training group members and training plans require current athlete-management authorization', () => {
+  const relationshipMigration = fs.readFileSync('supabase/migrations/20261107110000_tighten_relationship_revocation_and_approval_rls.sql', 'utf8');
+  assert.match(relationshipMigration, /coach manages currently linked group members/);
+  assert.match(relationshipMigration, /private\.user_can_manage_athlete\(training_group_members\.athlete_user_id\)/);
+  assert.match(relationshipMigration, /Coaches can update currently managed training plans/);
+  assert.match(relationshipMigration, /Coaches can delete currently managed training plans/);
+  assert.match(relationshipMigration, /private\.user_can_manage_athlete\(user_id\)/);
+  assert.doesNotMatch(relationshipMigration, /coach_user_id = \(select auth\.uid\(\)\)\s+or/i);
+});
+
+test('coach approval requests require a real active link and cannot be reviewed after revocation', () => {
+  const relationshipMigration = fs.readFileSync('supabase/migrations/20261107110000_tighten_relationship_revocation_and_approval_rls.sql', 'utf8');
+  assert.match(relationshipMigration, /athletes request approval from active coach/);
+  assert.match(relationshipMigration, /coaches review approvals for active athletes/);
+  assert.match(relationshipMigration, /l\.status = 'active'/);
+  assert.match(relationshipMigration, /private\.user_can_manage_athlete\(athlete_user_id\)/);
+  assert.match(relationshipMigration, /relationship revoked, or already reviewed/);
+  assert.doesNotMatch(relationshipMigration, /p\.coach_user_id = p\.coach_user_id/);
+  assert.doesNotMatch(relationshipMigration, /p\.academy_id = p\.academy_id/);
+});
