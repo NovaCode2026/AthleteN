@@ -27,13 +27,20 @@ A read-only catalog inventory of `public` functions returned:
 
 These are inventory counts, not exploitability conclusions. In particular, a function that does not directly reference `auth.uid()` may be a trigger, internal callback, or service-role-only routine. Each exposed callable function still needs review of its complete body, grants, callers, authorization predicates, and negative tests. Conversely, merely containing `auth.uid()` does not prove that authorization is correct.
 
+### Confirmed consent-bypass path requiring remediation
+
+Static review of the live function definition found that `public.coach_add_athlete_by_account_code(p_code text)` is a SECURITY DEFINER RPC executable by authenticated users. It checks that the caller has the coach role, but then inserts a `coach_athlete_links` row with `status = 'active'` directly. This bypasses the athlete-acceptance workflow introduced in the audit branch. The current consent migration drops direct table-write policies and adds request/accept/revoke RPCs, but the reviewed migration set does not replace or revoke this legacy RPC.
+
+**Treat this as a release blocker.** Before any production rollout of the consent workflow, a follow-up migration must either remove authenticated EXECUTE from this legacy RPC or replace it with a safe pending-invitation implementation. Also search for every other legacy RPC or trigger path that can create or reactivate an active coach-athlete link. Add a negative test proving that a coach cannot establish an active relationship without athlete acceptance. Do not apply a speculative hotfix directly to production as part of this read-only audit.
+
 ### Review priorities
 
-1. Review the 61 authenticated-callable SECURITY DEFINER functions individually. Confirm that each is intentionally exposed as an RPC and has explicit role/ownership/relationship checks for every sensitive action.
-2. Give priority to functions that accept caller-supplied user IDs, role names, academy IDs, plan IDs, payment references, conversation IDs, or athlete IDs.
-3. Preserve the current observed fact that no SECURITY DEFINER function in `public` is executable by `anon`; do not broaden grants.
-4. Review whether `pg_net` needs to remain in `public`. Do not move or uninstall it until extension dependencies and notification dispatch are understood.
-5. Enable leaked-password protection through the Supabase Auth dashboard and verify the setting afterward. This setting was not changed by this audit.
+1. Remediate the confirmed legacy consent bypass before release.
+2. Review the 61 authenticated-callable SECURITY DEFINER functions individually. Confirm that each is intentionally exposed as an RPC and has explicit role/ownership/relationship checks for every sensitive action.
+3. Give priority to functions that accept caller-supplied user IDs, role names, academy IDs, plan IDs, payment references, conversation IDs, or athlete IDs.
+4. Preserve the current observed fact that no SECURITY DEFINER function in `public` is executable by `anon`; do not broaden grants.
+5. Review whether `pg_net` needs to remain in `public`. Do not move or uninstall it until extension dependencies and notification dispatch are understood.
+6. Enable leaked-password protection through the Supabase Auth dashboard and verify the setting afterward. This setting was not changed by this audit.
 
 ## Migration and PR boundary
 
@@ -51,7 +58,7 @@ The following migrations are committed on the audit/pilot PR branch but are **no
 - `20261104131500_restrict_coach_athlete_lookup`
 - `20261104132000_list_my_coach_connections`
 
-Do not apply these directly to production as a substitute for staging. The existing production coach-link INSERT policy was previously observed allowing a coach to create an active link directly; the consent migration is intended to change this workflow. That behavior must be verified with authenticated test identities before production rollout.
+Do not apply these directly to production as a substitute for staging. The production consent-bypass RPC described above remains callable independently of the table policies and must be addressed in a follow-up migration.
 
 ## Explicit staging gate (deferred; no paid branch)
 
@@ -60,11 +67,11 @@ A Supabase staging branch is a required gate before applying the five pending mi
 When staging is eventually approved and available:
 
 1. Create an isolated staging branch only after explicit cost approval. No production data should be copied unless separately approved and privacy-reviewed.
-2. Apply the five pending migrations to staging in order.
+2. Apply the five pending migrations and the consent-bypass remediation migration to staging in order.
 3. Run schema and Security Advisor checks; review every new warning.
 4. Use separate athlete, coach, academy-admin, and unrelated-user test identities.
 5. Test positive and negative cases:
-   - Coach cannot create an active athlete link without athlete acceptance.
+   - Coach cannot create an active athlete link through any table policy or RPC without athlete acceptance, including the legacy account-code RPC.
    - Athlete can accept or decline a pending coach invitation.
    - Either party can revoke an established link.
    - A coach cannot list, read, or mutate another coach's athlete connections.
@@ -80,6 +87,7 @@ When staging is eventually approved and available:
 Until staging is approved, continue only with work that does not mutate production:
 
 - Static review of SECURITY DEFINER function definitions and grants.
+- Search all migrations and RPCs for alternate coach-link activation paths.
 - Review migration SQL for authorization gaps and unsafe defaults.
 - Improve automated SQL/static checks and document expected positive/negative authorization tests.
 - Review CI results, lockfile consistency, and repository test coverage.
