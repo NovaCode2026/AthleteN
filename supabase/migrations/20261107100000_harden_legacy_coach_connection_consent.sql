@@ -128,16 +128,33 @@ begin
       raise exception 'Coach account is not eligible for connections';
     end if;
 
-    insert into public.coach_athlete_links
-      (coach_user_id, athlete_user_id, academy_id, status)
-    values
-      (c.owner_user_id, v_athlete_id, c.academy_id, 'active')
-    on conflict (coach_user_id, athlete_user_id)
-    do update set
-      academy_id = excluded.academy_id,
-      status = 'active',
-      updated_at = now()
-    returning id into v_link_id;
+    -- Serialize redemptions for this coach/athlete/academy tuple. The table's
+    -- unique key includes academy_id, so do not infer a two-column conflict target.
+    perform pg_advisory_xact_lock(
+      hashtext(c.owner_user_id::text),
+      hashtext(v_athlete_id::text || ':' || coalesce(c.academy_id::text, 'none'))
+    );
+
+    select id into v_link_id
+    from public.coach_athlete_links
+    where coach_user_id = c.owner_user_id
+      and athlete_user_id = v_athlete_id
+      and academy_id is not distinct from c.academy_id
+    order by created_at desc
+    limit 1
+    for update;
+
+    if v_link_id is not null then
+      update public.coach_athlete_links
+      set status = 'active', updated_at = now()
+      where id = v_link_id;
+    else
+      insert into public.coach_athlete_links
+        (coach_user_id, athlete_user_id, academy_id, status)
+      values
+        (c.owner_user_id, v_athlete_id, c.academy_id, 'active')
+      returning id into v_link_id;
+    end if;
 
     update public.profiles
     set coach_user_id = c.owner_user_id,
