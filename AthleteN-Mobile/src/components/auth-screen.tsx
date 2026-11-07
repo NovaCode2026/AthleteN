@@ -4,7 +4,7 @@ import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, Sc
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
-import Constants from 'expo-constants';
+import { getEmailAuthRedirect, getOAuthRedirect } from '@/lib/auth-links';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
@@ -14,22 +14,6 @@ const POLICY_VERSION = '2026-09-17';
 // Required so Expo Go/native browser sessions can hand the OAuth callback back
 // to the running app instead of leaving the flow in the browser.
 WebBrowser.maybeCompleteAuthSession();
-function authRedirect(next?: string) {
-  const path = next ? `auth/callback?next=${encodeURIComponent(next)}` : 'auth/callback';
-
-  // Expo Go needs the LAN callback that it can hand back to the running
-  // development client. Standalone/native builds use the app scheme.
-  if (Constants.executionEnvironment === 'storeClient') {
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-      return `exp://${hostUri}/--/${path}`;
-    }
-    throw new Error("Could not determine the Expo development server address. Reopen the app from the Expo development server and try again.");
-  }
-
-  return Linking.createURL(path);
-}
-
 export default function AuthScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
@@ -76,7 +60,7 @@ export default function AuthScreen() {
               athleten_privacy_accepted_version: POLICY_VERSION,
               athleten_policies_accepted_at: new Date().toISOString(),
             },
-            emailRedirectTo: authRedirect(),
+            emailRedirectTo: getEmailAuthRedirect(),
           },
         });
         if (result.error) setError(result.error.message);
@@ -106,7 +90,7 @@ export default function AuthScreen() {
     setVerificationNotice('');
     setGoogleBusy(true);
     try {
-      const redirectTo = authRedirect();
+      const redirectTo = getOAuthRedirect();
       console.log('[AthleteN OAuth] redirectTo:', redirectTo);
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -199,7 +183,7 @@ export default function AuthScreen() {
     setError('');
     setResending(true);
     try {
-      const result = await supabase.auth.resend({ type: 'signup', email: cleanEmail, options: { emailRedirectTo: authRedirect() } });
+      const result = await supabase.auth.resend({ type: 'signup', email: cleanEmail, options: { emailRedirectTo: getEmailAuthRedirect() } });
       if (result.error) setError(result.error.message);
       else setVerificationNotice('Verification email sent. Check your inbox and spam folder.');
     } finally { setResending(false); }
