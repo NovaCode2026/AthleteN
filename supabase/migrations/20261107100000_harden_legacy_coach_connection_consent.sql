@@ -78,6 +78,8 @@ declare
   v_athlete_sport text;
   v_coach_role text;
   v_owner_academy_id uuid;
+  v_link_status text;
+  v_membership_status text;
   v_code text := upper(btrim(coalesce(p_code, '')));
   c record;
   v_link_id uuid;
@@ -135,7 +137,7 @@ begin
       hashtext(v_athlete_id::text || ':' || coalesce(c.academy_id::text, 'none'))
     );
 
-    select id into v_link_id
+    select id, status into v_link_id, v_link_status
     from public.coach_athlete_links
     where coach_user_id = c.owner_user_id
       and athlete_user_id = v_athlete_id
@@ -143,6 +145,10 @@ begin
     order by created_at desc
     limit 1
     for update;
+
+    if v_link_status = 'suspended' then
+      raise exception 'This coach-athlete relationship is suspended and cannot be reactivated by a connection code';
+    end if;
 
     if v_link_id is not null then
       update public.coach_athlete_links
@@ -184,6 +190,21 @@ begin
       or v_owner_academy_id is distinct from c.academy_id
       or not coalesce(public.is_age_approved(c.owner_user_id), false) then
       raise exception 'Academy administrator is not eligible for connections';
+    end if;
+
+    perform pg_advisory_xact_lock(
+      hashtext(c.academy_id::text),
+      hashtext(v_athlete_id::text)
+    );
+
+    select status into v_membership_status
+    from public.academy_memberships
+    where academy_id = c.academy_id
+      and user_id = v_athlete_id
+    for update;
+
+    if v_membership_status = 'suspended' then
+      raise exception 'This academy membership is suspended and cannot be reactivated by a connection code';
     end if;
 
     insert into public.academy_memberships
