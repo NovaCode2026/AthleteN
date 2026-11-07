@@ -106,7 +106,7 @@ test('athlete code redemption requires age approval and explicit athlete action'
   assert.match(body, /public\.is_age_approved\(c\.owner_user_id\)/);
   assert.match(body, /on conflict \(coach_user_id, athlete_user_id\)[\s\S]*?status = 'active'/);
   assert.match(body, /on conflict \(academy_id, user_id\)[\s\S]*?status = 'active'/);
-  assert.match(body, /revoke all on function public\.connect_athlete_by_code\(text\) from public, anon/);
+  assert.match(legacyMigration, /revoke all on function public\.connect_athlete_by_code\(text\) from public, anon/);
 });
 
 test('mobile coach screens describe new account-code connections as pending invitations', () => {
