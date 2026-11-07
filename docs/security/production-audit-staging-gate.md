@@ -56,7 +56,8 @@ The following migrations are committed on the audit/pilot PR branch but are **no
 - `20261104130500_list_my_coach_invitations`
 - `20261104131000_academy_announcements_and_receipts`
 - `20261104131500_restrict_coach_athlete_lookup`
-- `20261104132000_list_my_coach_connections`\n- `20261107100000_harden_legacy_coach_connection_consent`
+- `20261104132000_list_my_coach_connections`
+- `20261107100000_harden_legacy_coach_connection_consent`
 
 Do not apply these directly to production as a substitute for staging. The new `20261107100000_harden_legacy_coach_connection_consent` migration replaces the legacy coach account-code RPC with a pending invitation and adds age-approval checks to athlete code redemption. It remains unverified in a database runtime and must pass staging positive/negative tests before production application. The coach-link table's observed unique index includes `(coach_user_id, athlete_user_id, academy_id)`; the migration handles this exact tuple explicitly.
 
@@ -71,7 +72,8 @@ When staging is eventually approved and available:
 3. Run schema and Security Advisor checks; review every new warning.
 4. Use separate athlete, coach, academy-admin, and unrelated-user test identities.
 5. Test positive and negative cases:
-   - Coach cannot create an active athlete link through any table policy or RPC without athlete acceptance, including the legacy account-code RPC.\n   - Athlete code redemption requires the athlete's own age/guardian approval and a valid active code owned by an approved coach or academy administrator.
+   - Coach cannot create an active athlete link through any table policy or RPC without athlete acceptance, including the legacy account-code RPC.
+   - Athlete code redemption requires the athlete's own age/guardian approval and a valid active code owned by an approved coach or academy administrator.
    - Athlete can accept or decline a pending coach invitation.
    - Either party can revoke an established link.
    - A coach cannot list, read, or mutate another coach's athlete connections.
