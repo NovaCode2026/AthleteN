@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
+import { getEmailAuthRedirect } from '@/lib/auth-links';
 
 const c=Colors.dark;
 export default function ResetRequestScreen(){
@@ -13,7 +14,7 @@ export default function ResetRequestScreen(){
   if(!e||!e.includes('@')){setError('Enter a valid email address.');return}
   setBusy(true);
   try {
-   const redirectTo='athleten://auth/callback?next=reset-password';
+   const redirectTo=getEmailAuthRedirect('reset-password');
    const {error}=await supabase.auth.resetPasswordForEmail(e,{redirectTo});
    if(error)setError(error.message); else setMessage('If an account uses this email, a password reset email has been sent. Check your inbox and spam folder.');
   } catch (error) {
