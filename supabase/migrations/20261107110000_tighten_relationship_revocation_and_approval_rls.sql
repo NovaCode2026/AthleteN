@@ -442,3 +442,12 @@ $function$;
 
 revoke all on function public.review_coach_approval(uuid, text, text) from public, anon;
 grant execute on function public.review_coach_approval(uuid, text, text) to authenticated;
+
+-- Administrative visibility must not become an alternate path for activating
+-- athlete relationships without the athlete's acceptance.
+drop policy if exists "super admin full access" on public.coach_athlete_links;
+drop policy if exists "super admins can view coach athlete links" on public.coach_athlete_links;
+create policy "super admins can view coach athlete links"
+on public.coach_athlete_links
+for select to authenticated
+using ((select private.is_super_admin()));
