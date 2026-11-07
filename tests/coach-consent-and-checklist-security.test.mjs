@@ -104,8 +104,8 @@ test('athlete code redemption requires age approval and explicit athlete action'
   assert.match(body, /public\.is_age_approved\(v_athlete_id\)/);
   assert.match(body, /c\.owner_type = 'coach'/);
   assert.match(body, /public\.is_age_approved\(c\.owner_user_id\)/);
-  assert.match(body, /on conflict \(coach_user_id, athlete_user_id\)[\s\S]*?status = 'active'/);
-  assert.match(body, /on conflict \(academy_id, user_id\)[\s\S]*?status = 'active'/);
+  assert.match(body, /pg_advisory_xact_lock/);\n  assert.match(body, /academy_id is not distinct from c\.academy_id/);\n  assert.match(body, /update public\.coach_athlete_links[\s\S]*?status = 'active'/);
+  assert.match(body, /on conflict \(academy_id, user_id\)[\s\S]*?status = 'active'/);\n  assert.match(body, /v_coach_role is distinct from 'academy_admin'/);\n  assert.match(body, /v_owner_academy_id is distinct from c\.academy_id/);
   assert.match(legacyMigration, /revoke all on function public\.connect_athlete_by_code\(text\) from public, anon/);
 });
 
