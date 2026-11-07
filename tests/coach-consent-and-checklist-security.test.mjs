@@ -176,7 +176,7 @@ test('training group members and training plans require current athlete-manageme
 test('coach approval requests require a real active link and cannot be reviewed after revocation', () => {
   const relationshipMigration = fs.readFileSync('supabase/migrations/20261107110000_tighten_relationship_revocation_and_approval_rls.sql', 'utf8');
   assert.match(relationshipMigration, /athletes request approval from active coach/);
-  assert.match(relationshipMigration, /coaches review approvals for active athletes/);
+  assert.match(relationshipMigration, /drop policy if exists "coaches review approvals for active athletes" on public\.coach_approval_requests/);
   assert.match(relationshipMigration, /l\.status = 'active'/);
   assert.match(relationshipMigration, /private\.user_can_manage_athlete\(athlete_user_id\)/);
   assert.match(relationshipMigration, /relationship revoked, or already reviewed/);
@@ -206,4 +206,16 @@ test('super administrators can inspect but cannot directly mutate coach-athlete 
   assert.match(relationshipMigration, /drop policy if exists "super admin full access" on public\.coach_athlete_links/);
   assert.match(relationshipMigration, /create policy "super admins can view coach athlete links"[\s\S]*?for select to authenticated/);
   assert.doesNotMatch(relationshipMigration, /create policy "super admins can view coach athlete links"[\s\S]*?for all/i);
+});
+
+
+test('coach approval changes are made only through a role-checked server RPC', () => {
+  const relationshipMigration = fs.readFileSync('supabase/migrations/20261107110000_tighten_relationship_revocation_and_approval_rls.sql', 'utf8');
+  const body = relationshipMigration.match(/create or replace function public\.review_coach_approval\([\s\S]*?\$function\$;/i)?.[0] || '';
+  assert.ok(body, 'review RPC must exist');
+  assert.match(body, /security definer/i);
+  assert.match(body, /actor\.role = 'coach'/);
+  assert.match(body, /public\.is_age_approved\(auth\.uid\(\)\)/);
+  assert.match(body, /private\.user_can_manage_athlete\(athlete_user_id\)/);
+  assert.match(relationshipMigration, /drop policy if exists "coaches review approvals for active athletes" on public\.coach_approval_requests/);
 });
