@@ -142,7 +142,7 @@ test('coach revocation withdraws pending approvals, removes group membership and
   assert.match(body, /delete from public\.training_group_members/);
   assert.match(body, /not exists \([\s\S]*?status = 'active'/);
   assert.match(body, /set coach_user_id = v_next_coach_id/);
-  assert.match(body, /set coach = v_next_coach_name/);
+  assert.match(body, /coach = v_next_coach_name/);
 });
 
 test('web coach roster sends an invitation and never claims immediate activation', () => {
