@@ -446,3 +446,107 @@ create policy "super admins can view coach athlete links"
 on public.coach_athlete_links
 for select to authenticated
 using ((select private.is_super_admin()));
+
+-- Avoid telling a coach an invitation was sent when the athlete is already
+-- connected, and serialize duplicate requests for the same coach/athlete pair.
+create or replace function public.request_coach_athlete_link(p_athlete_user_id uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, private
+as $function$
+declare
+  v_coach_id uuid := auth.uid();
+  v_coach_role text;
+  v_athlete_role text;
+  v_athlete_sport text;
+  v_academy_id uuid;
+  v_link_id uuid;
+  v_status text;
+begin
+  if v_coach_id is null then
+    raise exception 'Authentication required';
+  end if;
+  if p_athlete_user_id is null or p_athlete_user_id = v_coach_id then
+    raise exception 'A valid athlete account is required';
+  end if;
+
+  select role, academy_id into v_coach_role, v_academy_id
+  from public.profiles where user_id = v_coach_id;
+  if v_coach_role is distinct from 'coach' then
+    raise exception 'Coach account required';
+  end if;
+  if not coalesce(public.is_age_approved(v_coach_id), false) then
+    raise exception 'Coach account must complete age approval';
+  end if;
+
+  select role, sport into v_athlete_role, v_athlete_sport
+  from public.profiles where user_id = p_athlete_user_id;
+  if v_athlete_role is distinct from 'athlete'
+    or lower(coalesce(v_athlete_sport, '')) <> 'taekwondo' then
+    raise exception 'A Taekwondo athlete account is required';
+  end if;
+  if not coalesce(public.is_age_approved(p_athlete_user_id), false) then
+    raise exception 'Athlete account must complete age/guardian approval first';
+  end if;
+
+  perform pg_advisory_xact_lock(
+    hashtext(v_coach_id::text),
+    hashtext(p_athlete_user_id::text)
+  );
+
+  select id into v_link_id
+  from public.coach_athlete_links
+  where coach_user_id = v_coach_id
+    and athlete_user_id = p_athlete_user_id
+    and status = 'active'
+  order by created_at desc
+  limit 1
+  for update;
+
+  if v_link_id is not null then
+    raise exception 'Athlete is already connected to this coach';
+  end if;
+
+  select id into v_link_id
+  from public.coach_athlete_links
+  where coach_user_id = v_coach_id
+    and athlete_user_id = p_athlete_user_id
+    and status = 'pending'
+  order by created_at desc
+  limit 1
+  for update;
+
+  if v_link_id is not null then
+    return v_link_id;
+  end if;
+
+  select id, status into v_link_id, v_status
+  from public.coach_athlete_links
+  where coach_user_id = v_coach_id
+    and athlete_user_id = p_athlete_user_id
+  order by created_at desc
+  limit 1
+  for update;
+
+  if found then
+    update public.coach_athlete_links
+    set status = 'pending',
+        academy_id = v_academy_id,
+        updated_at = now()
+    where id = v_link_id;
+    return v_link_id;
+  end if;
+
+  insert into public.coach_athlete_links
+    (coach_user_id, athlete_user_id, academy_id, status)
+  values
+    (v_coach_id, p_athlete_user_id, v_academy_id, 'pending')
+  returning id into v_link_id;
+
+  return v_link_id;
+end;
+$function$;
+
+revoke all on function public.request_coach_athlete_link(uuid) from public, anon;
+grant execute on function public.request_coach_athlete_link(uuid) to authenticated;
