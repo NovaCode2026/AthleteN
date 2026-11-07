@@ -258,3 +258,13 @@ test('coach approval insert RLS does not depend on reading another user profile 
   assert.doesNotMatch(body, /join public\.profiles/);
   assert.doesNotMatch(body, /cp\.role/);
 });
+
+
+test('age approval is a restrictive gate and cannot replace per-table row authorization', () => {
+  const migration = fs.readFileSync('supabase/migrations/20261107120000_make_age_approval_policies_restrictive.sql', 'utf8');
+  assert.match(migration, /from pg_policies[\s\S]*?schemaname = 'public'[\s\S]*?policyname = 'age approval required'/);
+  assert.match(migration, /create policy %I on %I\.%I as restrictive for all to authenticated/i);
+  assert.match(migration, /using \(\(select public\.is_age_approved\(\(select auth\.uid\(\)\)\)\)\) or \(select private\.is_platform_admin\(\)\)\)/);
+  assert.match(migration, /with check \(\(select public\.is_age_approved\(\(select auth\.uid\(\)\)\)\) or \(select private\.is_platform_admin\(\)\)\)/i);
+  assert.doesNotMatch(migration, /create policy %I on %I\.%I as permissive/i);
+});
