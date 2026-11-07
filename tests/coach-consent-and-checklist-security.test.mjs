@@ -219,3 +219,14 @@ test('coach approval changes are made only through a role-checked server RPC', (
   assert.match(body, /private\.user_can_manage_athlete\(athlete_user_id\)/);
   assert.match(relationshipMigration, /drop policy if exists "coaches review approvals for active athletes" on public\.coach_approval_requests/);
 });
+
+
+test('coach invitation RPC distinguishes an active connection from a pending invitation', () => {
+  const relationshipMigration = fs.readFileSync('supabase/migrations/20261107110000_tighten_relationship_revocation_and_approval_rls.sql', 'utf8');
+  const body = relationshipMigration.match(/create or replace function public\.request_coach_athlete_link\([\s\S]*?\$function\$;/i)?.[0] || '';
+  assert.ok(body, 'request RPC must be hardened in the final migration');
+  assert.match(body, /pg_advisory_xact_lock/);
+  assert.match(body, /status = 'active'[\s\S]*?Athlete is already connected to this coach/);
+  assert.match(body, /status = 'pending'[\s\S]*?return v_link_id/);
+  assert.match(relationshipMigration, /revoke all on function public\.request_coach_athlete_link\(uuid\) from public, anon/);
+});
