@@ -154,6 +154,7 @@ declare
   v_user_id uuid := auth.uid();
   v_coach_id uuid;
   v_athlete_id uuid;
+  v_link_academy_id uuid;
   v_next_coach_id uuid;
   v_next_coach_name text;
 begin
@@ -164,8 +165,8 @@ begin
     raise exception 'Relationship is required';
   end if;
 
-  select coach_user_id, athlete_user_id
-    into v_coach_id, v_athlete_id
+  select coach_user_id, athlete_user_id, academy_id
+    into v_coach_id, v_athlete_id, v_link_academy_id
   from public.coach_athlete_links
   where id = p_link_id
     and (coach_user_id = v_user_id or athlete_user_id = v_user_id)
@@ -185,6 +186,7 @@ begin
   set status = 'withdrawn', reviewed_at = now(), updated_at = now()
   where coach_user_id = v_coach_id
     and athlete_user_id = v_athlete_id
+    and academy_id is not distinct from v_link_academy_id
     and status = 'pending';
 
   if not exists (
@@ -193,6 +195,17 @@ begin
     where l.coach_user_id = v_coach_id
       and l.athlete_user_id = v_athlete_id
       and l.status = 'active'
+  ) and not exists (
+    select 1
+    from public.academy_memberships coach_m
+    join public.academy_memberships athlete_m
+      on athlete_m.academy_id = coach_m.academy_id
+    where coach_m.user_id = v_coach_id
+      and coach_m.role in ('coach', 'academy_admin')
+      and coach_m.status = 'active'
+      and athlete_m.user_id = v_athlete_id
+      and athlete_m.role = 'athlete'
+      and athlete_m.status = 'active'
   ) then
     -- The trigger on training_group_members also removes the athlete from the
     -- associated group conversation, preventing post-revocation chat access.
