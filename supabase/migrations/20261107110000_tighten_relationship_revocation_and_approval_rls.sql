@@ -1,6 +1,15 @@
 -- Make revocation remove downstream coach access, and require an active
 -- accepted relationship for coach-managed records and approval workflows.
 
+-- Existing production status constraint predates consent decline/revoke states.
+-- Extend the enum-like CHECK deliberately so the RPC status transitions are valid.
+alter table public.coach_athlete_links
+  drop constraint if exists coach_athlete_links_status_check;
+alter table public.coach_athlete_links
+  add constraint coach_athlete_links_status_check
+  check (status in ('pending', 'active', 'suspended', 'ended', 'declined', 'revoked'));
+
+
 create or replace function public.can_manage_athlete_feature(target_user_id uuid)
 returns boolean
 language sql
@@ -268,6 +277,24 @@ with check (
   )
 );
 
+-- The old permissive ALL policy allowed every age-approved account to
+-- mutate every athlete's plan. Replace it with an owner-scoped policy.
+drop policy if exists "age approval required" on public.training_plans;
+drop policy if exists "Users can manage own training plans" on public.training_plans;
+create policy "Users manage own approved training plans"
+on public.training_plans
+for all to authenticated
+using (
+  (user_id = (select auth.uid())
+    and (select public.is_age_approved((select auth.uid()))))
+  or (select private.is_platform_admin())
+)
+with check (
+  (user_id = (select auth.uid())
+    and (select public.is_age_approved((select auth.uid()))))
+  or (select private.is_platform_admin())
+);
+
 drop policy if exists "Coaches can delete managed training plans" on public.training_plans;
 create policy "Coaches can delete currently managed training plans"
 on public.training_plans
@@ -327,12 +354,10 @@ with check (
   and exists (
     select 1
     from public.coach_athlete_links l
-    join public.profiles cp on cp.user_id = l.coach_user_id
     where l.coach_user_id = coach_approval_requests.coach_user_id
       and l.athlete_user_id = coach_approval_requests.athlete_user_id
       and l.academy_id is not distinct from coach_approval_requests.academy_id
       and l.status = 'active'
-      and cp.role = 'coach'
       and (select public.is_age_approved(l.coach_user_id))
   )
 );
@@ -530,6 +555,9 @@ begin
   for update;
 
   if found then
+    if v_status = 'suspended' then
+      raise exception 'This coach-athlete relationship is suspended and cannot be re-requested';
+    end if;
     update public.coach_athlete_links
     set status = 'pending',
         academy_id = v_academy_id,
