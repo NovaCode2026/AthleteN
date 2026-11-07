@@ -82,3 +82,38 @@ test('coach lookup uses a role-checked, minimal-field Taekwondo RPC', () => {
   assert.match(roles, /lookup_taekwondo_athlete_for_coach/);
   assert.doesNotMatch(roles, /find_athlete_by_username/);
 });
+
+
+test('legacy coach account-code lookup can only send a pending invitation', () => {
+  const legacyMigration = fs.readFileSync('supabase/migrations/20261107100000_harden_legacy_coach_connection_consent.sql', 'utf8');
+  const body = legacyMigration.match(/create or replace function public\.coach_add_athlete_by_account_code\([\s\S]*?\$function\$;/i)?.[0] || '';
+  assert.ok(body, 'hardened coach account-code function must exist');
+  assert.match(body, /public\.request_coach_athlete_link\(v_athlete_id\)/);
+  assert.doesNotMatch(body, /insert into public\.coach_athlete_links/i);
+  assert.match(body, /'status', 'pending'/);
+  assert.match(body, /public\.is_age_approved\(v_coach_id\)/);
+  assert.match(body, /public\.is_age_approved\(p\.user_id\)/);
+});
+
+test('athlete code redemption requires age approval and explicit athlete action', () => {
+  const legacyMigration = fs.readFileSync('supabase/migrations/20261107100000_harden_legacy_coach_connection_consent.sql', 'utf8');
+  const body = legacyMigration.match(/create or replace function public\.connect_athlete_by_code\([\s\S]*?\$function\$;/i)?.[0] || '';
+  assert.ok(body, 'hardened athlete code connection function must exist');
+  assert.match(body, /v_athlete_id uuid := auth\.uid\(\)/);
+  assert.match(body, /v_athlete_role is distinct from 'athlete'/);
+  assert.match(body, /public\.is_age_approved\(v_athlete_id\)/);
+  assert.match(body, /c\.owner_type = 'coach'/);
+  assert.match(body, /public\.is_age_approved\(c\.owner_user_id\)/);
+  assert.match(body, /on conflict \(coach_user_id, athlete_user_id\)[\s\S]*?status = 'active'/);
+  assert.match(body, /on conflict \(academy_id, user_id\)[\s\S]*?status = 'active'/);
+  assert.match(body, /revoke all on function public\.connect_athlete_by_code\(text\) from public, anon/);
+});
+
+test('mobile coach screens describe new account-code connections as pending invitations', () => {
+  const roster = fs.readFileSync('AthleteN-Mobile/src/app/coach-athletes.tsx', 'utf8');
+  const tournaments = fs.readFileSync('AthleteN-Mobile/src/app/coach-tournaments.tsx', 'utf8');
+  assert.match(roster, /Invitation sent to .*They must accept before appearing in your roster/);
+  assert.match(tournaments, /Invitation sent to .*They must accept before appearing in your roster/);
+  assert.doesNotMatch(roster, /connected successfully/);
+  assert.doesNotMatch(tournaments, /connected\./);
+});
