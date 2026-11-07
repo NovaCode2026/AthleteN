@@ -268,3 +268,16 @@ test('age approval is a restrictive gate and cannot replace per-table row author
   assert.match(migration, /with check \(\(select public\.is_age_approved\(\(select auth\.uid\(\)\)\)\) or \(select private\.is_platform_admin\(\)\)\)/i);
   assert.doesNotMatch(migration, /create policy %I on %I\.%I as permissive/i);
 });
+
+
+test('athlete connection codes cannot reactivate suspended direct or academy links', () => {
+  const consentMigration = fs.readFileSync('supabase/migrations/20261107100000_harden_legacy_coach_connection_consent.sql', 'utf8');
+  const body = consentMigration.match(/create or replace function public\.connect_athlete_by_code\([\s\S]*?\$function\$;/i)?.[0] || '';
+  assert.ok(body, 'athlete code RPC must exist');
+  assert.match(body, /select id, status into v_link_id, v_link_status/);
+  assert.match(body, /v_link_status = 'suspended'/);
+  assert.match(body, /This coach-athlete relationship is suspended/);
+  assert.match(body, /select status into v_membership_status/);
+  assert.match(body, /v_membership_status = 'suspended'/);
+  assert.match(body, /This academy membership is suspended/);
+});
