@@ -338,18 +338,8 @@ with check (
 );
 
 drop policy if exists "coaches can review approvals" on public.coach_approval_requests;
-create policy "coaches review approvals for active athletes"
-on public.coach_approval_requests
-for update to authenticated
-using (
-  coach_user_id = (select auth.uid())
-  and status = 'pending'
-  and private.user_can_manage_athlete(athlete_user_id)
-)
-with check (
-  coach_user_id = (select auth.uid())
-  and private.user_can_manage_athlete(athlete_user_id)
-);
+drop policy if exists "coaches review approvals for active athletes" on public.coach_approval_requests;
+-- Updates are performed only through the checked SECURITY DEFINER review RPC below.
 
 create or replace function public.review_coach_approval(
   p_request_id uuid,
@@ -358,14 +348,19 @@ create or replace function public.review_coach_approval(
 )
 returns boolean
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $function$
 declare
   r public.coach_approval_requests%rowtype;
   p public.profiles%rowtype;
 begin
-  if auth.uid() is null or not coalesce(public.is_age_approved(auth.uid()), false) then
+  if auth.uid() is null
+    or not exists (
+      select 1 from public.profiles actor
+      where actor.user_id = auth.uid() and actor.role = 'coach'
+    )
+    or not coalesce(public.is_age_approved(auth.uid()), false) then
     raise exception 'Approved coach account required';
   end if;
   if p_status not in ('approved', 'rejected') then
