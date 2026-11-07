@@ -230,3 +230,31 @@ test('coach invitation RPC distinguishes an active connection from a pending inv
   assert.match(body, /status = 'pending'[\s\S]*?return v_link_id/);
   assert.match(relationshipMigration, /revoke all on function public\.request_coach_athlete_link\(uuid\) from public, anon/);
 });
+
+
+test('coach relationship decline and revocation statuses match the production link constraint', () => {
+  const relationshipMigration = fs.readFileSync('supabase/migrations/20261107110000_tighten_relationship_revocation_and_approval_rls.sql', 'utf8');
+  assert.match(relationshipMigration, /drop constraint if exists coach_athlete_links_status_check/);
+  assert.match(relationshipMigration, /check \(status in \('pending', 'active', 'suspended', 'ended', 'declined', 'revoked'\)\)/);
+  assert.match(relationshipMigration, /set status = 'declined'/);
+  assert.match(relationshipMigration, /set status = 'revoked'/);
+});
+
+test('training plan RLS removes the broad age-approved ALL policy and keeps rows owner-scoped', () => {
+  const relationshipMigration = fs.readFileSync('supabase/migrations/20261107110000_tighten_relationship_revocation_and_approval_rls.sql', 'utf8');
+  assert.match(relationshipMigration, /drop policy if exists "age approval required" on public\.training_plans/);
+  assert.match(relationshipMigration, /drop policy if exists "Users can manage own training plans" on public\.training_plans/);
+  assert.match(relationshipMigration, /create policy "Users manage own approved training plans"[\s\S]*?user_id = \(select auth\.uid\(\)\)/);
+  assert.match(relationshipMigration, /private\.user_can_manage_athlete\(user_id\)/);
+});
+
+test('coach approval insert RLS does not depend on reading another user profile under RLS', () => {
+  const relationshipMigration = fs.readFileSync('supabase/migrations/20261107110000_tighten_relationship_revocation_and_approval_rls.sql', 'utf8');
+  const body = relationshipMigration.match(/create policy "athletes request approval from active coach"[\s\S]*?\);/i)?.[0] || '';
+  assert.ok(body, 'approval insert policy must exist');
+  assert.match(body, /from public\.coach_athlete_links l/);
+  assert.match(body, /l\.status = 'active'/);
+  assert.match(body, /public\.is_age_approved\(l\.coach_user_id\)/);
+  assert.doesNotMatch(body, /join public\.profiles/);
+  assert.doesNotMatch(body, /cp\.role/);
+});
