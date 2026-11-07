@@ -77,7 +77,6 @@ declare
   v_athlete_role text;
   v_athlete_sport text;
   v_coach_role text;
-  v_owner_age_approved boolean;
   v_code text := upper(btrim(coalesce(p_code, '')));
   c record;
   v_link_id uuid;
@@ -154,8 +153,19 @@ begin
       'academy_id', c.academy_id
     );
   elsif c.owner_type = 'academy' then
-    if c.academy_id is null then
+    if c.academy_id is null or c.owner_user_id is null then
       raise exception 'Invalid academy connection code';
+    end if;
+
+    select role, academy_id
+      into v_coach_role, v_athlete_sport
+    from public.profiles
+    where user_id = c.owner_user_id;
+
+    if v_coach_role is distinct from 'academy_admin'
+      or v_athlete_sport::text is distinct from c.academy_id::text
+      or not coalesce(public.is_age_approved(c.owner_user_id), false) then
+      raise exception 'Academy administrator is not eligible for connections';
     end if;
 
     insert into public.academy_memberships
