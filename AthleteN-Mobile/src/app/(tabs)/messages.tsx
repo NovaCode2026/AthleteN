@@ -22,7 +22,7 @@ import { supabase } from '@/lib/supabase';
 import { Screen,Header,Section,Card,c } from '@/components/mobile-ui';
 
 const planLabel=(v:any)=>({free:'Free',student:'Student',pro:'Pro',elite:'Elite',coach:'Coach',academy:'Academy'}[String(v||'free').toLowerCase()]||'Free');
-const roleLabel=(v:any)=>String(v||'athlete').replace(/_/g,' ').replace(/\\b\\w/g,(x:string)=>x.toUpperCase());
+const roleLabel=(v:any)=>String(v||'athlete').replace(/_/g,' ').replace(/\b\w/g,(x:string)=>x.toUpperCase());
 
 export default function MessagesScreen(){
  const { support } = useLocalSearchParams<{support?: string}>();
