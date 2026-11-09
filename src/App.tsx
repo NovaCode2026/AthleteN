@@ -99,7 +99,7 @@ function VerificationCallback() {
       }
     });
     return () => { cancelled = true; };
-  }, [auth.user, auth.emailVerified, errorDescription]);
+  }, [auth.user?.id, auth.emailVerified, errorDescription]);
 
   if (errorDescription) return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN verification</span><h1>Verification link could not be used</h1><p>The link may be expired, already used, or malformed. Return to login and request a new verification email if needed.</p><p className="notice" role="alert">{errorDescription.includes("expired") ? "This verification link has expired." : "Email verification could not be completed."}</p><a className="btn primary" href="/login">Return to login</a></section></main>;
   if (callbackMessage) return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN account</span><h1>Sign-in complete</h1><p className="notice" role="status">{callbackMessage}</p><a className="btn primary" href="/">Continue to dashboard</a></section></main>;
