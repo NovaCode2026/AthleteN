@@ -176,12 +176,20 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
         const payload = await scanWebsite(source.trim());
         setInstagramResult(null);
         if (payload?.scan) setSelectedScan(payload.scan as ScanRow);
-        setToast({ type: "success", message: "Tournament scan completed. Full available tournament intelligence was extracted." });
+        if (String(payload?.scan?.status || "").toLowerCase() === "blocked") {
+          setToast({ type: "warning", message: "The website could not be fully read. Review the source status and retry with an accessible official page or text-based PDF." });
+        } else {
+          setToast({ type: "success", message: "Website scan finished. Review the extracted facts and source evidence before relying on them." });
+        }
       } else {
         const input = parseInstagramInput(source);
         const result = await scanInstagram(source.trim());
         if (result?.scan) setSelectedScan(result.scan as ScanRow);
-        setToast({ type: "success", message: "Instagram tournament scan completed. Only tournament-related information was retained." });
+        if (String(result?.scan?.status || "").toLowerCase() === "blocked") {
+          setToast({ type: "warning", message: "Instagram did not expose enough source data for a complete scan. Check account access, permissions or try an accessible public organizer post." });
+        } else {
+          setToast({ type: "success", message: "Instagram scan finished. Review the extracted facts, accessible media and source evidence before relying on them." });
+        }
       }
       setSource("");
       await loadScans();

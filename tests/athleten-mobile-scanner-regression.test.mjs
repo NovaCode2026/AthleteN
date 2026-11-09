@@ -167,3 +167,31 @@ test("scanner discovers same-site pages and linked public PDFs without crawling 
   assert.ok(links.includes("https://cdn.example.org/official-notice.pdf"));
   assert.ok(!links.includes("https://other.example.org/random"));
 });
+
+
+test("More remains a permanent bottom-navigation destination after customization", () => {
+  const mobileLayout = read("AthleteN-Mobile/src/app/(tabs)/_layout.tsx");
+  const webSettings = read("src/components/parity/NotificationPages.tsx");
+  const mobileSettings = read("AthleteN-Mobile/src/app/navigation-settings.tsx");
+  assert.ok(mobileLayout.includes("function normalizeNavigationOrder"));
+  assert.ok(mobileLayout.includes("return [...unique, 'explore']"));
+  assert.ok(mobileLayout.includes("normalizeNavigationOrder(chosen.length?chosen:defaults"));
+  assert.ok(mobileLayout.includes("const visible=normalizeNavigationOrder(order"));
+  assert.ok(webSettings.includes("function normalizeNavigationSettings"));
+  assert.ok(webSettings.includes('return [...primary, "explore"]'));
+  assert.ok(webSettings.includes('if(id==="explore")return'));
+  assert.ok(webSettings.includes('id==="explore"?"Pinned":"Remove"'));
+  assert.ok(mobileSettings.includes("normalizeNavigationOrder"));
+  assert.ok(mobileSettings.includes("if(id==='explore')return"));
+  assert.ok(mobileSettings.includes("Always available · cannot be removed"));
+});
+
+
+test("web scanner distinguishes blocked sources from successful extraction", () => {
+  const scanner = read("src/components/instagram/InstagramOrganizerScanner.tsx");
+  assert.match(scanner, /payload\?\.scan\?\.status/);
+  assert.match(scanner, /result\?\.scan\?\.status/);
+  assert.ok(scanner.includes("The website could not be fully read."));
+  assert.ok(scanner.includes("Instagram did not expose enough source data"));
+  assert.ok(scanner.includes("Review the extracted facts"));
+});
