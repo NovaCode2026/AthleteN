@@ -172,6 +172,7 @@ test("scanner discovers same-site pages and linked public PDFs without crawling 
 test("More remains a permanent bottom-navigation destination after customization", () => {
   const mobileLayout = read("AthleteN-Mobile/src/app/(tabs)/_layout.tsx");
   const webSettings = read("src/components/parity/NotificationPages.tsx");
+  const mobileSettings = read("AthleteN-Mobile/src/app/navigation-settings.tsx");
   assert.ok(mobileLayout.includes("function normalizeNavigationOrder"));
   assert.ok(mobileLayout.includes("return [...unique, 'explore']"));
   assert.ok(mobileLayout.includes("normalizeNavigationOrder(chosen.length?chosen:defaults"));
@@ -180,6 +181,9 @@ test("More remains a permanent bottom-navigation destination after customization
   assert.ok(webSettings.includes('return [...primary, "explore"]'));
   assert.ok(webSettings.includes('if(id==="explore")return'));
   assert.ok(webSettings.includes('id==="explore"?"Pinned":"Remove"'));
+  assert.ok(mobileSettings.includes("normalizeNavigationOrder"));
+  assert.ok(mobileSettings.includes("if(id==='explore')return"));
+  assert.ok(mobileSettings.includes("Always available · cannot be removed"));
 });
 
 
