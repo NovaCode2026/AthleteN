@@ -39,7 +39,9 @@ jobs:
         run: npm ci
 
       - name: Expo doctor
+        id: expo_doctor
         run: npx expo-doctor
+        continue-on-error: true
 
       - name: TypeScript check
         run: npx tsc --noEmit
@@ -53,3 +55,11 @@ jobs:
       - name: Remove CI export
         if: always()
         run: rm -rf .expo/ci-export
+
+      - name: Enforce Expo compatibility result
+        if: always()
+        run: |
+          if [ "${{ steps.expo_doctor.outcome }}" != "success" ]; then
+            echo "::error::Expo Doctor failed. Resolve the SDK package mismatch before release."
+            exit 1
+          fi
