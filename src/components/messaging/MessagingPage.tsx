@@ -12,7 +12,7 @@ const messageTypes = [["normal", "Normal message"], ["tournament_announcement", 
 const usernamePattern = /^[a-z0-9][a-z0-9_.-]{2,29}$/;
 const NOVACODE_USERNAME = "novacode.admin";
 const planLabel=(value?:string|null)=>({free:"Free",student:"Student",pro:"Pro",elite:"Elite",coach:"Coach",academy:"Academy"}[String(value||"free").toLowerCase()]||"Free");
-const roleLabel=(value?:string|null)=>String(value||"athlete").replace(/_/g," ").replace(/\\b\\w/g,(letter)=>letter.toUpperCase());
+const roleLabel=(value?:string|null)=>String(value||"athlete").replace(/_/g," ").replace(/\b\w/g,(letter)=>letter.toUpperCase());
 function getReceiptLabel(rows:MessageReceipt[],isGroup:boolean){
   if(!rows.length)return "Sent";
   const delivered=rows.filter(row=>Boolean(row.delivered_at)).length;
