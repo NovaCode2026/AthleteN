@@ -21,6 +21,9 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Screen,Header,Section,Card,c } from '@/components/mobile-ui';
 
+const planLabel=(v:any)=>({free:'Free',student:'Student',pro:'Pro',elite:'Elite',coach:'Coach',academy:'Academy'}[String(v||'free').toLowerCase()]||'Free');
+const roleLabel=(v:any)=>String(v||'athlete').replace(/_/g,' ').replace(/\\b\\w/g,(x:string)=>x.toUpperCase());
+
 export default function MessagesScreen(){
  const { support } = useLocalSearchParams<{support?: string}>();
  const {session,profile,refreshProfile}=useAuth(); const typedProfile:any=profile; const canCreateGroup=['coach','academy_admin','admin','super_admin'].includes(String(typedProfile?.role||''));const [conversations,setConversations]=useState<any[]>([]);const [selected,setSelected]=useState<any>(null);const [messages,setMessages]=useState<any[]>([]);const [receipts,setReceipts]=useState<Record<string,any[]>>({});const [draftMessageId,setDraftMessageId]=useState<string|null>(null);const [body,setBody]=useState('');const [messageType,setMessageType]=useState('normal');const [attachment,setAttachment]=useState<any>(null);const [search,setSearch]=useState('');const [users,setUsers]=useState<any[]>([]);const [error,setError]=useState(''); const [sending,setSending]=useState(false); const [personNames,setPersonNames]=useState<Record<string,string>>({});const [groupName,setGroupName]=useState('');const [groupCodes,setGroupCodes]=useState('');const [showGroup,setShowGroup]=useState(false); const [myCode,setMyCode]=useState(''); const [customCode,setCustomCode]=useState(''); const [codeBusy,setCodeBusy]=useState(false); const [avatarUrls,setAvatarUrls]=useState<Record<string,string>>({}); const [codeInput,setCodeInput]=useState(String(typedProfile?.account_code||''));
