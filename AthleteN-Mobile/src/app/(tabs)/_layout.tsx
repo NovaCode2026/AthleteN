@@ -60,10 +60,6 @@ export const AVAILABLE = NAV_ITEMS;
 export function normalizeNavigationOrder(items: unknown, eligibleIds: string[], defaults: string[]) {
  const supplied = Array.isArray(items) ? items.filter((id): id is string => typeof id === 'string') : [];
  const unique = [...new Set(supplied)].filter(id => id !== 'explore' && eligibleIds.includes(id)).slice(0, 5);
- for (const id of defaults) {
-  if (unique.length >= 5) break;
-  if (id !== 'explore' && eligibleIds.includes(id) && !unique.includes(id)) unique.push(id);
- }
  return [...unique, 'explore'];
 }
 
