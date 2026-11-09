@@ -167,3 +167,10 @@ test('coach and academy range summaries use the same filtered rows as their char
   assert.match(dashboards, /filteredAcademyAttendance\.length\?</);
   assert.doesNotMatch(dashboards, /<strong>\{attendanceMetrics\.length\}<\/strong><small>Recorded check-ins/);
 });
+
+
+test('OAuth-created starter profiles stay in onboarding until all required athlete details are saved', () => {
+  const app = read('src/App.tsx');
+  assert.match(app, /const profileComplete = Boolean\(savedProfile\?\.full_name\?\.trim\(\) && savedProfile\?\.username\?\.trim\(\) && savedProfile\?\.date_of_birth && savedProfile\?\.gender && savedProfile\?\.sport === "taekwondo" && \(savedProfile\?\.discipline === "kyorugi" \|\| savedProfile\?\.discipline === "poomsae"\) && savedProfile\?\.academy\?\.trim\(\) && savedProfile\?\.coach\?\.trim\(\)\);/);
+  assert.match(app, /!values\.full_name\?\.trim\(\)\|\|!values\.date_of_birth\|\|!values\.gender\|\|values\.sport!==\"taekwondo\"\|\|!values\.discipline\|\|!values\.academy\?\.trim\(\)\|\|!values\.coach\?\.trim\(\)/);
+});
