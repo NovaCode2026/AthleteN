@@ -49,6 +49,16 @@ function VerificationCallback() {
   const errorDescription = params.get("error_description") || params.get("error");
   const [callbackMessage, setCallbackMessage] = useState("");
   const [readyToContinue, setReadyToContinue] = useState(false);
+  const [sessionMissing, setSessionMissing] = useState(false);
+
+  useEffect(() => {
+    if (auth.loading || auth.user || errorDescription) {
+      setSessionMissing(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setSessionMissing(true), 8000);
+    return () => window.clearTimeout(timer);
+  }, [auth.loading, auth.user?.id, errorDescription]);
 
   useEffect(() => {
     if (!auth.user || errorDescription) return;
@@ -102,6 +112,7 @@ function VerificationCallback() {
   }, [auth.user?.id, auth.emailVerified, errorDescription]);
 
   if (errorDescription) return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN verification</span><h1>Verification link could not be used</h1><p>The link may be expired, already used, or malformed. Return to login and request a new verification email if needed.</p><p className="notice" role="alert">{errorDescription.includes("expired") ? "This verification link has expired." : "Email verification could not be completed."}</p><a className="btn primary" href="/login">Return to login</a></section></main>;
+  if (sessionMissing) return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN account</span><h1>Sign-in could not be completed</h1><p className="notice" role="alert">AthleteN did not receive a secure sign-in session. Return to login and try Google sign-in again.</p><a className="btn primary" href="/login">Return to login</a></section></main>;
   if (callbackMessage) return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN account</span><h1>Sign-in complete</h1><p className="notice" role="status">{callbackMessage}</p><a className="btn primary" href="/">Continue to dashboard</a></section></main>;
   return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN verification</span><h1>{auth.emailVerified ? "Email verified" : "Finishing sign-in..."}</h1><p>{auth.emailVerified ? "Your email is verified. Redirecting you to your AthleteN dashboard." : "Please wait while AthleteN confirms your sign-in session."}</p>{readyToContinue && <a className="btn primary" href="/">Continue to dashboard</a>}</section></main>;
 }
