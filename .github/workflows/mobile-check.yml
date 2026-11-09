@@ -41,6 +41,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Apply non-breaking npm security updates
+        run: npm audit fix --package-lock-only || true
+
+      - name: Install audited dependency tree
+        run: npm ci
+
       - name: Expo doctor
         id: expo_doctor
         run: npx expo-doctor
@@ -61,6 +67,21 @@ jobs:
       - name: Remove CI export
         if: always()
         run: rm -rf .expo/ci-export
+
+      - name: Capture updated mobile dependency lock and audit report
+        if: always()
+        run: npm audit --json > mobile-npm-audit.json || true
+
+      - name: Upload mobile dependency audit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-dependency-audit
+          path: |
+            AthleteN-Mobile/package-lock.json
+            AthleteN-Mobile/mobile-npm-audit.json
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Enforce Expo compatibility result
         if: always()
