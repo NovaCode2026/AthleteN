@@ -27,10 +27,6 @@ const mobileNavigationOptions=[["index","Home"],["training","Training"],["ai","A
 function normalizeNavigationSettings(value: unknown): string[] {
  const supplied = Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : [];
  const primary = [...new Set(supplied)].filter(id => id !== "explore" && mobileNavigationOptions.some(option => option[0] === id)).slice(0, 5);
- for (const [id] of mobileNavigationOptions) {
-  if (primary.length >= 5) break;
-  if (id !== "explore" && !primary.includes(id)) primary.push(id);
- }
  return [...primary, "explore"];
 }
 export function NavigationSettingsPage({setToast}:{setToast:(toast:{type:"success"|"error"|"warning";message:string})=>void}){
