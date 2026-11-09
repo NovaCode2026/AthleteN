@@ -181,3 +181,13 @@ test("More remains a permanent bottom-navigation destination after customization
   assert.ok(webSettings.includes('if(id==="explore")return'));
   assert.ok(webSettings.includes('id==="explore"?"Pinned":"Remove"'));
 });
+
+
+test("web scanner distinguishes blocked sources from successful extraction", () => {
+  const scanner = read("src/components/instagram/InstagramOrganizerScanner.tsx");
+  assert.match(scanner, /payload\?\.scan\?\.status/);
+  assert.match(scanner, /result\?\.scan\?\.status/);
+  assert.ok(scanner.includes("The website could not be fully read."));
+  assert.ok(scanner.includes("Instagram did not expose enough source data"));
+  assert.ok(scanner.includes("Review the extracted facts"));
+});
