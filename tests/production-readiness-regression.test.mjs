@@ -172,7 +172,8 @@ test('coach and academy range summaries use the same filtered rows as their char
 test('OAuth-created starter profiles stay in onboarding until all required athlete details are saved', () => {
   const app = read('src/App.tsx');
   assert.match(app, /const staffRoles = new Set\(\["coach", "academy_admin", "support_admin", "admin", "super_admin"\]\)/);
-  assert.match(app, /staffRoles\.has\(String\(savedProfile\.role \|\| "athlete"\)\)/);\n  assert.match(app, /savedProfile\.username\?\.trim\(\).*savedProfile\.coach\?\.trim\(\)/);
+  assert.match(app, /staffRoles\.has\(String\(savedProfile\.role \|\| "athlete"\)\)/);
+  assert.match(app, /savedProfile\.username\?\.trim\(\).*savedProfile\.coach\?\.trim\(\)/);
   assert.match(app, /!values\.full_name\?\.trim\(\)\|\|!values\.date_of_birth\|\|!values\.gender\|\|values\.sport!==\"taekwondo\"\|\|!values\.discipline\|\|!values\.academy\?\.trim\(\)\|\|!values\.coach\?\.trim\(\)/);
 });
 
