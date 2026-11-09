@@ -48,44 +48,63 @@ function VerificationCallback() {
   const params = new URLSearchParams(window.location.search);
   const errorDescription = params.get("error_description") || params.get("error");
   const [callbackMessage, setCallbackMessage] = useState("");
+  const [readyToContinue, setReadyToContinue] = useState(false);
 
   useEffect(() => {
-    if (!auth.user) return;
+    if (!auth.user || errorDescription) return;
     let cancelled = false;
     const complete = async () => {
       const pendingVersion = window.sessionStorage.getItem("athleten_policy_acceptance");
       if (pendingVersion) {
-        const { error } = await requireSupabase().from("policy_acceptances").upsert({
-          user_id: auth.user!.id,
-          terms_version: pendingVersion,
-          privacy_version: pendingVersion,
-          accepted_at: new Date().toISOString(),
-          source: "web_google_signup",
-        }, { onConflict: "user_id" });
-        if (error) {
-          if (!cancelled) setCallbackMessage("We couldn't record your policy acceptance. Please contact support before continuing.");
-          return;
+        // The accepted policy version is also stored in OAuth user metadata.
+        // Do not let a slow audit-table request strand a successfully signed-in
+        // user on the callback page; make a short best-effort write instead.
+        let timeoutId: number | undefined;
+        try {
+          const write = requireSupabase().from("policy_acceptances").upsert({
+            user_id: auth.user!.id,
+            terms_version: pendingVersion,
+            privacy_version: pendingVersion,
+            accepted_at: new Date().toISOString(),
+            source: "web_google_signup",
+          }, { onConflict: "user_id" });
+          const timedWrite = Promise.race([
+            write,
+            new Promise<never>((_, reject) => {
+              timeoutId = window.setTimeout(() => reject(new Error("Policy acceptance write timed out")), 3000);
+            }),
+          ]);
+          const { error } = await timedWrite;
+          if (error) throw error;
+          window.sessionStorage.removeItem("athleten_policy_acceptance");
+        } catch (error) {
+          console.warn("AthleteN policy acceptance audit write did not complete during OAuth callback:", error);
+        } finally {
+          if (timeoutId !== undefined) window.clearTimeout(timeoutId);
         }
-        window.sessionStorage.removeItem("athleten_policy_acceptance");
       }
       if (!cancelled) {
         const target = params.get("next") === "reset-password" ? "/reset-password" : auth.emailVerified ? "/" : "/onboarding";
-        // Force the app shell to mount on the destination route after OAuth.
-        // replaceState alone changes the URL but does not trigger a React render.
+        // Use a full navigation so the app shell always mounts on the target route.
         window.location.replace(target);
+        // Keep a manual recovery action visible if the browser blocks navigation.
+        window.setTimeout(() => { if (!cancelled) setReadyToContinue(true); }, 1800);
       }
     };
-    void complete().catch(() => {
-      if (!cancelled) setCallbackMessage("We couldn't finish account setup. Please try signing in again.");
+    void complete().catch((error) => {
+      console.error("AthleteN OAuth callback could not finish:", error);
+      if (!cancelled) {
+        setCallbackMessage("Your account is signed in, but automatic navigation did not finish. Continue to your dashboard.");
+        setReadyToContinue(true);
+      }
     });
     return () => { cancelled = true; };
-  }, [auth.user, auth.emailVerified]);
+  }, [auth.user, auth.emailVerified, errorDescription]);
 
-  if (errorDescription) return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN verification</span><h1>Verification link could not be used</h1><p>The link may be expired, already used, or malformed. Return to login and request a new verification email if needed.</p><p className="notice" role="alert">{errorDescription.includes("expired") ? "This verification link has expired." : "Email verification could not be completed."}</p></section></main>;
-  if (callbackMessage) return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN account setup</span><h1>One more step</h1><p className="notice" role="alert">{callbackMessage}</p><a href="/login">Return to login</a></section></main>;
-  return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN verification</span><h1>{auth.emailVerified ? "Email verified" : "Finishing verification..."}</h1><p>{auth.emailVerified ? "Your email is verified. Redirecting you back to AthleteN." : "Please wait while AthleteN confirms your email session."}</p></section></main>;
+  if (errorDescription) return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN verification</span><h1>Verification link could not be used</h1><p>The link may be expired, already used, or malformed. Return to login and request a new verification email if needed.</p><p className="notice" role="alert">{errorDescription.includes("expired") ? "This verification link has expired." : "Email verification could not be completed."}</p><a className="btn primary" href="/login">Return to login</a></section></main>;
+  if (callbackMessage) return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN account</span><h1>Sign-in complete</h1><p className="notice" role="status">{callbackMessage}</p><a className="btn primary" href="/">Continue to dashboard</a></section></main>;
+  return <main className="auth-page"><section className="auth-card"><span className="eyebrow">AthleteN verification</span><h1>{auth.emailVerified ? "Email verified" : "Finishing sign-in..."}</h1><p>{auth.emailVerified ? "Your email is verified. Redirecting you to your AthleteN dashboard." : "Please wait while AthleteN confirms your sign-in session."}</p>{readyToContinue && <a className="btn primary" href="/">Continue to dashboard</a>}</section></main>;
 }
-
 function AuthScreen({ initialMode }: { initialMode?: AuthMode }) {
   const auth = useAuth();
   const [mode, setMode] = useState<AuthMode>(initialMode || (isPasswordResetRoute() ? "reset" : "login"));
