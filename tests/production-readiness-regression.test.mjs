@@ -174,3 +174,13 @@ test('OAuth-created starter profiles stay in onboarding until all required athle
   assert.match(app, /const profileComplete = Boolean\(savedProfile\?\.full_name\?\.trim\(\) && savedProfile\?\.username\?\.trim\(\) && savedProfile\?\.date_of_birth && savedProfile\?\.gender && savedProfile\?\.sport === "taekwondo" && \(savedProfile\?\.discipline === "kyorugi" \|\| savedProfile\?\.discipline === "poomsae"\) && savedProfile\?\.academy\?\.trim\(\) && savedProfile\?\.coach\?\.trim\(\)\);/);
   assert.match(app, /!values\.full_name\?\.trim\(\)\|\|!values\.date_of_birth\|\|!values\.gender\|\|values\.sport!==\"taekwondo\"\|\|!values\.discipline\|\|!values\.academy\?\.trim\(\)\|\|!values\.coach\?\.trim\(\)/);
 });
+
+
+test('OAuth callback offers a recovery path when no session is established', () => {
+  const app = read('src/App.tsx');
+  assert.match(app, /const \[sessionMissing, setSessionMissing\] = useState\(false\)/);
+  assert.match(app, /if \(auth\.loading \|\| auth\.user \|\| errorDescription\)/);
+  assert.match(app, /setSessionMissing\(true\), 8000/);
+  assert.match(app, /Sign-in could not be completed/);
+  assert.match(app, /AthleteN did not receive a secure sign-in session/);
+});
