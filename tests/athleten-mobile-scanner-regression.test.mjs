@@ -172,12 +172,12 @@ test("scanner discovers same-site pages and linked public PDFs without crawling 
 test("More remains a permanent bottom-navigation destination after customization", () => {
   const mobileLayout = read("AthleteN-Mobile/src/app/(tabs)/_layout.tsx");
   const webSettings = read("src/components/parity/NotificationPages.tsx");
-  assert.match(mobileLayout, /function normalizeNavigationOrder/);
-  assert.match(mobileLayout, /return \\[\.\.\.unique, 'explore'\\]/);
-  assert.match(mobileLayout, /normalizeNavigationOrder\(chosen\.length\?chosen:defaults/);
-  assert.match(mobileLayout, /const visible=normalizeNavigationOrder\(order/);
-  assert.match(webSettings, /function normalizeNavigationSettings/);
-  assert.match(webSettings, /return \\[\.\.\.primary, "explore"\\]/);
-  assert.match(webSettings, /if\(id==="explore"\)return/);
-  assert.match(webSettings, /id==="explore"\?"Pinned":"Remove"/);
+  assert.ok(mobileLayout.includes("function normalizeNavigationOrder"));
+  assert.ok(mobileLayout.includes("return [...unique, 'explore']"));
+  assert.ok(mobileLayout.includes("normalizeNavigationOrder(chosen.length?chosen:defaults"));
+  assert.ok(mobileLayout.includes("const visible=normalizeNavigationOrder(order"));
+  assert.ok(webSettings.includes("function normalizeNavigationSettings"));
+  assert.ok(webSettings.includes('return [...primary, "explore"]'));
+  assert.ok(webSettings.includes('if(id==="explore")return'));
+  assert.ok(webSettings.includes('id==="explore"?"Pinned":"Remove"'));
 });
