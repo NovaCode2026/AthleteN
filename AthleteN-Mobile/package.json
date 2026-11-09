@@ -62,7 +62,8 @@
         "expo-linking",
         "expo-router",
         "expo-document-picker",
-        "expo-notifications"
+        "expo-notifications",
+        "expo-splash-screen"
       ]
     }
   },
