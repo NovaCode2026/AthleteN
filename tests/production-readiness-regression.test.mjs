@@ -167,3 +167,22 @@ test('coach and academy range summaries use the same filtered rows as their char
   assert.match(dashboards, /filteredAcademyAttendance\.length\?</);
   assert.doesNotMatch(dashboards, /<strong>\{attendanceMetrics\.length\}<\/strong><small>Recorded check-ins/);
 });
+
+
+test('OAuth-created starter profiles stay in onboarding until all required athlete details are saved', () => {
+  const app = read('src/App.tsx');
+  assert.match(app, /const staffRoles = new Set\(\["coach", "academy_admin", "support_admin", "admin", "super_admin"\]\)/);
+  assert.match(app, /staffRoles\.has\(String\(savedProfile\.role \|\| "athlete"\)\)/);
+  assert.match(app, /savedProfile\.username\?\.trim\(\).*savedProfile\.coach\?\.trim\(\)/);
+  assert.match(app, /!values\.full_name\?\.trim\(\)\|\|!values\.date_of_birth\|\|!values\.gender\|\|values\.sport!==\"taekwondo\"\|\|!values\.discipline\|\|!values\.academy\?\.trim\(\)\|\|!values\.coach\?\.trim\(\)/);
+});
+
+
+test('OAuth callback offers a recovery path when no session is established', () => {
+  const app = read('src/App.tsx');
+  assert.match(app, /const \[sessionMissing, setSessionMissing\] = useState\(false\)/);
+  assert.match(app, /if \(auth\.loading \|\| auth\.user \|\| errorDescription\)/);
+  assert.match(app, /setSessionMissing\(true\), 8000/);
+  assert.match(app, /Sign-in could not be completed/);
+  assert.match(app, /AthleteN did not receive a secure sign-in session/);
+});

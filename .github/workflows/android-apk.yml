@@ -8,6 +8,13 @@ on:
       - 'netlify/functions/**'
       - 'tests/**'
       - '.github/workflows/android-apk.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'AthleteN-Mobile/**'
+      - 'netlify/functions/**'
+      - 'tests/**'
+      - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 
 permissions:
