@@ -66,5 +66,6 @@
       ]
     }
   },
-  "private": true
+  "private": true,
+  "description": "AthleteN mobile application"
 }
