@@ -50,6 +50,28 @@ BEGIN
       CONTINUE;
     END IF;
 
+    -- Storage reads are authorized through conversation_members and the
+    -- first folder segment. Deleting duplicate conversations would orphan
+    -- those access checks, so refuse to merge until their objects are safely
+    -- moved to the canonical storage path.
+    IF EXISTS (
+      SELECT 1
+      FROM public.messages m
+      WHERE m.conversation_id = ANY(duplicate_ids)
+        AND m.attachment_path IS NOT NULL
+    ) OR EXISTS (
+      SELECT 1
+      FROM storage.objects o
+      WHERE o.bucket_id = 'message-attachments'
+        AND (storage.foldername(o.name))[1] = ANY (
+          SELECT d.conversation_id::text
+          FROM unnest(duplicate_ids) AS d(conversation_id)
+        )
+    ) THEN
+      RAISE EXCEPTION
+        'Direct-message consolidation paused: attachment objects exist under duplicate conversation IDs. Migrate storage paths before merging.';
+    END IF;
+
     -- Preserve a participant's hidden state if any duplicate thread was hidden.
     INSERT INTO public.messaging_hidden_conversations(user_id, conversation_id, hidden_at)
     SELECT h.user_id, canonical_id, min(h.hidden_at)
