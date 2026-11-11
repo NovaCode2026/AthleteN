@@ -1,6 +1,3 @@
--- Reapply the canonical direct-conversation pair lock after the route and
--- duplicate-thread fixes. The pair key is sorted so both participants contend
--- on the same transaction-scoped advisory lock.
 CREATE OR REPLACE FUNCTION public.create_direct_conversation_by_user(p_recipient_id uuid)
 RETURNS uuid
 LANGUAGE plpgsql
