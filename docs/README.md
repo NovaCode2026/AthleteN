@@ -18,7 +18,7 @@
 <tr><th>👤 If you are…</th><th>Start here</th><th>Then read</th></tr>
 <tr><td>🥋 Athlete / Coach / Academy user</td><td><a href="./ATHLETEN_PLATFORM_GUIDE.md">Platform Guide</a></td><td><a href="./PLAN_VERIFICATION_AND_BILLING.md">Plans & Verification</a>, <a href="./MEDICAL_AND_AI_DISCLAIMER.md">AI & Safety</a></td></tr>
 <tr><td>🧑‍💻 Developer</td><td><a href="./Development.md">Development</a></td><td><a href="./Architecture.md">Architecture</a>, <a href="./API.md">API</a>, <a href="./UI.md">UI</a></td></tr>
-<tr><td>🚀 Release owner</td><td><a href="./APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md">Release Status</a></td><td><a href="./Deployment.md">Deployment</a>, <a href="./SECURITY.md">Security</a></td></tr>
+<tr><td>🚀 Release owner / Codex QA</td><td><a href="./RELEASE_HANDOFF_CODEX_QA_2026-11-11.md">Codex QA Release Handoff</a></td><td><a href="./APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md">Release Status</a>, <a href="./Deployment.md">Deployment</a>, <a href="./SECURITY.md">Security</a></td></tr>
 <tr><td>🛡️ Privacy / policy reviewer</td><td><a href="./LEGAL_INDEX.md">Legal Index</a></td><td><a href="./PRIVACY_POLICY.md">Privacy</a>, <a href="./TERMS_OF_SERVICE.md">Terms</a></td></tr>
 </table>
 
@@ -49,6 +49,7 @@
 
 | Guide | What is inside |
 |---|---|
+| 🚦 [Codex QA Release Handoff](./RELEASE_HANDOFF_CODEX_QA_2026-11-11.md) | Exact preflight evidence, migration drift, release blockers, device QA plan and sign-off criteria |
 | 🚦 [APS 1.0 Implementation Status](./APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) | Evidence-based status, passed checks, known blockers and release gates |
 | 🚀 [Deployment](./Deployment.md) | Netlify and environment configuration |
 | 🔐 [Security](./SECURITY.md) | Secrets, authentication, RLS and security practices |
@@ -63,6 +64,8 @@
 README.md                         Product overview + first setup
 docs/
   README.md                       This documentation hub
+  RELEASE_HANDOFF_CODEX_QA_2026-11-11.md
+                                  Current preflight evidence and Codex QA gates
   ATHLETEN_PLATFORM_GUIDE.md      Product and feature handbook
   PLAN_VERIFICATION_AND_BILLING.md
                                   Plan selection, verification and payment
@@ -71,8 +74,6 @@ docs/
   API.md                          Server API reference
   Deployment.md                   Deployment instructions
   SECURITY.md                     Security controls and expectations
-  APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md
-                                  Current release evidence and blockers
 AthleteN-Mobile/README.md         Android / Expo development guide
 ```
 
