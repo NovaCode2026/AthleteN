@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
 test('database navigation contract always appends More and accepts only known destinations', () => {
-  const sql = read('../supabase/migrations/20261110130000_require_more_in_navigation.sql');
+  const sql = read('../supabase/migrations/20261111072407_require_more_in_navigation.sql');
   assert.match(sql, /v_ids := array_append\(v_ids,'explore'\)/);
   assert.match(sql, /v_ids\[1:least\(cardinality\(v_ids\),5\)\]/);
   for (const id of ['index','training','ai','compete','profile','explore','calendar','journey','weight','messages','documents','attendance','analytics','reports','coach','verification-review','academy','badges','taekwondo-hub','scanner-panel','plans-panel','notifications-panel','medals-panel','checklist-panel','nutrition-panel','missions-panel','passport-panel','support-panel','team-panel','session-panel','competition-mode-panel']) {
