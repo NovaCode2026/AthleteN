@@ -171,6 +171,6 @@ test('coach and academy range summaries use the same filtered rows as their char
 
 test('legacy username-based coach linking is unavailable to client roles', () => {
   const migration = read('supabase/migrations/20261111162000_revoke_legacy_coach_connect_rpc.sql');
-  assert.match(migration, /revoke all on function public\\.coach_connect_athlete\\(text, uuid\\) from public, anon, authenticated/i);
+  assert.match(migration, /revoke all on function public\.coach_connect_athlete\(text, uuid\) from public, anon, authenticated/i);
   assert.doesNotMatch(migration, /grant execute/i);
 });
