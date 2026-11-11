@@ -184,7 +184,7 @@ test('new coach-athlete links require athlete-initiated coach-code redemption', 
   const athleteTeam = read('AthleteN-Mobile/src/app/team.tsx');
   const coachProfile = read('AthleteN-Mobile/src/app/coach-profile.tsx');
 
-  assert.ok(appliedOptIn.toLowerCase().includes('revoke all on function public.academy_add_coach(text)'));
+  assert.ok(appliedOptIn.toLowerCase().includes('drop policy if exists "coach links coaches can create"'));
   assert.ok(appliedOptIn.toLowerCase().includes('revoke all on function public.academy_add_coach(text)'));
   assert.ok(revokeCoachAdd.toLowerCase().includes('revoke all on function public.coach_add_athlete_by_account_code(text)'));
 
