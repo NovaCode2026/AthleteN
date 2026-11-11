@@ -278,7 +278,7 @@ BEGIN
     IF EXISTS (
       SELECT 1 FROM public.connection_codes cc
       WHERE cc.active=true AND lower(btrim(cc.code))=lower(v_normalized)
-        AND cc.academy_id IS DISTINCT FROM v_academy
+        AND cc.academy_id <> v_academy
     ) THEN RAISE EXCEPTION 'That academy code is already in use'; END IF;
 
     SELECT cc.id INTO v_existing_id FROM public.connection_codes cc
