@@ -19,7 +19,7 @@ export default function CoachAthletes() {
   const { profile } = useAuth();
   const router = useRouter();
   const [athletes, setAthletes] = useState<Athlete[]>([]);
-  const [search, setSearch] = useState(''); const [accountCode,setAccountCode]=useState(''); const [connectBusy,setConnectBusy]=useState(false); const [message,setMessage]=useState('');
+  const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     if (!profile?.user_id) return;
@@ -32,7 +32,6 @@ export default function CoachAthletes() {
   }, [profile?.user_id]);
 
   useEffect(() => { void load(); }, [load]);
-  async function addByCode(){if(!accountCode.trim())return;setConnectBusy(true);setMessage('');const {data,error}=await supabase.rpc('coach_add_athlete_by_account_code',{p_code:accountCode.trim()});setConnectBusy(false);if(error){setMessage(error.message);return}setAccountCode('');setMessage(`${data?.full_name||'Athlete'} connected successfully.`);await load();}
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -43,7 +42,18 @@ export default function CoachAthletes() {
   return (
     <Screen bottomBar={<CoachNav active="athletes" />}>
       <Header eyebrow="TEAM" title="My Athletes" subtitle="Your active roster, athlete details and competition categories." />
-      <View style={{gap:8}}><View style={{flexDirection:'row',gap:8}}><TextInput value={accountCode} onChangeText={setAccountCode} placeholder="Athlete username" placeholderTextColor={c.muted} autoCapitalize="characters" style={{flex:1,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:14,color:c.text,padding:13,fontSize:13}}/><Pressable disabled={connectBusy} onPress={()=>void addByCode()} style={{backgroundColor:c.accent,borderRadius:14,paddingHorizontal:16,justifyContent:'center'}}><Text style={{color:'#fff',fontWeight:'900',fontSize:10}}>{connectBusy?'…':'ADD'}</Text></Pressable></View>{message?<Text style={{color:message.includes('successfully')?c.success:c.danger,fontSize:10}}>{message}</Text>:null}<TextInput value={search} onChangeText={setSearch} placeholder="Search athletes..." placeholderTextColor={c.muted} style={{ backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderRadius: 14, color: c.text, padding: 13, fontSize: 13 }} /></View>
+      <View style={{ gap: 8 }}>
+        <Card accent>
+          <Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900' }}>ATHLETE-INITIATED CONNECTIONS</Text>
+          <Text style={{ color: c.muted, fontSize: 11, lineHeight: 17, marginTop: 5 }}>
+            Share your Coach connection code from Coach Profile. The athlete enters it in My Team to approve the connection. New links are created from the athlete's account.
+          </Text>
+          <Pressable onPress={() => router.push('/coach-profile')} style={{ marginTop: 10, backgroundColor: c.accent, borderRadius: 12, padding: 12, alignItems: 'center' }}>
+            <Text style={{ color: '#fff', fontWeight: '900', fontSize: 10 }}>OPEN COACH PROFILE</Text>
+          </Pressable>
+        </Card>
+        <TextInput value={search} onChangeText={setSearch} placeholder="Search athletes..." placeholderTextColor={c.muted} style={{ backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderRadius: 14, color: c.text, padding: 13, fontSize: 13 }} />
+      </View>
       <Section title="ROSTER">
         {filtered.length ? filtered.map(a => (
           <Pressable key={a.athlete_user_id} onPress={() => router.push({ pathname: '/coach-athlete-detail', params: { athleteId: a.athlete_user_id } })} style={{ marginBottom: 8 }}>
@@ -64,7 +74,7 @@ export default function CoachAthletes() {
         )) : (
           <Card accent>
             <Text style={{ color: c.text, fontSize: 16, fontWeight: '900' }}>No athletes connected yet</Text>
-            <Text style={{ color: c.muted, fontSize: 11, lineHeight: 17, marginTop: 3 }}>Set your coach connection code in Profile, then give it to athletes so they can join your roster.</Text>
+            <Text style={{ color: c.muted, fontSize: 11, lineHeight: 17, marginTop: 3 }}>Share your Coach connection code. An athlete can connect by entering it in their My Team screen.</Text>
             <Pressable onPress={() => router.push('/coach-profile')} style={{ marginTop: 8, backgroundColor: c.accent, borderRadius: 12, padding: 12, alignItems: 'center' }}>
               <Text style={{ color: '#fff', fontWeight: '900', fontSize: 10 }}>OPEN COACH PROFILE</Text>
             </Pressable>
@@ -75,8 +85,6 @@ export default function CoachAthletes() {
         <Pressable onPress={() => router.push('/coach-training')}><Card><Text style={{ color: c.text, fontWeight: '900' }}>Training plans</Text><Text style={{ color: c.muted, fontSize: 10 }}>Create and manage athlete training blocks.</Text></Card></Pressable>
         <Pressable onPress={() => router.push('/coach-competition')}><Card><Text style={{ color: c.text, fontWeight: '900' }}>Competition center</Text><Text style={{ color: c.muted, fontSize: 10 }}>Review wins, losses, medals and upcoming events.</Text></Card></Pressable>
       </Section>
-    
-    
-</Screen>
+    </Screen>
   );
 }
