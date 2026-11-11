@@ -17,10 +17,14 @@ test("team connection migration removes direct membership creation paths", () =>
 
 test("web coach roster connects only by an athlete-shared account code", () => {
   const source = read("../src/components/roles/RoleDashboards.tsx");
+  const coachAcademy = read("../src/components/coach/CoachAcademyDashboard.tsx");
   assert.ok(source.includes("coach_add_athlete_by_account_code"));
   assert.ok(source.includes("AthleteN account code"));
   assert.equal(source.includes("find_athlete_by_username"), false);
   assert.equal(source.includes('from("coach_athlete_links").insert'), false);
+  assert.ok(coachAcademy.includes("coach_add_athlete_by_account_code"));
+  assert.equal(coachAcademy.includes("coach_connect_athlete"), false);
+  assert.equal(coachAcademy.includes("Athlete username"), false);
 });
 
 test("academy workspaces no longer add people by username", () => {
