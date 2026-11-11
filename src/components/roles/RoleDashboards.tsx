@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, RefreshCw, ShieldCheck, Users, UserPlus, ClipboardList, Building2, Search, BarChart3, CalendarCheck, Trophy, Award } from "lucide-react";
+import { Plus, RefreshCw, ShieldCheck, Users, UserPlus, ClipboardList, Building2, BarChart3, CalendarCheck, Trophy, Award } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 function downloadCsv(filename:string,rows:Array<Record<string,unknown>>){if(!rows.length)return;const columns=Array.from(new Set(rows.flatMap(row=>Object.keys(row))));const quote=(value:unknown)=>`"${String(value??"").replace(/"/g,'""')}"`;const csv=[columns.map(quote).join(","),...rows.map(row=>columns.map(key=>quote(row[key])).join(","))].join("\r\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const anchor=document.createElement("a");anchor.href=url;anchor.download=filename;anchor.click();URL.revokeObjectURL(url);}
 import { supabase } from "../../lib/supabase";
@@ -13,7 +13,6 @@ type PlanRow = { id: string; user_id: string; coach_user_id: string; title: stri
 type Membership = { id: string; academy_id: string; user_id: string; role: string; status: string; joined_at?: string | null };
 type Academy = { id: string; owner_user_id: string; name: string; city?: string | null; state?: string | null; country?: string | null; status?: string | null };
 
-type AthleteLookup = Pick<Athlete, "user_id" | "full_name" | "username" | "discipline" | "belt" | "role">;
 type TrainingMetric = { user_id:string; session_date:string; minutes:number };
 type AttendanceMetric = { user_id:string; attended_at:string; status:string };
 type MedalMetric = { user_id:string; awarded_at:string|null; medal_type:string };
@@ -24,31 +23,12 @@ async function fetchAllPages<T>(fetchPage:(from:number,to:number)=>PromiseLike<a
 function Card({ children }: { children: React.ReactNode }) { return <section className="card panel">{children}</section>; }
 function ErrorText({ children }: { children: React.ReactNode }) { return <p className="notice" role="alert">{children}</p>; }
 
-async function resolveAthlete(value: string): Promise<AthleteLookup> {
-  const input = value.trim();
-  if (!input) throw new Error("Enter an athlete username or user ID.");
-  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (uuid.test(input)) {
-    if (!supabase) throw new Error("Supabase is not configured.");
-    const { data, error } = await supabase.from("profiles").select("user_id,full_name,username,discipline,belt,role,sport").eq("user_id", input).maybeSingle();
-    if (error) throw error;
-    if (!data || data.role !== "athlete" || String(data.sport || "").toLowerCase() !== "taekwondo") throw new Error("No Taekwondo athlete profile was found for that user ID.");
-    return data as AthleteLookup;
-  }
-  if (!supabase) throw new Error("Supabase is not configured.");
-  const { data, error } = await supabase.rpc("find_athlete_by_username", { p_username: input.replace(/^@/, "") });
-  if (error) throw error;
-  const athlete = Array.isArray(data) ? data[0] : data;
-  if (!athlete) throw new Error("No Taekwondo athlete was found with that username.");
-  return { ...athlete, role: "athlete" } as AthleteLookup;
-}
 
 export function CoachDashboard({ profile, userId, setToast }: Props) {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [links, setLinks] = useState<LinkRow[]>([]);
   const [plans, setPlans] = useState<PlanRow[]>([]);
-  const [athleteQuery, setAthleteQuery] = useState("");
-  const [foundAthlete, setFoundAthlete] = useState<AthleteLookup | null>(null);
+  const [athleteCode, setAthleteCode] = useState("");
   const [selectedAthlete, setSelectedAthlete] = useState("");
   const [title, setTitle] = useState("");
   const [focus, setFocus] = useState("Kyorugi performance");
@@ -100,22 +80,23 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   }
   useEffect(() => { void load(); }, [userId, rangeMonths]);
 
-  async function findAthlete() {
-    setBusy(true); setError(""); setFoundAthlete(null);
-    try { setFoundAthlete(await resolveAthlete(athleteQuery)); }
-    catch (e) { setError(e instanceof Error ? e.message : "Athlete could not be found."); }
-    finally { setBusy(false); }
-  }
 
-  async function connectAthlete() {
-    if (!supabase || !userId || !foundAthlete?.user_id) return;
+  async function connectAthleteByCode() {
+    if (!supabase || !userId || !athleteCode.trim()) return;
     setBusy(true); setError("");
     try {
-      const { error: e } = await supabase.from("coach_athlete_links").insert({ coach_user_id: userId, athlete_user_id: foundAthlete.user_id, status: "active" });
+      const { data, error: e } = await supabase.rpc("coach_add_athlete_by_account_code", {
+        p_code: athleteCode.trim().toUpperCase()
+      });
       if (e) throw e;
-      setAthleteQuery(""); setFoundAthlete(null); setToast({ type: "success", message: "Athlete linked to your coach workspace." }); await load();
-    } catch (e) { setError(e instanceof Error ? e.message : "Athlete could not be linked."); }
-    finally { setBusy(false); }
+      setAthleteCode("");
+      setToast({ type: "success", message: `${data?.full_name || "Athlete"} connected using their shared account code.` });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Athlete could not be connected.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function createPlan() {
@@ -178,7 +159,7 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
       <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Competition outcomes</span><h3>Recorded results</h3><p className="muted">Only outcomes explicitly saved in athlete records</p></div><Award/></div>{competitionBreakdown.length?<ResponsiveContainer width="100%" height={190}><BarChart data={competitionBreakdown}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="name" tick={{fill:"#91a8c1",fontSize:10}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="count" name="Competition records" fill="#7c8cff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No recorded outcomes yet</strong><span>Competition result summaries will appear here when athletes save results.</span></div>}</article>
     </section>
     <div className="grid two">
-      <Card><div className="panel-head"><div><p className="eyebrow">Roster</p><h3>Link an athlete</h3><p className="muted">Search by the athlete's username or paste their user ID from their profile.</p></div><UserPlus size={20}/></div><div className="inline-form"><input value={athleteQuery} onChange={(e) => { setAthleteQuery(e.target.value); setFoundAthlete(null); }} placeholder="@athlete_username or user ID"/><button className="btn" onClick={() => void findAthlete()} disabled={busy || !athleteQuery.trim()}><Search size={15}/> Find</button></div>{foundAthlete && <div className="detail-row"><div><strong>{foundAthlete.full_name || foundAthlete.username}</strong><small>@{foundAthlete.username || "username not set"} · {foundAthlete.discipline?.toUpperCase() || "Taekwondo"} · {foundAthlete.belt || "Belt not set"}</small></div><button className="btn primary" onClick={() => void connectAthlete()} disabled={busy}><UserPlus size={15}/> Link athlete</button></div>}{athletes.length ? <DataList rows={athletes} empty="No athletes linked yet." render={(athlete) => <div><strong>{athlete.full_name || athlete.username || athlete.user_id}</strong><small>{athlete.discipline ? athlete.discipline.toUpperCase() : "Taekwondo"} · {athlete.belt || "Belt not set"}</small></div>}/> : <p className="muted">No athletes linked yet.</p>}</Card>
+      <Card><div className="panel-head"><div><p className="eyebrow">Roster</p><h3>Connect an athlete</h3><p className="muted">Ask the athlete to share their AthleteN account code. A link is created only when a coach redeems that athlete-specific code.</p></div><UserPlus size={20}/></div><div className="inline-form"><input value={athleteCode} onChange={(e) => setAthleteCode(e.target.value.toUpperCase())} placeholder="Athlete account code" autoCapitalize="characters" autoCorrect="off" maxLength={30}/><button className="btn primary" onClick={() => void connectAthleteByCode()} disabled={busy || !athleteCode.trim()}><UserPlus size={15}/> Connect</button></div>{athletes.length ? <DataList rows={athletes} empty="No athletes linked yet." render={(athlete) => <div><strong>{athlete.full_name || athlete.username || athlete.user_id}</strong><small>{athlete.discipline ? athlete.discipline.toUpperCase() : "Taekwondo"} · {athlete.belt || "Belt not set"}</small></div>}/> : <p className="muted">No athletes connected yet. Share your coach code with athletes, or enter an athlete's shared account code above.</p>}</Card>
       <Card><div className="panel-head"><div><p className="eyebrow">Training plans</p><h3>Assign a plan</h3></div><ClipboardList size={20}/></div><label className="field"><span>Athlete</span><select value={selectedAthlete} onChange={(e) => setSelectedAthlete(e.target.value)}><option value="">Choose athlete</option>{athletes.map((athlete) => <option key={athlete.user_id} value={athlete.user_id}>{athlete.full_name || athlete.username || athlete.user_id}</option>)}</select></label><label className="field"><span>Plan title</span><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Competition preparation"/></label><label className="field"><span>Focus</span><input value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="Kyorugi performance"/></label><label className="field"><span>Coach notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}/></label><button className="btn primary" onClick={() => void createPlan()} disabled={busy || !selectedAthlete || !title.trim()}><Plus size={15}/> Assign plan</button></Card>
     </div>
     <Card><div className="panel-head"><div><p className="eyebrow">Nutrition</p><h3>Coach-controlled nutrition</h3><p className="muted">Enable nutrition, hydration and optional calorie logging only for athletes you choose.</p></div></div>{athletes.length ? <DataList rows={athletes} empty="No athletes linked yet." render={(athlete) => <div className="membership-row"><div><strong>{athlete.full_name || athlete.username || athlete.user_id}</strong><small>{nutritionEnabled[athlete.user_id] ? "Nutrition enabled" : "Nutrition not enabled"}</small></div><button className="btn" onClick={() => void toggleNutrition(athlete.user_id)} disabled={busy}>{nutritionEnabled[athlete.user_id] ? "Disable" : "Enable"}</button></div>}/> : <p className="muted">Link athletes first.</p>}</Card>
@@ -191,9 +172,7 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
   const [academyId, setAcademyId] = useState("");
   const [members, setMembers] = useState<Membership[]>([]);
   const [memberProfiles, setMemberProfiles] = useState<Athlete[]>([]);
-  const [memberQuery, setMemberQuery] = useState("");
-  const [foundMember, setFoundMember] = useState<AthleteLookup | null>(null);
-  const [memberRole, setMemberRole] = useState("athlete");
+  const [savedAcademyCode, setSavedAcademyCode] = useState("");
   const [academyName, setAcademyName] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -214,6 +193,8 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
     const id = academyId && academyRows.some((a) => a.id === academyId) ? academyId : academyRows[0]?.id || "";
     setAcademyId(id);
     if (!id) { setMembers([]); setMemberProfiles([]); setLoading(false); return; }
+    const { data: codeData } = await supabase.rpc("get_my_connection_code");
+    setSavedAcademyCode(codeData?.type === "academy" ? String(codeData.code || "") : "");
     const [membershipResult, profileResult] = await Promise.all([
       supabase.from("academy_memberships").select("id,academy_id,user_id,role,status,joined_at").eq("academy_id", id).order("created_at", { ascending: false }),
       supabase.from("profiles").select("user_id,full_name,username,belt,discipline,academy_id,coach_user_id,role").eq("academy_id", id).order("full_name")
@@ -256,23 +237,6 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
     finally { setBusy(false); }
   }
 
-  async function findMember() {
-    setBusy(true); setError(""); setFoundMember(null);
-    try { setFoundMember(await resolveAthlete(memberQuery)); }
-    catch (e) { setError(e instanceof Error ? e.message : "Athlete could not be found."); }
-    finally { setBusy(false); }
-  }
-
-  async function addMember() {
-    if (!supabase || !academyId || !foundMember?.user_id) return;
-    setBusy(true); setError("");
-    try {
-      const { error: e } = await supabase.from("academy_memberships").insert({ academy_id: academyId, user_id: foundMember.user_id, role: memberRole, status: "active", joined_at: new Date().toISOString() });
-      if (e) throw e;
-      setMemberQuery(""); setFoundMember(null); setToast({ type: "success", message: `${memberRole === "athlete" ? "Athlete" : "Coach"} added to the academy.` }); await load();
-    } catch (e) { setError(e instanceof Error ? e.message : "Membership could not be added."); }
-    finally { setBusy(false); }
-  }
 
   async function updateMember(id: string, status: string) {
     if (!supabase) return;
@@ -314,7 +278,7 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
         <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Achievements</span><h3>Medal distribution</h3><p className="muted">Recorded medal types across academy athletes</p></div><Trophy/></div>{academyMedalBreakdown.length?<ResponsiveContainer width="100%" height={190}><BarChart data={academyMedalBreakdown} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis type="number" allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><YAxis type="category" dataKey="name" width={75} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="count" name="Medals" fill="#f4c45e" radius={[0,6,6,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No medals recorded yet</strong><span>Academy athlete achievements will appear here.</span></div>}</article>
         <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Competition outcomes</span><h3>Recorded results</h3><p className="muted">Based on saved competition records</p></div><Award/></div>{academyCompetitionBreakdown.length?<ResponsiveContainer width="100%" height={190}><BarChart data={academyCompetitionBreakdown}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="name" tick={{fill:"#91a8c1",fontSize:10}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="count" name="Competition records" fill="#7c8cff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No competition results yet</strong><span>Recorded results will appear here when saved.</span></div>}</article>
       </section>
-      <div className="grid two"><Card><div className="panel-head"><div><p className="eyebrow">Membership</p><h3>Add member</h3><p className="muted">Find an athlete by username or user ID, then add them to the academy.</p></div><UserPlus size={20}/></div><div className="inline-form"><input value={memberQuery} onChange={(e) => { setMemberQuery(e.target.value); setFoundMember(null); }} placeholder="@athlete_username or user ID"/><button className="btn" onClick={() => void findMember()} disabled={busy || !memberQuery.trim()}><Search size={15}/> Find</button></div>{foundMember && <div className="detail-row"><div><strong>{foundMember.full_name || foundMember.username}</strong><small>@{foundMember.username || "username not set"} · {foundMember.discipline?.toUpperCase() || "Taekwondo"} · {foundMember.belt || "Belt not set"}</small></div><button className="btn primary" onClick={() => void addMember()} disabled={busy}><UserPlus size={15}/> Add</button></div>}<label className="field"><span>Role</span><select value={memberRole} onChange={(e) => setMemberRole(e.target.value)}><option value="athlete">Athlete</option><option value="coach">Coach</option></select></label></Card><Card><div className="panel-head"><div><p className="eyebrow">Athlete roster</p><h3>Academy athletes</h3></div><Users size={20}/></div>{memberProfiles.length ? <DataList rows={memberProfiles} empty="No athletes yet." render={(member) => <div><strong>{member.full_name || member.username || member.user_id}</strong><small>{member.discipline ? member.discipline.toUpperCase() : "Taekwondo"} · {member.belt || "Belt not set"}</small></div>}/> : <p className="muted">Add athlete memberships to build the roster.</p>}</Card></div>
+      <div className="grid two"><Card><div className="panel-head"><div><p className="eyebrow">Membership</p><h3>Invite by academy code</h3><p className="muted">Athletes and coaches join from their own AthleteN accounts by entering the academy code. This preserves their choice to connect.</p></div><UserPlus size={20}/></div><div className="academy-invite-code"><strong>{savedAcademyCode || "No academy code configured"}</strong><p className="muted">{savedAcademyCode ? "Share this code with the athlete or coach. They must redeem it from their own account." : "Create or manage the academy connection code in the AthleteN Academy workspace, then share it with members."}</p></div></Card><Card><div className="panel-head"><div><p className="eyebrow">Athlete roster</p><h3>Academy athletes</h3></div><Users size={20}/></div>{memberProfiles.length ? <DataList rows={memberProfiles} empty="No athletes yet." render={(member) => <div><strong>{member.full_name || member.username || member.user_id}</strong><small>{member.discipline ? member.discipline.toUpperCase() : "Taekwondo"} · {member.belt || "Belt not set"}</small></div>}/> : <p className="muted">Add athlete memberships to build the roster.</p>}</Card></div>
       <Card><h3>Membership management</h3>{members.length ? <DataList rows={members} empty="No membership records." render={(member) => <div className="membership-row"><div><strong>{memberProfiles.find((p) => p.user_id === member.user_id)?.full_name || member.user_id}</strong><small>{member.role} · {member.status}</small></div>{member.user_id !== userId && <div className="inline-actions"><button className="btn" onClick={() => void updateMember(member.id, member.status === "active" ? "suspended" : "active")}>{member.status === "active" ? "Suspend" : "Activate"}</button></div>}</div>}/> : <p className="muted">No membership records.</p>}</Card>
     </>}
   </div>;
