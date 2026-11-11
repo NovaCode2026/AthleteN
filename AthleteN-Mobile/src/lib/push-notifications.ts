@@ -9,6 +9,7 @@ export const ATHLETEN_NOTIFICATION_CHANNEL_ID = 'athleten-default-v2';
 
 let registeredPushToken: string | null = null;
 let registeredPushUserId: string | null = null;
+let pushRegistrationGeneration = 0;
 
 function getExpoProjectId() {
   return Constants.expoConfig?.extra?.eas?.projectId ??
@@ -26,6 +27,7 @@ Notifications.setNotificationHandler({
 });
 
 export async function registerForPushNotifications(userId: string) {
+  const generation = ++pushRegistrationGeneration;
   if (!Device.isDevice) return { token: null, reason: 'physical-device-required' as const };
 
   if (Platform.OS === 'android') {
@@ -46,10 +48,13 @@ export async function registerForPushNotifications(userId: string) {
   if (status !== 'granted') return { token: null, reason: 'permission-denied' as const };
 
   const projectId = getExpoProjectId();
-
   if (!projectId) return { token: null, reason: 'expo-project-id-missing' as const };
 
   const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  if (generation !== pushRegistrationGeneration) {
+    return { token: null, reason: 'registration-cancelled' as const };
+  }
+
   const { error } = await supabase.from('device_push_tokens').upsert(
     {
       user_id: userId,
@@ -63,6 +68,20 @@ export async function registerForPushNotifications(userId: string) {
   );
 
   if (error) throw error;
+
+  // Sign-out or account switching may happen while the upsert is in flight.
+  // Remove a late write for the previous account instead of leaving a stale
+  // token that could receive that account's notifications on a shared device.
+  if (generation !== pushRegistrationGeneration) {
+    const cleanup = await supabase
+      .from('device_push_tokens')
+      .delete()
+      .eq('user_id', userId)
+      .eq('token', token);
+    if (cleanup.error) throw cleanup.error;
+    return { token: null, reason: 'registration-cancelled' as const };
+  }
+
   registeredPushToken = token;
   registeredPushUserId = userId;
   return { token, reason: 'registered' as const };
@@ -70,6 +89,9 @@ export async function registerForPushNotifications(userId: string) {
 
 export async function unregisterPushNotifications(userId: string) {
   if (!userId) return;
+
+  // Invalidate any registration request that has not completed yet.
+  pushRegistrationGeneration += 1;
 
   let token = registeredPushUserId === userId ? registeredPushToken : null;
   if (!token && Device.isDevice) {
