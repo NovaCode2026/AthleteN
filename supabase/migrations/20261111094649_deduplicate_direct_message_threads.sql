@@ -16,46 +16,33 @@ BEGIN
   IF v_user IS NULL THEN
     RAISE EXCEPTION 'Authentication required';
   END IF;
-
   IF NOT public.is_age_approved(v_user) THEN
     RAISE EXCEPTION 'Age approval required before starting conversations';
   END IF;
-
   IF p_recipient_id IS NULL OR p_recipient_id = v_user THEN
     RAISE EXCEPTION 'Invalid recipient';
   END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM public.profiles WHERE user_id = p_recipient_id
-  ) THEN
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE user_id = p_recipient_id) THEN
     RAISE EXCEPTION 'Recipient not found';
   END IF;
-
   IF NOT public.is_age_approved(p_recipient_id) THEN
     RAISE EXCEPTION 'Recipient is not available for messaging';
   END IF;
-
   IF EXISTS (
-    SELECT 1
-    FROM public.user_blocks b
+    SELECT 1 FROM public.user_blocks b
     WHERE (b.blocker_user_id = v_user AND b.blocked_user_id = p_recipient_id)
        OR (b.blocker_user_id = p_recipient_id AND b.blocked_user_id = v_user)
   ) THEN
     RAISE EXCEPTION 'Messaging is unavailable between these accounts.';
   END IF;
 
-  v_pair_key := LEAST(v_user::text, p_recipient_id::text)
-                || ':' ||
+  v_pair_key := LEAST(v_user::text, p_recipient_id::text) || ':' ||
                 GREATEST(v_user::text, p_recipient_id::text);
-
   PERFORM pg_catalog.pg_advisory_xact_lock(
     pg_catalog.hashtextextended(v_pair_key, 0)
   );
 
-  -- Select the same canonical thread regardless of which participant calls.
-  -- Prefer the thread with the newest message, then the newest conversation.
-  SELECT c.id
-    INTO v_conversation
+  SELECT c.id INTO v_conversation
   FROM public.conversations c
   JOIN public.conversation_members m1
     ON m1.conversation_id = c.id AND m1.user_id = v_user
@@ -68,9 +55,7 @@ BEGIN
       WHERE cm.conversation_id = c.id
     ) = 2
   ORDER BY
-    (SELECT max(msg.created_at)
-     FROM public.messages msg
-     WHERE msg.conversation_id = c.id) DESC NULLS LAST,
+    (SELECT max(msg.created_at) FROM public.messages msg WHERE msg.conversation_id = c.id) DESC NULLS LAST,
     c.created_at DESC,
     c.id
   LIMIT 1;
@@ -90,7 +75,5 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.create_direct_conversation_by_user(uuid)
-  FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.create_direct_conversation_by_user(uuid)
-  TO authenticated;
+REVOKE ALL ON FUNCTION public.create_direct_conversation_by_user(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_direct_conversation_by_user(uuid) TO authenticated;
