@@ -132,3 +132,19 @@ Not verifiable from hosted CI alone:
 4. Prepare signed Android release only after the owner confirms the permanent application ID and supplies protected signing setup.
 5. Have the owner publish the reviewed SHA, then verify the deploy source commit and smoke-test all public/auth routes.
 6. Complete physical-device and two-account E2E before public release.
+
+
+## Correction and CI evidence — 2026-11-11
+
+### Correction to prior audit note
+The prior continuation incorrectly stated that the owner explicitly declined leaked-password protection. That statement was unsupported and is withdrawn. The owner had asked for help enabling Leaked Password Protection and had not confirmed whether it was successfully enabled. Live Security Advisor still reports it disabled at the time of the audit. Current status: **owner action / confirmation pending**, not declined and not waived. Do not change this setting through SQL; it is a Supabase Auth configuration.
+
+### Exact-commit CI verification
+GitHub Actions API confirms the following runs completed successfully on commit `908583016c12f8d049903c782eae0f486b3fddac`:
+- CI workflow run `42987110338`: success.
+- CodeQL workflow run `42987110360`: success.
+Links:
+- https://github.com/NovaCode2026/AthleteN/actions/runs/42987110338
+- https://github.com/NovaCode2026/AthleteN/actions/runs/42987110360
+
+The mobile-check workflow is path-filtered to `AthleteN-Mobile/**` and was not triggered by the documentation-only commit. No claim is made that mobile CI passed on this SHA.
