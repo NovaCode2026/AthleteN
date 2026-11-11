@@ -102,7 +102,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!session?.user.id) return;
 
     const userId = session.user.id;
-    void registerForPushNotifications(userId).catch(() => undefined);
+    void registerForPushNotifications(userId).catch((error) => {
+      console.warn(
+        '[AthleteN] push registration failed',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    });
     const removeNotificationListeners = attachNotificationListeners();
 
     const channel = supabase.channel(`mobile-account-sync-${userId}`);
