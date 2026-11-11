@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { attachNotificationListeners, registerForPushNotifications, unregisterPushNotifications } from '@/lib/push-notifications';
@@ -102,12 +103,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!session?.user.id) return;
 
     const userId = session.user.id;
-    void registerForPushNotifications(userId).catch((error) => {
-      console.warn(
-        '[AthleteN] push registration failed',
-        error instanceof Error ? error.message : 'Unknown error'
-      );
+    const syncPushToken = (requestPermission: boolean) => {
+      void registerForPushNotifications(userId, { requestPermission }).catch((error) => {
+        console.warn(
+          '[AthleteN] push registration failed',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+      });
+    };
+
+    // Ask once during authenticated setup. When the app resumes, only check
+    // whether permission is now enabled in system settings.
+    syncPushToken(true);
+    const appStateSubscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') syncPushToken(false);
     });
+
     const removeNotificationListeners = attachNotificationListeners();
 
     const channel = supabase.channel(`mobile-account-sync-${userId}`);
@@ -136,6 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     channel.subscribe();
 
     return () => {
+      appStateSubscription.remove();
       void supabase.removeChannel(channel);
       removeNotificationListeners?.();
     };
