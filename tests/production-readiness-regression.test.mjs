@@ -32,7 +32,7 @@ test('mobile messaging has no escaped-newline syntax regression and prevents dup
 
 test('trigger-only security-definer functions are not exposed as client RPCs', () => {
   const migration = read('supabase/migrations/20261013113154_revoke_public_trigger_function_execute.sql');
-  assert.match(migration, /audit_admin_mutation\(\) from public, anon, authenticated/i);
+  assert.match(migration, /audit_admin_mutation\(\)\s+from public, anon, authenticated/i);
   assert.match(migration, /guard_privileged_profile_fields\(\) from public, anon, authenticated/i);
 });
 
@@ -166,4 +166,11 @@ test('coach and academy range summaries use the same filtered rows as their char
   assert.match(dashboards, /filteredAcademyTraining\.length\?</);
   assert.match(dashboards, /filteredAcademyAttendance\.length\?</);
   assert.doesNotMatch(dashboards, /<strong>\{attendanceMetrics\.length\}<\/strong><small>Recorded check-ins/);
+});
+
+
+test('legacy username-based coach linking is unavailable to client roles', () => {
+  const migration = read('supabase/migrations/20261111162000_revoke_legacy_coach_connect_rpc.sql');
+  assert.match(migration, /revoke all on function public\.coach_connect_athlete\(text, uuid\)\s+from public, anon, authenticated/i);
+  assert.doesNotMatch(migration, /grant execute/i);
 });
