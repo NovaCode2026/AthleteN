@@ -174,3 +174,24 @@ test('legacy username-based coach linking is unavailable to client roles', () =>
   assert.match(migration, /revoke all on function public\.coach_connect_athlete\(text, uuid\)\s+from public, anon, authenticated/i);
   assert.doesNotMatch(migration, /grant execute/i);
 });
+
+
+test('new coach-athlete links require athlete-initiated coach-code redemption', () => {
+  const appliedOptIn = read('supabase/migrations/20261111162744_require_opt_in_team_connections.sql');
+  const revokeCoachAdd = read('supabase/migrations/20261111163000_revoke_coach_add_athlete_by_account_code.sql');
+  const coachRoster = read('AthleteN-Mobile/src/app/coach-athletes.tsx');
+  const coachTournaments = read('AthleteN-Mobile/src/app/coach-tournaments.tsx');
+  const athleteTeam = read('AthleteN-Mobile/src/app/team.tsx');
+  const coachProfile = read('AthleteN-Mobile/src/app/coach-profile.tsx');
+
+  assert.match(appliedOptIn, /DROP POLICY IF EXISTS "coach links coaches can create"/i);
+  assert.match(appliedOptIn, /REVOKE ALL ON FUNCTION public\\.academy_add_coach\\(text\\)\\s+FROM PUBLIC, anon, authenticated/i);
+  assert.match(revokeCoachAdd, /REVOKE ALL ON FUNCTION public\\.coach_add_athlete_by_account_code\\(text\\)\\s+FROM PUBLIC, anon, authenticated/i);
+
+  assert.doesNotMatch(coachRoster, /coach_add_athlete_by_account_code|Add athlete by username|Athlete username/i);
+  assert.doesNotMatch(coachTournaments, /coach_add_athlete_by_account_code|Add athlete by username|Athlete username/i);
+  assert.match(coachRoster, /athlete enters it in My Team/i);
+  assert.match(coachTournaments, /athlete must enter your Coach connection code first/i);
+  assert.match(athleteTeam, /connect_athlete_by_code/);
+  assert.match(coachProfile, /set_connection_code/);
+});
