@@ -26,7 +26,10 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export async function registerForPushNotifications(userId: string) {
+export async function registerForPushNotifications(
+  userId: string,
+  options: { requestPermission?: boolean } = {}
+) {
   const generation = ++pushRegistrationGeneration;
   if (!Device.isDevice) return { token: null, reason: 'physical-device-required' as const };
 
@@ -42,6 +45,12 @@ export async function registerForPushNotifications(userId: string) {
   const current = await Notifications.getPermissionsAsync();
   let status = current.status;
   if (status !== 'granted') {
+    // On foreground resume, check the system setting without repeatedly
+    // prompting. This lets users enable notifications in Android Settings
+    // and have AthleteN register the token when they return to the app.
+    if (options.requestPermission === false) {
+      return { token: null, reason: 'permission-denied' as const };
+    }
     const requested = await Notifications.requestPermissionsAsync();
     status = requested.status;
   }
