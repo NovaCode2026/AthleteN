@@ -1,5 +1,7 @@
 -- Break the circular RLS dependency across training groups, group members,
--- sessions, and attendance. Helper functions derive identity exclusively from auth.uid().
+-- sessions, and attendance. All helper functions are SECURITY DEFINER so their
+-- read-only relationship checks bypass the referenced tables' RLS policies.
+-- Each helper derives identity exclusively from auth.uid().
 CREATE OR REPLACE FUNCTION private.is_training_group_coach(p_group_id uuid)
 RETURNS boolean
 LANGUAGE sql
