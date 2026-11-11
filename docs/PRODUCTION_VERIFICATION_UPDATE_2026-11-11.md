@@ -70,3 +70,15 @@ No Netlify credits were used and no production message rows, conversation rows, 
 - Verified `authenticated` schema USAGE=true, `anon` schema USAGE=false; the five new helpers have authenticated EXECUTE=true and anon EXECUTE=false.
 - Direct calls to all five helpers as a synthetic authenticated, non-member identity returned false without permission errors. Anonymous role reads of the four protected tables still returned zero rows without recursion.
 - The `private` schema also contains pre-existing routines with authenticated EXECUTE grants; the new schema USAGE is limited to authenticated and does not grant CREATE or add any EXECUTE privileges. Anonymous access remains disabled.
+
+
+## Notification preference enforcement fix
+
+- Production migration applied: `filter_notifications_by_user_preferences`, remote version `20261111112015`.
+- Matching repository migration: `supabase/migrations/20261111112015_filter_notifications_by_user_preferences.sql`.
+- Added a private immutable category resolver and a `BEFORE INSERT` trigger on `public.notifications`. This central gate applies to all notification producers, including message, training cancellation, attendance, announcement, and other server-created notifications.
+- Category mapping: `message` → messages; `training` → training; tournament/competition types → competitions; coach/academy/connection types → coach_academy; achievement/badge/milestone types → achievements; announcements and unknown/system types → system.
+- Disabled category notifications are rejected before they are persisted. This prevents both web Realtime delivery and the existing AFTER INSERT Expo push trigger from running for muted notifications. Missing preference rows default to enabled, preserving current default behavior.
+- Verified the category resolver returns false for each of the six disabled categories and true when all preferences are null (default enabled).
+- Both new private functions have EXECUTE revoked from PUBLIC, anon, and authenticated. The trigger function is SECURITY DEFINER with a pinned empty `search_path`; it runs only as the trigger owner.
+- No existing notification history or preference rows were modified.
