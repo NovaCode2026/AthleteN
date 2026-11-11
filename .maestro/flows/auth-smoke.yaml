@@ -1,0 +1,19 @@
+appId: com.anonymous.AthleteNMobile
+---
+- launchApp:
+    clearState: true
+- assertVisible: "ATHLETEN"
+- assertVisible: "Your performance. One place."
+- assertVisible: "CONTINUE WITH GOOGLE"
+- assertVisible: "Email"
+- assertVisible: "Password"
+- assertVisible: "SIGN IN"
+- assertVisible: "Forgot password? Send reset email"
+- tapOn: "New to AthleteN? Create an account"
+- assertVisible: "CREATE YOUR ATHLETE PROFILE"
+- assertVisible: "Full name"
+- assertVisible: "CREATE ACCOUNT"
+- assertVisible: "I accept the AthleteN"
+- tapOn: "Already have an account? Sign in"
+- assertVisible: "WELCOME BACK"
+- assertVisible: "SIGN IN"
