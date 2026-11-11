@@ -105,3 +105,30 @@ Not verifiable from hosted CI alone:
 2. For each intended authenticated RPC, verify the authorization check cannot be bypassed by caller-controlled IDs, role fields, or cross-tenant identifiers. Add cross-account tests before modifying grants.
 3. Reconstruct the migration ledger from Git history and compare it with the live schema; do not reset or fabricate migration stubs.
 4. Re-run the complete CI workflow on the exact release commit and retain logs for any failed Supabase Preview job.
+
+
+## Production pass continuation — 2026-11-11 13:55 IST
+
+### Fresh live checks
+- Current repository main head remains `967c413910809cc231207dc3be92311b48c4e607` (latest commit observed in GitHub history).
+- Netlify production deploy `6af41b28a5d99e07fdc26bd2` is READY but serves source commit `68c864eda8414ad52d29de43b3f4dd85bb46c918`, behind current main. It deployed 19 Netlify functions; secret scan reported zero matches across 402 files. Lighthouse scores on the root route: Performance 94, Accessibility 100, Best Practices 100, SEO 97, PWA 70.
+- Read-only production database snapshot: PostgreSQL 17.6; 89 public base tables; all 89 have RLS enabled; 86 public SECURITY DEFINER functions.
+- Security Advisor recheck: 61 authenticated-callable SECURITY DEFINER warnings, one `pg_net` extension-in-public warning, and leaked-password protection disabled. Performance Advisor still reports permissive-policy and unused-index notices.
+- User explicitly declined enabling leaked-password protection. Treat this as an owner-accepted limitation for this release pass; do not keep asking to enable it or upgrade Supabase. The app must still enforce sensible password length/validation and all other auth safeguards.
+- Read-only review of high-impact RPC definitions (admin role/plan assignment, badge award/revoke/definition, plan selection/change, group membership, direct messaging) found explicit admin/identity checks in the inspected bodies, with pinned search_path settings. This is a focused sample, not a complete authorization audit or proof against cross-tenant bugs. The 61 warnings remain open for full function-by-function review.
+- No production database writes, grants, auth settings, migration repairs, or deployments were performed in this pass.
+
+### Current disposition
+- The live site is reachable through a READY deploy, but the published source SHA is stale relative to main. Do not deploy automatically; the owner previously reserved deployment for themselves.
+- Migration drift remains a blocker; production migration ledger contains 163 versions and cannot safely be reconciled by placeholder files or blind ledger edits.
+- Android remains blocked on permanent package-ID decision, production signing credentials, signed AAB, and real-device acceptance. Current config still declares `com.anonymous.AthleteNMobile`, version `1.0.3`, versionCode `4`.
+- Leaked-password protection is now recorded as explicitly declined by the owner, not an outstanding action for the assistant.
+- Production sign-off remains **NOT APPROVED** until migration reconciliation, full security/RLS testing, CI evidence on the exact release SHA, deployment by the owner, Android signing/device tests, and role-based multi-account E2E are complete.
+
+### Immediate engineering sequence
+1. Reconstruct the remote migration-version map from repository history and SQL, without touching production migration records.
+2. Complete authorization review and negative tests for all authenticated-callable SECURITY DEFINER functions, prioritizing admin, finance, entitlement, age-verification, and messaging RPCs.
+3. Run all current GitHub Actions jobs on the intended release SHA and retain actual job results.
+4. Prepare signed Android release only after the owner confirms the permanent application ID and supplies protected signing setup.
+5. Have the owner publish the reviewed SHA, then verify the deploy source commit and smoke-test all public/auth routes.
+6. Complete physical-device and two-account E2E before public release.
