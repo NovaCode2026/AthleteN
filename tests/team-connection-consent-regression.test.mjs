@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 test("team connection migration removes direct membership creation paths", () => {
-  const sql = read("../supabase/migrations/20261111170000_require_opt_in_team_connections.sql");
+  const sql = read("../supabase/migrations/20261111162744_require_opt_in_team_connections.sql");
   assert.ok(sql.includes('DROP POLICY IF EXISTS "coach links coaches can create"'));
   assert.ok(sql.includes('DROP POLICY IF EXISTS "Academy admins can create memberships"'));
   assert.ok(sql.includes('Academy owners can bootstrap own admin membership'));
