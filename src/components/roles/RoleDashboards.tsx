@@ -55,11 +55,15 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
     ]);
     const firstError = profileResult.error || linkResult.error || planResult.error || nutritionResult.error;
     if (firstError) setError(firstError.message);
-    setAthletes((profileResult.data || []) as Athlete[]);
     setLinks((linkResult.data || []) as LinkRow[]);
     setPlans((planResult.data || []) as PlanRow[]);
     setNutritionEnabled(Object.fromEntries(((nutritionResult.data || []) as any[]).map((row) => [row.athlete_user_id, row.enabled === true])));
     const athleteIds=Array.from(new Set([...(profileResult.data||[]).map((a:any)=>a.user_id),...(linkResult.data||[]).filter((x:any)=>x.status==="active").map((x:any)=>x.athlete_user_id)].filter(Boolean)));
+    const rosterResult = athleteIds.length
+      ? await supabase.from("profiles").select("user_id,full_name,username,belt,discipline,academy_id,coach_user_id,role").in("user_id", athleteIds)
+      : { data: [], error: null };
+    if (rosterResult.error) setError(rosterResult.error.message);
+    setAthletes((rosterResult.data || []) as Athlete[]);
     if(athleteIds.length){
       const start=new Date();start.setDate(1);start.setMonth(start.getMonth()-(rangeMonths-1));
       const startDate=[start.getFullYear(),String(start.getMonth()+1).padStart(2,"0"),"01"].join("-");
