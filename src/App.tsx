@@ -221,6 +221,9 @@ function AuthScreen({ initialMode }: { initialMode?: AuthMode }) {
       {mode === "register" && <button type="button" onClick={resendVerification} disabled={busy}>Resend verification</button>}
       {mode === "reset" && <button type="button" onClick={() => { setMessage(""); setForm({ ...form, password: "", confirmPassword: "" }); setMode("login"); }}>Back to login</button>}
     </div>
+    <p style={{ marginTop: 22, textAlign: "center", color: "#9fb2ca", fontSize: 13 }}>
+      On the go? <a href="/mobile-app" style={{ color: "#58dfc3", fontWeight: 700 }}>Explore the AthleteN mobile app</a>
+    </p>
   </section></main>;
 }
 function Stat({ icon: Icon, label, value, note }: { icon: typeof Activity; label: string; value: string | number; note: string }) { return <article className="metric card"><div className="metric-icon"><Icon size={18} /></div><div><p>{label}</p><strong>{value}</strong><small>{note}</small></div></article>; }
