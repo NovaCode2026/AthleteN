@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { registerForPushNotifications } from '@/lib/push-notifications';
 import { Screen, Header, Card, Empty, c } from '@/components/mobile-ui';
 
 type NotificationRow = {
@@ -18,7 +17,6 @@ type NotificationRow = {
 
 export default function NotificationsScreen() {
   const { session } = useAuth();
-  const channelRef = useRef<any>(null);
   const [rows, setRows] = useState<NotificationRow[]>([]);
 
   const load = useCallback(async () => {
@@ -38,11 +36,7 @@ export default function NotificationsScreen() {
 
   useEffect(() => {
     if (!session) return;
-    let active = true;
     void load();
-    void registerForPushNotifications(session.user.id).catch((error) => {
-      console.warn('[AthleteN] push registration failed', error);
-    });
 
     void (async () => {
       const p = await Notifications.getPermissionsAsync();
@@ -61,8 +55,7 @@ export default function NotificationsScreen() {
           table: 'notifications',
           filter: 'user_id=eq.' + session.user.id,
         },
-        (payload) => {
-          const n = payload.new as NotificationRow;
+        () => {
           void load();
           // Remote Expo push is dispatched by the database notification trigger.
           // Realtime is used here only to refresh the in-app inbox; this avoids duplicate alerts.
@@ -70,9 +63,7 @@ export default function NotificationsScreen() {
       )
       .subscribe();
 
-    channelRef.current = channel;
     return () => {
-      active = false;
       void supabase.removeChannel(channel);
     };
   }, [load, session]);
