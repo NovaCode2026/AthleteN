@@ -178,7 +178,7 @@ test('legacy username-based coach linking is unavailable to client roles', () =>
 
 test('new coach-athlete links require athlete-initiated coach-code redemption', () => {
   const appliedOptIn = read('supabase/migrations/20261111162744_require_opt_in_team_connections.sql');
-  const revokeCoachAdd = read('supabase/migrations/20261111163000_revoke_coach_add_athlete_by_account_code.sql');
+  const revokeCoachAdd = read('supabase/migrations/20261111163731_revoke_coach_add_athlete_by_account_code.sql');
   const coachRoster = read('AthleteN-Mobile/src/app/coach-athletes.tsx');
   const coachTournaments = read('AthleteN-Mobile/src/app/coach-tournaments.tsx');
   const athleteTeam = read('AthleteN-Mobile/src/app/team.tsx');
