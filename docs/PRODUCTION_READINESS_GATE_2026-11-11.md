@@ -181,7 +181,7 @@ The mobile-check workflow is path-filtered to `AthleteN-Mobile/**` and was not t
 
 ### Migration-history drift remains unresolved
 - Current production ledger: 176 versions.
-- Repository migration directory: 113 SQL files, 92 with 14-digit timestamp prefixes.
+- Repository migration directory: 113 SQL files, 94 with 14-digit timestamp prefixes (92 distinct filename slugs).
 - Only 56 remote migration names have direct slug matches among the locally timestamped files. The other 120 need exact mapping/recovery; some are likely renamed or differently timestamped local files, so this count is not proof that all 120 SQL bodies are absent.
 - 71 locally timestamped files are not exact-version matches in the remote ledger. This includes known renamed migrations and the pending direct-thread consolidation migration.
 - Do not run `supabase db push`, create placeholder files, or repair migration history blindly. Finish a version/name/SQL map and review data migrations before reconciling.
