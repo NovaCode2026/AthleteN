@@ -25,6 +25,7 @@ test('push registration is restricted to physical devices with granted permissio
   assert.match(registration, /Notifications\.requestPermissionsAsync\(\)/);
   assert.match(registration, /if\s*\(!projectId\)/);
   assert.match(registration, /Notifications\.getExpoPushTokenAsync\(\{\s*projectId\s*\}\)/);
+  assert.match(registration, /options\.requestPermission === false/);
 });
 
 test('push tokens are upserted by token and late registration is cleaned up after account changes', () => {
@@ -65,8 +66,16 @@ test('push receipt acknowledgement and notification navigation validate payload 
   assert.match(pushSource, /route\.startsWith\('\/'\)/);
 });
 
+test('mobile auth rechecks push permission on foreground without prompting again', () => {
+  assert.match(authSource, /import \{ AppState \} from 'react-native'/);
+  assert.match(authSource, /AppState\.addEventListener\('change'/);
+  assert.match(authSource, /if \(state === 'active'\) syncPushToken\(false\)/);
+  assert.match(pushSource, /options\.requestPermission === false/);
+});
+
 test('mobile auth session installs notification registration and listener cleanup', () => {
-  assert.match(authSource, /registerForPushNotifications\(userId\)/);
+  assert.match(authSource, /syncPushToken\(true\)/);
   assert.match(authSource, /attachNotificationListeners\(\)/);
+  assert.match(authSource, /appStateSubscription\.remove\(\)/);
   assert.match(authSource, /removeNotificationListeners\?\.\(\)/);
 });
