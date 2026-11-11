@@ -51,3 +51,13 @@ A read-only preview found six two-member direct threads for one pair of accounts
 8. Owner publishes the reviewed web SHA; this pass does not deploy Netlify because deployment is owner-controlled.
 
 No Netlify credits were used and no production message rows, conversation rows, academy memberships, or athlete links were changed by this update.
+
+## Production fix follow-up — training-group RLS recursion
+
+- A live SQL read under the `anon` role initially failed with PostgreSQL `42P17: infinite recursion detected in policy for relation "training_groups"`. Inspection found a circular policy dependency between `training_groups` and `training_group_members`, with related paths through `training_group_sessions` and `training_group_attendance`.
+- Applied production migration `break_training_group_rls_recursion`, remote version `20261111111236`.
+- Matching repository migration: `supabase/migrations/20261111111236_break_training_group_rls_recursion.sql`.
+- Replaced recursive cross-table policy predicates with five private, STABLE, SECURITY DEFINER helpers. Each helper derives its caller from `auth.uid()`, has an empty pinned `search_path`, grants EXECUTE only to `authenticated`, and denies `anon` execution.
+- Replaced policies on the four affected tables with `TO authenticated` policies preserving coach ownership, active athlete membership, academy-admin membership, and coach attendance permissions.
+- Verified after application: the same anon-role SELECT over all four tables succeeds and returns zero visible rows. A synthetic authenticated UUID test also succeeds without recursion and returns zero rows for a non-member identity. This is a negative-access/runtime test; legitimate coach, athlete, and academy-admin positive access still requires real linked accounts.
+- No training records, membership rows, attendance records, or messages were changed by this migration.
