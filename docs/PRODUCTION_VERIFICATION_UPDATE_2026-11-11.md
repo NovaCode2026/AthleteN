@@ -65,8 +65,8 @@ No Netlify credits were used and no production message rows, conversation rows, 
 ### Private-schema function resolution follow-up
 
 - Direct invocation initially exposed a second-order access issue: the authenticated role had EXECUTE grants on the new private helpers but lacked schema USAGE, so PostgreSQL raised `permission denied for schema private`.
-- Applied migration `grant_authenticated_private_schema_usage`, remote version `20261111111300`, with `REVOKE USAGE ON SCHEMA private FROM PUBLIC, anon` and `GRANT USAGE ON SCHEMA private TO authenticated`.
-- Matching repository migration: `supabase/migrations/20261111111300_grant_authenticated_private_schema_usage.sql`.
+- Applied migration `grant_authenticated_private_schema_usage`, remote version `20261111111529`, with `REVOKE USAGE ON SCHEMA private FROM PUBLIC, anon` and `GRANT USAGE ON SCHEMA private TO authenticated`.
+- Matching repository migration: `supabase/migrations/20261111111529_grant_authenticated_private_schema_usage.sql`.
 - Verified `authenticated` schema USAGE=true, `anon` schema USAGE=false; the five new helpers have authenticated EXECUTE=true and anon EXECUTE=false.
 - Direct calls to all five helpers as a synthetic authenticated, non-member identity returned false without permission errors. Anonymous role reads of the four protected tables still returned zero rows without recursion.
 - The `private` schema also contains pre-existing routines with authenticated EXECUTE grants; the new schema USAGE is limited to authenticated and does not grant CREATE or add any EXECUTE privileges. Anonymous access remains disabled.
