@@ -174,3 +174,14 @@ test('legacy username-based coach linking is unavailable to client roles', () =>
   assert.match(migration, /revoke all on function public\.coach_connect_athlete\(text, uuid\)\s+from public, anon, authenticated/i);
   assert.doesNotMatch(migration, /grant execute/i);
 });
+
+test('team membership requires the joining account to opt in through code redemption', () => {
+  const migration = read('supabase/migrations/20261111162744_require_opt_in_team_connections.sql');
+  assert.match(migration, /DROP POLICY IF EXISTS "coach links coaches can create"/i);
+  assert.match(migration, /DROP POLICY IF EXISTS "Academy admins can create memberships"/i);
+  assert.match(migration, /user_id = \(SELECT auth\.uid\(\)\)/i);
+  assert.match(migration, /role = 'academy_admin'/i);
+  assert.match(migration, /a\.owner_user_id = \(SELECT auth\.uid\(\)\)/i);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public\.academy_add_coach\(text\)[\s\S]*FROM PUBLIC, anon, authenticated/i);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public\.find_athlete_by_username\(text\)[\s\S]*FROM PUBLIC, anon, authenticated/i);
+});
