@@ -89,3 +89,19 @@ Not verifiable from hosted CI alone:
 - Supabase password security: https://supabase.com/docs/guides/auth/password-security
 - Supabase production security checklist: https://supabase.com/docs/guides/security/production-checklist
 - Existing detailed handoff: `docs/RELEASE_HANDOFF_CODEX_QA_2026-11-11.md`
+
+
+## Follow-up live audit — 2026-11-11 08:02 UTC
+
+- Re-read the production migration ledger. The live database returned 163 migration records, including the latest `20261111072407` navigation migration. This confirms that the production schema has continued to evolve; it does not establish a safe one-to-one mapping to repository migration files.
+- Re-ran the Supabase Security and Performance Advisors. Security still reports 61 authenticated-callable SECURITY DEFINER functions and one `pg_net` extension-in-public finding. Performance continues to report multiple-permissive-policy findings and unused-index notices.
+- Ran a read-only catalog inspection of authenticated-callable SECURITY DEFINER functions. The returned definitions show a mixture of intended authenticated RPCs and privileged admin/coach/academy workflows. Many explicitly check `auth.uid()`, platform-admin status, linked coach/athlete relationships, age approval, or academy membership. Therefore the Advisor count is a review queue, not proof that all 61 functions are exploitable.
+- No production DDL, grants, migration ledger, auth settings, or live data were changed during this follow-up audit.
+- GitHub combined-status lookup returned no legacy commit status entries for the current documentation commit; that response is not evidence that all Actions workflows passed. The latest Actions checks must be read from their workflow runs/jobs before sign-off.
+
+### Immediate safe next steps
+
+1. Export the full function inventory (identity arguments, ACLs, owner, search_path, body) and classify each function by caller and authorization invariant.
+2. For each intended authenticated RPC, verify the authorization check cannot be bypassed by caller-controlled IDs, role fields, or cross-tenant identifiers. Add cross-account tests before modifying grants.
+3. Reconstruct the migration ledger from Git history and compare it with the live schema; do not reset or fabricate migration stubs.
+4. Re-run the complete CI workflow on the exact release commit and retain logs for any failed Supabase Preview job.
