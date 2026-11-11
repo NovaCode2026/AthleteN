@@ -14,10 +14,12 @@ The current Supabase project already has the production schema and migrations ap
 
 ## Netlify build settings
 
+The repository root is pinned to `pnpm@10.30.3` in `package.json` and includes `pnpm-lock.yaml`. Netlify should use the lockfile-detected pnpm install and the build command below. The Android package is independent and continues to use its own `package-lock.json` with `npm ci`.
+
 The repository's `netlify.toml` already defines these settings:
 
 - Base directory: repository root
-- Build command: `npm run build`
+- Build command: `pnpm run build`
 - Publish directory: `dist`
 - Functions directory: `netlify/functions`
 - SPA fallback: generated as `dist/_redirects`

@@ -1,1 +1,0 @@
-Trigger Netlify rebuild from GitHub main. Remove after production deployment is verified.
