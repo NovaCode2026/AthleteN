@@ -271,7 +271,18 @@ create policy "super admin can read age verifications"
   on public.age_verifications for select to authenticated
   using (private.is_super_admin());
 revoke all on table public.age_verifications from public, anon, authenticated;
-grant select on table public.age_verifications to authenticated;
+grant select (
+  id,
+  user_id,
+  date_of_birth,
+  parent_email,
+  status,
+  token_expires_at,
+  approved_at,
+  rejected_at,
+  created_at,
+  updated_at
+) on table public.age_verifications to authenticated;
 
 -- COACH-CONTROLLED NUTRITION
 alter table public.athlete_feature_controls enable row level security;
