@@ -19,8 +19,21 @@ Deno.serve(async (req) => {
     if (row.status === 'approved') return json({ status: 'approved', message: 'This account has already been approved.' })
     if (row.status !== 'pending') return json({ error: 'This approval request is no longer active.' }, 409)
     if (!row.token_expires_at || new Date(row.token_expires_at).getTime() < Date.now()) return json({ error: 'This approval link has expired. Ask the athlete to send a new request.' }, 410)
-    const { error: updateError } = await admin.from('age_verifications').update({ status: 'approved', approved_at: new Date().toISOString(), token_hash: null, token_expires_at: null, updated_at: new Date().toISOString() }).eq('id', row.id).eq('status', 'pending')
+    const { data: approvedRow, error: updateError } = await admin.from('age_verifications')
+      .update({
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+        token_hash: null,
+        token_expires_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', row.id)
+      .eq('status', 'pending')
+      .eq('token_hash', tokenHash)
+      .select('id')
+      .maybeSingle()
     if (updateError) return json({ error: 'Approval could not be recorded. Please try again.' }, 500)
+    if (!approvedRow) return json({ error: 'This approval link has already been used or is no longer active.' }, 409)
     return json({ status: 'approved', message: 'Parent/guardian approval recorded. The athlete can now enter AthleteN.' })
   } catch (error) { console.error(error); return json({ error: 'Approval could not be completed.' }, 500) }
 })
