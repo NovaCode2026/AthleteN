@@ -98,16 +98,6 @@ begin
     raise exception 'Authentication required';
   end if;
 
-  select p.date_of_birth
-    into v_profile_dob
-    from public.profiles p
-   where p.user_id = v_user_id
-   for update;
-
-  if v_profile_dob is not null and v_profile_dob is distinct from p_date_of_birth then
-    raise exception 'Date of birth is locked after first submission. Contact support to request a correction.';
-  end if;
-
   if p_date_of_birth is null or p_date_of_birth > current_date then
     raise exception 'A valid date of birth is required.';
   end if;
@@ -117,6 +107,19 @@ begin
     raise exception 'Date of birth is outside the supported range.';
   end if;
 
+  select p.date_of_birth
+    into v_profile_dob
+    from public.profiles p
+   where p.user_id = v_user_id
+   for update;
+
+  if v_profile_dob is null then
+    raise exception 'Complete your profile date of birth before age verification.';
+  end if;
+
+  if v_profile_dob is distinct from p_date_of_birth then
+    raise exception 'Date of birth is locked after first submission. Contact support to request a correction.';
+  end if;
   if v_age < 18 then
     if v_parent_email !~* '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then
       raise exception 'A valid parent or guardian email is required for users under 18.';
