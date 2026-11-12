@@ -114,3 +114,6 @@ The implementation candidate now covers the second DOB write surface discovered 
 - Expanded the regression suite to cover the trigger, SQL DOB consistency check, Edge Function profile preflight, and both web/mobile editor guards.
 
 All of these remain repository-side candidate changes. **No production trigger, DDL, grant, Edge Function, or user record was changed.** The actual production database remains unprotected against direct profile DOB updates until the reviewed migration is generated, tested, reconciled and deployed.
+
+
+The latest mobile pass also locks the DOB on the standalone age-verification screen after either the profile or age-verification record has supplied a stored DOB. The SQL draft now guards both profile UPDATE and INSERT paths, and checks that any newly written profile DOB matches an existing age-verification row. Regression assertions cover both cases. These remain un-deployed candidate changes.
