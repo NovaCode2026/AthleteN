@@ -34,6 +34,8 @@ test("age verification SQL draft removes client-write paths and makes DOB immuta
   assert.match(sql, /on conflict \(user_id\) do nothing/i);
   assert.match(sql, /v_existing_dob is distinct from p_date_of_birth/i);
   assert.match(sql, /Date of birth is locked after first submission/i);
+  assert.match(sql, /v_age < 18 and v_status = 'not_required'/i);
+  assert.match(sql, /set status = 'pending'/i);
   assert.match(sql, /v_age >= 18 and v_status in \('pending', 'rejected'\)/i);
   assert.match(sql, /set status = 'not_required'/i);
   assert.match(sql, /revoke all on function public\.prepare_parent_approval\(text\) from public, anon, authenticated/i);
@@ -48,7 +50,9 @@ test("parent approval edge function preserves approved states and only reissues 
   assert.ok(source.includes(".from('profiles')") && source.includes(".select('date_of_birth')"));
   assert.ok(source.includes("if (!profileRow?.date_of_birth)"));
   assert.ok(source.includes("currentAge?.date_of_birth && currentAge.date_of_birth !== dateOfBirth"));
-  assert.ok(source.includes("currentAge?.status === 'approved' || currentAge?.status === 'not_required'"));
+  assert.ok(source.includes("currentAge?.status === 'approved'"));
+  assert.ok(!source.includes("currentAge?.status === 'approved' || currentAge?.status === 'not_required'"));
+  assert.ok(source.includes("legacy minor record to pending"));
   assert.ok(source.indexOf('get_age_verification_status') < source.indexOf("rpc('record_age_profile'"));
   assert.match(source, /status === 'approved'/);
   assert.match(source, /status !== 'pending' && status !== 'rejected'/);
