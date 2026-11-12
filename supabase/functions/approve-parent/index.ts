@@ -19,17 +19,19 @@ Deno.serve(async (req) => {
     if (row.status === 'approved') return json({ status: 'approved', message: 'This account has already been approved.' })
     if (row.status !== 'pending') return json({ error: 'This approval request is no longer active.' }, 409)
     if (!row.token_expires_at || new Date(row.token_expires_at).getTime() < Date.now()) return json({ error: 'This approval link has expired. Ask the athlete to send a new request.' }, 410)
+    const now = new Date().toISOString()
     const { data: approvedRow, error: updateError } = await admin.from('age_verifications')
       .update({
         status: 'approved',
-        approved_at: new Date().toISOString(),
+        approved_at: now,
         token_hash: null,
         token_expires_at: null,
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       })
       .eq('id', row.id)
       .eq('status', 'pending')
       .eq('token_hash', tokenHash)
+      .gt('token_expires_at', now)
       .select('id')
       .maybeSingle()
     if (updateError) return json({ error: 'Approval could not be recorded. Please try again.' }, 500)
