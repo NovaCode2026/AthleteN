@@ -8,8 +8,8 @@ test("the applied production migration removes client writes and legacy token RP
   const sql = read("../supabase/migrations/20261112092215_age_verification_server_owned_approval_hardening_20261112.sql");
   assert.match(sql, /DROP POLICY IF EXISTS "users can create own age verification"/i);
   assert.match(sql, /DROP POLICY IF EXISTS "users can update own age verification"/i);
-  assert.match(sql, /REVOKE ALL PRIVILEGES ON TABLE public\\.age_verifications FROM PUBLIC, anon, authenticated/i);
-  assert.match(sql, /REVOKE ALL PRIVILEGES ON FUNCTION public\\.prepare_parent_approval\\(text\\) FROM PUBLIC, anon, authenticated/i);
+  assert.ok(sql.includes("REVOKE ALL PRIVILEGES ON TABLE public.age_verifications FROM PUBLIC, anon, authenticated"));
+  assert.ok(sql.includes("REVOKE ALL PRIVILEGES ON FUNCTION public.prepare_parent_approval(text) FROM PUBLIC, anon, authenticated"));
   assert.match(sql, /v_age < 18 AND v_status = 'not_required'/i);
 });
 
