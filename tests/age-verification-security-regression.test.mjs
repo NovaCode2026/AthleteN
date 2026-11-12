@@ -28,7 +28,7 @@ test("parent approval edge function preserves approved states and only reissues 
   assert.match(source, /status === 'approved'/);
   assert.match(source, /status !== 'pending' && status !== 'rejected'/);
   assert.match(source, /\.in\('status', \['pending', 'rejected'\]\)/);
-  assert.match(source, /\.select\('id'\)\.maybeSingle\(\)/);
+  assert.match(source, /\.select\('id'\)\s*\.maybeSingle\(\)/);
   assert.doesNotMatch(source, /status !== 'pending' \|\| ageYears >= 18/);
 });
 
@@ -36,7 +36,7 @@ test("guardian approval token is atomically single-use", () => {
   const source = read("../supabase/functions/approve-parent/index.ts");
   assert.match(source, /\.eq\('status', 'pending'\)/);
   assert.match(source, /\.eq\('token_hash', tokenHash\)/);
-  assert.match(source, /\.select\('id'\)\.maybeSingle\(\)/);
+  assert.match(source, /\.select\('id'\)\s*\.maybeSingle\(\)/);
   assert.match(source, /if \(!approvedRow\)/);
   assert.match(source, /already been used or is no longer active/);
 });
