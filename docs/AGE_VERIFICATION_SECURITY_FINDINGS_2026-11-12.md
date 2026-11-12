@@ -79,7 +79,7 @@ The current PR branch now includes the following repository changes:
 - Updated the mobile approval response handling so an already-approved/not-required result refreshes the auth profile.
 - Tightened the manual `supabase/policies.sql` baseline to remove client insert/update policies, revoke client table writes, and give authenticated users SELECT only.
 - Added `tests/age-verification-security-regression.test.mjs` for the SQL draft, Edge Function state handling, admin editor, policy baseline, and mobile response.
-- Added `supabase/security/age_verification_hardening.sql` as a **reviewed SQL draft only**. It is deliberately not in `supabase/migrations/` and is not deployable until converted using `supabase migration new` and tested locally.
+- Added `supabase/security/age_verification_hardening.sql` as a **reviewed SQL draft only**. It is deliberately not in `supabase/migrations/` and is not deployable until converted using `supabase migration new` and tested locally. The draft also supports the age-of-majority transition from `pending`/`rejected` to `not_required`, without allowing callers to set approval state.
 
 ### Not yet fixed / not yet verified
 
@@ -91,3 +91,10 @@ The current PR branch now includes the following repository changes:
 ### Release gate
 
 This patch is a security implementation candidate, not production sign-off. Keep the public release blocked until the actual migration is generated, tested, reconciled with production history, applied safely, the Edge Function is deployed, and the full acceptance matrix passes.
+
+
+### Latest patch note
+
+The SQL draft and regression test were updated to preserve the legitimate age-of-majority path: when the immutable stored DOB establishes that a previously pending/rejected user is now 18 or older, the database function transitions the record to `not_required`, clears the unused guardian token/email, and records the system transition. The caller cannot choose or forge this status.
+
+The regression test has been added but has **not** yet been run in this environment. GitHub has not returned a workflow run or check status for the latest branch head. Do not infer a passing result from the presence of test code.
