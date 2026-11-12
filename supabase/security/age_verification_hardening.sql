@@ -97,6 +97,22 @@ begin
       raise exception 'Date of birth is locked after first submission. Contact support to request a correction.';
     end if;
 
+    -- A user who reaches 18 using the immutable recorded DOB no longer needs
+    -- guardian approval. This transition is server-owned and does not accept
+    -- a caller-supplied approval state.
+    if v_age >= 18 and v_status in ('pending', 'rejected') then
+      update public.age_verifications
+         set status = 'not_required',
+             parent_email = null,
+             token_hash = null,
+             token_expires_at = null,
+             approved_at = now(),
+             rejected_at = null,
+             updated_at = now()
+       where user_id = v_user_id;
+      v_status := 'not_required';
+    end if;
+
     return query select v_status, v_age;
     return;
   end if;
