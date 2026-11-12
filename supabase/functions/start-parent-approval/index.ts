@@ -75,7 +75,7 @@ export default {
       const parentEmail = body.parent_email?.trim().toLowerCase()
       const userId = ctx.userClaims?.sub
       if (!userId) return json({ error: 'Authentication required.' }, 401)
-      if (!dateOfBirth || !/^\\d{4}-\\d{2}-\\d{2}$/.test(dateOfBirth)) {
+      if (!dateOfBirth || !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
         return json({ error: 'Enter a valid date of birth in YYYY-MM-DD format.' }, 400)
       }
       const parsedDob = new Date(`${dateOfBirth}T00:00:00.000Z`)
@@ -96,7 +96,7 @@ export default {
       if (status !== 'pending' && status !== 'rejected') {
         return json({ error: 'The age-verification record needs support review before it can be changed.' }, 409)
       }
-      if (!parentEmail || parentEmail.length > 254 || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(parentEmail)) {
+      if (!parentEmail || parentEmail.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(parentEmail)) {
         return json({ error: 'A valid parent or guardian email is required for users under 18.' }, 400)
       }
       if (parentEmail === (ctx.userClaims?.email || '').toLowerCase()) {
