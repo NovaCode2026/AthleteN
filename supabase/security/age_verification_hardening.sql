@@ -31,21 +31,22 @@ begin
   -- Only the trusted database owner and service_role may perform a DOB
   -- correction. Do not use a custom GUC here: client roles can set custom GUCs.
   if current_user not in ('postgres', 'service_role') then
-    if tg_op = 'UPDATE'
-       and old.date_of_birth is not null
-       and new.date_of_birth is distinct from old.date_of_birth then
-      raise exception 'Date of birth is locked after first submission. Contact support to request a correction.';
+    if tg_op = 'UPDATE' then
+      if old.date_of_birth is not null
+         and new.date_of_birth is distinct from old.date_of_birth then
+        raise exception 'Date of birth is locked after first submission. Contact support to request a correction.';
+      end if;
     end if;
 
-    if new.date_of_birth is not null
-       and (tg_op = 'INSERT' or old.date_of_birth is distinct from new.date_of_birth)
-       and exists (
-      select 1
-        from public.age_verifications a
-       where a.user_id = new.user_id
-         and a.date_of_birth is distinct from new.date_of_birth
-    ) then
-      raise exception 'Profile date of birth must match the existing age-verification record.';
+    if new.date_of_birth is not null then
+      if exists (
+        select 1
+          from public.age_verifications a
+         where a.user_id = new.user_id
+           and a.date_of_birth is distinct from new.date_of_birth
+      ) then
+        raise exception 'Profile date of birth must match the existing age-verification record.';
+      end if;
     end if;
   end if;
   return new;
