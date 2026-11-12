@@ -83,6 +83,18 @@ export default {
         return json({ error: 'Enter a valid date of birth.' }, 400)
       }
 
+      // Validate the DOB saved on the profile as well as the verification row.
+      // The database trigger/function are the authoritative immutability controls.
+      const { data: profileRow, error: profileReadError } = await ctx.supabase
+        .from('profiles')
+        .select('date_of_birth')
+        .eq('user_id', userId)
+        .maybeSingle()
+      if (profileReadError) return json({ error: 'Current profile could not be checked. Please retry.' }, 503)
+      if (profileRow?.date_of_birth && profileRow.date_of_birth !== dateOfBirth) {
+        return json({ error: 'Date of birth is locked after first submission. Contact support to request a correction.' }, 409)
+      }
+
       // Read the existing server-owned verification state before invoking the
       // legacy profile RPC. This prevents the request endpoint from resetting a
       // recorded DOB or an already-completed approval while the DB migration is
