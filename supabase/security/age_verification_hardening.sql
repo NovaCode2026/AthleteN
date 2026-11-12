@@ -20,6 +20,29 @@ create policy "super admin can read age verifications"
 revoke all on table public.age_verifications from public, anon, authenticated;
 grant select on table public.age_verifications to authenticated;
 
+-- Lock profiles.date_of_birth after initial entry as well. This covers direct
+-- profile table updates and all clients, not only the age-verification screen.
+create or replace function public.prevent_profile_dob_rewrite()
+returns trigger
+language plpgsql
+set search_path = ''
+as $function$
+begin
+  if old.date_of_birth is not null
+     and new.date_of_birth is distinct from old.date_of_birth
+     and auth.uid() is not null
+     and coalesce(current_setting('athleten.dob_correction', true), '') <> '1' then
+    raise exception 'Date of birth is locked after first submission. Contact support to request a correction.';
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists prevent_profile_dob_rewrite on public.profiles;
+create trigger prevent_profile_dob_rewrite
+  before update of date_of_birth on public.profiles
+  for each row execute function public.prevent_profile_dob_rewrite();
+
 -- Record the DOB once. Repeating the same DOB is idempotent and preserves the
 -- current approval state; a different DOB requires the separate audited support
 -- correction process and cannot reset a guardian decision.
@@ -37,10 +60,21 @@ declare
   v_age integer;
   v_status text;
   v_existing_dob date;
+  v_profile_dob date;
   v_parent_email text := lower(btrim(coalesce(p_parent_email, '')));
 begin
   if v_user_id is null then
     raise exception 'Authentication required';
+  end if;
+
+  select p.date_of_birth
+    into v_profile_dob
+    from public.profiles p
+   where p.user_id = v_user_id
+   for update;
+
+  if v_profile_dob is not null and v_profile_dob is distinct from p_date_of_birth then
+    raise exception 'Date of birth is locked after first submission. Contact support to request a correction.';
   end if;
 
   if p_date_of_birth is null or p_date_of_birth > current_date then
