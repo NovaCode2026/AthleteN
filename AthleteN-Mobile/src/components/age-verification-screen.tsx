@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
 const c=Colors.dark;
-function ageFromDob(value:string){if(!value)return -1;const d=new Date(value+'T00:00:00');if(Number.isNaN(d.getTime()))return -1;const n=new Date();let a=n.getFullYear()-d.getFullYear();const m=n.getMonth()-d.getMonth();if(m<0||(m===0&&n.getDate()<d.getDate()))a--;return a}
+function ageFromDob(value:string){if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return -1;const [year,month,day]=value.split('-').map(Number);const d=new Date(year,month-1,day);if(Number.isNaN(d.getTime())||d.getFullYear()!==year||d.getMonth()!==month-1||d.getDate()!==day)return -1;const n=new Date();let a=n.getFullYear()-d.getFullYear();const m=n.getMonth()-d.getMonth();if(m<0||(m===0&&n.getDate()<d.getDate()))a--;return a}
 export default function AgeVerificationScreen(){
  const {profile,refreshProfile}=useAuth();
  const [dob,setDob]=useState(String(profile?.date_of_birth||'')),[parentEmail,setParentEmail]=useState(''),[status,setStatus]=useState<string|null>(null),[expires,setExpires]=useState<string|null>(null),[dobLocked,setDobLocked]=useState(Boolean(profile?.date_of_birth)),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
