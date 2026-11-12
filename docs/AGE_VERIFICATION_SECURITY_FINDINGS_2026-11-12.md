@@ -117,3 +117,8 @@ All of these remain repository-side candidate changes. **No production trigger, 
 
 
 The latest mobile pass also locks the DOB on the standalone age-verification screen after either the profile or age-verification record has supplied a stored DOB. The SQL draft now guards both profile UPDATE and INSERT paths, and checks that any newly written profile DOB matches an existing age-verification row. Regression assertions cover both cases. These remain un-deployed candidate changes.
+
+
+### Database trigger correction — 2026-11-12
+
+A review caught that a custom PostgreSQL GUC is not a safe bypass because client roles can set custom GUC values. The draft trigger was corrected: ordinary client roles are always subject to DOB immutability; only the trusted database owner (`postgres`) and `service_role` can run the separate support correction path. The regression suite now asserts that the client-settable GUC bypass is absent. This remains a draft, not a live production change.
