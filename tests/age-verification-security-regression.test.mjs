@@ -10,6 +10,8 @@ test("age verification SQL draft removes client-write paths and makes DOB immuta
   assert.match(sql, /drop policy if exists "users can create own age verification"/i);
   assert.match(sql, /drop policy if exists "users can update own age verification"/i);
   assert.ok(sql.includes("create trigger prevent_profile_dob_rewrite"));
+  assert.ok(sql.includes("create trigger prevent_profile_dob_mismatch_insert"));
+  assert.ok(sql.includes("a.date_of_birth is distinct from new.date_of_birth"));
   assert.ok(sql.includes("old.date_of_birth is not null"));
   assert.ok(sql.includes("new.date_of_birth is distinct from old.date_of_birth"));
   assert.ok(sql.includes("athleten.dob_correction"));
@@ -75,6 +77,9 @@ test("all profile editors lock DOB after first submission", () => {
   const mobile = read("../AthleteN-Mobile/src/app/profile.tsx");
   assert.ok(mobile.includes("profile?.date_of_birth && dob.trim()!==String(profile.date_of_birth)"));
   assert.ok(mobile.includes("editable={!profile?.date_of_birth}"));
+  const mobileGate = read("../AthleteN-Mobile/src/components/age-verification-screen.tsx");
+  assert.ok(mobileGate.includes("setDobLocked(true)"));
+  assert.ok(mobileGate.includes("editable={!dobLocked}"));
 
   const web = read("../src/App.tsx");
   assert.ok(web.includes("values.date_of_birth!==undefined && String(values.date_of_birth)!==String(data.profile.date_of_birth)"));
