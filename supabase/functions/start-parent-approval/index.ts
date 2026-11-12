@@ -83,6 +83,20 @@ export default {
         return json({ error: 'Enter a valid date of birth.' }, 400)
       }
 
+      // Read the existing server-owned verification state before invoking the
+      // legacy profile RPC. This prevents the request endpoint from resetting a
+      // recorded DOB or an already-completed approval while the DB migration is
+      // being rolled out. The database migration remains the authoritative guard.
+      const { data: currentAgeRows, error: currentAgeError } = await ctx.supabase.rpc('get_age_verification_status')
+      if (currentAgeError) return json({ error: 'Current age-verification status could not be checked. Please retry.' }, 503)
+      const currentAge = currentAgeRows?.[0]
+      if (currentAge?.date_of_birth && currentAge.date_of_birth !== dateOfBirth) {
+        return json({ error: 'Date of birth is locked after first submission. Contact support to request a correction.' }, 409)
+      }
+      if (currentAge?.status === 'approved' || currentAge?.status === 'not_required') {
+        return json({ status: currentAge.status, already_complete: true })
+      }
+
       const { data: recorded, error: recordError } = await ctx.supabase.rpc('record_age_profile', { p_date_of_birth: dateOfBirth, p_parent_email: parentEmail || null })
       if (recordError) {
         const statusCode = /date of birth is locked/i.test(recordError.message || '') ? 409 : 400
