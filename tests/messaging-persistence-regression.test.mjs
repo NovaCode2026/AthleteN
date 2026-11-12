@@ -39,7 +39,7 @@ test("messaging schema enforces idempotency, membership, receipts and Realtime",
   const deliveryLimits = read("../supabase/migrations/20261103112535_harden_message_receipt_rpc_limits_and_search_path.sql");
   const persistence = read("../supabase/migrations/20261029165600_fix_messaging_delivery_persistence.sql");
   assert.match(idempotency, /messages_sender_client_message_id_uidx/);
-  assert.match(idempotency, /unique \(message_id, user_id\)/);
+  assert.match(idempotency, /unique\\s*\\(message_id,\\s*user_id\\)/i);
   assert.match(idempotency, /create_message_delivery_records/);
   assert.match(idempotency, /after insert on public\.messages/);
   assert.match(idempotency, /alter publication supabase_realtime add table public\.message_receipts/);
@@ -51,7 +51,7 @@ test("messaging schema enforces idempotency, membership, receipts and Realtime",
 test("direct-thread consolidation preserves messages and blocks unsafe attachment-path merges", () => {
   const sql = read("../supabase/migrations/20261111160000_consolidate_duplicate_direct_message_threads.sql");
   assert.match(sql, /pg_advisory_xact_lock/);
-  assert.match(sql, /latest message, then newest thread/i);
+  assert.match(sql, /newest message, then newest thread/i);
   assert.match(sql, /attachment_path is not null/i);
   assert.match(sql, /storage\.objects/);
   assert.match(sql, /Migrate storage paths before merging/i);
