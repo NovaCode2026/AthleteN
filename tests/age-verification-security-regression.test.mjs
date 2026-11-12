@@ -117,3 +117,14 @@ test("mobile approval UI refreshes profile when approval is already complete", (
   assert.match(source, /data\.status==='approved'\|\|data\.status==='not_required'/);
   assert.match(source, /await refreshProfile\(\)/);
 });
+
+
+test("guardian approval link requires an explicit guardian action and never approves on page load", () => {
+  const source = read("../src/components/account/AgeVerificationGate.tsx");
+  const approvalPage = source.slice(source.indexOf("export function ParentApprovalPage()"));
+  assert.ok(approvalPage.includes("Confirm parent/guardian approval"));
+  assert.match(approvalPage, /onClick=\{\(\) => void confirmApproval\(\)\}/);
+  assert.match(approvalPage, /async function confirmApproval\(\)/);
+  assert.match(approvalPage, /supabase\.functions\.invoke\("approve-parent"/);
+  assert.doesNotMatch(approvalPage, /useEffect\s*\(/);
+});
