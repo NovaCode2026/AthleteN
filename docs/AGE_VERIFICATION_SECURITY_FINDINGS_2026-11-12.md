@@ -98,3 +98,6 @@ This patch is a security implementation candidate, not production sign-off. Keep
 The SQL draft and regression test were updated to preserve the legitimate age-of-majority path: when the immutable stored DOB establishes that a previously pending/rejected user is now 18 or older, the database function transitions the record to `not_required`, clears the unused guardian token/email, and records the system transition. The caller cannot choose or forge this status.
 
 The regression test has been added but has **not** yet been run in this environment. GitHub has not returned a workflow run or check status for the latest branch head. Do not infer a passing result from the presence of test code.
+
+
+The guardian approval Edge Function was also tightened to condition its final update on the pending state and the exact token hash, require a returned updated row, and return a conflict response when another request has already consumed the token. This closes the concurrent double-submit success ambiguity. The accompanying regression test checks the single-use update predicate and no-row conflict behavior.
