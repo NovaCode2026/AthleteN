@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import { authenticate, env, json, logPaymentEvent, planPricesMinor, providerPlanKey, requireApprovedStudent, serverSupabase, siteUrl } from "../payment-common.mjs";
+import { authenticate, env, json, logPaymentEvent, planPricesMinor, providerPlanKey, serverSupabase, siteUrl } from "../payment-common.mjs";
 
-const paidPlans = new Set(["student", "pro", "elite", "coach", "academy"]);
-const providers = new Set(["razorpay", "stripe", "cashfree"]);
+const paidPlans = new Set(["pro", "elite", "coach", "academy"]);
+const providers = new Set(["razorpay", "stripe"]);
 
 async function razorpayCheckout(supabase, user, planId, amountMinor, verificationId) {
   const keyId = env("RAZORPAY_KEY_ID");
@@ -135,16 +135,13 @@ export default async function handler(request) {
       .maybeSingle();
     if (profileError || !profile) return json({ error: "Unable to verify this account for the selected plan." }, 503);
     const roleAllowed =
-      (["student", "pro", "elite"].includes(planId) && profile.role === "athlete") ||
+      (["pro", "elite"].includes(planId) && profile.role === "athlete") ||
       (planId === "coach" && profile.role === "coach") ||
       (planId === "academy" && profile.role === "academy_admin");
     if (!roleAllowed) return json({ error: "This plan is only available to the matching verified account type." }, 403);
     if (["coach", "academy"].includes(planId) && !user.email_confirmed_at) {
       return json({ error: "Verify your AthleteN account email before purchasing this plan." }, 403);
     }
-    const verification = planId === "student" ? await requireApprovedStudent(supabase, user.id) : null;
-    if (planId === "student" && !verification) return json({ error: "Student ID approval is required before payment." }, 403);
-
     // Coach checkout relies on the existing verified Coach role.
     // Academy checkout reuses the existing owner setup + contact-email verification.
     if (planId === "academy") {
@@ -163,14 +160,12 @@ export default async function handler(request) {
 
     const amountMinor = planPricesMinor[planId];
     const result = provider === "razorpay"
-      ? await razorpayCheckout(supabase, user, planId, amountMinor, verification?.id || null)
-      : provider === "stripe"
-        ? await stripeCheckout(supabase, user, planId, amountMinor, verification?.id || null)
-        : await cashfreeCheckout(supabase, user, planId, amountMinor, verification?.id || null);
+      ? await razorpayCheckout(supabase, user, planId, amountMinor, null)
+      : await stripeCheckout(supabase, user, planId, amountMinor, null);
 
     await logPaymentEvent(supabase, {
       user_id: user.id, provider, event_type: "checkout.created", amount_minor: amountMinor,
-      currency: "INR", status: "pending", metadata: { plan_id: planId, payment_order_id: result.orderId, verification_id: verification?.id || null }
+      currency: "INR", status: "pending", metadata: { plan_id: planId, payment_order_id: result.orderId }
     });
     return json({ ...result, planId, amountMinor, currency: "INR", verification: "approved" });
   } catch (error) {
