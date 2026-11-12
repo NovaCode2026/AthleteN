@@ -30,12 +30,15 @@ as $function$
 begin
   if auth.uid() is not null
      and coalesce(current_setting('athleten.dob_correction', true), '') <> '1' then
-    if old.date_of_birth is not null
+    if tg_op = 'UPDATE'
+       and old.date_of_birth is not null
        and new.date_of_birth is distinct from old.date_of_birth then
       raise exception 'Date of birth is locked after first submission. Contact support to request a correction.';
     end if;
 
-    if new.date_of_birth is not null and exists (
+    if new.date_of_birth is not null
+       and (tg_op = 'INSERT' or old.date_of_birth is distinct from new.date_of_birth)
+       and exists (
       select 1
         from public.age_verifications a
        where a.user_id = new.user_id
@@ -51,6 +54,11 @@ $function$;
 drop trigger if exists prevent_profile_dob_rewrite on public.profiles;
 create trigger prevent_profile_dob_rewrite
   before update of date_of_birth on public.profiles
+  for each row execute function public.prevent_profile_dob_rewrite();
+
+drop trigger if exists prevent_profile_dob_mismatch_insert on public.profiles;
+create trigger prevent_profile_dob_mismatch_insert
+  before insert on public.profiles
   for each row execute function public.prevent_profile_dob_rewrite();
 
 -- Record the DOB once. Repeating the same DOB is idempotent and preserves the
