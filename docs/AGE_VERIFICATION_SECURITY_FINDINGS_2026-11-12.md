@@ -101,3 +101,16 @@ The regression test has been added but has **not** yet been run in this environm
 
 
 The guardian approval Edge Function was also tightened to condition its final update on the pending state and the exact token hash, require a returned updated row, and return a conflict response when another request has already consumed the token. This closes the concurrent double-submit success ambiguity. The accompanying regression test checks the single-use update predicate and no-row conflict behavior.
+
+
+### Cross-surface DOB immutability hardening — latest pass
+
+The implementation candidate now covers the second DOB write surface discovered during the audit:
+
+- Added a database trigger draft that rejects changing a non-null `profiles.date_of_birth` for authenticated callers. Initial DOB entry remains allowed. A future correction path must be a separately authorized, audited service-side workflow.
+- Updated the `record_age_profile` SQL draft to lock/read the profile row and reject a DOB that conflicts with the profile DOB before touching `age_verifications`.
+- Added a second server-side preflight in `start-parent-approval` that checks the profile DOB as well as the age-verification DOB before calling the legacy RPC.
+- Locked DOB fields in the web AgeVerificationGate, web onboarding and generic profile editor, and mobile profile editor. Save handlers reject a modified DOB even if a client bypasses the disabled/read-only control.
+- Expanded the regression suite to cover the trigger, SQL DOB consistency check, Edge Function profile preflight, and both web/mobile editor guards.
+
+All of these remain repository-side candidate changes. **No production trigger, DDL, grant, Edge Function, or user record was changed.** The actual production database remains unprotected against direct profile DOB updates until the reviewed migration is generated, tested, reconciled and deployed.
