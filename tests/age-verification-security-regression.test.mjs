@@ -14,7 +14,9 @@ test("age verification SQL draft removes client-write paths and makes DOB immuta
   assert.ok(sql.includes("a.date_of_birth is distinct from new.date_of_birth"));
   assert.ok(sql.includes("old.date_of_birth is not null"));
   assert.ok(sql.includes("new.date_of_birth is distinct from old.date_of_birth"));
-  assert.ok(sql.includes("athleten.dob_correction"));
+  assert.ok(sql.includes("current_user not in ('postgres', 'service_role')"));
+  assert.ok(sql.includes("Do not use a custom GUC here"));
+  assert.ok(!sql.includes("athleten.dob_correction"));
   assert.ok(sql.includes("select p.date_of_birth") && sql.includes("for update"));
   assert.match(sql, /revoke all on table public\.age_verifications from public, anon, authenticated/i);
   assert.match(sql, /grant select on table public\.age_verifications to authenticated/i);
