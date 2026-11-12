@@ -14,11 +14,11 @@ This report separates observed production state from candidate branch changes. I
   - CI run [43209772145](https://github.com/NovaCode2026/AthleteN/actions/runs/43209772145): tests and web production build.
   - CodeQL run [43209772141](https://github.com/NovaCode2026/AthleteN/actions/runs/43209772141): JavaScript/TypeScript analysis.
   - Mobile Check run [43209772179](https://github.com/NovaCode2026/AthleteN/actions/runs/43209772179): contract tests, TypeScript, ESLint, Android bundle export, and Expo Doctor.
-- Current PR HEAD `2d57bf97699c58a519d17e5ed3348bfc16ee6583` passed all three latest workflows:
-  - CI run [43268520101](https://github.com/NovaCode2026/AthleteN/actions/runs/43268520101): tests and production web build.
-  - CodeQL run [43268520104](https://github.com/NovaCode2026/AthleteN/actions/runs/43268520104): JavaScript/TypeScript analysis.
-  - Mobile Check run [43268520100](https://github.com/NovaCode2026/AthleteN/actions/runs/43268520100): mobile contract tests, TypeScript, ESLint, Android bundle export and Expo Doctor.
-- These were green on `2d57bf97699c58a519d17e5ed3348bfc16ee6583`. Further role/finance draft and test commits followed; fresh CI is required on the resulting latest HEAD before relying on the checks. These are source/CI checks only. They do not replace local PostgreSQL migration testing, a fresh Supabase Preview/history check, provider config verification or physical-device acceptance.
+- Current PR revision `731ece8f7f8edd41506e8c95c860407303d18c0c` passed all three workflows:
+  - CI run [43271801354](https://github.com/NovaCode2026/AthleteN/actions/runs/43271801354): tests and web production build, including the new Node regression tests.
+  - CodeQL run [43271801288](https://github.com/NovaCode2026/AthleteN/actions/runs/43271801288): JavaScript/TypeScript analysis.
+  - Mobile Check run [43271801200](https://github.com/NovaCode2026/AthleteN/actions/runs/43271801200): mobile contract tests, TypeScript, ESLint, Android bundle export and Expo Doctor.
+- These are source/CI checks only. They do not replace local PostgreSQL migration testing, a fresh Supabase Preview/history check, provider configuration verification or physical-device acceptance.
 - PR #57 remains a draft. Its SQL file is a review draft, not a migration. It has not been applied to production.
 
 ## Production website
