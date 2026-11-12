@@ -74,14 +74,32 @@ export default {
       const dateOfBirth = body.date_of_birth?.trim()
       const parentEmail = body.parent_email?.trim().toLowerCase()
       if (!dateOfBirth) return json({ error: 'Date of birth is required.' }, 400)
+      const parsedDob = new Date(`${dateOfBirth}T00:00:00.000Z`)
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateOfBirth) || Number.isNaN(parsedDob.getTime()) || parsedDob.toISOString().slice(0, 10) !== dateOfBirth) {
+        return json({ error: 'Enter a valid date of birth in YYYY-MM-DD format.' }, 400)
+      }
+      if (!parentEmail || parentEmail.length > 254 || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(parentEmail)) {
+        return json({ error: 'A valid parent or guardian email is required.' }, 400)
+      }
+      if (parentEmail === (ctx.userClaims?.email || '').toLowerCase()) {
+        return json({ error: 'Parent or guardian email must be different from the account email.' }, 400)
+      }
 
-      const { data: recorded, error: recordError } = await ctx.supabase.rpc('record_age_profile', { p_date_of_birth: dateOfBirth, p_parent_email: parentEmail || null })
-      if (recordError) return json({ error: recordError.message }, 400)
+      const { data: recorded, error: recordError } = await ctx.supabase.rpc('record_age_profile', { p_date_of_birth: dateOfBirth, p_parent_email: parentEmail })
+      if (recordError) return json({ error: recordError.message }, 409)
       const status = recorded?.[0]?.status as string | undefined
       const ageYears = Number(recorded?.[0]?.age_years ?? -1)
-      if (status !== 'pending' || ageYears >= 18) return json({ status: 'not_required', age_years: ageYears })
-      if (!parentEmail) return json({ error: 'A parent or guardian email is required for users under 18.' }, 400)
-      if (parentEmail === (ctx.userClaims?.email || '').toLowerCase()) return json({ error: 'Parent or guardian email must be different from the account email.' }, 400)
+      if (ageYears < 0) return json({ error: 'Age verification could not be completed.' }, 400)
+      if (status !== 'pending' || ageYears >= 18) {
+        const message = status === 'approved'
+          ? 'Parent/guardian approval is already recorded.'
+          : status === 'rejected'
+            ? 'This approval request was rejected. Contact AthleteN support if you believe this is incorrect.'
+            : status === 'not_required'
+              ? 'Parent/guardian approval is not required.'
+              : 'The approval request is not available.'
+        return json({ status: status || 'unknown', age_years: ageYears, message }, status === 'rejected' ? 409 : 200)
+      }
 
       const resendKey = Deno.env.get('RESEND_API_KEY')
       const from = Deno.env.get('PARENT_APPROVAL_FROM')
@@ -112,8 +130,15 @@ export default {
       const token = randomToken()
       const tokenHash = await sha256(token)
       const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
-      const { error: updateError } = await admin.from('age_verifications').update({ token_hash: tokenHash, token_expires_at: expiresAt, status: 'pending', approved_at: null, rejected_at: null, updated_at: new Date().toISOString() }).eq('user_id', ctx.userClaims!.sub)
-      if (updateError) return json({ error: 'Parent approval request could not be created.' }, 500)
+      const { data: updatedRow, error: updateError } = await admin
+        .from('age_verifications')
+        .update({ parent_email: parentEmail, token_hash: tokenHash, token_expires_at: expiresAt, status: 'pending', approved_at: null, rejected_at: null, updated_at: new Date().toISOString() })
+        .eq('user_id', ctx.userClaims!.sub)
+        .eq('date_of_birth', dateOfBirth)
+        .eq('status', 'pending')
+        .select('user_id')
+        .maybeSingle()
+      if (updateError || !updatedRow) return json({ error: 'The approval request changed while it was being prepared. Reload the page and try again.' }, 409)
 
       const clearUnsentToken = async () => {
         const { error } = await admin.from('age_verifications').update({ token_hash: null, token_expires_at: null, updated_at: new Date().toISOString() }).eq('user_id', ctx.userClaims!.sub).eq('token_hash', tokenHash)
