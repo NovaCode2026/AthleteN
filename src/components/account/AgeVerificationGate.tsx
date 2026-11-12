@@ -75,6 +75,7 @@ export default function AgeVerificationGate({ profile, refresh, children }: Prop
   if (loading) return <main className="onboarding-page"><section className="auth-card"><div className="skeleton card">Checking account safety...</div></section></main>;
   if (status?.status === "approved" || status?.status === "not_required") return <>{children}</>;
 
+  const dateOfBirthLocked = Boolean(profile.date_of_birth || status?.date_of_birth);
   const age = ageFromDob(dateOfBirth);
   const needsParent = age >= 0 && age < 18;
 
@@ -88,7 +89,7 @@ export default function AgeVerificationGate({ profile, refresh, children }: Prop
         <button className="btn primary" onClick={() => void startApproval()} disabled={busy}>{busy ? "Sending..." : "Resend approval email"}</button>
       </> : <>
         <p>Enter your date of birth accurately. AthleteN uses it only to determine whether parent/guardian approval is required.</p>
-        <label className="field"><span>Date of birth</span><input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} max={new Date().toISOString().slice(0,10)} required /></label>
+        <label className="field"><span>Date of birth</span><input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} max={new Date().toISOString().slice(0,10)} readOnly={dateOfBirthLocked} required /></label>{dateOfBirthLocked&&<p className="muted">Date of birth is locked after first submission. Contact support to request a correction.</p>}
         {needsParent && <label className="field"><span>Parent / guardian email</span><input type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} placeholder="parent@example.com" required /></label>}
         {age >= 18 && <p className="notice" role="status"><BadgeCheck size={16} /> You are 18 or older, so parent/guardian approval is not required.</p>}
         <button className="btn primary" onClick={() => void startApproval()} disabled={busy}>{busy ? "Verifying..." : needsParent ? "Send parent approval request" : "Confirm age and continue"}</button>
