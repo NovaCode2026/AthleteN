@@ -18,6 +18,8 @@ test("age verification SQL draft removes client-write paths and makes DOB immuta
   assert.ok(sql.includes("Do not use a custom GUC here"));
   assert.ok(!sql.includes("athleten.dob_correction"));
   assert.ok(sql.includes("select p.date_of_birth") && sql.includes("for update"));
+  assert.ok(sql.includes("if v_profile_dob is null then"));
+  assert.ok(sql.includes("Complete your profile date of birth before age verification."));
   assert.match(sql, /revoke all on table public\.age_verifications from public, anon, authenticated/i);
   assert.ok(sql.includes("grant select ("));
   assert.ok(sql.includes("token_expires_at") && sql.includes("approved_at"));
@@ -44,6 +46,7 @@ test("parent approval edge function preserves approved states and only reissues 
   assert.match(source, /date of birth is locked/i);
   assert.match(source, /get_age_verification_status/);
   assert.ok(source.includes(".from('profiles')") && source.includes(".select('date_of_birth')"));
+  assert.ok(source.includes("if (!profileRow?.date_of_birth)"));
   assert.ok(source.includes("currentAge?.date_of_birth && currentAge.date_of_birth !== dateOfBirth"));
   assert.ok(source.includes("currentAge?.status === 'approved' || currentAge?.status === 'not_required'"));
   assert.ok(source.indexOf('get_age_verification_status') < source.indexOf("rpc('record_age_profile'"));
