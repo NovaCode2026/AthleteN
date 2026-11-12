@@ -5,7 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { isSupabaseConfigured, supabase, supabaseConfig } from "./lib/supabase";
 import { createSignedFileUrl, deletePrivateFile, deleteRow, insertRow, listRows, updateRow, uploadPrivateFile, upsertRow, type Resource } from "./services/database";
-import { plans, getPlan } from "./config/plans";
+import { plans, getPlan, paidCheckoutEnabled } from "./config/plans";
 import { calculateReadiness } from "./utils/readiness";
 import type { PlanId, ChecklistItem, CloudData, DocumentRecord, FeedbackItem, Goal, Medal as MedalRecord, AiUsageEvent, Profile, RoadmapItem, RoadmapVote, Subscription, SubscriptionUsage, TournamentScan, TrainingSession, Tournament, UsageSummary, VerificationRequest, WeightLog, KyorugiBout, PoomsaePerformance, TaekwondoTrainingLog } from "./types";
 import AthleteCommandCenter from "./components/dashboard/AthleteCommandCenter";
@@ -261,9 +261,11 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
     window.dispatchEvent(new PopStateEvent("popstate"));
   }
   async function startCheckout(planId: string) {
+    if (!paidCheckoutEnabled) { onToast({ type: "warning", message: "Paid checkout and the seven-day no-charge trial are not enabled yet. The Free plan remains available." }); return; }
+    if (planId === "student") { onToast({ type: "warning", message: "Student is a legacy plan and is not available for new purchases." }); return; }
     if (!supabase || !userId) { onToast({ type: "error", message: "Sign in before requesting a subscription." }); return; }
     if (planId === "student" && studentStatus !== "approved") { openPage("/verification"); return; }
-    const requiredRole = ["student", "pro", "elite"].includes(planId) ? "athlete" : planId === "coach" ? "coach" : "academy_admin";
+    const requiredRole = ["pro", "elite"].includes(planId) ? "athlete" : planId === "coach" ? "coach" : "academy_admin";
     if (role !== requiredRole) {
       onToast({ type: "warning", message: planId === "coach"
         ? "Coach plan requires an existing verified Coach account. Sign in with your Coach account or contact AthleteN Admin for account verification."
@@ -309,15 +311,15 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
       onToast({ type: "error", message: error instanceof Error ? error.message : "Checkout could not be started." });
     } finally { setBusyPlan(null); }
   }
-  const visiblePlans = plans.filter((plan) => plan.id !== "student" || role === "athlete");
+  const visiblePlans = currentPlan === "student" ? [...plans, getPlan("student")] : plans;
   const statusLabel = studentStatus === "approved" ? "Approved" : studentStatus === "pending" ? "Pending admin approval" : studentStatus === "rejected" ? "Rejected · resubmit proof" : "Verification required";
   return <FeaturePage title="Plans and billing">
     <section className="card panel billing-note">
       <CreditCard />
       <div>
         <p className="eyebrow">Your membership</p>
-        <h3>{plans.find((plan) => plan.id === currentPlan)?.name || "Free"} plan</h3>
-        <p>Choose the plan built for your AthleteN account type. Student access requires Admin approval; Coach and Academy access continues to use the existing account verification and role workflow.</p>
+        <h3>{getPlan(currentPlan).name} plan</h3>
+        <p>Choose the plan for your account type. Coach and Academy workspaces continue to require the existing verified account roles. Historical Student subscriptions remain supported but are no longer sold.</p>
       </div>
       <span className="status-chip success">{currentPlan === "free" ? "Free plan" : "Current plan"}</span>
     </section>
@@ -337,14 +339,14 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
           <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
           {plan.id === "student" && <p className="notice" role="status">{studentLoading ? "Checking verification…" : statusLabel}</p>}
           {isFree ? <button className="btn primary" type="button" disabled>Free plan included</button> :
-            <button className="btn primary" type="button" disabled={isCurrent || !!busyPlan || isFree || studentLoading || (plan.id === "student" && studentStatus === "pending")}
-              onClick={() => studentNeedsApproval && plan.id === "student" ? openPage("/verification") : void startCheckout(plan.id)}>
-              {busyPlan === plan.id ? "Verifying account…" : isCurrent ? "Current plan" : plan.id === "student" && studentStatus === "pending" ? "Awaiting Admin approval" : plan.id === "student" && studentStatus !== "approved" ? "Submit student proof" : plan.id === "coach" ? "Verify Coach account & continue" : plan.id === "academy" ? "Verify Academy & continue" : "Continue to checkout"}
+            <button className="btn primary" type="button" disabled={isCurrent || !!busyPlan || isFree || plan.id === "student" || !paidCheckoutEnabled}
+              onClick={() => void startCheckout(plan.id)}>
+              {isCurrent ? "Current plan" : plan.id === "student" ? "Legacy plan · no new purchases" : !paidCheckoutEnabled ? "Paid launch pending" : plan.id === "coach" ? "Verify Coach & continue" : plan.id === "academy" ? "Verify Academy & continue" : "Continue to checkout"}
             </button>}
         </article>{isFree && <section className="card panel plan-card"><p className="eyebrow">FREE PLAN LIMITS</p><h3>What Free is missing</h3><div className="grid two"><div><h4>AI Match Reports</h4><p>Structured review of supplied match result, score and observations.</p></div><div><h4>AI Monthly Reports</h4><p>Monthly summaries for Athletes, Coaches and Academies using their permitted AthleteN records.</p></div></div><p className="notice">Included with paid plans only.</p></section>}</div>;
       })}
     </section>
-    <section className="card panel"><h3>Verification and payment are separate</h3><p>Student proof must be approved by an Admin before Student checkout is available. Coach and Academy plans continue to depend on their existing verified account roles. A successful payment activates the subscription; an approval alone never charges the account.</p><p className="notice">Paid checkout remains in Free Launch mode until the payment launch switch and provider configuration are enabled.</p></section>
+    <section className="card panel"><h3>Launch and billing status</h3><p>The Free plan is available. Paid checkout remains disabled until monthly and yearly billing, provider plan IDs, webhook reconciliation, refunds and financial cost controls pass end-to-end tests.</p><p className="notice">The planned seven-day no-charge trial is not active. The legacy ₹9 trial endpoint remains server-gated.</p></section>
   </FeaturePage>;
 }
 function VerificationPage({ rows, openForm, profile }: { rows: VerificationRequest[]; openForm: (resource: Resource) => void; profile: Profile }) {
