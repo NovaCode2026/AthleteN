@@ -22,9 +22,10 @@ test("age verification SQL draft removes client-write paths and makes DOB immuta
   assert.ok(sql.includes("grant select ("));
   assert.ok(sql.includes("token_expires_at") && sql.includes("approved_at"));
   assert.ok(!sql.includes("grant select on table public.age_verifications to authenticated"));
-  const sqlGrantStart = sql.indexOf("grant select (");
+  const sqlRevokeStart = sql.indexOf("revoke all on table public.age_verifications");
+  const sqlGrantStart = sql.indexOf("grant select (", sqlRevokeStart);
   const sqlGrantEnd = sql.indexOf(") on table public.age_verifications", sqlGrantStart);
-  assert.ok(sqlGrantEnd > sqlGrantStart);
+  assert.ok(sqlRevokeStart >= 0 && sqlGrantStart > sqlRevokeStart && sqlGrantEnd > sqlGrantStart);
   assert.doesNotMatch(sql.slice(sqlGrantStart, sqlGrantEnd), /token_hash/);
 
   assert.match(sql, /set search_path = ''/i);
@@ -80,9 +81,10 @@ test("manual policy baseline grants only age-verification reads to authenticated
   assert.match(source, /revoke all on table public\.age_verifications from public, anon, authenticated/i);
   assert.ok(source.includes("grant select ("));
   assert.ok(!source.includes("grant select on table public.age_verifications to authenticated"));
-  const policyGrantStart = source.indexOf("grant select (");
+  const policyRevokeStart = source.indexOf("revoke all on table public.age_verifications");
+  const policyGrantStart = source.indexOf("grant select (", policyRevokeStart);
   const policyGrantEnd = source.indexOf(") on table public.age_verifications", policyGrantStart);
-  assert.ok(policyGrantEnd > policyGrantStart);
+  assert.ok(policyRevokeStart >= 0 && policyGrantStart > policyRevokeStart && policyGrantEnd > policyGrantStart);
   assert.doesNotMatch(source.slice(policyGrantStart, policyGrantEnd), /token_hash/);
 
   assert.doesNotMatch(source, /'account_entitlements','age_verifications','academy_coach_seats'/);
