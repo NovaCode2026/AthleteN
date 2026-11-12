@@ -47,3 +47,17 @@ test("messaging schema enforces idempotency, membership, receipts and Realtime",
   assert.match(persistence, /public\.is_conversation_member\(conversation_id\)/);
   assert.match(persistence, /sender_id = \(select auth\.uid\(\)\)/);
 });
+
+test("direct-thread consolidation preserves messages and blocks unsafe attachment-path merges", () => {
+  const sql = read("../supabase/migrations/20261111160000_consolidate_duplicate_direct_message_threads.sql");
+  assert.match(sql, /pg_advisory_xact_lock/);
+  assert.match(sql, /latest message, then newest thread/i);
+  assert.match(sql, /attachment_path is not null/i);
+  assert.match(sql, /storage\.objects/);
+  assert.match(sql, /Migrate storage paths before merging/i);
+  assert.match(sql, /update public\.messages\s+set conversation_id = canonical_id\s+where conversation_id = any\(duplicate_ids\)/i);
+  assert.match(sql, /update public\.message_reports/);
+  assert.match(sql, /update public\.support_tickets/);
+  assert.match(sql, /update public\.training_groups/);
+  assert.match(sql, /delete from public\.conversations\s+where id = any\(duplicate_ids\)/i);
+});
