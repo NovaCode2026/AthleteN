@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { env, serverSupabase } from "../payment-common.mjs";
+import { calculateAiCostPaise, estimateInputTokens, readAiBudgetConfig } from "../ai-budget.mjs";
 
 const allowedTopics = new Set([
   "Training Coach",
@@ -15,8 +17,8 @@ const allowedTopics = new Set([
 const planLimits = {
   free: 0,
   student: 50,
-  pro: 200,
-  elite: 500,
+  pro: 50,
+  elite: 200,
   coach: 750,
   academy: 1000
 };
@@ -63,10 +65,16 @@ function createUserSupabaseClient(accessToken) {
 
 async function cancelReservation(supabase, reservationId, userId) {
   if (!reservationId) return;
-  await supabase.rpc("cancel_ai_usage", {
-    p_usage_id: reservationId,
-    p_user_id: userId
-  }).catch(() => undefined);
+  await supabase.rpc("cancel_ai_usage", { p_usage_id: reservationId, p_user_id: userId }).catch(() => undefined);
+}
+async function settlePlatformBudget(admin, id, actualCostPaise) {
+  if (!id) return { error: new Error("AI budget reservation is missing.") };
+  return admin.rpc("settle_athleten_ai_budget", { p_reservation_id:id, p_actual_cost_paise:actualCostPaise });
+}
+async function releasePlatformBudget(admin, id) {
+  if (!id) return;
+  const { error } = await admin.rpc("release_athleten_ai_budget", { p_reservation_id:id });
+  if (error) console.error("AI budget reservation release failed:", error);
 }
 
 function extractResponseText(payload) {
@@ -202,19 +210,39 @@ export default async function handler(request) {
   const monthlyLimit = planLimits[planId] ?? 0;
   if (monthlyLimit <= 0) return json("AI Coach is not available on the Free plan.", 403);
 
+  const pricingModel = env("OPENAI_MODEL") || "gpt-4.1-mini";
+  const costConfig = readAiBudgetConfig({
+    OPENAI_MODEL:pricingModel, ATHLETEN_AI_PRICING_MODEL:env("ATHLETEN_AI_PRICING_MODEL"),
+    ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE:env("ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE"),
+    ATHLETEN_AI_OUTPUT_PRICE_PER_1M_TOKENS_PAISE:env("ATHLETEN_AI_OUTPUT_PRICE_PER_1M_TOKENS_PAISE"),
+    ATHLETEN_AI_MONTHLY_BUDGET_PAISE:env("ATHLETEN_AI_MONTHLY_BUDGET_PAISE"),
+    ATHLETEN_AI_MAX_OUTPUT_TOKENS:env("ATHLETEN_AI_MAX_OUTPUT_TOKENS")
+  });
+  if (!costConfig) return json("AI Coach is paused until verified input/output prices for the selected model are configured.", 503);
+  const openAiApiKey = env("OPENAI_API_KEY");
+  if (!openAiApiKey) return json("AI Coach is not configured on the server.", 503);
+  let budgetAdmin;
+  try { budgetAdmin = serverSupabase(); } catch { return json("AI Coach is paused until its protected monthly budget ledger is available.", 503); }
+
+  const systemPrompt = "You are AthleteN, a careful Taekwondo performance assistant. Focus on athlete development, training, competition, wellbeing, and sports-related support. Do not provide coding or software-development assistance. For emotional support, respond thoughtfully and at whatever length is useful rather than applying an arbitrary short reply limit. Give practical, age-safe, non-medical guidance. Encourage professional medical help for injuries or health concerns.";
+  const modelInput = "Topic: " + topic + "\nAthlete request: " + prompt;
+  const reservedCostPaise = calculateAiCostPaise(estimateInputTokens(systemPrompt + "\n" + modelInput), costConfig.maxOutputTokens, costConfig.inputPricePerMillionPaise, costConfig.outputPricePerMillionPaise);
+  const clock = new Date();
+  const usageMonth = new Date(Date.UTC(clock.getUTCFullYear(), clock.getUTCMonth(), 1)).toISOString().slice(0, 10);
+  const { data: budgetReservationId, error: budgetReservationError } = await budgetAdmin.rpc("reserve_athleten_ai_budget", {
+    p_usage_month:usageMonth, p_monthly_budget_paise:costConfig.monthlyBudgetPaise, p_reserve_paise:reservedCostPaise
+  });
+  if (budgetReservationError) { console.error("AI budget reservation failed:", budgetReservationError); return json("AI Coach is paused because the protected monthly budget ledger is not ready.", 503); }
+  if (!budgetReservationId) return json("The monthly AthleteN AI operating budget has been reached.", 429);
+
   const { data: reservationId, error: reservationError } = await supabase.rpc("reserve_ai_usage", {
     p_user_id: userId,
     p_plan_id: planId,
     p_topic: topic,
     p_monthly_limit: monthlyLimit
   });
-  if (reservationError) return json("Unable to reserve your monthly AI usage. Please try again.", 503);
-  if (!reservationId) return json("Monthly AI limit reached for your current plan.", 429);
-
-  if (!process.env.OPENAI_API_KEY) {
-    await cancelReservation(supabase, reservationId, userId);
-    return json("AI Coach is temporarily unavailable.", 503);
-  }
+  if (reservationError) { await releasePlatformBudget(budgetAdmin, budgetReservationId); return json("Unable to reserve your monthly AI usage. Please try again.", 503); }
+  if (!reservationId) { await releasePlatformBudget(budgetAdmin, budgetReservationId); return json("Monthly AI limit reached for your current plan.", 429); }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
@@ -224,19 +252,19 @@ export default async function handler(request) {
     response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${openAiApiKey}`,
         "Content-Type": "application/json"
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
-        input: [
-          { role: "system", content: "You are AthleteN, a careful Taekwondo performance assistant. Focus on athlete development, training, competition, wellbeing, and sports-related support. Do not provide coding or software-development assistance. For emotional support, respond thoughtfully and at whatever length is useful rather than applying an arbitrary short reply limit. Give practical, age-safe, non-medical guidance. Encourage professional medical help for injuries or health concerns." },
-          { role: "user", content: `Topic: ${topic}\nAthlete request: ${prompt}` }
-        ]
+        model: pricingModel,
+        max_output_tokens: costConfig.maxOutputTokens,
+        input: [ { role:"system", content:systemPrompt }, { role:"user", content:modelInput } ]
       })
     });
   } catch (error) {
+    const settled = await settlePlatformBudget(budgetAdmin, budgetReservationId, reservedCostPaise);
+    if (settled.error) console.error("AI timeout budget settlement failed:", settled.error);
     await cancelReservation(supabase, reservationId, userId);
     if (error?.name === "AbortError") {
       return json("AI Coach timed out. Please try again.", 504);
@@ -248,24 +276,30 @@ export default async function handler(request) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const settled = await settlePlatformBudget(budgetAdmin, budgetReservationId, reservedCostPaise);
+    if (settled.error) console.error("AI error-response budget settlement failed:", settled.error);
     await cancelReservation(supabase, reservationId, userId);
     return json("AI Coach request failed. Please try again later.", 502);
   }
-
   const answer = extractResponseText(payload);
   if (!answer) {
+    const settled = await settlePlatformBudget(budgetAdmin, budgetReservationId, reservedCostPaise);
+    if (settled.error) console.error("AI unreadable-response budget settlement failed:", settled.error);
     await cancelReservation(supabase, reservationId, userId);
     return json("AI Coach returned an unreadable response. Please try again.", 502);
   }
-
-  const { error: meterError } = await supabase
-    .from("ai_usage_events")
-    .update({ tokens_used: Number(payload?.usage?.total_tokens) || 0 })
-    .eq("id", reservationId)
-    .eq("user_id", userId);
-
-  return Response.json({
-    answer,
-    usageRecorded: !meterError
-  });
+  const usage = payload?.usage || {};
+  const inputTokens = Number.isFinite(Number(usage.input_tokens)) ? Math.max(0, Number(usage.input_tokens)) : null;
+  const outputTokens = Number.isFinite(Number(usage.output_tokens)) ? Math.max(0, Number(usage.output_tokens)) : null;
+  const totalTokens = Number.isFinite(Number(usage.total_tokens)) ? Math.max(0, Number(usage.total_tokens)) : (inputTokens ?? 0) + (outputTokens ?? 0);
+  const actualCostPaise = inputTokens !== null && outputTokens !== null
+    ? calculateAiCostPaise(inputTokens, outputTokens, costConfig.inputPricePerMillionPaise, costConfig.outputPricePerMillionPaise)
+    : reservedCostPaise;
+  const { error: budgetSettlementError } = await settlePlatformBudget(budgetAdmin, budgetReservationId, actualCostPaise);
+  if (budgetSettlementError) console.error("AI budget settlement failed; reservation remains held:", budgetSettlementError);
+  const { error: meterError } = await supabase.from("ai_usage_events").update({
+    tokens_used:totalTokens, input_tokens:inputTokens ?? 0, output_tokens:outputTokens ?? 0,
+    total_tokens:totalTokens, api_cost_minor:actualCostPaise
+  }).eq("id", reservationId).eq("user_id", userId);
+  return Response.json({ answer, usageRecorded:!meterError && !budgetSettlementError, costMetered:!budgetSettlementError });
 }
