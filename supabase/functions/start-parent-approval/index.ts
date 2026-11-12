@@ -91,7 +91,10 @@ export default {
         .eq('user_id', userId)
         .maybeSingle()
       if (profileReadError) return json({ error: 'Current profile could not be checked. Please retry.' }, 503)
-      if (profileRow?.date_of_birth && profileRow.date_of_birth !== dateOfBirth) {
+      if (!profileRow?.date_of_birth) {
+        return json({ error: 'Complete your profile date of birth before age verification.' }, 409)
+      }
+      if (profileRow.date_of_birth !== dateOfBirth) {
         return json({ error: 'Date of birth is locked after first submission. Contact support to request a correction.' }, 409)
       }
 
