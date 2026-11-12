@@ -9,6 +9,11 @@ test("age verification SQL draft removes client-write paths and makes DOB immuta
   assert.match(sql, /REVIEWED DRAFT ONLY — NOT A DEPLOYABLE MIGRATION/);
   assert.match(sql, /drop policy if exists "users can create own age verification"/i);
   assert.match(sql, /drop policy if exists "users can update own age verification"/i);
+  assert.match(sql, /create trigger prevent_profile_dob_rewrite/i);
+  assert.match(sql, /old\\.date_of_birth is not null/i);
+  assert.match(sql, /new\\.date_of_birth is distinct from old\\.date_of_birth/i);
+  assert.match(sql, /athleten\\.dob_correction/i);
+  assert.match(sql, /select p\\.date_of_birth[\\s\\S]*for update/i);
   assert.match(sql, /revoke all on table public\.age_verifications from public, anon, authenticated/i);
   assert.match(sql, /grant select on table public\.age_verifications to authenticated/i);
   assert.match(sql, /set search_path = ''/i);
@@ -26,6 +31,7 @@ test("parent approval edge function preserves approved states and only reissues 
   assert.match(source, /YYYY-MM-DD format/);
   assert.match(source, /date of birth is locked/i);
   assert.match(source, /get_age_verification_status/);
+  assert.match(source, /from\\('profiles'\\)[\\s\\S]*select\\('date_of_birth'\\)/);
   assert.ok(source.includes("currentAge?.date_of_birth && currentAge.date_of_birth !== dateOfBirth"));
   assert.ok(source.includes("currentAge?.status === 'approved' || currentAge?.status === 'not_required'"));
   assert.ok(source.indexOf('get_age_verification_status') < source.indexOf("rpc('record_age_profile'"));
@@ -63,6 +69,20 @@ test("manual policy baseline grants only age-verification reads to authenticated
   assert.match(source, /revoke all on table public\.age_verifications from public, anon, authenticated/i);
   assert.match(source, /grant select on table public\.age_verifications to authenticated/i);
   assert.doesNotMatch(source, /'account_entitlements','age_verifications','academy_coach_seats'/);
+});
+
+test("all profile editors lock DOB after first submission", () => {
+  const mobile = read("../AthleteN-Mobile/src/app/profile.tsx");
+  assert.match(mobile, /profile\\?\\.date_of_birth && dob\\.trim\\(\\)!==String\\(profile\\.date_of_birth\\)/);
+  assert.match(mobile, /editable=\\{!profile\\?\\.date_of_birth\\}/);
+
+  const web = read("../src/App.tsx");
+  assert.match(web, /values\\.date_of_birth!==undefined && String\\(values\\.date_of_birth\\)!==String\\(data\\.profile\\.date_of_birth\\)/);
+  assert.match(web, /readOnly=\\{Boolean\\(profile\\.date_of_birth\\)\\}/);
+
+  const gate = read("../src/components/account/AgeVerificationGate.tsx");
+  assert.match(gate, /dateOfBirthLocked = Boolean\\(profile\\.date_of_birth \\|\\| status\\?\\.date_of_birth\\)/);
+  assert.match(gate, /readOnly=\\{dateOfBirthLocked\\}/);
 });
 
 test("mobile approval UI refreshes profile when approval is already complete", () => {
