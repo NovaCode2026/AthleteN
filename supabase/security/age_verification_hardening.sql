@@ -28,11 +28,21 @@ language plpgsql
 set search_path = ''
 as $function$
 begin
-  if old.date_of_birth is not null
-     and new.date_of_birth is distinct from old.date_of_birth
-     and auth.uid() is not null
+  if auth.uid() is not null
      and coalesce(current_setting('athleten.dob_correction', true), '') <> '1' then
-    raise exception 'Date of birth is locked after first submission. Contact support to request a correction.';
+    if old.date_of_birth is not null
+       and new.date_of_birth is distinct from old.date_of_birth then
+      raise exception 'Date of birth is locked after first submission. Contact support to request a correction.';
+    end if;
+
+    if new.date_of_birth is not null and exists (
+      select 1
+        from public.age_verifications a
+       where a.user_id = new.user_id
+         and a.date_of_birth is distinct from new.date_of_birth
+    ) then
+      raise exception 'Profile date of birth must match the existing age-verification record.';
+    end if;
   end if;
   return new;
 end;
