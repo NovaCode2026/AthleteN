@@ -19,7 +19,11 @@ test("age verification SQL draft removes client-write paths and makes DOB immuta
   assert.ok(!sql.includes("athleten.dob_correction"));
   assert.ok(sql.includes("select p.date_of_birth") && sql.includes("for update"));
   assert.match(sql, /revoke all on table public\.age_verifications from public, anon, authenticated/i);
-  assert.match(sql, /grant select on table public\.age_verifications to authenticated/i);
+  assert.ok(sql.includes("grant select ("));
+  assert.ok(sql.includes("token_expires_at") && sql.includes("approved_at"));
+  assert.ok(!sql.includes("grant select on table public.age_verifications to authenticated"));
+  assert.ok(!sql.includes("token_hash,"));
+
   assert.match(sql, /set search_path = ''/i);
   assert.match(sql, /on conflict \(user_id\) do nothing/i);
   assert.match(sql, /v_existing_dob is distinct from p_date_of_birth/i);
@@ -71,7 +75,10 @@ test("manual policy baseline grants only age-verification reads to authenticated
   assert.match(source, /drop policy if exists "users can create own age verification"/i);
   assert.match(source, /drop policy if exists "users can update own age verification"/i);
   assert.match(source, /revoke all on table public\.age_verifications from public, anon, authenticated/i);
-  assert.match(source, /grant select on table public\.age_verifications to authenticated/i);
+  assert.ok(source.includes("grant select ("));
+  assert.ok(!source.includes("grant select on table public.age_verifications to authenticated"));
+  assert.ok(!source.includes("token_hash,"));
+
   assert.doesNotMatch(source, /'account_entitlements','age_verifications','academy_coach_seats'/);
 });
 
