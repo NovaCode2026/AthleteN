@@ -14,7 +14,11 @@ This report separates observed production state from candidate branch changes. I
   - CI run [43209772145](https://github.com/NovaCode2026/AthleteN/actions/runs/43209772145): tests and web production build.
   - CodeQL run [43209772141](https://github.com/NovaCode2026/AthleteN/actions/runs/43209772141): JavaScript/TypeScript analysis.
   - Mobile Check run [43209772179](https://github.com/NovaCode2026/AthleteN/actions/runs/43209772179): contract tests, TypeScript, ESLint, Android bundle export, and Expo Doctor.
-- A documentation-only refresh was subsequently pushed as `65646d5826b7c96caed39521de5e7dfedf2ed917`; CI, CodeQL, and mobile workflows were running at the time of this report. Do not treat the earlier green runs as checks on this later commit.
+- Current PR HEAD `2d57bf97699c58a519d17e5ed3348bfc16ee6583` passed all three latest workflows:
+  - CI run [43268520101](https://github.com/NovaCode2026/AthleteN/actions/runs/43268520101): tests and production web build.
+  - CodeQL run [43268520104](https://github.com/NovaCode2026/AthleteN/actions/runs/43268520104): JavaScript/TypeScript analysis.
+  - Mobile Check run [43268520100](https://github.com/NovaCode2026/AthleteN/actions/runs/43268520100): mobile contract tests, TypeScript, ESLint, Android bundle export and Expo Doctor.
+- These are source/CI checks only. They do not replace local PostgreSQL migration testing, a fresh Supabase Preview/history check, provider config verification or physical-device acceptance.
 - PR #57 remains a draft. Its SQL file is a review draft, not a migration. It has not been applied to production.
 
 ## Production website
@@ -58,6 +62,9 @@ Latest observed Security Advisor snapshot (2026-11-12):
 - `pg_net` extension installed in the exposed `public` schema.
 - These are review warnings, not proof that all 57 functions are exploitable. Review each function's caller, owner, `search_path`, object authorization, caller-controlled identifiers, and least-privilege grants. Do not blanket-revoke EXECUTE.
 - The leaked-password protection setting was observed disabled. Verify/enable it in Supabase Auth configuration; it cannot be fixed by a SQL migration.
+- Targeted live RPC review found `public.switch_my_product_role(text)` executable by `authenticated`. Its body accepts `athlete`, `coach` or `academy_admin`, inserts the requested role into `account_product_roles`, and then updates the caller's `profiles.role`/`plan_id`; it does not require prior Coach verification or Academy setup approval. The README says Coach/Academy paid products rely on an existing verified Coach role or an active, completed Academy setup. This is a **role-enrollment authorization blocker**: the callable RPC currently bypasses the stated prerequisite at the database boundary. Repository search found no current Web/Mobile caller, but an authenticated user can still call the RPC directly. Disable/harden this RPC through a reviewed migration, and test attempts by an ordinary athlete to switch to coach/academy_admin before enabling those workspaces publicly.
+- Targeted finance review found `get_or_create_my_coach_finance_account()` and `can_manage_finance_account(uuid)` are authenticated-callable SECURITY DEFINER functions without an explicit `is_age_approved()` check. They scope writes/reads to the caller's coach/academy account relationship; this review has not established a cross-account bypass. Add age/guardian-state checks to Finance entry and RLS helpers before enabling finance for public under-18 accounts, and test as pending, approved and unrelated users.
+- `create-checkout.mjs` and `create-trial-checkout.mjs` are presently blocked at the top by `FREE_LAUNCH = true`, before provider operations. Their dormant paid flows do not currently enforce age/guardian approval for every role. Keep the launch gate closed until checkout preflight and webhook entitlement activation both reject accounts lacking the required age approval. `activate_trial_after_payment` is currently EXECUTE-restricted to `service_role`; do not grant it to clients.
 
 Latest Performance Advisor snapshot:
 - 73 unused-index informational findings.
@@ -82,13 +89,14 @@ A read-only 24-hour Supabase log slice returned one Auth `400` on 2026-11-12 at 
 1. Reconcile Supabase migration history and rerun Supabase Preview on the exact release SHA.
 2. Generate and test the profile-DOB/column-access migration on a local non-billable PostgreSQL/Supabase stack. Include direct PostgREST update/clear attempts, matching/mismatching DOB inserts, and role isolation.
 3. Merge and deploy the matching Edge Functions only after the database contract is verified.
-4. Complete prioritized function-by-function review of all 57 authenticated-callable SECURITY DEFINER functions and resolve or explicitly accept the `pg_net` schema warning.
-5. Verify Supabase Auth settings: leaked-password protection, email verification, password reset, site URL and redirect allowlist.
-6. Verify Google OAuth origins and callback URIs, SMTP sender/domain, privacy policy, guardian-contact process, and account deletion.
-7. Confirm Android application identity; build a signed AAB with protected EAS credentials; verify signing certificate fingerprints and install/upgrade on a physical device.
-8. Run two-account web/mobile acceptance: OAuth, email verification/reset, guardian approval and token expiry/replay, messaging persistence after refresh/restart, notifications, attachments, uploads/downloads, account deletion, and athlete/coach/academy/admin role boundaries.
-9. Verify payments in provider test mode, including webhook signatures, idempotency, refunds/cancellations, entitlement projection and reconciliation. Keep live collection disabled until tested.
-10. Have the owner publish the reviewed main SHA to Netlify, then verify the production deploy's commit SHA and smoke-test public, authenticated, and callback routes.
+4. Harden or disable `switch_my_product_role(text)` so an athlete cannot self-enroll as a Coach/Academy Admin without the verified role/setup; add negative RPC tests. Add age/guardian checks to finance access paths before public finance access.
+5. Complete prioritized function-by-function review of all 57 authenticated-callable SECURITY DEFINER functions and resolve or explicitly accept the `pg_net` schema warning.
+6. Verify Supabase Auth settings: leaked-password protection, email verification, password reset, site URL and redirect allowlist.
+7. Verify Google OAuth origins and callback URIs, SMTP sender/domain, privacy policy, guardian-contact process, and account deletion.
+8. Confirm Android application identity; build a signed AAB with protected EAS credentials; verify signing certificate fingerprints and install/upgrade on a physical device.
+9. Run two-account web/mobile acceptance: OAuth, email verification/reset, guardian approval and token expiry/replay, messaging persistence after refresh/restart, notifications, attachments, uploads/downloads, account deletion, and athlete/coach/academy/admin role boundaries.
+10. Verify payments in provider test mode, including webhook signatures, idempotency, refunds/cancellations, entitlement projection and reconciliation. Keep live collection disabled until tested.
+11. Have the owner publish the reviewed main SHA to Netlify, then verify the production deploy's commit SHA and smoke-test public, authenticated, and callback routes.
 
 ## Scope and safety
 
