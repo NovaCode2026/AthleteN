@@ -165,6 +165,23 @@ begin
       raise exception 'Date of birth is locked after first submission. Contact support to request a correction.';
     end if;
 
+    -- A minor must never retain a bypass state of not_required. This can
+    -- occur in legacy rows created before DOB immutability was enforced.
+    -- Require a valid parent email above, then return the account to the
+    -- server-controlled pending workflow without carrying forward any token.
+    if v_age < 18 and v_status = 'not_required' then
+      update public.age_verifications
+         set status = 'pending',
+             parent_email = nullif(v_parent_email, ''),
+             token_hash = null,
+             token_expires_at = null,
+             approved_at = null,
+             rejected_at = null,
+             updated_at = now()
+       where user_id = v_user_id;
+      v_status := 'pending';
+    end if;
+
     -- A user who reaches 18 using the immutable recorded DOB no longer needs
     -- guardian approval. This transition is server-owned and does not accept
     -- a caller-supplied approval state.
