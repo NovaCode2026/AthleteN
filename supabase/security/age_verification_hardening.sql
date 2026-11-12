@@ -28,8 +28,9 @@ language plpgsql
 set search_path = ''
 as $function$
 begin
-  if auth.uid() is not null
-     and coalesce(current_setting('athleten.dob_correction', true), '') <> '1' then
+  -- Only the trusted database owner and service_role may perform a DOB
+  -- correction. Do not use a custom GUC here: client roles can set custom GUCs.
+  if current_user not in ('postgres', 'service_role') then
     if tg_op = 'UPDATE'
        and old.date_of_birth is not null
        and new.date_of_birth is distinct from old.date_of_birth then
