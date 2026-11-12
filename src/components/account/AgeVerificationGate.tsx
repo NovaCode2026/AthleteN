@@ -101,13 +101,16 @@ export default function AgeVerificationGate({ profile, refresh, children }: Prop
 
 export function ParentApprovalPage() {
   const supabase = requireSupabase();
-  const [state, setState] = useState<"loading" | "approved" | "error">("loading");
-  const [message, setMessage] = useState("");
+  const token = new URLSearchParams(window.location.search).get("token") || "";
+  const validToken = /^[a-f0-9]{64}$/.test(token);
+  const [state, setState] = useState<"ready" | "submitting" | "approved" | "error">(validToken ? "ready" : "error");
+  const [message, setMessage] = useState(validToken ? "" : "This approval link is missing or invalid.");
 
-  useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get("token") || "";
-    if (!token) { setState("error"); setMessage("This approval link is missing its token."); return; }
-    void (async () => {
+  async function confirmApproval() {
+    if (!validToken || state !== "ready") return;
+    setState("submitting");
+    setMessage("");
+    try {
       const { data, error } = await supabase.functions.invoke("approve-parent", { body: { token } });
       if (error || data?.error) {
         setState("error");
@@ -116,14 +119,23 @@ export function ParentApprovalPage() {
       }
       setState("approved");
       setMessage(data?.message || "Parent/guardian approval recorded.");
-    })();
-  }, []);
+    } catch (error) {
+      setState("error");
+      setMessage(error instanceof Error ? error.message : "This approval link could not be used.");
+    }
+  }
 
   return <main className="auth-page"><section className="auth-card">
     <span className="eyebrow">AthleteN</span>
-    <h1>{state === "loading" ? "Checking approval link..." : state === "approved" ? "Account approved" : "Approval link unavailable"}</h1>
-    <p>{state === "loading" ? "Please wait." : message}</p>
+    <h1>{state === "submitting" ? "Recording approval..." : state === "approved" ? "Account approved" : state === "ready" ? "Review approval request" : "Approval link unavailable"}</h1>
+    {state === "ready" && <>
+      <p>Only continue if you are the athlete's parent or lawful guardian and expected this request. Confirming records parent/guardian approval for this AthleteN account.</p>
+      <button className="btn primary" type="button" onClick={() => void confirmApproval()}>Confirm parent/guardian approval</button>
+      <p className="muted">If you are not the parent or lawful guardian, close this page. No change will be made.</p>
+    </>}
+    {state === "submitting" && <p role="status">Please wait while the approval is recorded.</p>}
+    {state !== "ready" && <p>{message}</p>}
     {state === "approved" && <p className="notice" role="status">The athlete can now sign in and continue to AthleteN.</p>}
-    {state === "error" && <p className="notice" role="alert">Ask the athlete to resend the parent/guardian approval email if this link has expired.</p>}
+    {state === "error" && <p className="notice" role="alert">Ask the athlete to resend the parent/guardian approval email if this link has expired or is unavailable.</p>}
   </section></main>;
 }
