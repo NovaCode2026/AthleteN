@@ -122,3 +122,8 @@ The latest mobile pass also locks the DOB on the standalone age-verification scr
 ### Database trigger correction — 2026-11-12
 
 A review caught that a custom PostgreSQL GUC is not a safe bypass because client roles can set custom GUC values. The draft trigger was corrected: ordinary client roles are always subject to DOB immutability; only the trusted database owner (`postgres`) and `service_role` can run the separate support correction path. The regression suite now asserts that the client-settable GUC bypass is absent. This remains a draft, not a live production change.
+
+
+### Token-hash read restriction — 2026-11-12
+
+The database hardening draft and manual policy baseline now grant authenticated users column-level SELECT on the fields required for their own age-verification status and for the read-only admin list. They do **not** grant SELECT on `token_hash`. The owner-scoped `get_age_verification_status()` RPC remains the normal application status path. Regression tests scope the grant block and assert that the token hash is absent from client-readable columns. This is still a draft; the production grants are unchanged until a reviewed migration is deployed.
