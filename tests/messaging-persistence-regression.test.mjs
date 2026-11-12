@@ -55,9 +55,9 @@ test("direct-thread consolidation preserves messages and blocks unsafe attachmen
   assert.match(sql, /attachment_path is not null/i);
   assert.match(sql, /storage\.objects/);
   assert.match(sql, /Migrate storage paths before merging/i);
-  assert.match(sql, /update public\.messages\s+set conversation_id = canonical_id\s+where conversation_id = any\(duplicate_ids\)/i);
-  assert.match(sql, /update public\.message_reports/);
-  assert.match(sql, /update public\.support_tickets/);
-  assert.match(sql, /update public\.training_groups/);
-  assert.match(sql, /delete from public\.conversations\s+where id = any\(duplicate_ids\)/i);
+  assert.match(sql, /update public\.messages\s+set conversation_id = canonical_id\s+where conversation_id = any\(duplicate_ids\)/i/i);
+  assert.match(sql, /update public\.message_reports//i);
+  assert.match(sql, /update public\.support_tickets//i);
+  assert.match(sql, /update public\.training_groups//i);
+  assert.match(sql, /delete from public\.conversations\s+where id = any\(duplicate_ids\)/i/i);
 });
