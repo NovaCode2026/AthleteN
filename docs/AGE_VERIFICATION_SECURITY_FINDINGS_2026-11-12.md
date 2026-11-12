@@ -68,3 +68,26 @@ Live `public.prepare_parent_approval(text)` is SECURITY DEFINER and returns the 
 ## Evidence scope
 
 Read-only inspection of production catalogs and function definitions on 2026-11-12. No production DDL, grants, Auth settings, migration ledger, or user rows were changed.
+
+
+## Implementation added in PR #55 — 2026-11-12
+
+The current PR branch now includes the following repository changes:
+
+- Hardened `start-parent-approval`: strict ISO date validation, immutable-DOB conflict handling, preservation of an already-approved state, support for a rejected request to be resent, and a conditional server-side state transition that only updates pending/rejected rows.
+- Restricted the generic admin resource browser: the age-verification table is read-only, selects an explicit non-token projection, and cannot be created, edited, or deleted through the generic editor.
+- Updated the mobile approval response handling so an already-approved/not-required result refreshes the auth profile.
+- Tightened the manual `supabase/policies.sql` baseline to remove client insert/update policies, revoke client table writes, and give authenticated users SELECT only.
+- Added `tests/age-verification-security-regression.test.mjs` for the SQL draft, Edge Function state handling, admin editor, policy baseline, and mobile response.
+- Added `supabase/security/age_verification_hardening.sql` as a **reviewed SQL draft only**. It is deliberately not in `supabase/migrations/` and is not deployable until converted using `supabase migration new` and tested locally.
+
+### Not yet fixed / not yet verified
+
+- The live production database remains vulnerable until the SQL hardening is applied through a reviewed, timestamped migration. The repository currently has remote migration-history drift; no SQL was applied to production in this pass.
+- The Supabase CLI is not installed in the available execution environment, and the repository cannot be cloned locally here. Therefore a CLI-generated migration file and local Postgres test could not be produced. Do not treat the SQL draft as applied.
+- The updated Edge Function has not been deployed. Deploy it only after the migration is tested/applied, so the RPC contract and service-role update path are in sync.
+- Cross-account positive/negative tests, guardian email delivery, token expiry/replay tests, and physical-device acceptance remain required.
+
+### Release gate
+
+This patch is a security implementation candidate, not production sign-off. Keep the public release blocked until the actual migration is generated, tested, reconciled with production history, applied safely, the Edge Function is deployed, and the full acceptance matrix passes.
