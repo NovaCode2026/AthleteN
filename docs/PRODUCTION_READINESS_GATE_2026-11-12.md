@@ -18,7 +18,7 @@ This report separates observed production state from candidate branch changes. I
   - CI run [43268520101](https://github.com/NovaCode2026/AthleteN/actions/runs/43268520101): tests and production web build.
   - CodeQL run [43268520104](https://github.com/NovaCode2026/AthleteN/actions/runs/43268520104): JavaScript/TypeScript analysis.
   - Mobile Check run [43268520100](https://github.com/NovaCode2026/AthleteN/actions/runs/43268520100): mobile contract tests, TypeScript, ESLint, Android bundle export and Expo Doctor.
-- These are source/CI checks only. They do not replace local PostgreSQL migration testing, a fresh Supabase Preview/history check, provider config verification or physical-device acceptance.
+- These were green on `2d57bf97699c58a519d17e5ed3348bfc16ee6583`. Further role/finance draft and test commits followed; fresh CI is required on the resulting latest HEAD before relying on the checks. These are source/CI checks only. They do not replace local PostgreSQL migration testing, a fresh Supabase Preview/history check, provider config verification or physical-device acceptance.
 - PR #57 remains a draft. Its SQL file is a review draft, not a migration. It has not been applied to production.
 
 ## Production website
@@ -43,7 +43,7 @@ Project: `wjegokgtrewtoopbsiol`.
 - Ordinary authenticated users cannot execute `public.prepare_parent_approval(text)`; its raw-token RPC privilege is restricted to trusted server roles.
 - Live `record_age_profile(date,text)` prevents changing the DOB already stored in `age_verifications` and preserves the approval decision on same-DOB submission.
 - **Remaining release blocker:** the live `profiles` table has no DOB immutability trigger. An authenticated user can still update or clear `profiles.date_of_birth` under the ordinary own-profile update path, potentially making it inconsistent with the immutable age-verification DOB.
-- PR #57 contains a candidate database trigger, revised consistency checks, explicit column grants, Edge Function updates, and web/mobile UI locks. These are repository-side changes only, not deployed.
+- PR #57 contains a candidate database trigger, revised consistency checks, explicit column grants, Edge Function updates, and web/mobile UI locks. It now also contains `supabase/security/role_and_finance_authorization_hardening.sql`, a separate review-only draft, plus `tests/role-finance-authorization-regression.test.mjs`. The latter covers intended SQL guard text but is not a live Postgres/RLS runtime test. All of these are repository-side changes only, not deployed.
 
 ### Migration history
 
