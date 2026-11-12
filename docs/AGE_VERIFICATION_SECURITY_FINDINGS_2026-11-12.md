@@ -37,7 +37,7 @@ The repository candidate contains:
 
 ## Migration and deployment controls
 
-The production ledger contains 176 migration records in the current snapshot. A prior Supabase Preview run reported remote migration versions missing from the local migrations directory. That reconciliation gate must be rerun on the current mainline before any additional DDL is applied.
+The production ledger contains 177 migration records in the current snapshot. The current mainline tree contains 113 SQL files under `supabase/migrations/`; a conservative filename comparison found only 81 remote entries with a normalised stem match, and that is not a one-to-one reconciliation because some local names/versions collide or differ. A prior Supabase Preview run reported remote migration versions missing from the local migrations directory. Treat migration reconciliation as unresolved; do not infer that the count comparison identifies the original source files. Re-run the Supabase Preview/history check on the current mainline before any additional DDL is applied.
 
 - Do not fabricate placeholder migration files or versions.
 - Do not mark migrations applied/reverted by hand.
@@ -67,7 +67,7 @@ Cross-account tests, guardian email delivery tests, expiry/replay tests, and phy
 - Move `pg_net` out of `public` after checking dependencies.
 - Enable leaked-password protection through the Supabase Auth configuration and verify password reset/email verification settings.
 - Verify Android package ID `com.novacode.athleten` against the intended Play Console application before store publication. The candidate includes a manual EAS AAB workflow, but no signed production AAB has been built or verified. It requires the repository Actions secret `EXPO_TOKEN` and EAS production signing credentials.
-- Netlify production is marked READY, but the current published deploy serves commit `0c2af19c46d4995dd4ee1b77969fc9055ca9996f`, while repository main is `b29051dcde5d411aa3d0d80b589e633754c0e6d2`. Publish only a reviewed, passing main SHA after the backend gates pass.
+- Netlify production was rechecked on 2026-11-12: deploy `6af42f978110916eb4db495a` is READY but serves commit `0c2af19c46d4995dd4ee1b77969fc9055ca9996f`, while repository main is `b29051dcde5d411aa3d0d80b589e633754c0e6d2`. That deploy reports Lighthouse root-route scores of Performance 96, Accessibility 100, Best Practices 100, SEO 97, PWA 70, and secret scanning found no matches across 406 files. These are deploy-specific root-route checks, not proof that current main is deployed or all authenticated routes work. Publish only a reviewed, passing main SHA after the backend gates pass.
 - Complete two-account physical-device tests: Google OAuth, email verification and reset, guardian approval, messages after refresh, notifications, uploads/downloads, account deletion, and role boundaries.
 
 ## Evidence and change scope
