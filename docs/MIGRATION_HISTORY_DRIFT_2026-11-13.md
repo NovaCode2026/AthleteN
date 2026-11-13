@@ -5,10 +5,10 @@
 This is a timestamp comparison, not a filename-stem or SQL-equivalence comparison. The Supabase CLI documentation states that `supabase migration list` compares migration timestamps between `supabase/migrations` and `supabase_migrations.schema_migrations`; it does not match migrations by SQL contents or descriptive name.
 
 - Production remote ledger: **177** versions.
-- Repository local SQL files: **113**.
-- Unique local timestamp prefixes: **96**.
-- Exact timestamps present both locally and remotely: **24**.
-- Remote timestamps with no matching local file: **153**.
+- Candidate branch local SQL files: **116**.
+- Unique local timestamp prefixes: **99**.
+- Exact timestamps present both locally and remotely: **27**.
+- Remote timestamps with no matching local file: **150**.
 - Local timestamps not recorded in remote history: **72**.
 - Duplicate local timestamp groups: **5** groups containing 22 files.
 - Local files with non-14-digit timestamp prefixes: **19**.
@@ -17,9 +17,15 @@ A name-based match is not sufficient to clear this blocker. A migration file wit
 
 ## Historical GitHub migration-file recovery check
 
-The repository path history endpoint returned **132 commits** touching `supabase/migrations/` (100 on the first page and 32 on the second). The commit diffs were inspected for migration file additions, modifications, deletions and renames. This recovered no additional exact timestamps beyond the same 24 versions present in the current local tree.
+The repository path history endpoint returned **132 commits** touching `supabase/migrations/` (100 on the first page and 32 on the second). Those mainline diffs contained 24 exact remote timestamps. A subsequent scan of all current repository branches recovered three additional exact-timestamp SQL files from `audit/nov-2026-pilot-hardening` / `codex/audit-pilot-execution-2026-11-04`; they are now restored on PR #57:
 
-Result: the 153 remote-only timestamps are not recoverable as correctly timestamped SQL migration files from the repository's tracked migration-file history. The missing SQL must be recovered from a trusted external archive/backup or handled through an explicitly reviewed schema-baseline/squash plan. A filename-only placeholder would conceal the gap rather than reconstruct it.
+- `20261104101337_competition_checklists_tournament_scope.sql` — remote ledger name `competition_checklists_tournament_scope`.
+- `20261104103042_secure_messaging_and_coach_rpcs.sql` — remote ledger name `secure_messaging_and_coach_rpcs`.
+- `20261104103647_enforce_announcement_audience_reads.sql` — remote ledger name `enforce_announcement_audience_reads`.
+
+The 20261104101337 and 20261104103042 SQL bodies from both independent branch snapshots match after ignoring comments and whitespace. For 20261104103647, the Codex branch version additionally drops the older `announcements public published read` policy; the live database has only `announcements_select_published_audience` for SELECT, so the restored version matches the observed live state better. These three restorations raise the exact timestamp match count from 24 to 27.
+
+Result: **150 remote-only timestamps still have no recoverable correctly timestamped SQL file in any scanned branch**. They must be recovered from a trusted external archive/backup or handled through an explicitly reviewed schema-baseline/squash plan. A filename-only placeholder would conceal the gap rather than reconstruct it.
 
 ## Remote versions missing locally
 
@@ -175,9 +181,6 @@ Result: the 153 remote-only timestamps are not recoverable as correctly timestam
 | `20261103162715` | `harden_ai_report_insert_entitlements` |
 | `20261103162851` | `restrict_student_verification_to_athletes` |
 | `20261103171241` | `harden_ai_reports_active_subscription_academy_verification` |
-| `20261104101337` | `competition_checklists_tournament_scope` |
-| `20261104103042` | `secure_messaging_and_coach_rpcs` |
-| `20261104103647` | `enforce_announcement_audience_reads` |
 
 ## Local timestamps not recorded remotely
 
