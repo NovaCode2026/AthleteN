@@ -50,13 +50,13 @@ BEGIN
 END $$;
 RESET ROLE;
 SET ROLE postgres;
-DO $
+DO $assert2$
 BEGIN
   IF EXISTS(SELECT 1 FROM public.athleten_ai_budget_monthly
     WHERE usage_month=date_trunc('month',now() at time zone 'UTC')::date
       AND (reserved_paise<>0 OR spent_paise<>600))
   THEN RAISE EXCEPTION 'Monthly totals do not reconcile after release'; END IF;
-END $$;
+END $assert2$;
 SELECT set_config('request.jwt.claim.role','authenticated',false);
 SET ROLE authenticated;
 DO $$
