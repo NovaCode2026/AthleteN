@@ -124,7 +124,7 @@ export default function PlansScreen() {
     <View>
       <Text style={s.kicker}>ATHLETEN • SUBSCRIPTION</Text>
       <Text style={s.title}>Choose your plan.</Text>
-      <Text style={s.subtitle}>Budget-friendly pricing for athletes, coaches and academies. Existing Student subscriptions remain supported as a legacy plan. Paid checkout and the new no-charge trial are not active yet.</Text>
+      <Text style={s.subtitle}>Budget-friendly pricing for athletes, coaches and academies. Displayed prices include applicable GST; no additional GST is added on top. Existing Student subscriptions remain supported as a legacy plan. Paid checkout and the new no-charge trial are not active yet.</Text>
     </View>
 
     <View style={s.current}>
