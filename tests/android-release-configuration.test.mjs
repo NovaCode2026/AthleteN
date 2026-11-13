@@ -34,7 +34,8 @@ test("CI produces a standalone QA APK signed with the Android debug certificate"
   assert.match(workflow, /Build standalone QA APK \(release variant, debug key\)/);
   assert.match(workflow, /EXPO_PUBLIC_APP_CHANNEL: qa/);
   assert.match(workflow, /gradlew assembleRelease --no-daemon/);
-  assert.match(workflow, /apksigner verify --verbose --print-certs/);
+  assert.match(workflow, /APKSIGNER=.*apksigner/s);
+  assert.match(workflow, /verify --verbose --print-certs/);
   assert.match(workflow, /CN=Android Debug/);
   assert.match(workflow, /AthleteN-qa-debug-signed-apk/);
   assert.match(workflow, /app-release\.apk/);

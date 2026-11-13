@@ -20,7 +20,7 @@ The workflow sets `EXPO_PUBLIC_APP_CHANNEL=qa`. The app displays a persistent wa
 
 The current mobile client has a fallback URL for the production Supabase project. There is no isolated QA Supabase branch configured for this build. Therefore this APK is for controlled private QA using the designated test account only. Do not use it for destructive testing against real athlete accounts, account deletion, billing, real competition records, or public distribution.
 
-A debug certificate is not a production upload key. The QA APK cannot be used for Play Store publication and may not update an installation signed with the Play App Signing/upload key. Install on a separate test device or remove an existing installation only after confirming that its local data is not needed.
+A debug certificate, not a production upload key, is used for this QA build. The QA APK cannot be used for Play Store publication and may not update an installation signed with the Play App Signing/upload key. Install on a separate test device or remove an existing installation only after confirming that its local data is not needed.
 
 ## Production AAB workflow
 
