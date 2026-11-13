@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, fix/age-verification-release-hardening-20261112]
 
 permissions:
   contents: read
