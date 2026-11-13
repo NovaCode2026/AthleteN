@@ -130,6 +130,8 @@ AS $$ SELECT '{}'::jsonb $$;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE ON public.profiles TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.age_verifications TO authenticated;
+-- Simulate a legacy column-only grant that a table REVOKE alone may not remove.
+GRANT SELECT (token_hash) ON public.age_verifications TO authenticated;
 GRANT ALL ON public.age_verifications TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.finance_accounts, public.finance_transactions TO authenticated;
 GRANT SELECT ON public.academies, public.academy_memberships TO authenticated;
