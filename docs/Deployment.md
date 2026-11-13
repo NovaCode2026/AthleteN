@@ -88,7 +88,7 @@ The checkout Netlify Function currently has a server-side `FREE_LAUNCH = true` g
 
 Set `PAYMENT_PROVIDER` only after the server secrets and plan IDs are configured and tested. Never expose payment secrets to the browser.
 
-**Billing-cycle blocker:** the current checkout API does not accept a monthly/yearly selector. The UI displays both cycles, and the server has a single provider plan key per product. Do not enable paid checkout until monthly and yearly provider plan IDs, amounts, renewal periods and the selected cycle are wired end to end and verified in provider sandbox.
+**Billing-cycle blocker:** the current checkout API does not accept a monthly/yearly selector. The mobile UI displays both cycles, but paid checkout is globally disabled in both client and server. New monthly provider IDs are versioned as `RAZORPAY_PLAN_V2_<PLAN>_MONTHLY` or `STRIPE_PLAN_V2_<PLAN>_MONTHLY`; do not reuse legacy provider IDs. Annual provider plan IDs, amounts, renewal periods and selected-cycle persistence must be implemented and verified end to end before enabling checkout. Cashfree is excluded from recurring subscription checkout because its current code path creates one-time orders.
 
 ## Supabase Auth URLs
 
