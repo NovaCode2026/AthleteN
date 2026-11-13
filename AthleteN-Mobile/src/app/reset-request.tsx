@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { getEmailAuthRedirect } from '@/lib/auth-links';
 import { Colors } from '@/constants/theme';
+import AthleteNLogo from '@/components/athleten-logo';
 
 const c=Colors.dark;
 export default function ResetRequestScreen(){
@@ -22,7 +23,7 @@ export default function ResetRequestScreen(){
   } finally { setBusy(false); }
  }
  return <SafeAreaView style={s.screen}><View style={s.content}>
-  <Image source={require('@/assets/logo.png')} style={s.logo} resizeMode="contain" /><Text style={s.title}>Reset your password</Text><Text style={s.sub}>Enter the email on your AthleteN account and we’ll send a secure reset link.</Text>
+  <AthleteNLogo width={190} height={105} style={s.logo} /><Text style={s.title}>Reset your password</Text><Text style={s.sub}>Enter the email on your AthleteN account and we’ll send a secure reset link.</Text>
   <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" placeholder="Email" placeholderTextColor={c.muted} style={s.input}/>
   {!!error&&<Text style={s.error}>{error}</Text>}{!!message&&<Text style={s.notice}>{message}</Text>}
   <Pressable onPress={send} disabled={busy} style={s.primary}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.primaryText}>SEND RESET EMAIL</Text>}</Pressable>
