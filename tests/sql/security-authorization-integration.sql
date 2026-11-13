@@ -68,21 +68,30 @@ $block$;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
 DO $block$
 DECLARE result_status text;
-        token_value text;
-        expiry_value timestamptz;
-        approved_value timestamptz;
 BEGIN
   SELECT status INTO result_status
   FROM public.record_age_profile('2012-01-01'::date,'guardian@example.test');
-  SELECT token_hash,token_expires_at,approved_at
-    INTO token_value,expiry_value,approved_value
-    FROM public.age_verifications
-   WHERE user_id=auth.uid();
-  IF result_status <> 'pending' OR token_value IS NOT NULL OR expiry_value IS NOT NULL OR approved_value IS NOT NULL THEN
-    RAISE EXCEPTION 'Legacy minor not_required state was not safely reset';
+  IF result_status <> 'pending' THEN
+    RAISE EXCEPTION 'Legacy minor not_required state was not returned to pending';
   END IF;
 END;
 $block$;
+RESET ROLE;
+DO $block$
+DECLARE token_value text;
+        expiry_value timestamptz;
+        approved_value timestamptz;
+BEGIN
+  SELECT token_hash,token_expires_at,approved_at
+    INTO token_value,expiry_value,approved_value
+    FROM public.age_verifications
+   WHERE user_id='00000000-0000-0000-0000-000000000002';
+  IF token_value IS NOT NULL OR expiry_value IS NOT NULL OR approved_value IS NOT NULL THEN
+    RAISE EXCEPTION 'Legacy minor approval token or timestamp was not cleared';
+  END IF;
+END;
+$block$;
+SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
 
 -- Profile insert cannot disagree with an existing age-verification DOB.
@@ -182,6 +191,17 @@ BEGIN
 END;
 $block$;
 
+-- The approved Coach RPC can only return the caller's existing account.
+DO $block$
+DECLARE account_id uuid;
+BEGIN
+  account_id := public.get_or_create_my_coach_finance_account();
+  IF account_id <> '10000000-0000-0000-0000-000000000001'::uuid THEN
+    RAISE EXCEPTION 'Coach finance RPC returned the wrong account';
+  END IF;
+END;
+$block$;
+
 -- Pending guardian approval blocks finance visibility and writes.
 RESET ROLE;
 UPDATE public.age_verifications SET status='pending',approved_at=NULL
@@ -200,17 +220,6 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN blocked := true;
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'Age-pending Coach finance write was not blocked'; END IF;
-END;
-$block$;
-
--- The approved Coach RPC can only return the caller's existing account.
-DO $block$
-DECLARE account_id uuid;
-BEGIN
-  account_id := public.get_or_create_my_coach_finance_account();
-  IF account_id <> '10000000-0000-0000-0000-000000000001'::uuid THEN
-    RAISE EXCEPTION 'Coach finance RPC returned the wrong account';
-  END IF;
 END;
 $block$;
 
