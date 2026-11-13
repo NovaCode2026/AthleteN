@@ -28,10 +28,15 @@ test("release workflow is manual and requires the Expo token", () => {
   assert.doesNotMatch(workflow, /eas submit/);
 });
 
-test("CI APK artifact is explicitly labelled debug-signed", () => {
+test("CI artifact is a verifiably signed installable QA debug APK", () => {
   const workflow = read("../.github/workflows/android-apk.yml");
   assert.match(workflow, /AthleteN Android CI APK \(debug-signed\)/);
-  assert.match(workflow, /AthleteN-ci-debug-signed-apk/);
+  assert.match(workflow, /Build installable QA debug APK/);
+  assert.match(workflow, /gradlew assembleDebug --no-daemon/);
+  assert.match(workflow, /apksigner.*verify --verbose/s);
+  assert.match(workflow, /AthleteN-qa-debug-apk/);
+  assert.match(workflow, /app-debug\.apk/);
+  assert.doesNotMatch(workflow, /assembleRelease|app-release\.apk|AthleteN-ci-debug-signed-apk/);
 });
 
 test("release documentation distinguishes CI artifacts from store builds", () => {
