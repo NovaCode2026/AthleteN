@@ -105,13 +105,6 @@ export default {
       if (currentAge?.date_of_birth && currentAge.date_of_birth !== dateOfBirth) {
         return json({ error: 'Date of birth is locked after first submission. Contact support to request a correction.' }, 409)
       }
-      // An approved guardian decision is final for the recorded DOB.
-      // Do not short-circuit not_required here: the database RPC must re-check
-      // the immutable DOB and transition any legacy minor record to pending.
-      if (currentAge?.status === 'approved') {
-        return json({ status: 'approved', already_complete: true })
-      }
-
       if (!profileRow.date_of_birth) {
         // Existing accounts may predate DOB being required at onboarding. Save
         // the first submission once, with a NULL compare-and-set so a concurrent
@@ -135,6 +128,13 @@ export default {
             return json({ error: 'Date of birth changed while it was being saved. Reload the page and retry.' }, 409)
           }
         }
+      }
+
+      // An approved guardian decision is final for the recorded DOB.
+      // The first profile DOB is saved above only after checking that it matches
+      // the existing age-verification row.
+      if (currentAge?.status === 'approved') {
+        return json({ status: 'approved', already_complete: true })
       }
 
       const { data: recorded, error: recordError } = await ctx.supabase.rpc('record_age_profile', { p_date_of_birth: dateOfBirth, p_parent_email: parentEmail || null })
