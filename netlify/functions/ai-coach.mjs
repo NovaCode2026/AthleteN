@@ -69,12 +69,17 @@ async function cancelReservation(supabase, reservationId, userId) {
 }
 async function settlePlatformBudget(admin, id, actualCostPaise) {
   if (!id) return { error: new Error("AI budget reservation is missing.") };
-  return admin.rpc("settle_athleten_ai_budget", { p_reservation_id:id, p_actual_cost_paise:actualCostPaise });
+  const result = await admin.rpc("settle_athleten_ai_budget", { p_reservation_id:id, p_actual_cost_paise:actualCostPaise });
+  if (result.error) return result;
+  if (result.data !== true) return { error:new Error("AI budget reservation was not settled.") };
+  return result;
 }
 async function releasePlatformBudget(admin, id) {
-  if (!id) return;
-  const { error } = await admin.rpc("release_athleten_ai_budget", { p_reservation_id:id });
-  if (error) console.error("AI budget reservation release failed:", error);
+  if (!id) return { error:new Error("AI budget reservation is missing.") };
+  const result = await admin.rpc("release_athleten_ai_budget", { p_reservation_id:id });
+  if (result.error) console.error("AI budget reservation release failed:", result.error);
+  else if (result.data !== true) console.error("AI budget reservation was not released.");
+  return result;
 }
 
 function extractResponseText(payload) {
