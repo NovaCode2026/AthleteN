@@ -142,3 +142,11 @@ test("guardian approval link requires an explicit guardian action and never appr
   assert.match(approvalPage, /supabase\.functions\.invoke\("approve-parent"/);
   assert.doesNotMatch(approvalPage, /useEffect\s*\(/);
 });
+
+test("adult age verification completes without requiring a guardian email", () => {
+  const source = read("../supabase/functions/start-parent-approval/index.ts");
+  const adultNoGuardianReturn = source.indexOf("if (ageYears >= 18) return json({ status: 'not_required'");
+  const guardianEmailValidation = source.indexOf("if (!parentEmail || parentEmail.length > 254");
+  assert.ok(adultNoGuardianReturn >= 0, "adult flow should complete without a guardian");
+  assert.ok(guardianEmailValidation > adultNoGuardianReturn, "guardian email validation must run only after the adult early return");
+});
