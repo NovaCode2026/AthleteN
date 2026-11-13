@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { AI_LIMITS, PLAN_NAMES, PlanId, getAiRemaining } from '@/lib/entitlements';
 
 const c = Colors.dark;
+const PAID_CHECKOUT_ENABLED = false;
 
 type BillingCycle = 'monthly' | 'yearly';
 
@@ -22,9 +23,8 @@ const athletePlans: Array<{
   features: string[];
 }> = [
   { id: 'free', name: 'Free', monthly: 0, yearly: 0, saving: 0, ai: 0, audience: 'Everyone', features: ['Athlete profile', 'Training log', 'Basic progress tracking', 'Tournament and medal history'] },
-  { id: 'student', name: 'Student', monthly: 99, yearly: 999, saving: 189, ai: 50, audience: 'Verified students', features: ['AI Match Reports', 'AI Monthly Athlete Reports', 'AI training insights', 'AI performance summaries', 'Detailed progress analysis', 'Personal goals'] },
-  { id: 'pro', name: 'Pro', monthly: 199, yearly: 1999, saving: 389, ai: 200, audience: 'Competitive athletes', features: ['AI Match Reports', 'AI Monthly Athlete Reports', 'Advanced performance analytics', 'Competition preparation insights', 'Advanced training analysis', 'Priority support'] },
-  { id: 'elite', name: 'Elite', monthly: 399, yearly: 3999, saving: 789, ai: 500, audience: 'Advanced athletes', features: ['AI Match Reports', 'AI Monthly Athlete Reports', 'Advanced competition analysis', 'Long-term performance trends', 'Advanced training planning', 'Exportable athlete reports'] },
+  { id: 'pro', name: 'Pro', monthly: 99, yearly: 999, saving: 189, ai: 50, audience: 'Athletes building consistent progress', features: ['Everything in Free', '50 AI Coach requests per month', 'Advanced analytics and training insights', 'Performance reports', 'Competition analysis'] },
+  { id: 'elite', name: 'Elite', monthly: 199, yearly: 1999, saving: 389, ai: 200, audience: 'Competitive athletes', features: ['Everything in Pro', '200 AI Coach requests per month', 'Advanced competition analytics', 'Historical performance trends', 'Exportable reports', 'Priority support'] },
 ];
 
 const productPlans = {
@@ -41,25 +41,9 @@ export default function PlansScreen() {
   const [loading, setLoading] = useState(true);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [message, setMessage] = useState('');
-  const [studentStatus, setStudentStatus] = useState('not_submitted');
   const role = String(profile?.role || 'athlete');
 
   const current = ((profile as any)?.plan_id || 'free') as PlanId;
-
-  useEffect(() => {
-    if (!session || role !== 'athlete') return;
-    let alive = true;
-    const refreshStatus = async () => {
-      const { data } = await supabase.from('student_verifications').select('status')
-        .eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
-      if (alive) setStudentStatus(String(data?.status || 'not_submitted'));
-    };
-    void refreshStatus();
-    const channel = supabase.channel('mobile-plan-student-verification-' + session.user.id)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'student_verifications', filter: 'user_id=eq.' + session.user.id }, () => { void refreshStatus(); })
-      .subscribe();
-    return () => { alive = false; void supabase.removeChannel(channel); };
-  }, [session, role]);
 
   useEffect(() => {
     let alive = true;
@@ -67,7 +51,7 @@ export default function PlansScreen() {
       if (!session) { if (alive) setLoading(false); return; }
       const [u, s] = await Promise.all([
         supabase.from('subscription_usage').select('ai_requests_used,ai_requests_limit').eq('user_id', session.user.id).order('usage_month', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('subscriptions').select('plan_id,status,current_period_end,provider,billing_cycle').eq('user_id', session.user.id).in('status', ['active','trialing','past_due']).order('created_at', { ascending: false }),
+        supabase.from('subscriptions').select('plan_id,status,current_period_end,provider').eq('user_id', session.user.id).in('status', ['active','trialing','past_due']).order('created_at', { ascending: false }),
       ]);
       if (!alive) return;
       setUsage(u.data || null);
@@ -78,12 +62,10 @@ export default function PlansScreen() {
   }, [session]);
 
   async function startCheckout(planId: string) {
+    if (!PAID_CHECKOUT_ENABLED) { setMessage('Paid checkout and the seven-day no-charge trial are not enabled yet. The Free plan remains available.'); return; }
+    if (planId === 'student') { setMessage('Student is a legacy plan and is not available for new purchases.'); return; }
     if (!session) { setMessage('Please sign in before subscribing.'); return; }
-    if (planId === 'student' && studentStatus !== 'approved') {
-      router.push('/verification');
-      return;
-    }
-    const requiredRole = ['student','pro','elite'].includes(planId) ? 'athlete' : planId === 'coach' ? 'coach' : 'academy_admin';
+    const requiredRole = ['pro','elite'].includes(planId) ? 'athlete' : planId === 'coach' ? 'coach' : 'academy_admin';
     if (role !== requiredRole) {
       setMessage(planId === 'coach'
         ? 'Coach plan requires an existing verified Coach account. Ask AthleteN Admin to verify or assign your Coach account.'
@@ -142,7 +124,7 @@ export default function PlansScreen() {
     <View>
       <Text style={s.kicker}>ATHLETEN • SUBSCRIPTION</Text>
       <Text style={s.title}>Choose your plan.</Text>
-      <Text style={s.subtitle}>Transparent monthly and yearly pricing. Student purchase requires Admin approval; Coach and Academy purchase follows existing account verification.</Text>
+      <Text style={s.subtitle}>Budget-friendly pricing for athletes, coaches and academies. Displayed prices include applicable GST; no additional GST is added on top. Existing Student subscriptions remain supported as a legacy plan. Paid checkout and the new no-charge trial are not active yet.</Text>
     </View>
 
     <View style={s.current}>
@@ -153,6 +135,8 @@ export default function PlansScreen() {
       </View>
       <Text style={s.currentBadge}>ACTIVE</Text>
     </View>
+
+    {current === 'student' ? <View style={s.note}><Text style={s.noteTitle}>STUDENT PLAN · LEGACY</Text><Text style={s.meta}>Your existing Student entitlement is preserved. Student is no longer offered for new purchases.</Text></View> : null}
 
     <View style={s.usage}>
       <View><Text style={s.label}>AI REQUESTS</Text><Text style={s.usageValue}>{loading ? '…' : remaining + ' / ' + limit + ' remaining'}</Text></View>
@@ -165,7 +149,7 @@ export default function PlansScreen() {
       {(['monthly','yearly'] as const).map((cycle) => <Pressable key={cycle} onPress={() => setBilling(cycle)} style={[s.billingOption, billing === cycle && s.billingOptionActive]}><Text style={[s.billingText, billing === cycle && s.billingTextActive]}>{cycle === 'monthly' ? 'MONTHLY' : 'YEARLY'}</Text>{cycle === 'yearly' ? <Text style={{color:c.success,fontSize:8,fontWeight:'900',marginTop:3}}>SAVE UP TO 16%</Text> : null}</Pressable>)}
     </View>
 
-    <View style={s.note}><Text style={s.noteTitle}>Subscription activation</Text><Text style={s.meta}>Prices are displayed below. Select a paid plan to start the secure checkout flow. Student checkout is available only after Admin approval; Coach and Academy access uses the existing verified account role.</Text></View>
+    <View style={s.note}><Text style={s.noteTitle}>Launch status</Text><Text style={s.meta}>Paid checkout is disabled while monthly/yearly billing, recurring provider subscriptions, webhook reconciliation, refunds and financial controls are verified. The planned seven-day no-charge trial is not active; the old ₹9 trial endpoint remains server-gated.</Text></View>
 
     {athletePlans.filter((p) => p.id === 'free' || role === 'athlete').map((p) => {
       const active = p.id === current && role === 'athlete';
@@ -185,9 +169,8 @@ export default function PlansScreen() {
         {billing === 'yearly' && p.saving > 0 ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
         <View style={s.aiPill}><Text style={s.aiText}>{p.ai === 0 ? 'No AI requests included' : p.ai + ' AI requests every month'}</Text></View>
         {p.features.map((feature) => <View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
-        {p.id === 'student' ? <Text style={s.meta}>Student verification: {studentStatus === 'approved' ? 'Approved' : studentStatus === 'pending' ? 'Pending Admin approval' : studentStatus === 'rejected' ? 'Rejected · resubmit proof' : 'Not submitted'}</Text> : null}
-        <Pressable disabled={active || !!busyPlan || p.id === 'free' || (p.id === 'student' && studentStatus === 'pending')} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => p.id === 'student' && studentStatus !== 'approved' ? router.push('/verification') : void startCheckout(p.id)}>
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : p.id === 'student' && studentStatus === 'pending' ? 'AWAITING APPROVAL' : p.id === 'student' && studentStatus !== 'approved' ? 'SUBMIT STUDENT PROOF' : p.id === 'student' ? 'CONTINUE TO CHECKOUT' : 'VIEW PLAN'}</Text>}
+        <Pressable disabled={active || !!busyPlan || p.id === 'free' || !PAID_CHECKOUT_ENABLED} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => void startCheckout(p.id)}>
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : !PAID_CHECKOUT_ENABLED ? 'PAID LAUNCH PENDING' : 'CONTINUE TO CHECKOUT'}</Text>}
         </Pressable>
         {p.id === 'free' ? <View style={s.note}>
           <Text style={s.noteTitle}>What Free is missing</Text>
@@ -215,11 +198,11 @@ export default function PlansScreen() {
           <Text style={s.meta}>{p.description}</Text>
           {billing === 'yearly' ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
           <Pressable
-            disabled={!!busyPlan || (isCurrent && owned)}
+            disabled={!!busyPlan || (isCurrent && owned) || !PAID_CHECKOUT_ENABLED}
             style={[s.planButton, isCurrent && owned && s.planButtonActive, busyPlan ? s.planButtonBusy : null]}
             onPress={() => void startCheckout(productRole === 'coach' ? 'coach' : 'academy')}
           >
-            <Text style={s.planButtonText}>{busyPlan === (productRole === 'coach' ? 'coach' : 'academy') ? 'VERIFYING…' : isCurrent && owned ? 'CURRENT PLAN' : productRole === 'coach' ? 'VERIFY COACH & CONTINUE' : 'VERIFY ACADEMY & CONTINUE'}</Text>
+            <Text style={s.planButtonText}>{busyPlan === (productRole === 'coach' ? 'coach' : 'academy') ? 'VERIFYING…' : isCurrent && owned ? 'CURRENT PLAN' : !PAID_CHECKOUT_ENABLED ? 'PAID LAUNCH PENDING' : productRole === 'coach' ? 'VERIFY COACH & CONTINUE' : 'VERIFY ACADEMY & CONTINUE'}</Text>
           </Pressable>
         </View>;
       })}

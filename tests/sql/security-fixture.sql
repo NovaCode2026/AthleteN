@@ -1,0 +1,250 @@
+\set ON_ERROR_STOP on
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE ROLE service_role NOLOGIN BYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+CREATE SCHEMA IF NOT EXISTS auth;
+CREATE SCHEMA IF NOT EXISTS private;
+GRANT USAGE ON SCHEMA auth TO authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION auth.uid()
+RETURNS uuid LANGUAGE sql STABLE
+AS $function$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $function$;
+-- Match Supabase's baseline auth helper grants for the authenticated test role.
+GRANT USAGE ON SCHEMA auth TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated, service_role;
+
+CREATE TABLE public.profiles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid UNIQUE NOT NULL,
+  full_name text NOT NULL DEFAULT 'Test Athlete',
+  date_of_birth date,
+  role text NOT NULL DEFAULT 'athlete',
+  plan_id text NOT NULL DEFAULT 'free',
+  academy_id uuid,
+  coach_user_id uuid,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE public.age_verifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid UNIQUE NOT NULL,
+  date_of_birth date NOT NULL,
+  parent_email text,
+  status text NOT NULL,
+  token_hash text,
+  token_expires_at timestamptz,
+  approved_at timestamptz,
+  rejected_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.age_verifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "users can read own age verification" ON public.age_verifications
+  FOR SELECT TO authenticated USING (user_id = (SELECT auth.uid()));
+CREATE POLICY "users can create own age verification" ON public.age_verifications
+  FOR INSERT TO authenticated WITH CHECK (user_id = (SELECT auth.uid()));
+CREATE POLICY "users can update own age verification" ON public.age_verifications
+  FOR UPDATE TO authenticated USING (user_id = (SELECT auth.uid()))
+  WITH CHECK (user_id = (SELECT auth.uid()));
+CREATE POLICY "super admin full access" ON public.age_verifications
+  FOR ALL TO authenticated USING (false) WITH CHECK (false);
+
+CREATE OR REPLACE FUNCTION private.is_super_admin()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $$ SELECT false $$;
+GRANT USAGE ON SCHEMA private TO authenticated;
+GRANT EXECUTE ON FUNCTION private.is_super_admin() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.prepare_parent_approval(text)
+RETURNS text LANGUAGE sql AS $$ SELECT 'unsafe-token-stub'::text $$;
+
+CREATE TABLE private.qa_age_verification_overrides(user_id uuid PRIMARY KEY);
+
+CREATE OR REPLACE FUNCTION public.is_age_approved(p_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path=''
+AS $function$
+  SELECT EXISTS (
+    SELECT 1 FROM public.age_verifications a
+    WHERE a.user_id = p_user_id
+      AND (
+        a.status='approved'
+        OR (
+          a.status='not_required'
+          AND a.date_of_birth <= (current_date - interval '18 years')::date
+        )
+      )
+  )
+  OR (
+    p_user_id = (SELECT auth.uid())
+    AND EXISTS (
+      SELECT 1 FROM private.qa_age_verification_overrides q
+      WHERE q.user_id = p_user_id
+    )
+  )
+$function$;
+
+CREATE OR REPLACE FUNCTION public.is_platform_admin()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $$ SELECT false $$;
+
+CREATE TABLE public.academies (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_user_id uuid NOT NULL,
+  name text NOT NULL,
+  status text NOT NULL DEFAULT 'active'
+);
+CREATE TABLE public.academy_memberships (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  academy_id uuid NOT NULL REFERENCES public.academies(id),
+  user_id uuid NOT NULL,
+  role text NOT NULL,
+  status text NOT NULL
+);
+CREATE TABLE public.coach_athlete_links (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  coach_user_id uuid NOT NULL,
+  athlete_user_id uuid NOT NULL,
+  status text NOT NULL
+);
+
+CREATE OR REPLACE FUNCTION private.is_platform_admin()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $function$ SELECT false $function$;
+CREATE OR REPLACE FUNCTION private.user_can_manage_athlete(p_athlete_user_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $function$
+  SELECT EXISTS (
+    SELECT 1 FROM public.coach_athlete_links l
+    WHERE l.coach_user_id=auth.uid()
+      AND l.athlete_user_id=p_athlete_user_id
+      AND l.status='active'
+  )
+$function$;
+CREATE OR REPLACE FUNCTION public.can_view_athlete(target_user_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $function$
+  SELECT target_user_id=auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM public.coach_athlete_links l
+      WHERE l.coach_user_id=auth.uid()
+        AND l.athlete_user_id=target_user_id
+        AND l.status='active'
+    )
+$function$;
+
+CREATE TABLE public.hydration_logs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.kyorugi_bouts(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.kyorugi_training_metrics(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.nutrition_logs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.poomsae_performances(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.poomsae_training_metrics(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.taekwondo_belt_history(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),athlete_user_id uuid NOT NULL,payload text);
+CREATE TABLE public.taekwondo_training_logs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.taekwondo_weight_category_decisions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),athlete_user_id uuid NOT NULL,payload text);
+
+CREATE TABLE public.finance_accounts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_user_id uuid,
+  academy_id uuid,
+  owner_type text NOT NULL,
+  name text NOT NULL,
+  currency text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE public.finance_transactions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id uuid NOT NULL REFERENCES public.finance_accounts(id),
+  user_id uuid NOT NULL,
+  type text NOT NULL,
+  amount numeric NOT NULL,
+  category text NOT NULL,
+  transaction_date date NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.hydration_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.hydration_logs FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.hydration_logs FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.kyorugi_bouts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.kyorugi_bouts FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.kyorugi_bouts FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.kyorugi_training_metrics ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.kyorugi_training_metrics FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.kyorugi_training_metrics FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.nutrition_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.nutrition_logs FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.nutrition_logs FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.poomsae_performances ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.poomsae_performances FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.poomsae_performances FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.poomsae_training_metrics ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.poomsae_training_metrics FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.poomsae_training_metrics FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.taekwondo_belt_history ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.taekwondo_belt_history FOR SELECT TO authenticated USING (athlete_user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.taekwondo_belt_history FOR SELECT TO authenticated USING (public.can_view_athlete(athlete_user_id));
+
+ALTER TABLE public.taekwondo_training_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.taekwondo_training_logs FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.taekwondo_training_logs FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.taekwondo_weight_category_decisions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.taekwondo_weight_category_decisions FOR SELECT TO authenticated USING (athlete_user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.taekwondo_weight_category_decisions FOR SELECT TO authenticated USING (public.can_view_athlete(athlete_user_id));
+
+ALTER TABLE public.finance_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.finance_transactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "finance accounts owner" ON public.finance_accounts
+  FOR ALL TO authenticated
+  USING (owner_type='coach' AND owner_user_id=(SELECT auth.uid()))
+  WITH CHECK (owner_type='coach' AND owner_user_id=(SELECT auth.uid()));
+CREATE POLICY "finance transactions owner" ON public.finance_transactions
+  FOR ALL TO authenticated
+  USING (false) WITH CHECK (false);
+
+CREATE OR REPLACE FUNCTION public.can_manage_finance_account(account uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $$ SELECT false $$;
+
+CREATE OR REPLACE FUNCTION public.get_or_create_my_coach_finance_account()
+RETURNS uuid LANGUAGE sql SECURITY DEFINER SET search_path=''
+AS $$ SELECT NULL::uuid $$;
+
+CREATE OR REPLACE FUNCTION public.switch_my_product_role(text)
+RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=''
+AS $$ SELECT '{}'::jsonb $$;
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE ON public.profiles TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.age_verifications TO authenticated;
+-- Simulate a legacy column-only grant that a table REVOKE alone may not remove.
+GRANT SELECT (token_hash) ON public.age_verifications TO authenticated;
+GRANT ALL ON public.age_verifications TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.finance_accounts, public.finance_transactions TO authenticated;
+GRANT SELECT ON public.academies, public.academy_memberships TO authenticated;
+GRANT SELECT ON public.coach_athlete_links TO authenticated;
+GRANT SELECT ON public.hydration_logs, public.kyorugi_bouts, public.kyorugi_training_metrics,
+  public.nutrition_logs, public.poomsae_performances, public.poomsae_training_metrics,
+  public.taekwondo_belt_history, public.taekwondo_training_logs,
+  public.taekwondo_weight_category_decisions TO authenticated;
+GRANT EXECUTE ON FUNCTION private.is_platform_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION private.user_can_manage_athlete(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_view_athlete(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_age_approved(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_manage_finance_account(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_or_create_my_coach_finance_account() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.switch_my_product_role(text) TO authenticated;

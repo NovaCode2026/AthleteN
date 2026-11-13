@@ -27,15 +27,15 @@ export type FeatureKey =
 export const AI_LIMITS: Record<PlanId, number> = {
   free: 0,
   student: 50,
-  pro: 200,
-  elite: 500,
+  pro: 50,
+  elite: 200,
   coach: 750,
   academy: 1000,
 };
 
 export const PLAN_NAMES: Record<PlanId, string> = {
   free: 'Free',
-  student: 'Student',
+  student: 'Student (legacy)',
   pro: 'Pro',
   elite: 'Elite',
   coach: 'Coach',
@@ -49,8 +49,8 @@ export const PLAN_PRICING: Record<PlanId, {
 }> = {
   free: { monthly: 0, yearly: 0, yearlySaving: 0 },
   student: { monthly: 99, yearly: 999, yearlySaving: 189 },
-  pro: { monthly: 199, yearly: 1999, yearlySaving: 389 },
-  elite: { monthly: 399, yearly: 3999, yearlySaving: 789 },
+  pro: { monthly: 99, yearly: 999, yearlySaving: 189 },
+  elite: { monthly: 199, yearly: 1999, yearlySaving: 389 },
   coach: { monthly: 499, yearly: 4999, yearlySaving: 989 },
   academy: { monthly: 799, yearly: 7999, yearlySaving: 1589 },
 };
