@@ -20,25 +20,25 @@ test("EAS production profile generates an Android App Bundle", () => {
 test("release workflow is manual and requires the Expo token", () => {
   const workflow = read("../.github/workflows/android-production-aab.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /secrets\\.EXPO_TOKEN/);
+  assert.match(workflow, /secrets\.EXPO_TOKEN/);
   assert.match(workflow, /--platform android/);
   assert.match(workflow, /--profile production/);
   assert.match(workflow, /--non-interactive/);
-  assert.doesNotMatch(workflow, /on:\\s*\\n\\s*push:/);
+  assert.doesNotMatch(workflow, /on:\s*\n\s*push:/);
   assert.doesNotMatch(workflow, /eas submit/);
 });
 
 test("CI produces a standalone QA APK signed with the Android debug certificate", () => {
   const workflow = read("../.github/workflows/android-apk.yml");
-  assert.match(workflow, /AthleteN Android CI APK \\(debug-signed QA\\)/);
-  assert.match(workflow, /Build standalone QA APK \\(release variant, debug key\\)/);
+  assert.match(workflow, /AthleteN Android CI APK \(debug-signed QA\)/);
+  assert.match(workflow, /Build standalone QA APK \(release variant, debug key\)/);
   assert.match(workflow, /EXPO_PUBLIC_APP_CHANNEL: qa/);
   assert.match(workflow, /gradlew assembleRelease --no-daemon/);
   assert.match(workflow, /apksigner verify --verbose --print-certs/);
   assert.match(workflow, /CN=Android Debug/);
   assert.match(workflow, /AthleteN-qa-debug-signed-apk/);
-  assert.match(workflow, /app-release\\.apk/);
-  assert.doesNotMatch(workflow, /assembleDebug|app-debug\\.apk/);
+  assert.match(workflow, /app-release\.apk/);
+  assert.doesNotMatch(workflow, /assembleDebug|app-debug\.apk/);
 });
 
 test("QA build visibly warns that it connects to the live database", () => {
