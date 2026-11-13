@@ -21,6 +21,8 @@ CREATE TABLE public.profiles (
   date_of_birth date,
   role text NOT NULL DEFAULT 'athlete',
   plan_id text NOT NULL DEFAULT 'free',
+  academy_id uuid,
+  coach_user_id uuid,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
