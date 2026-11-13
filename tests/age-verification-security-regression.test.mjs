@@ -48,8 +48,8 @@ test("age verification SQL draft removes client-write paths and makes DOB immuta
   assert.match(sql, /v_age >= 18 and v_status in \('pending', 'rejected'\)/i);
   assert.match(sql, /set status = 'not_required'/i);
   assert.match(sql, /create or replace function public\.is_age_approved\(p_user_id uuid\)/i);
-  assert.match(sql, /a\\.status = 'not_required'[\\s\\S]*?a\\.date_of_birth <= \\(current_date - interval '18 years'\\)::date/i);
-  assert.match(sql, /p_user_id = \\(select auth\\.uid\\(\\)\\)[\\s\\S]*?private\\.qa_age_verification_overrides/i);
+  assert.match(sql, /a\.status = 'not_required'[\s\S]*?a\.date_of_birth <= \(current_date - interval '18 years'\)::date/i);
+  assert.match(sql, /p_user_id = \(select auth\.uid\(\)\)[\s\S]*?private\.qa_age_verification_overrides/i);
   assert.match(sql, /revoke all on function public\.is_age_approved\(uuid\) from public, anon/i);
   assert.match(sql, /revoke all on function public\.prepare_parent_approval\(text\) from public, anon, authenticated/i);
   assert.doesNotMatch(sql, /on conflict\s*\(user_id\)\s*do update/i);
