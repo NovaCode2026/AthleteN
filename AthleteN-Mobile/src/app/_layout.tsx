@@ -83,7 +83,7 @@ export default function RootLayout() {
               headerShown: true,
               headerTitle: () => (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
-                  <Image source={require('@/assets/logo.png')} style={{ width: 30, height: 30, borderRadius: 8 }} resizeMode="contain" />
+                  <AthleteNLogo width={76} height={42} />
                   <Text style={{ color: Colors.dark.text, fontSize: 15, fontWeight: '900', letterSpacing: 1.2 }}>ATHLETEN</Text>
                 </View>
               ),
