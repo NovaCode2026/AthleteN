@@ -153,9 +153,10 @@ All prices below are the published plan catalogue in INR. A plan is not activate
 | Plan | Monthly | Yearly | AI requests / month | Who can use it |
 |---|---:|---:|---:|---|
 | 🆓 **Free** | ₹0 | ₹0 | 0 | Baseline account access |
-| 🎓 **Student** | ₹99 | ₹999 | 50 | Athletes only · Admin approval required |
-| 🚀 **Pro** | ₹199 | ₹1,999 | 200 | Athletes |
-| 🏅 **Elite** | ₹399 | ₹3,999 | 500 | Athletes |
+| 🚀 **Pro** | ₹99 | ₹999 | 50 | Athletes |
+| 🏅 **Elite** | ₹199 | ₹1,999 | 200 | Athletes |
+
+Student is a legacy plan for existing approved subscribers only; new purchases are closed.
 | 🧑‍🏫 **Coach** | ₹499 | ₹4,999 | 750 | Verified Coach accounts |
 | 🏟️ **Academy** | ₹799 | ₹7,999 | 1,000 | Verified Academy Admin accounts |
 
@@ -167,8 +168,7 @@ Paid plans unlock **AI Match Reports** and the role-specific **AI Monthly Report
 
 ```text
 STUDENT
-Choose Student → Submit student proof → Admin review
-→ Approved → Checkout → Payment confirmed → Student active
+Existing Student accounts retain their approved entitlement. Student is not available for new purchases.
 
 COACH
 Choose Coach → Verify existing Coach account + email
