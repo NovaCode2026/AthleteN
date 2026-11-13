@@ -56,13 +56,15 @@ Project: `wjegokgtrewtoopbsiol`.
 
 ### Migration history
 
-- The production ledger has 177 versions.
-- The current main tree contains 113 SQL files under `supabase/migrations/`.
-- A conservative name-normalized scan found 81 remote entries with a current local filename stem match. This is not a one-to-one mapping: historical timestamps and names differ, and duplicate/multiple local mappings exist.
-- A prior Supabase Preview run reported remote migration versions missing from the local migrations directory. The issue remains unresolved until a fresh Preview/history reconciliation is completed.
-- Do not fabricate placeholder migrations, manually mark versions applied/reverted, reset production, or replay old migrations.
-- The current environment has no Supabase CLI, Docker, or local PostgreSQL client, and could not clone the repository due unavailable network resolution. Therefore the candidate trigger cannot be safely tested against a local disposable database here.
-- Do not apply the candidate DOB trigger or deploy the matching Edge Function until a real timestamped migration is generated through Supabase CLI, reviewed, tested on a non-billable local stack, and migration history is reconciled. No paid Supabase staging was created.
+- The production ledger has 177 versions. The candidate repository tree has 113 SQL migration files with 96 unique timestamp prefixes.
+- Supabase's CLI migration-list logic compares timestamps only, not migration names or SQL equivalence. The exact timestamp comparison found 24 versions present on both sides, **153 remote versions with no matching local timestamp**, and **72 local timestamps absent from the remote ledger**.
+- The local tree also has 5 duplicate timestamp groups containing 22 files, plus 19 files whose timestamp prefix is not the standard 14-digit form. This is a substantive history reconstruction problem, not merely a naming mismatch.
+- Full timestamp inventory and duplicate groups: [docs/MIGRATION_HISTORY_DRIFT_2026-11-13.md](MIGRATION_HISTORY_DRIFT_2026-11-13.md). A prior Supabase Preview check also reported remote migration versions missing locally.
+- Do not use `migration repair`, fabricate placeholder migrations, reset production, or push local-only SQL until each individual timestamp's schema effect is proven. The migration ledger is not a substitute for schema evidence.
+- A new ephemeral PostgreSQL 17 CI harness now applies both review-only SQL drafts and exercises DOB immutability, guardian approval preservation, role elevation denial, finance role/age gating, and cross-account finance isolation. The first run exposed a missing `USAGE` grant in the test fixture; after correcting the fixture, the core integration run passed. Expanded regression cases are running on the current candidate.
+- The current environment still has no linked local Supabase CLI/Docker stack for the full application migration chain, and no paid Supabase staging was created. The isolated PostgreSQL fixture validates the two SQL drafts only; it does not prove the entire 177-version migration history is reproducible.
+- Do not apply the candidate DOB/finance SQL or deploy matching Edge Functions until the exact history is reconciled, the full chain is tested on a non-billable local stack, and a valid timestamped migration is generated through Supabase CLI.
+
 
 ### Security and performance advisories
 
