@@ -38,3 +38,36 @@
 10. Deploy the exact reviewed SHA only after owner approval and verify the deployed SHA.
 
 No production migration, auth-setting change, payment activation or live deployment is part of this branch.
+
+
+## QA handoff — 2026-11-13
+
+### What is green
+- The combined candidate's earlier full CI pass completed web tests/build, AI-budget SQL integration, security SQL draft integration, CodeQL and the mobile check. The current combined branch must still finish its latest runs after the most recent base/workflow changes before treating those checks as final.
+- The security branch now has a pull-request Android APK workflow. The artifact is a **debug-signed QA build**, not a Play Store production AAB.
+
+### Where the current app is
+- The public Netlify production site still serves commit `0c2af19c46d4995dd4ee1b77969fc9055ca9996f`, not this PR candidate.
+- No Netlify deploy preview was found for the candidate.
+- Do not use the public production URL as proof that the candidate has been deployed.
+
+### Allowed first-pass QA
+Use only the generated debug APK and a designated QA account. Start with non-destructive smoke checks: app launch, sign-in/sign-out, navigation, profile read, dashboard rendering, and viewing existing test records. Record failures with device/OS, screen, steps and a screenshot that contains no private data.
+
+### Do not test against production yet
+- Do not run migration or destructive SQL operations against the live Supabase project.
+- Do not delete accounts, records, messages, files or attachments.
+- Do not submit real identity, school, health or competition documents.
+- Do not test paid checkout or the seven-day trial; both remain disabled.
+- Do not assume AI Coach is available; its new budget ledger is not applied to production.
+- Do not run cross-account privacy/authorization tests using real athlete accounts.
+- The CI APK currently uses the app's production Supabase URL/key fallback unless a separate QA configuration is supplied. Treat any writes made with it as writes to production, even when logged in with a QA account.
+
+### QA exit criteria before broader testing
+1. Latest PR #58 combined merge commit has passing CI, CodeQL, security SQL integration, AI budget SQL integration, mobile checks and APK build.
+2. A separate non-production backend is available and configured for the candidate before testing flows that create, update, upload, message, notify, bill or change roles.
+3. Full migration-history reconciliation and complete-schema authorization testing are finished.
+4. Matching server functions and required configuration are deployed to that non-production backend.
+5. Two-account tests pass for guardian consent, role boundaries, messaging, notifications and file access.
+
+**Decision:** limited, non-destructive QA may begin only with the debug APK and a designated QA account after the APK workflow succeeds. This is not approval for production-data QA, paid checkout, public launch or Play Store release.
