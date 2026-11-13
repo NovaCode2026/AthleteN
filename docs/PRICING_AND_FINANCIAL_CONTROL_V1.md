@@ -1,6 +1,6 @@
 # AthleteN Pricing and Financial Control — V1
 
-**Status:** proposed new-sale catalogue; paid billing disabled. India / INR.
+**Status:** approved launch price points and tax-inclusive display policy; paid billing remains disabled pending billing, tax-invoice and release gates. India / INR. Prices below are customer-facing totals, inclusive of applicable GST; customers must not be charged GST on top of these displayed amounts.
 
 | Plan | Monthly | Annual | AI requests/month |
 |---|---:|---:|---:|
@@ -11,6 +11,14 @@
 | Academy | ₹799 | ₹7,999 | 1,000 shared |
 
 Free includes core athlete records, medals, goals, calendar and Athlete Journey. Academy is fixed-price with two included coach seats, already enforced in the current academy workflow.
+
+## Approved launch pricing and GST policy (2026-11-13)
+
+The launch catalogue is locked at the monthly and annual amounts in the table above. Launch pricing choice: **same prices from launch**; there is no separate introductory-price phase or automatic post-launch increase. Annual amounts are billed once per year when recurring annual billing is implemented. The annual savings are compared with twelve monthly payments: Pro ₹189, Elite ₹389, Coach ₹989 and Academy ₹1,589.
+
+**GST presentation:** all displayed plan amounts are GST-inclusive where GST is legally applicable. The displayed amount is the total customer price; do not add GST on top at checkout. When GST is chargeable, calculate the taxable value and GST component backwards from the inclusive amount using the legally applicable rate and correct place-of-supply/tax treatment, and show the required tax details on the invoice. Do not hard-code an assumed GST rate in the client. A qualified Indian tax adviser must confirm AthleteN's registration status, supply classification, rate, place-of-supply rules, invoicing and any cross-border treatment before paid checkout is enabled. If GST is not legally chargeable, do not represent a GST amount as collected. No price increase or separate tax surcharge is authorised by this decision.
+
+This is a product-pricing decision, not a determination of AthleteN's GST liability. Checkout stays disabled until the tax treatment and provider implementation are reviewed and tested.
 
 Student remains a legacy plan for existing subscribers only. Do not rewrite or reprice existing subscriptions. The seven-day no-charge trial is planned but not implemented; the legacy ₹9 trial endpoint remains server-gated.
 
