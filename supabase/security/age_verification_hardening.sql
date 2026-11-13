@@ -18,6 +18,8 @@ create policy "super admin can read age verifications"
   using (private.is_super_admin());
 
 revoke all on table public.age_verifications from public, anon, authenticated;
+-- Table-level REVOKE does not clear independent column-level grants.
+revoke select (token_hash) on table public.age_verifications from public, anon, authenticated;
 grant select (
   id,
   user_id,
