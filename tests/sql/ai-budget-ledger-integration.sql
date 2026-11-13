@@ -29,7 +29,8 @@ BEGIN
   IF public.release_athleten_ai_budget(first_id) THEN RAISE EXCEPTION 'Settled reservation was incorrectly released'; END IF;
 END $$;
 RESET ROLE;
-DO $$
+SET ROLE postgres;
+DO $
 BEGIN
   IF NOT EXISTS(SELECT 1 FROM public.athleten_ai_budget_monthly
     WHERE usage_month=date_trunc('month',now() at time zone 'UTC')::date
@@ -48,7 +49,8 @@ BEGIN
   IF NOT public.release_athleten_ai_budget(second_id) THEN RAISE EXCEPTION 'Idempotent release failed'; END IF;
 END $$;
 RESET ROLE;
-DO $$
+SET ROLE postgres;
+DO $
 BEGIN
   IF EXISTS(SELECT 1 FROM public.athleten_ai_budget_monthly
     WHERE usage_month=date_trunc('month',now() at time zone 'UTC')::date
