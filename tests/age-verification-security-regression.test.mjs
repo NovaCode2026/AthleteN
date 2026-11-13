@@ -65,7 +65,8 @@ test("parent approval edge function preserves approved states and only reissues 
   assert.ok(source.includes("currentAge?.date_of_birth && currentAge.date_of_birth !== dateOfBirth"));
   assert.ok(source.includes("currentAge?.status === 'approved'"));
   assert.ok(!source.includes("currentAge?.status === 'approved' || currentAge?.status === 'not_required'"));
-  assert.ok(source.includes("legacy minor record to pending"));
+  assert.ok(source.includes("if (currentAge?.status === 'approved')"));
+  assert.ok(!source.includes("currentAge?.status === 'not_required'"), "legacy not_required records must reach the database re-check instead of short-circuiting in the Edge Function");
   assert.ok(source.indexOf('get_age_verification_status') < source.indexOf("rpc('record_age_profile'"));
   assert.match(source, /status === 'approved'/);
   assert.match(source, /status !== 'pending' && status !== 'rejected'/);
