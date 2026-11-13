@@ -11,8 +11,8 @@
 <p>
   <img src="https://img.shields.io/badge/PRODUCT-ATHLETE%20PLATFORM-0B1F3A?style=for-the-badge" alt="Athlete platform">
   <img src="https://img.shields.io/badge/SPORT-TAEKWONDO-00AEEF?style=for-the-badge" alt="Taekwondo">
-  <img src="https://img.shields.io/badge-CLIENTS-WEB%20%2B%20ANDROID-6C5CE7?style=for-the-badge" alt="Web and Android">
-  <img src="https://img.shields.io/badge-RELEASE-CANDIDATE%20ONLY-E09B32?style=for-the-badge" alt="Release candidate only">
+  <img src="https://img.shields.io/badge/CLIENTS-WEB-ANDROID-6C5CE7?style=for-the-badge" alt="Web and Android">
+  <img src="https://img.shields.io/badge/RELEASE-CANDIDATE-E09B32?style=for-the-badge" alt="Release candidate only">
 </p>
 
 **Built by Nova Code**
@@ -23,8 +23,7 @@
 
 ---
 
-> [!WARNING]
-> **Release status: not approved for public production.** PR #59 is the current combined release candidate; it is not merged or deployed. Production database reconciliation, security review, AI budget setup, signed Android distribution, billing work and real-device acceptance remain release gates. Paid checkout is intentionally disabled. See the [latest release-readiness report](./docs/RELEASE_READINESS_2026-11-12.md).
+> **Release status — candidate, not production-approved:** PR #59 remains unmerged and undeployed. Database reconciliation, security review, AI budget setup, signed Android distribution, billing validation and real-device acceptance are still required. Paid checkout remains disabled. See the [release-readiness report](./docs/RELEASE_READINESS_2026-11-12.md).
 
 ## What is AthleteN?
 
