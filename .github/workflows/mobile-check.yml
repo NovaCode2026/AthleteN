@@ -8,7 +8,7 @@ on:
       - "AthleteN-Mobile/**"
       - ".github/workflows/mobile-check.yml"
   pull_request:
-    branches: [main]
+    branches: [main, fix/age-verification-release-hardening-20261112]
     paths:
       - "AthleteN-Mobile/**"
       - ".github/workflows/mobile-check.yml"
@@ -52,8 +52,6 @@ jobs:
         run: npx expo export --platform android --output-dir .expo/ci-export
 
       - name: Expo doctor
-        # Pin the Expo SDK 57-compatible doctor release. The unpinned npx
-        # command fetched a newer build whose runtime import failed in CI.
         run: npx --yes expo-doctor@1.20.5
 
       - name: Remove CI export
