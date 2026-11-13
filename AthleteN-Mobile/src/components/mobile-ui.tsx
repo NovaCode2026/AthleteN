@@ -1,9 +1,10 @@
 // @ts-nocheck
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AthleteNLogo from '@/components/athleten-logo';
 
 export const c=Colors.dark;
 const icons:Record<string,string>={back:'chevron-left',arrow:'arrow-right',add:'plus',close:'close',check:'check',settings:'cog',empty:'square-outline',search:'magnify',refresh:'refresh',edit:'pencil',delete:'trash-can',calendar:'calendar',bell:'bell',menu:'menu',home:'view-dashboard',dashboard:'view-dashboard',more:'dots-horizontal',searchCircle:'magnify-plus',closeCircle:'close-circle',person:'account',people:'account-group',coach:'run',athlete:'run-fast',training:'run',event:'trophy',finance:'currency-inr',ai:'creation',shield:'shield-check',lock:'lock',warning:'alert',info:'information',chart:'chart-line',medal:'medal',message:'message-text','bell.fill':'bell'};
@@ -27,7 +28,7 @@ export function Screen({children,scroll=true,bottomBar}:{children:React.ReactNod
  return <SafeAreaView style={s.screen} edges={['top','bottom']}>{scroll?<View style={{flex:1}}><ScrollView contentContainerStyle={bottomBar ? [s.content,{paddingBottom:190}] : [s.content]} showsVerticalScrollIndicator={false}>{body}{footer}</ScrollView>{bottomBar}</View>:<View style={{flex:1}}>{body}{footer}{bottomBar}</View>}</SafeAreaView>;
 }
 export function RefreshButton({onPress,busy=false}:{onPress:()=>void;busy?:boolean}){return <Pressable accessibilityRole="button" accessibilityLabel="Refresh dashboard" onPress={onPress} disabled={busy} hitSlop={8} style={({pressed})=>({width:42,height:42,borderRadius:13,borderWidth:1,borderColor:c.borderStrong,backgroundColor:c.surface,alignItems:'center',justifyContent:'center',opacity:pressed?.7:busy?.55:1})}>{busy?<ActivityIndicator size="small" color={c.accentBright}/>:<Icon name="refresh" size={19} color={c.accentBright}/>}</Pressable>}
-export function Header({eyebrow,title,subtitle,right,back=false,onRefresh,refreshing=false}:{eyebrow:string;title:string;subtitle?:string;right?:React.ReactNode;back?:boolean;onRefresh?:()=>void;refreshing?:boolean}){const router=useRouter();return <View style={s.header}>{back?<Pressable onPress={()=>router.back()} style={s.back}><View style={s.backText}><Icon name="back" size={14} color={c.accentBright}/><Text style={{color:c.accentBright,fontSize:10,fontWeight:'900',letterSpacing:.7,marginLeft:5}}>BACK</Text></View></Pressable>:null}<View style={s.headerRow}><View style={s.headerIdentity}><Image source={require('@/assets/logo.png')} style={s.headerLogo} resizeMode="contain"/><View style={{flex:1,gap:4}}><Text style={s.eyebrow}>{eyebrow}</Text><Text style={s.title}>{title}</Text>{subtitle?<Text style={s.subtitle}>{subtitle}</Text>:null}</View></View><View style={{flexDirection:'row',alignItems:'center',gap:8}}>{onRefresh?<RefreshButton onPress={onRefresh} busy={refreshing}/>:null}{right}</View></View></View>}
+export function Header({eyebrow,title,subtitle,right,back=false,onRefresh,refreshing=false}:{eyebrow:string;title:string;subtitle?:string;right?:React.ReactNode;back?:boolean;onRefresh?:()=>void;refreshing?:boolean}){const router=useRouter();return <View style={s.header}>{back?<Pressable onPress={()=>router.back()} style={s.back}><View style={s.backText}><Icon name="back" size={14} color={c.accentBright}/><Text style={{color:c.accentBright,fontSize:10,fontWeight:'900',letterSpacing:.7,marginLeft:5}}>BACK</Text></View></Pressable>:null}<View style={s.headerRow}><View style={s.headerIdentity}><AthleteNLogo width={104} height={58} style={s.headerLogo}/><View style={{flex:1,gap:4}}><Text style={s.eyebrow}>{eyebrow}</Text><Text style={s.title}>{title}</Text>{subtitle?<Text style={s.subtitle}>{subtitle}</Text>:null}</View></View><View style={{flexDirection:'row',alignItems:'center',gap:8}}>{onRefresh?<RefreshButton onPress={onRefresh} busy={refreshing}/>:null}{right}</View></View></View>}
 export function Section({title,action,children}:{title:string;action?:React.ReactNode;children:React.ReactNode}){return <View style={s.sectionWrap}><View style={s.sectionHead}><Text style={s.section}>{title}</Text>{action}</View>{children}</View>}
 export function Card({children,accent=false,style}:{children:React.ReactNode;accent?:boolean;style?:any}){return <View style={[s.card,accent&&s.accentCard,style]}>{children}</View>}
 export function Button({title,onPress,busy=false,secondary=false,icon}:{title:string;onPress:()=>void;busy?:boolean;secondary?:boolean;icon?:string}){return <Pressable onPress={onPress} disabled={busy} style={[s.button,secondary&&s.secondary]}>{busy?<ActivityIndicator color={secondary?c.accentBright:'#fff'}/>:<View style={{flexDirection:'row',alignItems:'center',gap:8}}>{icon?<Icon name={icon} size={15} color={secondary?c.accentBright:'#fff'}/>:null}<Text style={[s.buttonText,secondary&&s.secondaryText]}>{title}</Text></View>}</Pressable>}
@@ -41,7 +42,7 @@ const s=StyleSheet.create({
  header:{gap:8,paddingTop:5},
  headerRow:{flexDirection:'row',alignItems:'center',gap:12},
  headerIdentity:{flex:1,flexDirection:'row',alignItems:'center',gap:11},
- headerLogo:{width:46,height:46,borderRadius:12},
+ headerLogo:{width:104,height:58},
  back:{alignSelf:'flex-start',paddingVertical:3,paddingHorizontal:2},
  backText:{color:c.accentBright,fontSize:10,fontWeight:'900',letterSpacing:.7,flexDirection:'row',alignItems:'center'},
  eyebrow:{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1.6},
