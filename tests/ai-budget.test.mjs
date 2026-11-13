@@ -1,13 +1,54 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {calculateAiCostPaise,estimateInputTokens,readAiBudgetConfig} from "../netlify/ai-budget.mjs";
-test("fails closed unless selected model has exact verified prices",()=>{
- assert.equal(readAiBudgetConfig({OPENAI_MODEL:"gpt-4.1-mini"}),null);
- assert.equal(readAiBudgetConfig({OPENAI_MODEL:"gpt-4.1-mini",ATHLETEN_AI_PRICING_MODEL:"gpt-4.1",ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE:"10",ATHLETEN_AI_OUTPUT_PRICE_PER_1M_TOKENS_PAISE:"20"}),null);
+import {
+  calculateAiCostPaise,
+  estimateInputTokens,
+  readAiBudgetConfig
+} from "../netlify/ai-budget.mjs";
+
+const lunaPricing = {
+  ATHLETEN_AI_PRICING_MODEL: "gpt-6-luna",
+  ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE: "1100",
+  ATHLETEN_AI_OUTPUT_PRICE_PER_1M_TOKENS_PAISE: "5500"
+};
+
+test("fails closed unless selected model has exact verified prices", () => {
+  assert.equal(readAiBudgetConfig({}), null);
+  assert.equal(readAiBudgetConfig({
+    OPENAI_MODEL: "gpt-6-luna",
+    ...lunaPricing,
+    ATHLETEN_AI_PRICING_MODEL: "gpt-6.1-sol"
+  }), null);
 });
-test("uses ₹150 default platform AI budget",()=>{
- const c=readAiBudgetConfig({OPENAI_MODEL:"gpt-4.1-mini",ATHLETEN_AI_PRICING_MODEL:"gpt-4.1-mini",ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE:"3500",ATHLETEN_AI_OUTPUT_PRICE_PER_1M_TOKENS_PAISE:"14000"});
- assert.ok(c);assert.equal(c.monthlyBudgetPaise,15000);assert.equal(c.maxOutputTokens,600);
+
+test("defaults to GPT-6 Luna and ₹150 monthly budget with reviewed price config", () => {
+  const config = readAiBudgetConfig(lunaPricing);
+  assert.ok(config);
+  assert.equal(config.model, "gpt-6-luna");
+  assert.equal(config.inputPricePerMillionPaise, 1100);
+  assert.equal(config.outputPricePerMillionPaise, 5500);
+  assert.equal(config.monthlyBudgetPaise, 15000);
+  assert.equal(config.maxOutputTokens, 600);
 });
-test("estimates UTF-8 input conservatively",()=>{assert.equal(estimateInputTokens("abc"),6);assert.equal(estimateInputTokens("🥋"),Buffer.byteLength("🥋","utf8")*2);});
-test("rounds token costs upward to paise",()=>{assert.equal(calculateAiCostPaise(100,100,3500,14000),2);assert.equal(calculateAiCostPaise(0,0,3500,14000),0);assert.throws(()=>calculateAiCostPaise(1,1,0,10),/Verified positive/);});
+
+test("rejects unsafe budget and output token values", () => {
+  assert.equal(readAiBudgetConfig({
+    ...lunaPricing,
+    ATHLETEN_AI_MONTHLY_BUDGET_PAISE: "0"
+  }), null);
+  assert.equal(readAiBudgetConfig({
+    ...lunaPricing,
+    ATHLETEN_AI_MAX_OUTPUT_TOKENS: "1501"
+  }), null);
+});
+
+test("estimates UTF-8 input conservatively", () => {
+  assert.equal(estimateInputTokens("abc"), 6);
+  assert.equal(estimateInputTokens("🥋"), Buffer.byteLength("🥋", "utf8") * 2);
+});
+
+test("rounds token costs upward to paise", () => {
+  assert.equal(calculateAiCostPaise(100, 100, 1100, 5500), 1);
+  assert.equal(calculateAiCostPaise(0, 0, 1100, 5500), 0);
+  assert.throws(() => calculateAiCostPaise(1, 1, 0, 5500), /Verified positive/);
+});
