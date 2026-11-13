@@ -4,6 +4,8 @@
 
 **Partial mitigation is live; the remaining profile-DOB consistency issue is a release blocker.** This document separates changes already observed in the connected production project from the additional repository candidate. It is not approval to apply new SQL.
 
+A follow-up repository audit on 2026-11-13 confirmed that the current `start-parent-approval` candidate also supports legacy profiles that have no DOB yet: it reads the existing verification status first, saves the initial profile DOB only through a conditional `date_of_birth IS NULL` update, then calls the server-owned `record_age_profile` RPC. The regression suite asserts that order. This is a first-write compatibility path, not permission to change a non-null DOB, and the production database trigger remains the authoritative missing control.
+
 A read-only production snapshot on 2026-11-12 confirmed:
 
 - Production migration `20261112092215_age_verification_server_owned_approval_hardening_20261112` is present in the Supabase migration ledger.
@@ -36,6 +38,8 @@ The repository candidate contains:
 **The SQL in `supabase/security/age_verification_hardening.sql` is a review draft, not a migration.** It must not be applied directly to production or copied into the migration ledger by hand.
 
 ## Migration and deployment controls
+
+A strict timestamp-prefix comparison from the 2026-11-13 read-only audit found 177 remote versions, 113 local migration files, only 24 exact timestamp matches, 153 remote-only timestamps, 72 local-only timestamps, and five duplicate local timestamp groups. These counts differ from normalised-stem comparisons; neither comparison provides the original missing SQL or is sufficient evidence for a ledger repair.
 
 The production ledger contains 177 migration records in the current snapshot. The current mainline tree contains 113 SQL files under `supabase/migrations/`; a conservative filename comparison found only 81 remote entries with a normalised stem match, and that is not a one-to-one reconciliation because some local names/versions collide or differ. A prior Supabase Preview run reported remote migration versions missing from the local migrations directory. Treat migration reconciliation as unresolved; do not infer that the count comparison identifies the original source files. Re-run the Supabase Preview/history check on the current mainline before any additional DDL is applied.
 
