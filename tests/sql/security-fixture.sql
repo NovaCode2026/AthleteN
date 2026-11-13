@@ -84,6 +84,48 @@ CREATE TABLE public.academy_memberships (
   role text NOT NULL,
   status text NOT NULL
 );
+CREATE TABLE public.coach_athlete_links (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  coach_user_id uuid NOT NULL,
+  athlete_user_id uuid NOT NULL,
+  status text NOT NULL
+);
+
+CREATE OR REPLACE FUNCTION private.is_platform_admin()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $ SELECT false $;
+CREATE OR REPLACE FUNCTION private.user_can_manage_athlete(p_athlete_user_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $
+  SELECT EXISTS (
+    SELECT 1 FROM public.coach_athlete_links l
+    WHERE l.coach_user_id=auth.uid()
+      AND l.athlete_user_id=p_athlete_user_id
+      AND l.status='active'
+  )
+$;
+CREATE OR REPLACE FUNCTION public.can_view_athlete(target_user_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $
+  SELECT target_user_id=auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM public.coach_athlete_links l
+      WHERE l.coach_user_id=auth.uid()
+        AND l.athlete_user_id=target_user_id
+        AND l.status='active'
+    )
+$;
+
+CREATE TABLE public.hydration_logs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.kyorugi_bouts(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.kyorugi_training_metrics(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.nutrition_logs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.poomsae_performances(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.poomsae_training_metrics(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.taekwondo_belt_history(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),athlete_user_id uuid NOT NULL,payload text);
+CREATE TABLE public.taekwondo_training_logs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
+CREATE TABLE public.taekwondo_weight_category_decisions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),athlete_user_id uuid NOT NULL,payload text);
+
 CREATE TABLE public.finance_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_user_id uuid,
@@ -105,6 +147,42 @@ CREATE TABLE public.finance_transactions (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE public.hydration_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.hydration_logs FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.hydration_logs FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.kyorugi_bouts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.kyorugi_bouts FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.kyorugi_bouts FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.kyorugi_training_metrics ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.kyorugi_training_metrics FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.kyorugi_training_metrics FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.nutrition_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.nutrition_logs FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.nutrition_logs FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.poomsae_performances ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.poomsae_performances FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.poomsae_performances FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.poomsae_training_metrics ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.poomsae_training_metrics FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.poomsae_training_metrics FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.taekwondo_belt_history ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.taekwondo_belt_history FOR SELECT TO authenticated USING (athlete_user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.taekwondo_belt_history FOR SELECT TO authenticated USING (public.can_view_athlete(athlete_user_id));
+
+ALTER TABLE public.taekwondo_training_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.taekwondo_training_logs FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.taekwondo_training_logs FOR SELECT TO authenticated USING (public.can_view_athlete(user_id));
+
+ALTER TABLE public.taekwondo_weight_category_decisions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "owner read row" ON public.taekwondo_weight_category_decisions FOR SELECT TO authenticated USING (athlete_user_id=auth.uid());
+CREATE POLICY "connected team read athlete" ON public.taekwondo_weight_category_decisions FOR SELECT TO authenticated USING (public.can_view_athlete(athlete_user_id));
+
 ALTER TABLE public.finance_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_transactions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "finance accounts owner" ON public.finance_accounts
@@ -135,6 +213,14 @@ GRANT SELECT (token_hash) ON public.age_verifications TO authenticated;
 GRANT ALL ON public.age_verifications TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.finance_accounts, public.finance_transactions TO authenticated;
 GRANT SELECT ON public.academies, public.academy_memberships TO authenticated;
+GRANT SELECT ON public.coach_athlete_links TO authenticated;
+GRANT SELECT ON public.hydration_logs, public.kyorugi_bouts, public.kyorugi_training_metrics,
+  public.nutrition_logs, public.poomsae_performances, public.poomsae_training_metrics,
+  public.taekwondo_belt_history, public.taekwondo_training_logs,
+  public.taekwondo_weight_category_decisions TO authenticated;
+GRANT EXECUTE ON FUNCTION private.is_platform_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION private.user_can_manage_athlete(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_view_athlete(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_age_approved(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.can_manage_finance_account(uuid) TO authenticated;
