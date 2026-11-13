@@ -60,14 +60,34 @@ GRANT EXECUTE ON FUNCTION private.is_super_admin() TO authenticated;
 CREATE OR REPLACE FUNCTION public.prepare_parent_approval(text)
 RETURNS text LANGUAGE sql AS $$ SELECT 'unsafe-token-stub'::text $$;
 
+CREATE TABLE private.qa_age_verification_overrides(user_id uuid PRIMARY KEY);
+
 CREATE OR REPLACE FUNCTION public.is_age_approved(p_user_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
-AS $$
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path=''
+AS $function$
   SELECT EXISTS (
     SELECT 1 FROM public.age_verifications a
-    WHERE a.user_id = p_user_id AND a.status IN ('approved','not_required')
+    WHERE a.user_id = p_user_id
+      AND (
+        a.status='approved'
+        OR (
+          a.status='not_required'
+          AND a.date_of_birth <= (current_date - interval '18 years')::date
+        )
+      )
   )
-$$;
+  OR (
+    p_user_id = (SELECT auth.uid())
+    AND EXISTS (
+      SELECT 1 FROM private.qa_age_verification_overrides q
+      WHERE q.user_id = p_user_id
+    )
+  )
+$function$;
 
 CREATE OR REPLACE FUNCTION public.is_platform_admin()
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
