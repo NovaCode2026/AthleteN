@@ -1,4 +1,4 @@
-name: AthleteN Android CI APK (debug-signed)
+name: AthleteN Android CI APK (debug-signed QA)
 
 on:
   push:
@@ -69,23 +69,27 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --no-install --non-interactive
 
-      - name: Build installable QA debug APK
+      - name: Build standalone QA APK (release variant, debug key)
+        env:
+          EXPO_PUBLIC_APP_CHANNEL: qa
         working-directory: AthleteN-Mobile/android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
 
-      - name: Verify debug APK signature
+      - name: Verify QA APK signature and debug certificate
         working-directory: AthleteN-Mobile/android
         run: |
-          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APK="app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -mindepth 2 -maxdepth 2 -name apksigner -type f | sort -V | tail -n 1)"
           test -x "$APKSIGNER"
-          "$APKSIGNER" verify --verbose "$APK"
+          SIGNATURE_OUTPUT="$("$APKSIGNER" verify --verbose --print-certs "$APK" 2>&1)"
+          printf '%s\n' "$SIGNATURE_OUTPUT"
+          printf '%s\n' "$SIGNATURE_OUTPUT" | grep -F "CN=Android Debug"
 
       - name: Upload QA APK
         uses: actions/upload-artifact@v7
         with:
-          name: AthleteN-qa-debug-apk
-          path: AthleteN-Mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          name: AthleteN-qa-debug-signed-apk
+          path: AthleteN-Mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14

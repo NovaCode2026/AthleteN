@@ -10,11 +10,17 @@ The current release candidate sets:
 
 Before the first Play Console upload, the authorised app owner must verify that this is the package ID associated with the intended Play Console app. Android package identity cannot be renamed after publication; if a Play Console app already exists, its package ID must take precedence. Do not create a second listing just to match this candidate.
 
-## CI APK is not a store release
+## Internal QA APK (not a store release)
 
-The existing GitHub Android workflow is now named **AthleteN Android CI APK (debug-signed)** and uploads `AthleteN-ci-debug-signed-apk`. It is an internal CI artifact only.
+The GitHub workflow **AthleteN Android CI APK (debug-signed QA)** builds the standalone release variant with the Android debug signing key and uploads the artifact `AthleteN-qa-debug-signed-apk`. It runs `assembleRelease` so the JavaScript bundle is packaged into the APK, then runs Android `apksigner` and requires the signing certificate subject to be `CN=Android Debug`.
 
-For evidence, the APK artifact from Actions run `43064521592` was inspected directly on 2026-11-12. Its APK Signing Block contained a certificate with subject `CN=Android Debug`, SHA-1 `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`, SHA-256 `FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C`, and `SHA1withRSA`. This is a debug certificate, not a production upload key. Do not publish this APK or use its fingerprints for production OAuth configuration.
+The workflow sets `EXPO_PUBLIC_APP_CHANNEL=qa`. The app displays a persistent warning:
+
+> QA BUILD • LIVE DATABASE • TEST ACCOUNT ONLY
+
+The current mobile client has a fallback URL for the production Supabase project. There is no isolated QA Supabase branch configured for this build. Therefore this APK is for controlled private QA using the designated test account only. Do not use it for destructive testing against real athlete accounts, account deletion, billing, real competition records, or public distribution.
+
+A debug certificate is not a production upload key. The QA APK cannot be used for Play Store publication and may not update an installation signed with the Play App Signing/upload key. Install on a separate test device or remove an existing installation only after confirming that its local data is not needed.
 
 ## Production AAB workflow
 
@@ -22,9 +28,9 @@ A manual-only GitHub Actions workflow has been added at `.github/workflows/andro
 
 It requires:
 
-1. An authorised owner to configure Android signing credentials for the exact application ID in the linked Expo/EAS project. EAS can generate and securely store a new upload keystore or use a previously managed keystore.
+1. An authorised owner to configure Android signing credentials for the exact application ID in the linked Expo/EAS project. EAS can securely manage a new upload keystore or use a previously managed keystore.
 2. A GitHub Actions repository secret named `EXPO_TOKEN` containing an Expo access token with permission to build this EAS project. Never paste this token into source code, issue comments, or chat.
-3. The production EAS credentials to be present before the workflow is started. The workflow is non-interactive; it must not attempt to create or select credentials during a release run.
+3. Production EAS credentials to be present before the workflow is started. The workflow is non-interactive.
 
 After the above is in place, an authorised owner can manually start **AthleteN Android Production AAB** from GitHub Actions. The workflow runs:
 
@@ -41,7 +47,7 @@ Before any public release:
 - Check the AAB's application ID and version code against the Play Console listing.
 - Verify the signing certificate and record its fingerprints in the authorised release record.
 - Enable Google Play App Signing for the first Play Console upload and keep a secure, backed-up copy of the upload keystore and recovery information.
-- Run the AAB through the Play Console internal-testing track first. Validate install, upgrade, authentication, Google OAuth return, notifications, deep links, uploads, messaging, and account deletion on physical devices and separate test accounts.
+- Run the AAB through the Play Console internal-testing track first. Validate install, upgrade, authentication, Google OAuth return, notifications, deep links, uploads, messaging and account deletion on physical devices and separate test accounts.
 - Update OAuth/Firebase/Google Cloud Android certificate fingerprints only if the selected sign-in integration requires those Android fingerprints. Use the correct upload/app-signing fingerprints from the actual release, not the CI debug certificate.
 - Have an authorised account holder complete store listing, privacy/data-safety disclosures, age/target-audience settings, and any required legal or guardian approvals. Do not bypass store or account age requirements.
 
@@ -54,4 +60,4 @@ Before any public release:
 
 ## Current status
 
-**Not signed off.** The package identity has been set in this release candidate, and the manual signed-AAB workflow is in the repository. No production EAS AAB has been built or cryptographically verified in this pass because the EXPO token and EAS production credentials are not available through this repository connection. The current CI artifact is debug-signed only. Physical-device acceptance and Play Console verification remain release gates.
+**Not production signed off.** The Android package identity and manual signed-AAB workflow are in the repository. No production EAS AAB has been built or cryptographically verified because the EXPO token and EAS production credentials are not available through this repository connection. The CI APK is debug-signed for controlled QA only. Physical-device acceptance, the real production migration baseline, payment/AI configuration and Play Console verification remain release gates.
