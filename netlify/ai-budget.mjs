@@ -3,7 +3,7 @@ const DEFAULT_MONTHLY_BUDGET_PAISE=15_000;
 const DEFAULT_MAX_OUTPUT_TOKENS=600;
 const positiveNumber=value=>{const n=Number(value);return Number.isFinite(n)&&n>0?n:null;};
 export function readAiBudgetConfig(env=process.env){
- const selectedModel=String(env.OPENAI_MODEL||"gpt-4.1-mini").trim();
+ const selectedModel=String(env.OPENAI_MODEL||"gpt-6-luna").trim();
  const pricedModel=String(env.ATHLETEN_AI_PRICING_MODEL||"").trim();
  const inputPricePerMillionPaise=positiveNumber(env.ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE);
  const outputPricePerMillionPaise=positiveNumber(env.ATHLETEN_AI_OUTPUT_PRICE_PER_1M_TOKENS_PAISE);
