@@ -9,14 +9,14 @@
 - Student is no longer sold to new customers; existing IDs and subscription entitlements are preserved.
 - New monthly provider keys are separated from legacy provider IDs; Cashfree is excluded from recurring subscription checkout.
 - Web/mobile paid actions remain disabled; mobile no longer requests the nonexistent subscriptions.billing_cycle column.
-- AI fails closed without exact model-matched positive prices and a ready monthly budget ledger.
+- AI uses source-pinned conservative rates for default `gpt-6-luna`; alternate models fail closed without exact matched prices. The monthly budget ledger must still be applied before AI requests can run.
 - AI token usage and API cost are recorded. Two additive migrations define budget reservations and new quotas; neither is applied to production.
 
 ## Live observations
 - Supabase project wjegokgtrewtoopbsiol is active and PostgreSQL 17.6.
 - Read-only Supabase audit on 2026-11-13 confirms the remote migration ledger has 177 entries; exact local/remote timestamp comparison is documented in PR #57's `docs/MIGRATION_HISTORY_DRIFT_2026-11-13.md`: 153 remote-only timestamps, 72 local-only timestamps, 5 duplicate local timestamp groups, and only 24 exact timestamp matches. This blocks a blind migration push.
 - Netlify `athleten` is currently serving production deploy `6af42f978110916eb4db495a`, commit `0c2af19c46d4995dd4ee1b77969fc9055ca9996f`, not the current reviewed source branches.
-- Read-only Netlify environment-name audit confirms `OPENAI_API_KEY` and Supabase credentials exist, but `OPENAI_MODEL`, model-matched AI pricing, monthly AI budget, and max-output configuration are absent. The updated code defaults to `gpt-6-luna` and fails closed until the budget migration and required variables are configured.
+- Read-only Netlify environment-name audit confirms `OPENAI_API_KEY` and Supabase credentials exist. `OPENAI_MODEL` and AI price/budget overrides are absent; current source defaults to pinned `gpt-6-luna`, ₹11 / 1M input tokens, ₹55 / 1M output tokens, a ₹150 monthly budget and 600 output tokens. Netlify environment writes returned HTTP 403 during this pass, so no production variables were changed. The budget-ledger migration remains unapplied.
 - GPT-6 Luna model identifier and standard token rates were checked against official OpenAI API model/pricing documentation on 2026-11-13. The INR rates in the pricing document use a deliberately conservative planning conversion and remain subject to the provider invoice and actual model access for the production API key.
 - Live ai_usage_events contains input/output/total token and api_cost_minor fields.
 - Live subscriptions did not contain billing_cycle.
@@ -29,7 +29,7 @@
 1. Reconcile migration history before applying either migration.
 2. Complete SECURITY DEFINER/RLS function review and cross-account tests.
 3. Confirm Supabase Auth, OAuth, SMTP and password-security settings.
-4. Configure actual AI model prices and verify ledger behavior.
+4. Verify the production API key can use the pinned model, then verify ledger behavior after migration-history reconciliation; configure both exact price overrides only if changing models.
 5. Verify Netlify/Supabase/storage/email/push bills and quotas; ₹500 is not certified.
 6. Implement recurring monthly/yearly billing, webhook reconciliation, refunds/cancellation and real seven-day no-charge trial.
 7. Enforce coach/academy athlete limits before advertising them; only two academy coach seats are confirmed in current backend.
