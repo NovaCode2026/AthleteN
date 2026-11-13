@@ -14,6 +14,10 @@
 
 ## Live observations
 - Supabase project wjegokgtrewtoopbsiol is active and PostgreSQL 17.6.
+- Read-only Supabase audit on 2026-11-13 confirms the remote migration ledger has 177 entries; exact local/remote timestamp comparison is documented in PR #57's `docs/MIGRATION_HISTORY_DRIFT_2026-11-13.md`: 153 remote-only timestamps, 72 local-only timestamps, 5 duplicate local timestamp groups, and only 24 exact timestamp matches. This blocks a blind migration push.
+- Netlify `athleten` is currently serving production deploy `6af42f978110916eb4db495a`, commit `0c2af19c46d4995dd4ee1b77969fc9055ca9996f`, not the current reviewed source branches.
+- Read-only Netlify environment-name audit confirms `OPENAI_API_KEY` and Supabase credentials exist, but `OPENAI_MODEL`, model-matched AI pricing, monthly AI budget, and max-output configuration are absent. The updated code defaults to `gpt-6-luna` and fails closed until the budget migration and required variables are configured.
+- GPT-6 Luna model identifier and standard token rates were checked against official OpenAI API model/pricing documentation on 2026-11-13. The INR rates in the pricing document use a deliberately conservative planning conversion and remain subject to the provider invoice and actual model access for the production API key.
 - Live ai_usage_events contains input/output/total token and api_cost_minor fields.
 - Live subscriptions did not contain billing_cycle.
 - Security Advisor reports authenticated-callable SECURITY DEFINER functions, pg_net in exposed public, and leaked-password protection disabled. Review functions individually; warnings do not by themselves prove exploitability.
