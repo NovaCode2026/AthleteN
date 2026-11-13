@@ -26,10 +26,10 @@ Monthly ceiling for the first 100 active users: ₹500, pending actual provider 
 | **Total** | **₹500** |
 
 ## AI server variables
-- `OPENAI_MODEL`: exact model identifier.
-- `ATHLETEN_AI_PRICING_MODEL`: exact match to model.
-- `ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE`: verified input cost per million tokens.
-- `ATHLETEN_AI_OUTPUT_PRICE_PER_1M_TOKENS_PAISE`: verified output cost per million tokens.
+- `OPENAI_MODEL`: optional exact model identifier; defaults to `gpt-6-luna`.
+- `ATHLETEN_AI_PRICING_MODEL`: required only when overriding the built-in pricing; must exactly match `OPENAI_MODEL`.
+- `ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE` and `ATHLETEN_AI_OUTPUT_PRICE_PER_1M_TOKENS_PAISE`: both required together for any pricing override.
+- The pinned `gpt-6-luna` default has conservative, versioned rates in source (₹11 input / ₹55 output per 1M tokens). Unsupported alternate models fail closed without an exact model-and-price override.
 - `ATHLETEN_AI_MONTHLY_BUDGET_PAISE`: defaults to 15000 paise / ₹150.
 - `ATHLETEN_AI_MAX_OUTPUT_TOKENS`: defaults to 600, bounded by server validation.
 
@@ -47,7 +47,7 @@ The ₹100/USD planning conversion is deliberately above the 13 November 2026 mi
 Model documentation: https://developers.openai.com/api/docs/models/gpt-6-luna
 Official API pricing: https://developers.openai.com/api/docs/pricing
 
-AI reserves an estimated maximum cost before provider calls and settles against provider-reported usage. Timeouts consume the reservation conservatively. Token estimation is not a mathematical upper bound; validate model tokenizer/pricing and retain a safety margin. AI stays paused until model prices are verified and the budget migration is safely applied.
+AI reserves an estimated maximum cost before provider calls and settles against provider-reported usage. Timeouts consume the reservation conservatively. Token estimation is not a mathematical upper bound; validate model tokenizer/pricing and retain a safety margin. AI stays paused until the budget migration is safely applied and the production API key has been verified with the selected model. Alternate models remain paused until exact model-matched prices are configured.
 
 ## Payments and controls
 Paid checkout remains disabled until recurring monthly/annual provider billing, signed webhook reconciliation, idempotency, renewals, cancellation, refunds, tax and legal requirements pass. The planned free seven-day trial is not active. Cashfree is not enabled for subscriptions because the existing path creates one-time orders.
