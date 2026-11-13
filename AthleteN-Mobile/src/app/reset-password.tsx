@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
+import AthleteNLogo from '@/components/athleten-logo';
 
 const c=Colors.dark;
 export default function ResetPasswordScreen(){
@@ -21,7 +22,7 @@ export default function ResetPasswordScreen(){
   } finally { setBusy(false); }
  }
  return <SafeAreaView style={s.screen}><View style={s.content}>
-  <Image source={require('@/assets/logo.png')} style={s.logo} resizeMode="contain" /><Text style={s.title}>{done?'Password updated':'Choose a new password'}</Text>
+  <AthleteNLogo width={190} height={105} style={s.logo} /><Text style={s.title}>{done?'Password updated':'Choose a new password'}</Text>
   {done?<><Text style={s.sub}>Your AthleteN password has been changed successfully.</Text><Pressable style={s.primary} onPress={()=>router.replace('/')}><Text style={s.primaryText}>CONTINUE</Text></Pressable></>:<>
    <Text style={s.sub}>Use a new password you can remember. Never share it with anyone.</Text>
    <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="New password" placeholderTextColor={c.muted} style={s.input}/>
