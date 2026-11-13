@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, fix/age-verification-release-hardening-20261112]
   schedule:
     - cron: '17 3 * * 1'
 
