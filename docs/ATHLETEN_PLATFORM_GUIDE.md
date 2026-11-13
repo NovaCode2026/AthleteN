@@ -135,31 +135,32 @@ The report must distinguish record totals from AI interpretation. If data is mis
 
 ## 7. Subscription catalogue
 
-Prices are the configured AthleteN catalogue in Indian rupees.
+The public launch catalogue is shown below. Student remains a **legacy-only entitlement** for existing approved subscribers and is not available for new purchases.
 
-| Plan | Monthly | Yearly | AI requests per month | Eligibility |
+| Plan | Monthly | Annual | AI requests per month | Eligibility |
 |---|---:|---:|---:|---|
 | Free | ₹0 | ₹0 | 0 | Baseline account |
-| Student | ₹99 | ₹999 | 50 | Athlete only; Admin approval |
-| Pro | ₹199 | ₹1,999 | 200 | Athlete |
-| Elite | ₹399 | ₹3,999 | 500 | Athlete |
-| Coach | ₹499 | ₹4,999 | 750 | Verified Coach account |
-| Academy | ₹799 | ₹7,999 | 1,000 | Verified Academy Admin account |
+| Pro | ₹99 | ₹999 | 50 | Athlete |
+| Elite | ₹199 | ₹1,999 | 200 | Athlete |
+| Coach | ₹499 | ₹4,999 | 750 | Existing verified Coach account |
+| Academy | ₹799 | ₹7,999 | 1,000 shared | Verified Academy Admin account |
+
+All displayed amounts are customer-facing totals inclusive of applicable GST; GST must not be added on top. A qualified Indian tax adviser must confirm registration, classification, rate, place-of-supply and invoice requirements before paid checkout is enabled. Paid checkout and recurring billing remain disabled.
 
 The plan catalogue is represented in the web plan configuration and mobile entitlements configuration. Keep those two catalogues aligned when changing plan IDs, pricing, descriptions or allowances.
 
 ### Plan feature highlights
 
-| Feature | Free | Student | Pro | Elite | Coach | Academy |
+| Feature | Free | Student (legacy) | Pro | Elite | Coach | Academy |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
 | Basic athlete records | ✓ | ✓ | ✓ | ✓ | — | — |
 | AI Match Report | — | ✓ | ✓ | ✓ | ✓ | ✓ |
 | AI Monthly Report | — | Athlete | Athlete | Athlete | Coach | Academy |
-| AI Coach allowance | 0 | 50 | 200 | 500 | 750 | 1,000 |
+| AI request allowance | 0 | 50 | 50 | 200 | 750 | 1,000 |
 | Coach workspace | — | — | — | — | ✓ | ✓ |
 | Academy workspace | — | — | — | — | — | ✓ |
 
-This is a product-level summary, not a substitute for actual RLS and backend entitlement checks.
+Student values in this feature matrix describe existing legacy subscriptions only. This is a product-level summary, not a substitute for actual RLS and backend entitlement checks.
 
 ## 8. Verification and purchasing journeys
 
