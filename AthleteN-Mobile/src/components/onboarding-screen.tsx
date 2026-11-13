@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
@@ -39,7 +39,7 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
   }
 
   return <SafeAreaView style={styles.screen}><ScrollView contentContainerStyle={styles.content}>
-    <Text style={styles.brand}>ATHLETEN</Text>
+    <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
     <Text style={styles.title}>Build your athlete profile</Text>
     <Text style={styles.subtitle}>These details personalize your AthleteN experience.</Text>
     {([
@@ -77,7 +77,7 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
 
 const styles=StyleSheet.create({
  screen:{flex:1,backgroundColor:Colors.dark.background},content:{padding:24,gap:12,paddingBottom:40},
- brand:{color:Colors.dark.accent,fontSize:14,fontWeight:'900',letterSpacing:4,marginTop:10},
+ logo:{width:190,height:105,marginTop:10,marginBottom:2,alignSelf:'flex-start'},
  title:{color:Colors.dark.text,fontSize:28,fontWeight:'800',marginTop:4},subtitle:{color:Colors.dark.muted,fontSize:14,lineHeight:21,marginBottom:8},
  field:{gap:6},label:{color:Colors.dark.text,fontSize:12,fontWeight:'700'},hint:{color:Colors.dark.muted,fontSize:12,lineHeight:18},
  input:{backgroundColor:Colors.dark.surface,borderWidth:1,borderColor:Colors.dark.border,borderRadius:13,color:Colors.dark.text,padding:14,fontSize:14},
