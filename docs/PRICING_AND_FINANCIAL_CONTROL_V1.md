@@ -33,6 +33,20 @@ Monthly ceiling for the first 100 active users: ₹500, pending actual provider 
 - `ATHLETEN_AI_MONTHLY_BUDGET_PAISE`: defaults to 15000 paise / ₹150.
 - `ATHLETEN_AI_MAX_OUTPUT_TOKENS`: defaults to 600, bounded by server validation.
 
+### Reviewed AI model and INR pricing basis (2026-11-13)
+Use `gpt-6-luna` as the default text model. OpenAI describes it as an efficient model for focused, high-volume tasks, and it supports the Responses API used by AthleteN. The published standard text rates are USD $0.10 / 1M input tokens and USD $0.50 / 1M output tokens.
+
+For launch budgeting, use a conservative planning conversion of ₹100 per USD plus a 10% buffer:
+- Input: 1,100 paise per 1M tokens (₹11 / 1M).
+- Output: 5,500 paise per 1M tokens (₹55 / 1M).
+- Monthly platform AI ceiling: 15,000 paise (₹150).
+- Maximum output: 600 tokens per response.
+
+The ₹100/USD planning conversion is deliberately above the 13 November 2026 mid-market rate; provider invoices remain authoritative. Recheck rates before changing model IDs or pricing. These values are estimates for budget enforcement, not a substitute for reconciling actual API usage and billing.
+
+Model documentation: https://developers.openai.com/api/docs/models/gpt-6-luna
+Official API pricing: https://developers.openai.com/api/docs/pricing
+
 AI reserves an estimated maximum cost before provider calls and settles against provider-reported usage. Timeouts consume the reservation conservatively. Token estimation is not a mathematical upper bound; validate model tokenizer/pricing and retain a safety margin. AI stays paused until model prices are verified and the budget migration is safely applied.
 
 ## Payments and controls
