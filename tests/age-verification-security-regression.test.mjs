@@ -150,3 +150,13 @@ test("adult age verification completes without requiring a guardian email", () =
   assert.ok(adultNoGuardianReturn >= 0, "adult flow should complete without a guardian");
   assert.ok(guardianEmailValidation > adultNoGuardianReturn, "guardian email validation must run only after the adult early return");
 });
+
+test("legacy profiles can save DOB exactly once before age verification", () => {
+  const source = read("../supabase/functions/start-parent-approval/index.ts");
+  const firstDobWrite = source.indexOf(".update({ date_of_birth: dateOfBirth })");
+  const nullCompareAndSet = source.indexOf(".is('date_of_birth', null)");
+  const ageRecordWrite = source.indexOf("rpc('record_age_profile'");
+  assert.ok(firstDobWrite >= 0, "missing profile DOB should be saved once");
+  assert.ok(nullCompareAndSet > firstDobWrite, "first DOB save must be conditional on NULL");
+  assert.ok(ageRecordWrite > nullCompareAndSet, "DOB must be saved before age-verification recording");
+});
