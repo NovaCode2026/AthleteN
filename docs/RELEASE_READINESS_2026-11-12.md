@@ -4,6 +4,12 @@
 
 **Not approved for public production release or paid subscriptions yet.** The combined source candidate includes the current security, pricing, AI-budget and Android-release work, but the production database/deployment contract and real-device acceptance are not complete.
 
+## Approved pricing decision (2026-11-13)
+
+- Launch price points are locked with no introductory phase or automatic post-launch increase: Free ₹0; Pro ₹99/month or ₹999/year; Elite ₹199/month or ₹1,999/year; Coach ₹499/month or ₹4,999/year; Academy ₹799/month or ₹7,999/year.
+- All displayed prices are customer-facing totals inclusive of applicable GST. GST must not be added on top of the displayed amount. If GST is legally chargeable, the invoice must extract and disclose the tax component from the inclusive price using the rate and treatment confirmed by a qualified Indian tax adviser; do not hard-code a tax rate in the client. Registration status, classification, rate, place of supply and invoice requirements remain a pre-checkout tax gate.
+- Existing Student subscriptions remain legacy-only and are not repriced. The approved pricing decision does not enable checkout, recurring billing or trials.
+
 ## Candidate changes
 
 - Pricing: Free ₹0; Pro ₹99/₹999; Elite ₹199/₹1,999; Coach ₹499/₹4,999; Academy ₹799/₹7,999.
