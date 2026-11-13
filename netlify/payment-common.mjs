@@ -26,16 +26,10 @@ export async function authenticate(request) {
   return error || !data?.user ? null : data.user;
 }
 
-export const planPricesMinor = {
-  student: 99900,
-  pro: 199900,
-  elite: 399900,
-  coach: 499900,
-  academy: 799900
-};
-
+// New-sale monthly amounts in INR paise. Annual checkout remains disabled.
+export const planPricesMinor = { pro: 9900, elite: 19900, coach: 49900, academy: 79900 };
 export function providerPlanKey(provider, planId) {
-  return `${provider.toUpperCase()}_PLAN_${planId.toUpperCase()}`;
+  return `${provider.toUpperCase()}_PLAN_V2_${planId.toUpperCase()}_MONTHLY`;
 }
 
 export function siteUrl() {
