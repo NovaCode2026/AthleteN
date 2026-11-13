@@ -15,7 +15,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.AthleteNMobile",
+      "package": "com.novacode.athleten",
       "versionCode": 4
     },
     "web": {
@@ -92,6 +92,9 @@
       "eas": {
         "projectId": "7f308f88-5459-4f51-bb76-981f381eee3c"
       }
+    },
+    "ios": {
+      "bundleIdentifier": "com.novacode.athleten"
     }
   }
 }

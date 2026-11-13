@@ -73,32 +73,88 @@ export default {
       const body = await req.json() as { date_of_birth?: string; parent_email?: string; full_name?: string }
       const dateOfBirth = body.date_of_birth?.trim()
       const parentEmail = body.parent_email?.trim().toLowerCase()
-      if (!dateOfBirth) return json({ error: 'Date of birth is required.' }, 400)
-      const parsedDob = new Date(`${dateOfBirth}T00:00:00.000Z`)
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateOfBirth) || Number.isNaN(parsedDob.getTime()) || parsedDob.toISOString().slice(0, 10) !== dateOfBirth) {
+      const userId = ctx.userClaims?.sub
+      if (!userId) return json({ error: 'Authentication required.' }, 401)
+      if (!dateOfBirth || !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
         return json({ error: 'Enter a valid date of birth in YYYY-MM-DD format.' }, 400)
       }
-      if (!parentEmail || parentEmail.length > 254 || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(parentEmail)) {
-        return json({ error: 'A valid parent or guardian email is required.' }, 400)
+      const parsedDob = new Date(`${dateOfBirth}T00:00:00.000Z`)
+      if (Number.isNaN(parsedDob.getTime()) || parsedDob.toISOString().slice(0, 10) !== dateOfBirth) {
+        return json({ error: 'Enter a valid date of birth.' }, 400)
+      }
+
+      // Validate the DOB saved on the profile as well as the verification row.
+      // The database trigger/function are the authoritative immutability controls.
+      const { data: profileRow, error: profileReadError } = await ctx.supabase
+        .from('profiles')
+        .select('date_of_birth')
+        .eq('user_id', userId)
+        .maybeSingle()
+      if (profileReadError) return json({ error: 'Current profile could not be checked. Please retry.' }, 503)
+      if (!profileRow) return json({ error: 'Your profile could not be found. Complete profile setup and retry.' }, 409)
+      if (profileRow.date_of_birth && profileRow.date_of_birth !== dateOfBirth) {
+        return json({ error: 'Date of birth is locked after first submission. Contact support to request a correction.' }, 409)
+      }
+      // Read the existing server-owned verification state before invoking the
+      // legacy profile RPC. This prevents the request endpoint from resetting a
+      // recorded DOB or an already-completed approval while the DB migration is
+      // being rolled out. The database migration remains the authoritative guard.
+      const { data: currentAgeRows, error: currentAgeError } = await ctx.supabase.rpc('get_age_verification_status')
+      if (currentAgeError) return json({ error: 'Current age-verification status could not be checked. Please retry.' }, 503)
+      const currentAge = currentAgeRows?.[0]
+      if (currentAge?.date_of_birth && currentAge.date_of_birth !== dateOfBirth) {
+        return json({ error: 'Date of birth is locked after first submission. Contact support to request a correction.' }, 409)
+      }
+      if (!profileRow.date_of_birth) {
+        // Existing accounts may predate DOB being required at onboarding. Save
+        // the first submission once, with a NULL compare-and-set so a concurrent
+        // or later profile update cannot silently replace it.
+        const { data: savedProfile, error: saveProfileError } = await ctx.supabase
+          .from('profiles')
+          .update({ date_of_birth: dateOfBirth })
+          .eq('user_id', userId)
+          .is('date_of_birth', null)
+          .select('date_of_birth')
+          .maybeSingle()
+        if (saveProfileError) return json({ error: 'Date of birth could not be saved. Please retry or contact support.' }, 409)
+        if (!savedProfile) {
+          const { data: latestProfile, error: latestProfileError } = await ctx.supabase
+            .from('profiles')
+            .select('date_of_birth')
+            .eq('user_id', userId)
+            .maybeSingle()
+          if (latestProfileError) return json({ error: 'Current profile could not be checked. Please retry.' }, 503)
+          if (latestProfile?.date_of_birth !== dateOfBirth) {
+            return json({ error: 'Date of birth changed while it was being saved. Reload the page and retry.' }, 409)
+          }
+        }
+      }
+
+      // An approved guardian decision is final for the recorded DOB.
+      // The first profile DOB is saved above only after checking that it matches
+      // the existing age-verification row.
+      if (currentAge?.status === 'approved') {
+        return json({ status: 'approved', already_complete: true })
+      }
+
+      const { data: recorded, error: recordError } = await ctx.supabase.rpc('record_age_profile', { p_date_of_birth: dateOfBirth, p_parent_email: parentEmail || null })
+      if (recordError) {
+        const statusCode = /date of birth is locked/i.test(recordError.message || '') ? 409 : 400
+        return json({ error: recordError.message }, statusCode)
+      }
+      const status = recorded?.[0]?.status as string | undefined
+      const ageYears = Number(recorded?.[0]?.age_years ?? -1)
+      if (!Number.isInteger(ageYears) || ageYears < 0) return json({ error: 'Age verification could not be completed.' }, 400)
+      if (ageYears >= 18) return json({ status: 'not_required', age_years: ageYears })
+      if (status === 'approved') return json({ status: 'approved', age_years: ageYears })
+      if (status !== 'pending' && status !== 'rejected') {
+        return json({ error: 'The age-verification record needs support review before it can be changed.' }, 409)
+      }
+      if (!parentEmail || parentEmail.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(parentEmail)) {
+        return json({ error: 'A valid parent or guardian email is required for users under 18.' }, 400)
       }
       if (parentEmail === (ctx.userClaims?.email || '').toLowerCase()) {
         return json({ error: 'Parent or guardian email must be different from the account email.' }, 400)
-      }
-
-      const { data: recorded, error: recordError } = await ctx.supabase.rpc('record_age_profile', { p_date_of_birth: dateOfBirth, p_parent_email: parentEmail })
-      if (recordError) return json({ error: recordError.message }, 409)
-      const status = recorded?.[0]?.status as string | undefined
-      const ageYears = Number(recorded?.[0]?.age_years ?? -1)
-      if (ageYears < 0) return json({ error: 'Age verification could not be completed.' }, 400)
-      if (status !== 'pending' || ageYears >= 18) {
-        const message = status === 'approved'
-          ? 'Parent/guardian approval is already recorded.'
-          : status === 'rejected'
-            ? 'This approval request was rejected. Contact AthleteN support if you believe this is incorrect.'
-            : status === 'not_required'
-              ? 'Parent/guardian approval is not required.'
-              : 'The approval request is not available.'
-        return json({ status: status || 'unknown', age_years: ageYears, message }, status === 'rejected' ? 409 : 200)
       }
 
       const resendKey = Deno.env.get('RESEND_API_KEY')
@@ -130,18 +186,25 @@ export default {
       const token = randomToken()
       const tokenHash = await sha256(token)
       const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
-      const { data: updatedRow, error: updateError } = await admin
-        .from('age_verifications')
-        .update({ parent_email: parentEmail, token_hash: tokenHash, token_expires_at: expiresAt, status: 'pending', approved_at: null, rejected_at: null, updated_at: new Date().toISOString() })
-        .eq('user_id', ctx.userClaims!.sub)
-        .eq('date_of_birth', dateOfBirth)
-        .eq('status', 'pending')
-        .select('user_id')
+      const { data: updatedAgeRecord, error: updateError } = await admin.from('age_verifications')
+        .update({
+          parent_email: parentEmail,
+          token_hash: tokenHash,
+          token_expires_at: expiresAt,
+          status: 'pending',
+          approved_at: null,
+          rejected_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId)
+        .in('status', ['pending', 'rejected'])
+        .select('id')
         .maybeSingle()
-      if (updateError || !updatedRow) return json({ error: 'The approval request changed while it was being prepared. Reload the page and try again.' }, 409)
+      if (updateError) return json({ error: 'Parent approval request could not be created.' }, 500)
+      if (!updatedAgeRecord) return json({ error: 'This approval request changed while it was being processed. Refresh the page and try again.' }, 409)
 
       const clearUnsentToken = async () => {
-        const { error } = await admin.from('age_verifications').update({ token_hash: null, token_expires_at: null, updated_at: new Date().toISOString() }).eq('user_id', ctx.userClaims!.sub).eq('token_hash', tokenHash)
+        const { error } = await admin.from('age_verifications').update({ token_hash: null, token_expires_at: null, updated_at: new Date().toISOString() }).eq('user_id', userId).eq('token_hash', tokenHash)
         if (error) console.error('Failed to clear unsent parent approval token', error)
       }
 

@@ -1,0 +1,60 @@
+name: Security SQL Draft Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/security/**"
+      - "tests/sql/**"
+      - "docs/MIGRATION_HISTORY_DRIFT_2026-11-13.md"
+      - "docs/PRODUCTION_READINESS_GATE_2026-11-12.md"
+      - ".github/workflows/security-sql-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-security-drafts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: athleten_security_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d athleten_security_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Create isolated security fixture
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_security_test -v ON_ERROR_STOP=1 -f tests/sql/security-fixture.sql
+      - name: Apply age-verification review draft
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_security_test -v ON_ERROR_STOP=1 -f supabase/security/age_verification_hardening.sql
+      - name: Apply role and finance review draft
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_security_test -v ON_ERROR_STOP=1 -f supabase/security/role_and_finance_authorization_hardening.sql
+      - name: Apply connected-team age-gating review draft
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_security_test -v ON_ERROR_STOP=1 -f supabase/security/age_gated_coach_access_hardening.sql
+      - name: Run DOB, guardian, Coach and Academy authorization assertions
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_security_test -v ON_ERROR_STOP=1 -f tests/sql/security-authorization-integration.sql
