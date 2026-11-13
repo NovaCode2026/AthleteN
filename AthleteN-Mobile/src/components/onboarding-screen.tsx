@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
+import AthleteNLogo from '@/components/athleten-logo';
 
 function formatDobInput(value: string) { const digits = value.replace(/\D/g, '').slice(0, 8); if (digits.length <= 4) return digits; if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`; return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`; }
 function isValidDob(value: string) { if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false; const [year, month, day] = value.split('-').map(Number); const date = new Date(Date.UTC(year, month - 1, day)); const today = new Date(); return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day && date <= new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())); }
@@ -39,7 +40,7 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
   }
 
   return <SafeAreaView style={styles.screen}><ScrollView contentContainerStyle={styles.content}>
-    <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
+    <AthleteNLogo width={190} height={105} style={styles.logo} />
     <Text style={styles.title}>Build your athlete profile</Text>
     <Text style={styles.subtitle}>These details personalize your AthleteN experience.</Text>
     {([
