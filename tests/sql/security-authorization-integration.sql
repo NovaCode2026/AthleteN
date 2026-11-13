@@ -356,6 +356,8 @@ RESET ROLE;
 SET ROLE postgres;
 
 -- The approved Coach RPC can only return the caller's existing account.
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
 DO $block$
 DECLARE account_id uuid;
 BEGIN
