@@ -160,9 +160,11 @@ test("legacy profiles can save DOB exactly once before age verification", () => 
   const ageStatusRead = source.indexOf("get_age_verification_status");
   const firstDobWrite = source.indexOf(".update({ date_of_birth: dateOfBirth })");
   const nullCompareAndSet = source.indexOf(".is('date_of_birth', null)");
+  const approvedReturn = source.indexOf("if (currentAge?.status === 'approved')");
   const ageRecordWrite = source.indexOf("rpc('record_age_profile'");
   assert.ok(ageStatusRead >= 0 && ageStatusRead < firstDobWrite, "existing age record must be checked before locking the first profile DOB");
   assert.ok(firstDobWrite >= 0, "missing profile DOB should be saved once");
   assert.ok(nullCompareAndSet > firstDobWrite, "first DOB save must be conditional on NULL");
-  assert.ok(ageRecordWrite > nullCompareAndSet, "DOB must be saved before age-verification recording");
+  assert.ok(approvedReturn > nullCompareAndSet, "matching profile DOB must be saved before returning an existing approval");
+  assert.ok(ageRecordWrite > approvedReturn, "approval should be preserved before re-recording the age profile");
 });
