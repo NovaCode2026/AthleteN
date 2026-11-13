@@ -1,33 +1,24 @@
-# AthleteN migration-history timestamp drift — 2026-11-13
+# AthleteN Migration-History Drift — 2026-11-13
 
-## Result
+## Exact timestamp comparison
 
-This is a timestamp comparison, not a filename-stem or SQL-equivalence comparison. The Supabase CLI documentation states that `supabase migration list` compares migration timestamps between `supabase/migrations` and `supabase_migrations.schema_migrations`; it does not match migrations by SQL contents or descriptive name.
+This inventory compares the production Supabase migration ledger with the candidate repository tree using exact timestamp prefixes, not migration names or SQL contents. Supabase documents that `supabase migration list` compares timestamps from the local `supabase/migrations` directory with the remote `supabase_migrations.schema_migrations` table. A similar migration name is not proof that it is the same applied migration.
 
-- Production remote ledger: **177** versions.
-- Candidate branch local SQL files: **116**.
-- Unique local timestamp prefixes: **99**.
-- Exact timestamps present both locally and remotely: **27**.
-- Remote timestamps with no matching local file: **150**.
-- Local timestamps not recorded in remote history: **72**.
-- Duplicate local timestamp groups: **5** groups containing 22 files.
-- Local files with non-14-digit timestamp prefixes: **19**.
+| Measure | Count |
+|---|---:|
+| Production remote migration versions | 177 |
+| Candidate local SQL migration files | 116 |
+| Unique local timestamp prefixes | 99 |
+| Exact timestamps present on both sides | 27 |
+| Remote timestamps with no exact local match | 150 |
+| Local timestamps absent from the remote ledger | 72 |
+| Duplicate local timestamp groups | 5 |
+| Local files in duplicate timestamp groups | 22 |
+| Local files with non-standard (non-14-digit) timestamp prefixes | 19 |
 
-A name-based match is not sufficient to clear this blocker. A migration file with the wrong timestamp is still unmatched to the CLI even if its SQL or suffix appears equivalent.
+The candidate includes three restored Nov 4 migration files with matching remote timestamps: `20261104101337`, `20261104103042`, and `20261104103647`. They were recovered from trusted repository history rather than reconstructed from their names. Their presence raised the exact timestamp overlap from 24 to 27. Their schema effects were checked against live tournament checklist/index definitions, coach/messaging RPC presence, and announcement audience policy.
 
-## Historical GitHub migration-file recovery check
-
-The repository path history endpoint returned **132 commits** touching `supabase/migrations/` (100 on the first page and 32 on the second). Those mainline diffs contained 24 exact remote timestamps. A subsequent scan of all current repository branches recovered three additional exact-timestamp SQL files from `audit/nov-2026-pilot-hardening` / `codex/audit-pilot-execution-2026-11-04`; they are now restored on PR #57:
-
-- `20261104101337_competition_checklists_tournament_scope.sql` — remote ledger name `competition_checklists_tournament_scope`.
-- `20261104103042_secure_messaging_and_coach_rpcs.sql` — remote ledger name `secure_messaging_and_coach_rpcs`.
-- `20261104103647_enforce_announcement_audience_reads.sql` — remote ledger name `enforce_announcement_audience_reads`.
-
-The 20261104101337 and 20261104103042 SQL bodies from both independent branch snapshots match after ignoring comments and whitespace. For 20261104103647, the Codex branch version additionally drops the older `announcements public published read` policy; the live database has only `announcements_select_published_audience` for SELECT, so the restored version matches the observed live state better. These three restorations raise the exact timestamp match count from 24 to 27.
-
-Result: **150 remote-only timestamps still have no recoverable correctly timestamped SQL file in any scanned branch**. They must be recovered from a trusted external archive/backup or handled through an explicitly reviewed schema-baseline/squash plan. A filename-only placeholder would conceal the gap rather than reconstruct it.
-
-## Remote versions missing locally
+## Remote timestamps missing locally
 
 | Remote timestamp | Remote migration name |
 |---|---|
@@ -182,7 +173,7 @@ Result: **150 remote-only timestamps still have no recoverable correctly timesta
 | `20261103162851` | `restrict_student_verification_to_athletes` |
 | `20261103171241` | `harden_ai_reports_active_subscription_academy_verification` |
 
-## Local timestamps not recorded remotely
+## Local timestamps absent from the remote ledger
 
 | Local timestamp | Local file(s) |
 |---|---|
@@ -261,7 +252,7 @@ Result: **150 remote-only timestamps still have no recoverable correctly timesta
 
 ## Duplicate local timestamp prefixes
 
-| Timestamp | Conflicting files |
+| Timestamp | Conflicting local files |
 |---|---|
 | `20260912` | `20260912_instagram_business_discovery.sql`<br>`20260912_instagram_connections.sql`<br>`20260912_instagram_server_hardening.sql`<br>`20260912_secure_messaging.sql`<br>`20260912_secure_messaging_rls_hardening.sql`<br>`20260912_upload_size_limit.sql` |
 | `20260913` | `20260913_add_missing_foreign_key_indexes.sql`<br>`20260913_add_payment_approval_flow.sql`<br>`20260913_clarify_instagram_rls_policies.sql`<br>`20260913_harden_messaging_function_permissions_and_rls.sql`<br>`20260913_restore_athlete_own_record_policies.sql` |
@@ -269,15 +260,44 @@ Result: **150 remote-only timestamps still have no recoverable correctly timesta
 | `20260915213000` | `20260915213000_trial_payment_placeholder.sql`<br>`20260915213000_trial_pricing_and_access.sql` |
 | `20261007133000` | `20261007133000_enforce_canonical_plan_constraints.sql`<br>`20261007133000_harden_badges_and_achievement_engine.sql` |
 
+## Non-standard timestamp filenames
+
+These files do not have the standard 14-digit timestamp prefix:
+
+- `20260912_instagram_business_discovery.sql`
+- `20260912_instagram_connections.sql`
+- `20260912_instagram_server_hardening.sql`
+- `20260912_secure_messaging.sql`
+- `20260912_secure_messaging_rls_hardening.sql`
+- `20260912_upload_size_limit.sql`
+- `20260913_add_missing_foreign_key_indexes.sql`
+- `20260913_add_payment_approval_flow.sql`
+- `20260913_clarify_instagram_rls_policies.sql`
+- `20260913_harden_messaging_function_permissions_and_rls.sql`
+- `20260913_restore_athlete_own_record_policies.sql`
+- `20260914_fix_messaging_rls_and_usernames.sql`
+- `20260914_harden_messaging_membership.sql`
+- `20260914_harden_payment_rpc_permissions_and_indexes.sql`
+- `20260914_messaging_user_search.sql`
+- `20260914_messaging_user_search_and_id_rpcs.sql`
+- `20260914_unique_messaging_usernames.sql`
+- `20260914_user_chosen_usernames_and_novacode_contact.sql`
+- `20260917_trial_payment_checkout.sql`
+
 ## Safe reconciliation procedure
 
-1. Recover the original migration files and their exact timestamps from trusted Git history, backups, or release artifacts wherever possible.
-2. For any remote timestamp whose original SQL cannot be recovered, do not invent a placeholder. First establish the exact schema/data effects by inspecting current live definitions, then document an approved baseline/squash strategy with a tested clean-install path.
-3. For each local-only timestamp, compare its SQL effects with live schema and data before deciding whether it is genuinely unapplied, superseded, or duplicate. Never blindly push it.
-4. Resolve only individual timestamps whose SQL effect is already present or whose migration was demonstrably never applied. Use `supabase migration repair` only after that evidence exists; it changes history only, not schema.
-5. Validate the complete ordered chain on a disposable local PostgreSQL/Supabase stack and rerun `supabase migration list` against the remote. Do not reset production or create paid staging as a shortcut.
+1. Recover original SQL files and their exact timestamp versions from trusted Git history, release artifacts, or backups whenever possible. Do not infer an applied SQL file from the migration name alone.
+2. For each remote timestamp still missing locally, inspect the live database schema, function definitions, policies, grants, and relevant data effects. If original SQL cannot be recovered, design and test a controlled baseline/squash strategy with a reproducible clean-install path before using it.
+3. For each local-only timestamp, compare its exact SQL effects with live production state and determine whether it is unapplied, superseded, duplicated, or incorrectly versioned. Do not push it blindly.
+4. Investigate each duplicate local timestamp group and non-standard filename before running Supabase CLI migration commands. The CLI requires one unambiguous migration identifier for each version.
+5. Use `supabase migration repair` only for an individual timestamp after evidence proves the database change already exists (or was never run). The command changes migration history only; it does not apply or revert SQL.
+6. Test the complete ordered chain on a disposable non-billable local Supabase/PostgreSQL stack. Re-run `supabase migration list` and compare exact versions before considering production DDL.
+7. Do not reset production, modify the live migration ledger to hide drift, fabricate placeholder migration files, or create paid Supabase staging as a shortcut.
 
-## Sources and scope
+## Scope
 
-- Supabase CLI reference: <https://supabase.com/docs/reference/cli/supabase-migration-list>
-- Production list was read-only. No migration ledger rows or production schema were changed to create this inventory.
+The inventory queries were read-only. No production migration ledger rows, schema definitions, user data, Auth settings, grants, or Edge Functions were changed to create this report.
+
+References:
+- Supabase CLI: [List local and remote migrations](https://supabase.com/docs/reference/cli/supabase-migration-list)
+- Supabase guide: [Database migrations](https://supabase.com/docs/guides/local-development/database-migrations)
