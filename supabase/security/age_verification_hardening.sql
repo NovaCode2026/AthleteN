@@ -76,6 +76,43 @@ create trigger prevent_profile_dob_mismatch_insert
   before insert on public.profiles
   for each row execute function public.prevent_profile_dob_rewrite();
 
+-- Resolve approval at the database boundary as well as normalizing legacy rows.
+-- A pre-existing "not_required" row is not sufficient proof for a minor: the
+-- immutable DOB must establish that the account is at least 18. Explicit
+-- guardian approval remains valid, and the existing own-account QA override
+-- remains available only to the matching signed-in test account.
+create or replace function public.is_age_approved(p_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select exists (
+    select 1
+      from public.age_verifications a
+     where a.user_id = p_user_id
+       and (
+         a.status = 'approved'
+         or (
+           a.status = 'not_required'
+           and a.date_of_birth <= (current_date - interval '18 years')::date
+         )
+       )
+  )
+  or (
+    p_user_id = (select auth.uid())
+    and exists (
+      select 1
+        from private.qa_age_verification_overrides q
+       where q.user_id = p_user_id
+    )
+  );
+$function$;
+
+revoke all on function public.is_age_approved(uuid) from public, anon;
+grant execute on function public.is_age_approved(uuid) to authenticated, service_role;
+
 -- Record the DOB once. Repeating the same DOB is idempotent and preserves the
 -- current approval state; a different DOB requires the separate audited support
 -- correction process and cannot reset a guardian decision.
