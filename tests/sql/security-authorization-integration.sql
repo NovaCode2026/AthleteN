@@ -101,6 +101,19 @@ RESET ROLE;
 DELETE FROM private.qa_age_verification_overrides
 WHERE user_id='00000000-0000-0000-0000-000000000002';
 
+-- The private QA override table itself remains inaccessible to client roles.
+DO $block$
+BEGIN
+  IF has_table_privilege('authenticated','private.qa_age_verification_overrides','SELECT')
+     OR has_table_privilege('authenticated','private.qa_age_verification_overrides','INSERT')
+     OR has_table_privilege('authenticated','private.qa_age_verification_overrides','UPDATE')
+     OR has_table_privilege('anon','private.qa_age_verification_overrides','SELECT')
+     OR has_table_privilege('anon','private.qa_age_verification_overrides','INSERT') THEN
+    RAISE EXCEPTION 'Client roles have direct access to the private QA age override table';
+  END IF;
+END;
+$block$;
+
 -- An ordinary authenticated user cannot rewrite or clear their profile DOB.
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
