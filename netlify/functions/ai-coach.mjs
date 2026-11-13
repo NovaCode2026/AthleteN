@@ -215,7 +215,7 @@ export default async function handler(request) {
   const monthlyLimit = planLimits[planId] ?? 0;
   if (monthlyLimit <= 0) return json("AI Coach is not available on the Free plan.", 403);
 
-  const pricingModel = env("OPENAI_MODEL") || "gpt-4.1-mini";
+  const pricingModel = env("OPENAI_MODEL") || "gpt-6-luna";
   const costConfig = readAiBudgetConfig({
     OPENAI_MODEL:pricingModel, ATHLETEN_AI_PRICING_MODEL:env("ATHLETEN_AI_PRICING_MODEL"),
     ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE:env("ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE"),
