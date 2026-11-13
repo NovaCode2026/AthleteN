@@ -93,8 +93,8 @@ RESET ROLE;
 UPDATE public.profiles SET role='coach' WHERE user_id='00000000-0000-0000-0000-000000000001';
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
-INSERT INTO public.finance_accounts(owner_user_id,owner_type,name,currency)
-VALUES(auth.uid(),'coach','Authorized Coach Finance','INR');
+INSERT INTO public.finance_accounts(id,owner_user_id,owner_type,name,currency)
+VALUES('10000000-0000-0000-0000-000000000001',auth.uid(),'coach','Authorized Coach Finance','INR');
 DO $$
 DECLARE account_id uuid;
 BEGIN
@@ -118,8 +118,7 @@ BEGIN
   IF visible_count <> 0 THEN RAISE EXCEPTION 'Age-pending Coach can still read finance account'; END IF;
   BEGIN
     INSERT INTO public.finance_transactions(account_id,user_id,type,amount,category,transaction_date)
-    SELECT id,auth.uid(),'income',1,'test',current_date FROM public.finance_accounts
-    WHERE owner_user_id=auth.uid();
+    VALUES('10000000-0000-0000-0000-000000000001',auth.uid(),'income',1,'test',current_date);
   EXCEPTION WHEN insufficient_privilege THEN blocked := true;
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'Age-pending Coach finance write was not blocked'; END IF;
