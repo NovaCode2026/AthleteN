@@ -8,6 +8,8 @@ The live `public.can_view_athlete(uuid)` helper checks self access, platform-adm
 
 The live `private.user_can_manage_athlete(uuid)` helper checks direct active links and active Academy memberships, but it likewise does not check age approval for the caller or target athlete.
 
+A separate read-only function review found that the live `public.is_age_approved(uuid)` helper also accepts any `not_required` status without checking whether the stored DOB proves the account is 18+. The 2026-11-13 row-count query found zero current `not_required` rows, but this helper logic could still misclassify a future/legacy minor row. The age-verification review draft now makes `not_required` conditional on an 18+ DOB, preserves explicit guardian approval, and retains only the matching account's QA override. See `docs/AGE_VERIFICATION_SECURITY_FINDINGS_2026-11-12.md` for full context.
+
 The catalog shows nine public athlete-data tables that have a permissive `connected team read athlete` SELECT policy and **no restrictive age-approval policy**:
 
 - `hydration_logs`
@@ -28,9 +30,9 @@ This is a database-boundary gap derived from live function definitions, grants, 
 
 ## Candidate remediation in this branch
 
-`supabase/security/age_gated_coach_access_hardening.sql` is a review-only SQL draft. It:
+`supabase/security/age_gated_coach_access_hardening.sql` is a review-only SQL draft, used together with the DOB-aware `public.is_age_approved(uuid)` redefinition in `supabase/security/age_verification_hardening.sql`. It:
 
-1. Replaces `public.can_view_athlete` so both the signed-in caller and target athlete must have an approved or `not_required` age state before connected-team visibility is granted. Platform-admin access remains available through the existing admin helper.
+1. Replaces `public.can_view_athlete` so both the signed-in caller and target athlete must have an approved or a DOB-valid adult `not_required` age state before connected-team visibility is granted. Platform-admin access remains available through the existing admin helper.
 2. Replaces `private.user_can_manage_athlete` with the same two-sided approval gate before direct-link or Academy-based management access is granted.
 3. Adds restrictive age-approval policies to the nine athlete-data tables listed above. The policies gate both caller and row owner and preserve the explicit platform-admin support path.
 4. Retains the existing permissive ownership/connected-team policies; the new restrictive policies AND with those existing policies rather than replacing their intended relationship rules.
@@ -39,7 +41,7 @@ The draft deliberately does not add a blanket age restriction to `profiles`, bec
 
 ## Test coverage
 
-The PostgreSQL 17 integration harness adds these scenarios:
+The PostgreSQL 17 integration harness adds these scenarios, in addition to the age-verification suite's direct helper assertions that an under-18 legacy `not_required` row is denied before normalization, an adult `not_required` row remains valid, and a QA override applies only to its matching signed-in account:
 
 - Approved coach linked to a pending athlete cannot read that athlete's Taekwondo, Kyorugi, Poomsae, hydration, or nutrition rows.
 - Approved coach can still view and manage an approved linked athlete.
