@@ -23,8 +23,7 @@
 
 ---
 
-> [!WARNING]
-> **Release status: not approved for public production.** PR #59 is the current combined release candidate; it is not merged or deployed. Production database reconciliation, security review, AI budget setup, signed Android distribution, billing work and real-device acceptance remain release gates. Paid checkout is intentionally disabled. See the [latest release-readiness report](./docs/RELEASE_READINESS_2026-11-12.md).
+> **Release status — candidate, not production-approved:** PR #59 remains unmerged and undeployed. Database reconciliation, security review, AI budget setup, signed Android distribution, billing validation and real-device acceptance are still required. Paid checkout remains disabled. See the [release-readiness report](./docs/RELEASE_READINESS_2026-11-12.md).
 
 ## What is AthleteN?
 
