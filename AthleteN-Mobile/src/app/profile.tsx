@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { PerformanceLine } from '@/components/performance-chart';
 import { Screen } from '@/components/mobile-ui';
+import AthleteNLogo from '@/components/athleten-logo';
 
 const c = Colors.dark;
 
@@ -139,7 +140,7 @@ export default function ProfileScreen() {
   const weightChart=[...weights].reverse().slice(-7).map(w=>({label:String(w.logged_at).slice(5,10).replace('-','/'),value:Number(w.weight_kg)}));
 
   return <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-    <View style={s.brandRow}><Image source={require('@/assets/logo.png')} style={s.logo} contentFit="cover"/><View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>ATHLETE PROFILE</Text></View></View>
+    <View style={s.brandRow}><AthleteNLogo width={116} height={64} style={s.logo}/><Text style={s.brandSub}>ATHLETE PROFILE</Text></View>
     <View style={s.profileHero}><Pressable onPress={()=>void changePhoto()} disabled={avatarBusy} style={s.profileHero}>{avatarUrl?<Image source={{uri:avatarUrl}} style={s.avatar} contentFit="cover"/>:<View style={s.avatar}><Text style={s.avatarText}>{String(profile?.full_name||'A').slice(0,1).toUpperCase()}</Text></View>}<View style={s.liveDot}><Text style={s.avatarText}>{avatarBusy?'…':'+'}</Text></View></Pressable><View style={s.heroCopy}><Text style={s.name}>{String(profile?.full_name||'Athlete')}</Text><Text style={s.meta}>{discipline==='poomsae'?'Poomsae':discipline==='kyorugi'?'Kyorugi':'Discipline not selected'} • {String(profile?.plan_id||'free')} plan</Text><Pressable onPress={()=>void changePhoto()}><Text style={s.meta}>CHANGE PROFILE PHOTO</Text></Pressable></View><View style={s.liveDot}/></View>
 
     <Section title="ATHLETE IDENTITY"><View style={s.card}>
