@@ -1,6 +1,6 @@
 import React from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
-import { Pressable, Text, View, useColorScheme } from 'react-native';
+import { Image, Pressable, Text, View, useColorScheme } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
@@ -81,7 +81,12 @@ export default function RootLayout() {
           <Stack
             screenOptions={{
               headerShown: true,
-              headerTitle: 'AthleteN',
+              headerTitle: () => (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+                  <Image source={require('@/assets/logo.png')} style={{ width: 30, height: 30, borderRadius: 8 }} resizeMode="contain" />
+                  <Text style={{ color: Colors.dark.text, fontSize: 15, fontWeight: '900', letterSpacing: 1.2 }}>ATHLETEN</Text>
+                </View>
+              ),
               headerTitleStyle: { color: Colors.dark.text, fontSize: 15, fontWeight: '900' },
               headerStyle: { backgroundColor: Colors.dark.background },
               headerTintColor: Colors.dark.accentBright,
