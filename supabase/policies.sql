@@ -249,7 +249,7 @@ do $$
 declare table_name text;
 begin
   foreach table_name in array array[
-    'account_entitlements','age_verifications','academy_coach_seats','coach_approval_requests','coach_athlete_links',
+    'account_entitlements','academy_coach_seats','coach_approval_requests','coach_athlete_links',
     'conversations','conversation_members','messages','message_reports','payment_orders','reserved_usernames','user_blocks',
     'kyorugi_bouts','kyorugi_training_metrics','poomsae_performances','poomsae_training_metrics','taekwondo_belt_history',
     'taekwondo_kyorugi_bouts','taekwondo_poomsae_performances','taekwondo_training_logs','taekwondo_weight_category_decisions'
@@ -258,8 +258,31 @@ begin
     execute format('create policy "super admin full access" on public.%I for all to authenticated using (private.is_super_admin()) with check (private.is_super_admin())', table_name);
     execute format('grant select, insert, update, delete on public.%I to authenticated', table_name);
   end loop;
-end $$;
+end $;
 
+-- AGE VERIFICATION: users may read only their own status; all writes are
+-- performed through trusted server-side workflows. Approval fields must never
+-- be client-editable, including through the generic super-admin record editor.
+drop policy if exists "users can create own age verification" on public.age_verifications;
+drop policy if exists "users can update own age verification" on public.age_verifications;
+drop policy if exists "super admin full access" on public.age_verifications;
+drop policy if exists "super admin can read age verifications" on public.age_verifications;
+create policy "super admin can read age verifications"
+  on public.age_verifications for select to authenticated
+  using (private.is_super_admin());
+revoke all on table public.age_verifications from public, anon, authenticated;
+grant select (
+  id,
+  user_id,
+  date_of_birth,
+  parent_email,
+  status,
+  token_expires_at,
+  approved_at,
+  rejected_at,
+  created_at,
+  updated_at
+) on table public.age_verifications to authenticated;
 
 -- COACH-CONTROLLED NUTRITION
 alter table public.athlete_feature_controls enable row level security;

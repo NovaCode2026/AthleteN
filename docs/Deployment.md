@@ -37,10 +37,17 @@ The existing production site was checked and the core values below are present i
 | `SUPABASE_SERVICE_ROLE_KEY` | Privileged server-side tasks and payment webhooks | **Secret — server only** |
 | `OPENAI_API_KEY` | AI Coach and AI report requests | **Secret — server only** |
 | `OPENAI_MODEL` | Optional model override; the function has a code default | Server only |
+| `ATHLETEN_AI_PRICING_MODEL` | Exact model ID covered by verified prices; must equal `OPENAI_MODEL` | Server only |
+| `ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE` | Verified input cost per 1M tokens, in paise | Server only |
+| `ATHLETEN_AI_OUTPUT_PRICE_PER_1M_TOKENS_PAISE` | Verified output cost per 1M tokens, in paise | Server only |
+| `ATHLETEN_AI_MONTHLY_BUDGET_PAISE` | Platform-wide AI budget per calendar month; defaults to 15000 (₹150) | Server only |
+| `ATHLETEN_AI_MAX_OUTPUT_TOKENS` | Maximum output-token budget per request; defaults to 600 | Server only |
 | `ATHLETEN_SITE_URL` | Canonical site URL used in payment provider return URLs | Server only |
 | `PAYMENT_PROVIDER` | Provider selection: razorpay, stripe or cashfree | Server only |
 
 The server functions currently accept `VITE_SUPABASE_URL` as a fallback for `SUPABASE_URL`; setting `SUPABASE_URL` as well makes the server configuration explicit.
+
+The budgeted AI Coach defaults to `gpt-6-luna` with conservative, versioned source rates and a ₹150 monthly platform budget. No model-price variables are required for that pinned default. When selecting another model, configure `OPENAI_MODEL`, `ATHLETEN_AI_PRICING_MODEL` (exact match), and both positive input/output price variables together. The live Production site was audited on 2026-11-13 and these optional overrides were absent. The AI Coach remains paused until the budget-ledger migration is safely applied and the production API key is verified against the selected model; no unmetered provider calls are allowed.
 
 Use the current publishable/anon key from Supabase Project API Keys. Never put the service-role key, OpenAI key, payment secret, Instagram app secret, or webhook secret in a `VITE_*` variable, source file, or client bundle.
 
@@ -82,13 +89,14 @@ Use separate test accounts for Athlete, Coach, Academy Admin and Free users:
 
 The checkout Netlify Function currently has a server-side `FREE_LAUNCH = true` gate. This intentionally returns HTTP 503 for paid checkouts even if payment credentials are later added. Do not remove that gate as part of a routine deploy. When paid subscriptions are ready, first complete provider onboarding, legal/refund terms, webhook verification and test-mode acceptance. Then configure the selected provider's server-only credentials and per-plan IDs:
 
-- Razorpay: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, plus `RAZORPAY_PLAN_STUDENT`, `RAZORPAY_PLAN_PRO`, `RAZORPAY_PLAN_ELITE`, `RAZORPAY_PLAN_COACH`, and `RAZORPAY_PLAN_ACADEMY`.
-- Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, plus `STRIPE_PLAN_<PLAN>` values for the plans offered.
+- Razorpay: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, plus new monthly IDs `RAZORPAY_PLAN_V2_PRO_MONTHLY`, `RAZORPAY_PLAN_V2_ELITE_MONTHLY`, `RAZORPAY_PLAN_V2_COACH_MONTHLY`, and `RAZORPAY_PLAN_V2_ACADEMY_MONTHLY`.
+- Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, plus `STRIPE_PLAN_V2_<PLAN>_MONTHLY` for Pro, Elite, Coach and Academy.
+- Student is legacy-only and has no new-sale provider plan ID. Annual provider IDs are not implemented yet.
 - Cashfree: `CASHFREE_CLIENT_ID`, `CASHFREE_CLIENT_SECRET` (also used for Cashfree webhook signature verification).
 
 Set `PAYMENT_PROVIDER` only after the server secrets and plan IDs are configured and tested. Never expose payment secrets to the browser.
 
-**Billing-cycle blocker:** the current checkout API does not accept a monthly/yearly selector. The UI displays both cycles, and the server has a single provider plan key per product. Do not enable paid checkout until monthly and yearly provider plan IDs, amounts, renewal periods and the selected cycle are wired end to end and verified in provider sandbox.
+**Billing-cycle blocker:** the current checkout API does not accept a monthly/yearly selector. The mobile UI displays both cycles, but paid checkout is globally disabled in both client and server. New monthly provider IDs are versioned as `RAZORPAY_PLAN_V2_<PLAN>_MONTHLY` or `STRIPE_PLAN_V2_<PLAN>_MONTHLY`; do not reuse legacy provider IDs. Annual provider plan IDs, amounts, renewal periods and selected-cycle persistence must be implemented and verified end to end before enabling checkout. Cashfree is excluded from recurring subscription checkout because its current code path creates one-time orders.
 
 ## Supabase Auth URLs
 

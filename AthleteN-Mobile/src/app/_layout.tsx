@@ -8,6 +8,8 @@ import { Colors } from '@/constants/theme';
 import AnnouncementOverlay from '@/components/announcement-overlay';
 import AppUpdateGate from '@/components/app-update-gate';
 
+const IS_QA_BUILD = process.env.EXPO_PUBLIC_APP_CHANNEL === 'qa';
+
 type ErrorBoundaryState = { error: Error | null };
 
 class AppErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBoundaryState> {
@@ -44,7 +46,6 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBou
   }
 }
 
-
 const PUBLIC_AUTH_PATHS = new Set([
   '/',
   '/auth/callback',
@@ -76,40 +77,52 @@ export default function RootLayout() {
       <AuthProvider>
         <AuthRouteGuard />
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <AnnouncementOverlay />
-          <AppUpdateGate />
-          <Stack
-            screenOptions={{
-              headerShown: true,
-              headerTitle: 'AthleteN',
-              headerTitleStyle: { color: Colors.dark.text, fontSize: 15, fontWeight: '900' },
-              headerStyle: { backgroundColor: Colors.dark.background },
-              headerTintColor: Colors.dark.accentBright,
-              headerBackTitle: 'Back',
-              headerShadowVisible: false,
-              headerLeft: ({ canGoBack }) => canGoBack ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Go back"
-                  hitSlop={12}
-                  onPress={() => router.back()}
-                  style={{ paddingRight: 18, paddingVertical: 8 }}
-                >
-                  <MaterialCommunityIcons name="arrow-left" size={23} color={Colors.dark.accentBright} />
-                </Pressable>
-              ) : null,
-              contentStyle: { backgroundColor: Colors.dark.background },
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="academy-setup" options={{ headerShown: false }} />
-            <Stack.Screen name="change-password" options={{ headerShown: false }} />
-            <Stack.Screen name="reset-request" options={{ headerShown: false }} />
-            <Stack.Screen name="reset-password" options={{ headerShown: false }} />
-            <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
-            <Stack.Screen name="policies" options={{ headerShown: false }} />
-          </Stack>
+          <View style={{ flex: 1, backgroundColor: Colors.dark.background }}>
+            {IS_QA_BUILD ? (
+              <View
+                accessibilityRole="alert"
+                style={{ backgroundColor: '#7F1D1D', paddingVertical: 7, paddingHorizontal: 12 }}
+              >
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900', textAlign: 'center' }}>
+                  QA BUILD • LIVE DATABASE • TEST ACCOUNT ONLY
+                </Text>
+              </View>
+            ) : null}
+            <AnnouncementOverlay />
+            <AppUpdateGate />
+            <Stack
+              screenOptions={{
+                headerShown: true,
+                headerTitle: 'AthleteN',
+                headerTitleStyle: { color: Colors.dark.text, fontSize: 15, fontWeight: '900' },
+                headerStyle: { backgroundColor: Colors.dark.background },
+                headerTintColor: Colors.dark.accentBright,
+                headerBackTitle: 'Back',
+                headerShadowVisible: false,
+                headerLeft: ({ canGoBack }) => canGoBack ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Go back"
+                    hitSlop={12}
+                    onPress={() => router.back()}
+                    style={{ paddingRight: 18, paddingVertical: 8 }}
+                  >
+                    <MaterialCommunityIcons name="arrow-left" size={23} color={Colors.dark.accentBright} />
+                  </Pressable>
+                ) : null,
+                contentStyle: { backgroundColor: Colors.dark.background },
+              }}
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="academy-setup" options={{ headerShown: false }} />
+              <Stack.Screen name="change-password" options={{ headerShown: false }} />
+              <Stack.Screen name="reset-request" options={{ headerShown: false }} />
+              <Stack.Screen name="reset-password" options={{ headerShown: false }} />
+              <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+              <Stack.Screen name="policies" options={{ headerShown: false }} />
+            </Stack>
+          </View>
         </ThemeProvider>
       </AuthProvider>
     </AppErrorBoundary>

@@ -29,9 +29,10 @@ AthleteN keeps three things separate:
 | Plan | Monthly | Yearly | AI requests / month | Designed for |
 |---|---:|---:|---:|---|
 | 🆓 **Free** | ₹0 | ₹0 | 0 | Getting started |
-| 🎓 **Student** | ₹99 | ₹999 | 50 | Verified Athlete accounts |
-| 🚀 **Pro** | ₹199 | ₹1,999 | 200 | Competitive Athletes |
-| 🏆 **Elite** | ₹399 | ₹3,999 | 500 | Advanced Athlete workflows |
+| 🚀 **Pro** | ₹99 | ₹999 | 50 | Athletes |
+| 🏆 **Elite** | ₹199 | ₹1,999 | 200 | Competitive Athletes |
+
+Student remains a legacy plan for existing approved subscribers only. It is not available for new purchases.
 | 🧑‍🏫 **Coach** | ₹499 | ₹4,999 | 750 | Verified Coach accounts |
 | 🏟️ **Academy** | ₹799 | ₹7,999 | 1,000 | Verified Academy Admin accounts |
 
@@ -64,7 +65,7 @@ flowchart TD
  K --> L["Matching subscription becomes active"]
 ```
 
-**Student proof types:** School ID, fee receipt or bonafide certificate. Only an authorized platform Admin can approve or reject the request. The latest request controls eligibility: an old approval must not override a newer pending or rejected request.
+**Legacy Student proof:** School ID, fee receipt or bonafide certificate may remain in historical records. Only an authorized platform Admin can approve or reject existing Student verification requests. This workflow preserves existing entitlements; it does not make Student available for new purchases.
 
 ## 🧑‍🏫 Coach purchase journey
 
@@ -168,10 +169,9 @@ If setup is incomplete, the user should be directed to the existing Academy setu
 
 Before paid launch, test each journey with separate test accounts:
 
-- [ ] Athlete + no Student proof → Student checkout blocked.
-- [ ] Athlete + Student request pending → checkout blocked.
-- [ ] Athlete + latest Student request rejected → old approval cannot bypass it.
-- [ ] Athlete + latest Student request approved → checkout can start.
+- [ ] Existing Student subscriber retains the historical Student entitlement.
+- [ ] New Student checkout is rejected regardless of verification status.
+- [ ] Pro and Elite checkout remain blocked while the global paid-launch gate is closed.
 - [ ] Athlete account selecting Coach → blocked; no automatic role change.
 - [ ] Coach role + unconfirmed account email → blocked.
 - [ ] Coach role + confirmed email → checkout can start.
