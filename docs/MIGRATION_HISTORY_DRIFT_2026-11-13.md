@@ -7,11 +7,11 @@ This inventory compares the production Supabase migration ledger with the candid
 | Measure | Count |
 |---|---:|
 | Production remote migration versions | 177 |
-| Candidate local SQL migration files | 116 |
-| Unique local timestamp prefixes | 99 |
+| Candidate local SQL migration files | 118 |
+| Unique local timestamp prefixes | 101 |
 | Exact timestamps present on both sides | 27 |
 | Remote timestamps with no exact local match | 150 |
-| Local timestamps absent from the remote ledger | 72 |
+| Local timestamps absent from the remote ledger | 74 |
 | Duplicate local timestamp groups | 5 |
 | Local files in duplicate timestamp groups | 22 |
 | Local files with non-standard (non-14-digit) timestamp prefixes | 19 |
@@ -249,6 +249,9 @@ The candidate includes three restored Nov 4 migration files with matching remote
 | `20261103134000` | `20261103134000_restrict_student_verification_to_athletes.sql` |
 | `20261103170000` | `20261103170000_harden_ai_reports_active_subscription_academy_verification.sql` |
 | `20261111160000` | `20261111160000_consolidate_duplicate_direct_message_threads.sql` |
+
+| `20261112180000` | `20261112180000_athleten_ai_monthly_budget_ledger.sql` |
+| `20261112180100` | `20261112180100_athleten_pricing_v1_ai_quotas.sql` |
 
 ## Duplicate local timestamp prefixes
 
