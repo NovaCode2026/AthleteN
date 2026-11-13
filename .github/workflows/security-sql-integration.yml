@@ -50,6 +50,10 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h 127.0.0.1 -U postgres -d athleten_security_test -v ON_ERROR_STOP=1 -f supabase/security/role_and_finance_authorization_hardening.sql
+      - name: Apply connected-team age-gating review draft
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_security_test -v ON_ERROR_STOP=1 -f supabase/security/age_gated_coach_access_hardening.sql
       - name: Run DOB, guardian, Coach and Academy authorization assertions
         env:
           PGPASSWORD: postgres
