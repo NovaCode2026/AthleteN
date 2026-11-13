@@ -1,322 +1,167 @@
 <div align="center">
 
-# 🥋 AthleteN
+<img src="./public/athleten-logo.svg" alt="AthleteN logo" width="112">
+
+# AthleteN
 
 ### THE ATHLETE OPERATING SYSTEM
 
 **Train Smarter. Compete Stronger.**
 
 <p>
-  <img src="https://img.shields.io/badge/PRODUCT-ATHLETE%20OPERATING%20SYSTEM-0B1F3A?style=for-the-badge" alt="Athlete operating system">
-  <img src="https://img.shields.io/badge/FOCUS-TAEKWONDO-00AEEF?style=for-the-badge" alt="Taekwondo">
-  <img src="https://img.shields.io/badge/PLATFORMS-WEB%20%2B%20ANDROID-6C5CE7?style=for-the-badge" alt="Web and Android">
-  <img src="https://img.shields.io/badge/AI-ATHLETE%20INTELLIGENCE-00B894?style=for-the-badge" alt="AI athlete intelligence">
+  <img src="https://img.shields.io/badge/PRODUCT-ATHLETE%20PLATFORM-0B1F3A?style=for-the-badge" alt="Athlete platform">
+  <img src="https://img.shields.io/badge/SPORT-TAEKWONDO-00AEEF?style=for-the-badge" alt="Taekwondo">
+  <img src="https://img.shields.io/badge-CLIENTS-WEB%20%2B%20ANDROID-6C5CE7?style=for-the-badge" alt="Web and Android">
+  <img src="https://img.shields.io/badge-RELEASE-CANDIDATE%20ONLY-E09B32?style=for-the-badge" alt="Release candidate only">
 </p>
 
-**Built by Nova Code** · React · TypeScript · Expo · Supabase · Netlify
+**Built by Nova Code**
 
-[Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) · [Web + Mobile Experience](./docs/WEB_MOBILE_EXPERIENCE_MODEL.md) · [Taekwondo Disciplines](./docs/TAEKWONDO_DISCIPLINES.md) · [Plans & Verification](./docs/PLAN_VERIFICATION_AND_BILLING.md) · [Docs Hub](./docs/README.md) · [API](./docs/API.md) · [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) · [Mobile Guide](./AthleteN-Mobile/README.md)
+[Open AthleteN](https://athleten.netlify.app) · [Documentation](./docs/README.md) · [Mobile Guide](./AthleteN-Mobile/README.md) · [Release Candidate #59](https://github.com/NovaCode2026/AthleteN/pull/59)
 
 </div>
 
 ---
 
-## 🌌 What is AthleteN?
+> [!WARNING]
+> **Release status: not approved for public production.** PR #59 is the current combined release candidate; it is not merged or deployed. Production database reconciliation, security review, AI budget setup, signed Android distribution, billing work and real-device acceptance remain release gates. Paid checkout is intentionally disabled. See the [latest release-readiness report](./docs/RELEASE_READINESS_2026-11-12.md).
 
-AthleteN is a sports-focused operating system for the people behind an athlete's journey: **athletes, coaches and academies**.
+## What is AthleteN?
 
-It connects the everyday work that happens before, during and after competition:
+AthleteN brings an athlete's training life into one connected workspace. Athletes can keep their sports records organised, coaches can manage their authorised athlete groups, and academies can coordinate their teams.
 
-`TRAIN → TRACK → PREPARE → COMPETE → REVIEW → IMPROVE`
+The product is **Taekwondo-first**. Athletes choose Taekwondo and then select the discipline that applies to them:
 
-Instead of spreading training logs, results, medals, attendance, goals, reports and communication across disconnected tools, AthleteN brings them into one permission-aware workspace.
+- **Kyorugi** — sparring training, bout records and competition results.
+- **Poomsae** — forms practice, repetitions, categories, scores and placings.
 
-The product is **Taekwondo-first**, with Kyorugi and Poomsae workflows at its core. Its role-based architecture can support other sports as the product expands.
+The platform follows one connected journey:
 
-> **The idea:** one connected place for an athlete's progress, a coach's work and an academy's operations.
+<div align="center">
 
----
+**TRAIN** → **TRACK** → **PREPARE** → **COMPETE** → **REVIEW** → **IMPROVE**
 
-## ✨ Explore the platform
+</div>
 
-<table>
-<tr>
-<td width="50%" valign="top">
+## The AthleteN experience
 
-### 🥋 Athlete workspace
-- Athlete profile and sports identity
-- Training sessions and training history
-- Sport-first Taekwondo selection with separate Kyorugi and Poomsae workspaces, labels, practice logs and competition records
-- Tournaments, matches and competition history
-- Medals, achievements and certificates
-- Goals, milestones and athlete journey
-- Weight records and competition category history
-- Documents, calendar and checklists
-- Attendance and notifications
-- Connected coach and academy relationships
-
-</td>
-<td width="50%" valign="top">
-
-### 🧑‍🏫 Coach workspace
-- Coach identity and athlete connections
-- Athlete roster and relationship management
-- Training plans and session monitoring
-- Attendance and progress overview
-- Competition and medal summaries
-- Athlete-specific review and feedback
-- Coach monthly intelligence report
-- Communication and notifications
-- Coach plan and role-based access
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### 🏟️ Academy workspace
-- Academy profile and setup
-- Academy owner and coach relationships
-- Athlete and coach memberships
-- Attendance and training operations
-- Competition and medal overview
-- Academy analytics and reporting
-- Academy announcements and calendar
-- Academy monthly intelligence report
-- Academy plan and role-based access
-
-</td>
-<td width="50%" valign="top">
-
-### 🛡️ Platform administration
-- Admin and Super Admin workspaces
-- Student verification review
-- User and role administration
-- Subscription and usage management
-- Support, announcements and feature controls
-- Badge and achievement management
-- Audit and operational records
-- Controlled app-release management
-
-</td>
-</tr>
-</table>
-
----
-
-## 🤖 AthleteN Intelligence
-
-AI features are designed around recorded sports context, not made-up performance statistics.
-
-### 🥊 AI Match Report
-
-A paid feature for eligible Athletes, Coaches and Academies.
-
-The report uses information supplied in AthleteN: event, opponent or style when known, result, score when recorded, and match observations. It produces a structured review containing:
-
-- Match summary
-- Supplied observations and recorded strengths
-- Areas to review with a coach
-- Tactical lessons and questions
-- Practical next-practice priorities
-
-**Accuracy rule:** the report must not invent scoring events, techniques, statistics or claim to have analysed footage when no video analysis was performed.
-
-### 📊 AI Monthly Reports
-
-A paid reporting feature with role-specific reports:
-
-| Account | Monthly report |
+| Workspace | What it helps people do |
 |---|---|
-| 🥋 Athlete | Personal training, attendance, medals, competitions and goal summary |
-| 🧑‍🏫 Coach | Summary for the coach's own account and linked athletes they are authorized to manage |
-| 🏟️ Academy | Academy-level summary for permitted academy athletes and activity |
+| 🥋 **Athlete** | Maintain a profile, log training, track goals, record competitions and medals, organise documents and follow progress. |
+| 🧑‍🏫 **Coach** | Work with an authorised roster, review training, manage attendance and follow athlete progress. |
+| 🏟️ **Academy** | Coordinate athlete and coach memberships, attendance, competition activity and academy operations. |
+| 🛡️ **Administration** | Review verification, manage platform access and oversee supported operational controls. |
 
-Reports are based on the **previous completed calendar month** and actual records available to the account. The AI must label missing data rather than invent it. The current report workflow is user-initiated; scheduled delivery is not claimed as enabled.
+### Connected athlete tools
 
-### 🔐 AI access rules
+- Training sessions, training history and progress summaries
+- Taekwondo discipline-specific workspaces for Kyorugi and Poomsae
+- Competition calendar, match records and event history
+- Medals, certificates, milestones and athlete journey
+- Goals, attendance, weight records and personal documents
+- Coach and academy relationships, messaging and notifications
+- Analytics and role-specific reports where the account is eligible
 
-- Free plan: no AI Match Reports or AI Monthly Reports.
-- Eligible paid plan and matching account role are required.
-- Student requires the latest Student verification request to be approved.
-- Coach and Academy access must pass their existing role/workspace verification.
-- The server verifies active subscription status and monthly usage.
-- Saved report records are protected by owner-scoped access controls.
-- Coach and Academy reports must stay within the account's authorized athlete relationships.
+### AthleteN Intelligence
 
----
+AI-assisted match and monthly reports are designed to summarise information that is actually recorded in AthleteN. They must not invent match events, performance statistics or video analysis. Role, subscription, usage and data-scope checks belong on the server—not only in the interface.
 
-## 💳 Plans and access
+**Current operating gate:** AI generation remains fail-closed until the candidate budget-ledger migration is safely reconciled and installed, and production model access and costs are verified.
 
-All prices below are the published plan catalogue in INR. A plan is not activated by clicking a card or receiving an approval; **subscription activation follows successful payment confirmation**.
+## Web and Android
 
-| Plan | Monthly | Yearly | AI requests / month | Who can use it |
-|---|---:|---:|---:|---|
-| 🆓 **Free** | ₹0 | ₹0 | 0 | Baseline account access |
-| 🎓 **Student** | ₹99 | ₹999 | 50 | Athletes only · Admin approval required |
-| 🚀 **Pro** | ₹199 | ₹1,999 | 200 | Athletes |
-| 🏅 **Elite** | ₹399 | ₹3,999 | 500 | Athletes |
-| 🧑‍🏫 **Coach** | ₹499 | ₹4,999 | 750 | Verified Coach accounts |
-| 🏟️ **Academy** | ₹799 | ₹7,999 | 1,000 | Verified Academy Admin accounts |
-
-### What Free is missing
-
-Paid plans unlock **AI Match Reports** and the role-specific **AI Monthly Reports**. Free users may see the feature descriptions, but generation and saving require an eligible active paid entitlement.
-
-### Verification before purchase
-
-```text
-STUDENT
-Choose Student → Submit student proof → Admin review
-→ Approved → Checkout → Payment confirmed → Student active
-
-COACH
-Choose Coach → Verify existing Coach account + email
-→ Checkout → Payment confirmed → Coach plan active
-
-ACADEMY
-Choose Academy → Verify Academy Admin role
-→ Confirm active Academy + completed setup + verified contact email
-→ Checkout → Payment confirmed → Academy plan active
-```
-
-- Student proof types supported by the existing workflow include school ID, fee receipt and bonafide certificate.
-- Student requests are reviewed by an authorized platform Admin.
-- Coach verification reuses the existing verified Coach account/role; AthleteN does not create a duplicate Coach-verification system.
-- Academy verification reuses the existing Academy workspace setup and contact-email verification.
-- Account verification, payment and subscription status remain separate states.
-
-<sub>Commercial note: paid checkout remains intentionally closed while the Free Launch gate is enabled. Payment-provider onboarding, credentials, webhooks and acceptance tests must be completed before enabling paid checkout. Prices are the configured product catalogue and should be confirmed before public commercial launch.</sub>
-
----
-
-## 📱 Web and Android
-
-AthleteN has two connected clients:
-
-| Client | Main technology | Purpose |
+| Client | Technology | Best suited to |
 |---|---|---|
-| 🌐 Web | React, TypeScript, Vite | Full Athlete, Coach, Academy and Admin experience |
-| 📱 Android | Expo SDK 57, React Native, Expo Router | Mobile athlete and role workspaces |
+| 🌐 **Web** | React, TypeScript, Vite | Detailed dashboards, history, analytics, reports and administration |
+| 📱 **Android** | React Native, Expo SDK 57, Expo Router | Quick daily checks, training capture, competition preparation and mobile tasks |
 
-The product goal is **feature parity where the platform supports it**. Native capabilities such as push notifications, device permissions and Android widgets remain platform-specific.
+Both clients use the same account identity, shared backend records and server-side permission rules. The feature set is still being validated across devices; do not assume parity simply because a screen or navigation item exists.
 
----
+## Plans
 
-## 🧭 How the platform fits together
+Approved customer-facing catalogue in INR:
+
+| Plan | Monthly | Annual | AI requests / month |
+|---|---:|---:|---:|
+| Free | ₹0 | ₹0 | 0 |
+| Pro | ₹99 | ₹999 | 50 |
+| Elite | ₹199 | ₹1,999 | 200 |
+| Coach | ₹499 | ₹4,999 | 750 |
+| Academy | ₹799 | ₹7,999 | 1,000 shared |
+
+**Student is legacy-only** for existing subscribers. It is not available for new purchases and is not part of the public launch catalogue.
+
+Displayed prices are intended as customer totals inclusive of applicable GST; GST must not be added on top. The exact tax treatment and invoice requirements require qualified Indian tax review before checkout is enabled. Annual billing is not active yet. **Paid checkout and recurring billing remain disabled.**
+
+See [Plans, Verification & Billing](./docs/PLAN_VERIFICATION_AND_BILLING.md) and [Pricing & Financial Controls](./docs/PRICING_AND_FINANCIAL_CONTROL_V1.md).
+
+## How the platform is put together
 
 ```mermaid
 flowchart TD
-  A["AthleteN Web / Android"] --> B["Authentication & profile"]
-  B --> C{"Account role"}
+  A["Web app / Android app"] --> B["Supabase Auth"]
+  B --> C["Role and relationship permissions"]
   C --> D["Athlete workspace"]
   C --> E["Coach workspace"]
   C --> F["Academy workspace"]
-  C --> G["Admin / Super Admin"]
-  D --> H["Training · Competition · Records"]
-  E --> I["Roster · Training · Attendance"]
-  F --> J["Members · Operations · Analytics"]
-  H --> K["AI Match & Monthly Reports"]
-  I --> K
-  J --> K
-  G --> L["Verification · Plans · Platform controls"]
-  H --> M["Supabase Auth / PostgreSQL / RLS / Storage"]
-  I --> M
-  J --> M
-  K --> N["Server-side Netlify AI function"]
-  N --> O["AI provider"]
-  M --> P["Netlify server functions / payment webhooks"]
+  C --> G["Admin workspace"]
+  D --> H["Supabase PostgreSQL + RLS + Storage"]
+  E --> H
+  F --> H
+  G --> H
+  D --> I["Protected Netlify Functions"]
+  E --> I
+  F --> I
+  I --> J["AI provider / approved integrations"]
 ```
 
-### Core engineering principles
+### Technology stack
 
-- Supabase Auth for identity and sessions
-- PostgreSQL for structured platform records
-- Row Level Security for account and relationship boundaries
-- Private Supabase Storage for sensitive documents
-- Netlify Functions for server-only secrets and protected operations
-- GitHub Actions for automated code validation and Android build workflows
-- Role and plan checks enforced by the server/database, not only by hidden UI buttons
+- **Web:** React 18, TypeScript, Vite and Recharts
+- **Mobile:** React Native, Expo SDK 57 and Expo Router
+- **Backend:** Supabase Auth, PostgreSQL, Row Level Security and Storage
+- **Server functions:** Netlify Functions
+- **AI:** server-side OpenAI API integration
+- **Quality and delivery:** GitHub Actions, automated tests, CodeQL and Android build workflows
 
----
-
-## 🧰 Technology stack
-
-| Area | Technology |
-|---|---|
-| Web client | React 18 · TypeScript · Vite |
-| Mobile client | React Native · Expo SDK 57 · Expo Router |
-| Database | Supabase PostgreSQL |
-| Authentication | Supabase Auth |
-| File storage | Supabase Storage with private access policies |
-| Server functions | Netlify Functions |
-| AI | Server-side OpenAI Responses API integration |
-| Charts | Recharts |
-| Source control | GitHub |
-| Deployment target | Netlify Web + Android build artifact |
-
----
-
-## 🗂️ Repository map
-
-```text
-AthleteN/
-├── src/                         # Web application
-│   ├── components/
-│   │   ├── admin/               # Admin and platform controls
-│   │   ├── dashboard/           # Athlete command centre
-│   │   ├── reports/             # AI intelligence reports
-│   │   ├── roles/               # Coach and Academy dashboards
-│   │   └── ...
-│   ├── config/plans.ts          # Canonical web plan catalogue
-│   ├── hooks/                   # Authentication and app hooks
-│   └── lib/                     # Supabase and shared client logic
-├── AthleteN-Mobile/
-│   ├── src/app/                 # Expo Router screens
-│   ├── src/components/          # Mobile UI and role components
-│   ├── src/context/             # Authentication/profile context
-│   └── src/lib/                 # Entitlements, push and data helpers
-├── netlify/functions/           # AI, checkout, payment and server APIs
-├── supabase/
-│   ├── migrations/              # Ordered schema/security changes
-│   ├── schema.sql
-│   ├── policies.sql
-│   └── storage.sql
-├── docs/                        # Product, API, deployment and release guides
-└── .github/workflows/           # CI, CodeQL, mobile checks and APK build
-```
-
----
-
-## 🚀 Run locally
+## Run the project locally
 
 ### Requirements
 
-- Node.js version from the repository `.nvmrc`
-- npm
-- Git
-- Expo-compatible Android device or emulator for mobile testing
-- Supabase project credentials for connected functionality
+- Node.js 22 (the repository version is recorded in `.nvmrc`)
+- npm and Git
+- Android Studio/emulator or an Android device for mobile work
+- Supabase project URL and public client key for connected features
 
-### Web
+### 1. Web application
+
+From the repository root:
 
 ```bash
+nvm install
+nvm use
 npm ci
 npm run dev
 ```
 
-Production build:
+Create a production web build:
 
 ```bash
 npm run build
 ```
 
-### Android
+### 2. Android application
 
 ```bash
 cd AthleteN-Mobile
 npm ci
 npx expo start --clear
+```
+
+To open the Android target:
+
+```bash
+npx expo start --android
 ```
 
 For a local native Android build:
@@ -325,121 +170,85 @@ For a local native Android build:
 npx expo run:android
 ```
 
-### Environment configuration
+## Environment and secrets
 
-Web client variables:
+The web client uses public Supabase configuration:
 
 ```env
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 ```
 
-Mobile public variables are documented in `AthleteN-Mobile/.env.example`. Only public Supabase project URL and publishable/anon client key belong in a client build.
+Mobile public configuration is documented in [AthleteN-Mobile/.env.example](./AthleteN-Mobile/.env.example).
 
-Server-only variables are configured in Netlify:
+Server-only values belong in the appropriate Netlify environment context. This includes the Supabase service-role key, OpenAI API key, payment-provider secrets and webhook-signing secrets. **Never place these values in `VITE_*`, `EXPO_PUBLIC_*`, source code, screenshots or Git commits.**
 
-```env
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-OPENAI_API_KEY=
-OPENAI_MODEL=
-ATHLETEN_SITE_URL=
-PAYMENT_PROVIDER=
-```
+## Quality checks
 
-Payment-provider credentials and recurring-plan identifiers are provider-specific. Use the exact variable names expected by `netlify/payment-common.mjs` and `netlify/functions/create-checkout.mjs` (for example `RAZORPAY_PLAN_STUDENT` or `STRIPE_PLAN_STUDENT`). Never place any secret in `VITE_*` or `EXPO_PUBLIC_*` variables.
-
-**Never commit secrets, service-role keys, payment keys or webhook signing secrets.**
-
----
-
-## 🧪 Quality checks
-
-Web:
+Run the web checks from the repository root:
 
 ```bash
-npm ci
 npm test
 npm run build
 ```
 
-Mobile:
+Run the mobile checks from `AthleteN-Mobile`:
 
 ```bash
-cd AthleteN-Mobile
-npm ci
 npx tsc --noEmit
 npx eslint .
 npx expo-doctor
 ```
 
-CI checks are necessary but not sufficient. Before release, test real accounts and a physical Android device for authentication, role navigation, uploads, reports, payments, messaging, push notifications, scanner/camera permissions and logout/session handling.
+These checks validate source and build behaviour. They do not replace two-account testing, production database verification, Android signing or physical-device acceptance.
 
----
+## Repository map
 
-## 🔒 Security and trust
+```text
+AthleteN/
+├── src/                         Web application
+├── AthleteN-Mobile/              Expo / Android application
+├── netlify/functions/            Server-side API functions
+├── supabase/migrations/          Versioned database migrations
+├── supabase/security/            Security review SQL
+├── tests/                        Automated regression tests
+├── docs/                         Product, engineering and release guides
+├── public/                       Web assets and branding
+└── .github/workflows/             CI, security and Android workflows
+```
 
-AthleteN handles personal athlete records. The project follows these principles:
+## Documentation
 
-- No OpenAI or payment secret in the client
-- Authenticated access for private platform data
-- RLS on exposed application tables
-- Owner-scoped private AI report history
-- Role-aware coach and academy relationships
-- Admin-only Student approval
-- Latest approval state checked at checkout and report access
-- Active subscription checked at the server/database boundary
-- Payment webhooks validate provider signatures
-- Payment success is not inferred from a browser redirect
-- AI output is advisory and must not invent unavailable data
-
-For health, injury, nutrition and recovery matters, AthleteN is not a medical service and AI output does not replace a qualified coach or healthcare professional.
-
----
-
-## 🚦 Release status
-
-AthleteN is under active development. A green CI job or successful APK build is not the same as production acceptance.
-
-Check the [latest implementation and release status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) for:
-
-- Current CI and CodeQL evidence
-- Supabase migration and security status
-- Android APK build status
-- Netlify deployment status
-- Device, account, messaging and push acceptance still required
-- Payment launch gate and provider configuration status
-
-Netlify deployment is intentionally a manual owner action for this project. Do not mark the product production-ready until the release checklist is complete.
-
----
-
-## 📚 Documentation
-
-The documentation is organized as a product handbook, developer manual and release checklist. Start with the [Documentation Hub](./docs/README.md) if you are new to the repository.
-
-| Document | What it explains |
+| Start here | Read this for |
 |---|---|
-| [AthleteN Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) | Product, roles, features, workspaces and reports |
-| [Plans, Verification & Billing](./docs/PLAN_VERIFICATION_AND_BILLING.md) | Full Student, Coach and Academy eligibility, verification, payment and subscription journeys |
-| [Documentation Hub](./docs/README.md) | Find the right guide by role and task |
-| [API Guide](./docs/API.md) | Netlify AI endpoint, data modules and server rules |
-| [Mobile Guide](./AthleteN-Mobile/README.md) | Expo development, mobile screens and app configuration |
-| [Deployment Guide](./docs/Deployment.md) | Environment setup and deployment |
-| [Release Status](./docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md) | Evidence, blockers and release gates |
-| [Changelog](./CHANGELOG.md) | Product and engineering changes |
-| [Privacy Policy](./docs/PRIVACY_POLICY.md) | Data and privacy terms |
-| [Terms](./docs/TERMS_OF_SERVICE.md) | Product usage terms |
+| [Documentation Hub](./docs/README.md) | A guided index of product, development, security and release documentation |
+| [Platform Guide](./docs/ATHLETEN_PLATFORM_GUIDE.md) | Athlete, Coach and Academy workspaces and feature boundaries |
+| [Taekwondo Disciplines](./docs/TAEKWONDO_DISCIPLINES.md) | Kyorugi and Poomsae workflows |
+| [Web + Mobile Experience Model](./docs/WEB_MOBILE_EXPERIENCE_MODEL.md) | Shared data contracts and cross-platform acceptance |
+| [Plans, Verification & Billing](./docs/PLAN_VERIFICATION_AND_BILLING.md) | Public plans, legacy Student handling and billing gates |
+| [Pricing & Financial Controls](./docs/PRICING_AND_FINANCIAL_CONTROL_V1.md) | Approved prices, AI budget and commercial controls |
+| [Architecture](./docs/Architecture.md) · [API](./docs/API.md) | Service boundaries and server endpoints |
+| [Development](./docs/Development.md) · [Deployment](./docs/Deployment.md) | Local setup and controlled deployment |
+| [Security](./docs/SECURITY.md) | Authentication, secrets and data access expectations |
+| [Release readiness](./docs/RELEASE_READINESS_2026-11-12.md) | Current blockers and evidence required for sign-off |
+| [Migration history drift](./docs/MIGRATION_HISTORY_DRIFT_2026-11-13.md) | Production/local migration inventory and reconciliation notes |
+| [Mobile README](./AthleteN-Mobile/README.md) | Expo setup and Android validation |
 
----
+## Release principles
 
-<div align="center">
+AthleteN uses evidence-based release decisions:
 
-## 🥋 Train. Prepare. Compete. Grow.
+1. A feature is not complete merely because its screen exists.
+2. A passing CI run is not the same as production acceptance.
+3. Database migrations must be reconciled and tested before production DDL.
+4. Role and relationship access must be verified at the database/server boundary.
+5. Payments stay disabled until tax, provider, webhook and recurring-billing requirements are tested.
+6. Android store release requires verified package identity, signing and physical-device QA.
 
 **AthleteN — one connected operating system for the athlete journey.**
 
-Made with ⚡ by **Nova Code**
+<div align="center">
+
+Made by **Nova Code** · [Repository](https://github.com/NovaCode2026/AthleteN)
 
 </div>

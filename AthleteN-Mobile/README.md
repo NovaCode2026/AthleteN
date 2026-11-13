@@ -1,118 +1,103 @@
-# 📱 AthleteN Mobile
-
 <div align="center">
 
-<img src="https://img.shields.io/badge/ATHLETEN-MOBILE-0B1F3A?style=for-the-badge" alt="AthleteN Mobile">
-<img src="https://img.shields.io/badge/EXPO-SDK%2057-6C5CE7?style=for-the-badge" alt="Expo SDK 57">
-<img src="https://img.shields.io/badge/PLATFORM-ANDROID-00B894?style=for-the-badge" alt="Android">
+<img src="./assets/images/logo-glow.png" alt="AthleteN" width="116">
 
-**The AthleteN athlete, Coach and Academy experience — in your pocket.**
+# AthleteN Mobile
+
+**The AthleteN experience for Android.**
+
+<img src="https://img.shields.io/badge-MOBILE-ANDROID-0B1F3A?style=for-the-badge" alt="Android">
+<img src="https://img.shields.io/badge-EXPO-SDK%2057-6C5CE7?style=for-the-badge" alt="Expo SDK 57">
+<img src="https://img.shields.io/badge-STATUS-RELEASE%20CANDIDATE-E09B32?style=for-the-badge" alt="Release candidate">
+
+[Main README](../README.md) · [Platform Guide](../docs/ATHLETEN_PLATFORM_GUIDE.md) · [Documentation Hub](../docs/README.md)
 
 </div>
 
-AthleteN Mobile is built with React Native, Expo SDK 57 and Expo Router. It connects to the same Supabase identity, account roles, subscription entitlements and data model as the web application.
+---
 
-> Start with the [AthleteN Platform Guide](../docs/ATHLETEN_PLATFORM_GUIDE.md), then review [Taekwondo Disciplines](../docs/TAEKWONDO_DISCIPLINES.md) for the sport-first selector and the distinct Kyorugi/Poomsae tools. Then read [Plans, Verification & Billing](../docs/PLAN_VERIFICATION_AND_BILLING.md) for the exact Student, Coach and Academy click → verify → checkout journeys. The [Documentation Hub](../docs/README.md) links every project guide.
+> [!WARNING]
+> The Android client is part of the open release candidate, not a signed public release. A successful TypeScript check or CI APK does not replace signed AAB creation, installation testing and physical-device acceptance. See the [release-readiness report](../docs/RELEASE_READINESS_2026-11-12.md).
 
-## 🥋 Sport and discipline selection
+## What the mobile app does
 
-AthleteN currently exposes **Taekwondo only**. New profiles must select the sport first, then choose one of its available disciplines. Kyorugi and Poomsae are explicit choices; the app does not guess Kyorugi for an incomplete profile. Changing a sport selection clears its dependent discipline. See the [Taekwondo Disciplines guide](../docs/TAEKWONDO_DISCIPLINES.md) for the complete feature matrix, data model and acceptance checklist.
+AthleteN Mobile is built with **React Native, Expo SDK 57 and Expo Router**. It uses the AthleteN Supabase project and shared identity, role, subscription and record model.
 
-## 📱 Mobile is the compact AthleteN companion
+Mobile is designed for quick daily actions: checking the athlete dashboard, recording training, preparing for competitions, reviewing messages and using supported Coach or Academy tools. The Web client remains the more detailed workspace for deep analytics, long histories and complex administration.
 
-The Web application is the full master information workspace for detailed charts, history, comparisons, reports and complex configuration. Android is optimized for quick daily checks, training capture, timed sessions, competition preparation, messages and essential role-authorized tasks. This is one product: both clients use the same Supabase records, account identity, permissions and subscription rules. A record saved on either client must appear on the other after refresh/sync. See the [Web + Mobile Experience Model](../docs/WEB_MOBILE_EXPERIENCE_MODEL.md) for the detailed layout rules and parity acceptance tests.
+### Athlete workspace
 
-## 🌟 Main experience
+- Athlete profile, journey, goals and medals
+- Training sessions and training history
+- Taekwondo selector followed by Kyorugi or Poomsae
+- Kyorugi bout records and Poomsae practice/performance records
+- Competitions, calendar and attendance
+- Documents, notifications and coach/academy connections
 
-### 🥋 Athlete
-- Athlete home, profile and journey
-- Training and competition records
-- Sport-first Taekwondo profile selection, followed by Kyorugi or Poomsae
-- Sport-first profile setup: choose Taekwondo first, then explicitly choose Kyorugi or Poomsae; no silent default discipline
-- Separate Kyorugi Hub and Poomsae Studio labels, discipline-specific training/session labels, practice logging and official performance results
-- Poomsae tools: forms library, Individual/Pair/Team/Freestyle categories, technique-focus options, repetition logging, event scores, placings, medal results and Poomsae history
-- Medals, goals, documents and weight records
-- Calendar, attendance and notifications
-- Coach and Academy connections
+### Coach and Academy workspaces
 
-### 🧑‍🏫 Coach
-- Coach dashboard and athlete roster
-- Coach profile and connection code
-- Training and competition management
-- Attendance and athlete progress
-- AI Match Reports and AI Monthly Coach Report
+- Coach profile, linked roster, training and attendance tools
+- Academy workspace, member relationships and operational views
+- Competition and medal overviews
 - Messages and notifications
+- AI reports where plan, role, usage and data-scope checks allow access
 
-### 🏟️ Academy
-- Academy dashboard and member operations
-- Academy workspace settings
-- Coach and athlete memberships
-- Attendance and competition overview
-- AI Monthly Academy Report
-- Announcements and operational tools
+A route or button is not proof that the underlying operation is complete. Validate saving, refreshing, permissions and error states against the acceptance checklist.
 
-### 🤖 AI Intelligence
-- AI Match Report based on supplied match details and observations
-- AI Monthly Report based on the previous completed month
-- Saved report history and sharing/export actions
-- Server-side plan, role, subscription and usage enforcement
+## Taekwondo discipline selection
 
-AI reports must use only permitted saved records and user-supplied details. They must not invent match events or claim to analyse video unless a separate video-analysis feature is actually implemented.
+Athletes select **Taekwondo** first and then explicitly choose **Kyorugi** or **Poomsae**. AthleteN must not silently assign a discipline when a profile is incomplete. Historical records must retain their original discipline when the profile selection changes.
 
-## 💳 Plans
+See the [Taekwondo Disciplines Guide](../docs/TAEKWONDO_DISCIPLINES.md) for the full workflow and acceptance checklist.
 
-| Plan | Monthly | Yearly | AI requests / month |
+## Plans shown in the app
+
+| Plan | Monthly | Annual | AI requests / month |
 |---|---:|---:|---:|
 | Free | ₹0 | ₹0 | 0 |
-| Student | ₹99 | ₹999 | 50 |
-| Pro | ₹199 | ₹1,999 | 200 |
-| Elite | ₹399 | ₹3,999 | 500 |
+| Pro | ₹99 | ₹999 | 50 |
+| Elite | ₹199 | ₹1,999 | 200 |
 | Coach | ₹499 | ₹4,999 | 750 |
-| Academy | ₹799 | ₹7,999 | 1,000 |
+| Academy | ₹799 | ₹7,999 | 1,000 shared |
 
-- Student is for Athlete accounts only and requires Admin approval of student proof before checkout.
-- Coach requires the existing verified Coach role and confirmed account email.
-- Academy requires the existing Academy Admin role, active Academy workspace, completed setup and verified Academy contact email.
-- Verification approval and paid subscription activation are separate steps.
-- AI Match Reports and role-specific AI Monthly Reports are paid-plan features.
-- Paid checkout remains closed while the server Free Launch gate is enabled.
+**Student is a legacy plan** for existing subscribers only; it is not available for new purchases. Displayed prices are intended as totals inclusive of applicable GST. Do not add GST on top of the displayed price. The exact tax treatment and invoice requirements must be reviewed before billing is enabled.
 
-## 🔐 Purchase journey
+**Paid checkout and recurring billing are currently disabled.** Plan information in the app is catalogue information, not an active purchase flow.
 
-The Plans screen uses a verification-first flow: tapping Coach or Academy runs account checks before checkout. Coach requires the existing `coach` role and a confirmed account email. Academy requires the existing `academy_admin` role plus an owned, active, fully set-up workspace with verified contact email. If the account role is missing, the screen explains that an authorized AthleteN Admin must review/assign the role; selecting a plan never changes a user's role. If Academy setup is incomplete, the user is directed to the existing Academy setup flow.
+## Purchase and permission rules
 
+- A plan selection never changes the user's account role.
+- Coach access requires the existing verified Coach role and confirmed account email.
+- Academy access requires the Academy Admin role, an active owned workspace, completed setup and verified contact email.
+- Student verification is retained for legacy account handling; it is not open for new sales.
+- Verification, provider payment confirmation and active subscription are separate states.
+- The server and database must re-check role, relationship, entitlement and subscription rules. Hiding a button is not an authorization boundary.
 
-**Student:** Select Student → submit proof → Admin review → approved → checkout → payment confirmed.
-
-**Coach:** Select Coach → existing Coach role and account-email verification → checkout → payment confirmed.
-
-**Academy:** Select Academy → Academy Admin role → active workspace + completed setup + verified contact email → checkout → payment confirmed.
-
-Both client UI and the server repeat eligibility checks. Hiding a button is not an authorization boundary.
-
-## 🛠️ Development
+## Develop locally
 
 From the repository root:
 
-```powershell
-cd ".\AthleteN-Mobile"
+```bash
+cd AthleteN-Mobile
 npm ci
 npx expo start --clear
 ```
 
-Android emulator/device:
+Start directly on an Android emulator/device:
 
 ```bash
 npx expo start --android
 ```
 
-Native build:
+Build and run the native Android project locally:
 
 ```bash
 npx expo run:android
 ```
 
-## 🧪 Validation
+## Validate before sign-off
+
+Run from `AthleteN-Mobile`:
 
 ```bash
 npm ci
@@ -121,27 +106,36 @@ npx eslint .
 npx expo-doctor
 ```
 
-Also verify on a real Android device:
-- App launch, login, logout and session restoration
-- Athlete, Coach and Academy routing
-- Private file upload and signed-file access
-- Camera/scanner and permission flows
-- Report creation, history and role-specific data scope
-- Student verification updates and admin review
-- Coach and Academy verification before checkout
-- Push-token registration and real push delivery
-- Messaging delivery, receipts and background behavior
+Then test on a physical Android device using separate test accounts where applicable:
 
-## ⚙️ Configuration and safety
+- Sign up, email confirmation, Google login, password recovery, logout and session restore
+- Athlete, Coach and Academy routing and role boundaries
+- Training, competition, medal and attendance save/read/refresh
+- Private document upload and authorized file access
+- Scanner/camera permissions and recovery from denial
+- Messaging persistence, retries, delivery/ read receipts and refresh
+- Push-token registration and actual push delivery
+- Report entitlement, usage limits and authorized data scope
+- Network interruption, empty states, loading and error feedback
 
-Use `.env.example` for supported mobile public variables. Keep mobile variables public-only. Never put Supabase service-role keys, OpenAI keys, payment credentials or webhook secrets in the mobile app.
+## Configuration and secrets
 
-Do not change the Supabase Site URL to a mobile deep link. OAuth and password-reset redirects use their own configured URLs.
+Copy the supported public configuration from `.env.example`. Only the Supabase project URL and public/anon client key belong in the Android app.
 
-## 📚 Related documentation
+Never put any of the following in mobile environment variables or the app bundle:
+
+- Supabase service-role key
+- OpenAI API key
+- Payment-provider secret or webhook-signing secret
+- Any other server credential
+
+OAuth and password-reset redirects use the configured `athleten://auth/callback` app scheme. Keep the Supabase Site URL and mobile redirect allowlist correctly configured; do not replace the Site URL with a mobile deep link.
+
+## Related guides
 
 - [Main README](../README.md)
-- [Complete Platform Guide](../docs/ATHLETEN_PLATFORM_GUIDE.md)
+- [Web + Mobile Experience Model](../docs/WEB_MOBILE_EXPERIENCE_MODEL.md)
+- [Plans, Verification & Billing](../docs/PLAN_VERIFICATION_AND_BILLING.md)
 - [API Guide](../docs/API.md)
 - [Deployment Guide](../docs/Deployment.md)
-- [Release Status](../docs/APS_1.0_IMPLEMENTATION_STATUS_2026-11-03.md)
+- [Release Readiness](../docs/RELEASE_READINESS_2026-11-12.md)

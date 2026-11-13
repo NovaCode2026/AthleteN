@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased] — 2026-11-13
+
+### Documentation and release communication
+- Reworked the repository README into a clearer product overview with a visual identity, quick-start commands, architecture summary, current release warning and direct documentation links.
+- Reorganised the documentation hub around user roles, development, QA and release ownership.
+- Aligned the platform guide and Android README with the approved five-plan launch catalogue; Student is clearly identified as legacy-only.
+- Documented the GST-inclusive price-display decision and clarified that paid checkout and recurring billing remain disabled.
+- Corrected the release-readiness notes for the candidate AI budget tables and marked the earlier PR #57 readiness report as historical.
+
 
 ## [Unreleased] — 2026-11-03
 

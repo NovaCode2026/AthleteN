@@ -2,7 +2,7 @@
 
 # 💳 AthleteN Plans, Verification & Billing
 
-<img src="https://img.shields.io/badge/PLANS-6%20TIERS-0B1F3A?style=for-the-badge" alt="Six plans">
+<img src="https://img.shields.io/badge/PLANS-5%20PUBLIC%20PLANS-0B1F3A?style=for-the-badge" alt="Six plans">
 <img src="https://img.shields.io/badge/VERIFICATION-ROLE%20AWARE-6C5CE7?style=for-the-badge" alt="Role aware verification">
 <img src="https://img.shields.io/badge/PAYMENTS-WEBHOOK%20CONFIRMED-00B894?style=for-the-badge" alt="Webhook confirmed payments">
 
@@ -29,13 +29,14 @@ AthleteN keeps three things separate:
 | Plan | Monthly | Yearly | AI requests / month | Designed for |
 |---|---:|---:|---:|---|
 | 🆓 **Free** | ₹0 | ₹0 | 0 | Getting started |
-| 🎓 **Student** | ₹99 | ₹999 | 50 | Verified Athlete accounts |
-| 🚀 **Pro** | ₹199 | ₹1,999 | 200 | Competitive Athletes |
-| 🏆 **Elite** | ₹399 | ₹3,999 | 500 | Advanced Athlete workflows |
+| 🚀 **Pro** | ₹99 | ₹999 | 50 | Athletes |
+| 🏆 **Elite** | ₹199 | ₹1,999 | 200 | Competitive Athletes |
 | 🧑‍🏫 **Coach** | ₹499 | ₹4,999 | 750 | Verified Coach accounts |
-| 🏟️ **Academy** | ₹799 | ₹7,999 | 1,000 | Verified Academy Admin accounts |
+| 🏟️ **Academy** | ₹799 | ₹7,999 | 1,000 shared | Verified Academy Admin accounts |
 
-<sub>Prices and quotas are the current product catalogue. Confirm provider billing intervals, tax treatment, renewal and cancellation terms before enabling public paid checkout.</sub>
+**Legacy Student:** existing approved Student subscribers retain their historical entitlement. Student is not available for new purchases.
+
+<sub>Displayed amounts are customer totals inclusive of applicable GST; do not add GST on top. A qualified Indian tax adviser must confirm registration, classification, rate, place-of-supply and invoice treatment before checkout is enabled. Paid checkout and recurring billing remain disabled. Annual prices are intended to be charged once per year when annual billing is implemented.</sub>
 
 ### What paid plans unlock
 
@@ -64,7 +65,7 @@ flowchart TD
  K --> L["Matching subscription becomes active"]
 ```
 
-**Student proof types:** School ID, fee receipt or bonafide certificate. Only an authorized platform Admin can approve or reject the request. The latest request controls eligibility: an old approval must not override a newer pending or rejected request.
+**Legacy Student proof:** School ID, fee receipt or bonafide certificate may remain in historical records. Only an authorized platform Admin can approve or reject existing Student verification requests. This workflow preserves existing entitlements; it does not make Student available for new purchases.
 
 ## 🧑‍🏫 Coach purchase journey
 
@@ -168,10 +169,9 @@ If setup is incomplete, the user should be directed to the existing Academy setu
 
 Before paid launch, test each journey with separate test accounts:
 
-- [ ] Athlete + no Student proof → Student checkout blocked.
-- [ ] Athlete + Student request pending → checkout blocked.
-- [ ] Athlete + latest Student request rejected → old approval cannot bypass it.
-- [ ] Athlete + latest Student request approved → checkout can start.
+- [ ] Existing Student subscriber retains the historical Student entitlement.
+- [ ] New Student checkout is rejected regardless of verification status.
+- [ ] Pro and Elite checkout remain blocked while the global paid-launch gate is closed.
 - [ ] Athlete account selecting Coach → blocked; no automatic role change.
 - [ ] Coach role + unconfirmed account email → blocked.
 - [ ] Coach role + confirmed email → checkout can start.
