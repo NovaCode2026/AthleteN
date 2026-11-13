@@ -22,7 +22,7 @@ WHERE user_id='00000000-0000-0000-0000-000000000002';
 -- An ordinary authenticated user cannot rewrite or clear their profile DOB.
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
-DO $$
+DO $block$
 DECLARE blocked boolean := false;
 BEGIN
   BEGIN
@@ -32,8 +32,8 @@ BEGIN
     IF SQLERRM LIKE '%Date of birth is locked%' THEN blocked := true; ELSE RAISE; END IF;
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'DOB rewrite was not blocked'; END IF;
-END $$;
-DO $$
+END $block$;
+DO $block$
 DECLARE blocked boolean := false;
 BEGIN
   BEGIN
@@ -43,12 +43,12 @@ BEGIN
     IF SQLERRM LIKE '%Date of birth is locked%' THEN blocked := true; ELSE RAISE; END IF;
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'DOB clearing was not blocked'; END IF;
-END $$;
+END $block$;
 
 -- Same-DOB resubmission preserves guardian approval; conflicting DOB is rejected.
-DO $$
+DO $block$
 DECLARE result_status text;
-DECLARE blocked boolean := false;
+        blocked boolean := false;
 BEGIN
   SELECT status INTO result_status
   FROM public.record_age_profile('2000-01-01'::date,'');
@@ -59,15 +59,15 @@ BEGIN
     IF SQLERRM LIKE '%Date of birth is locked%' THEN blocked := true; ELSE RAISE; END IF;
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'Conflicting DOB was not rejected'; END IF;
-END $;
+END $block$;
 
 -- A legacy minor not_required row is returned to pending and its old token is cleared.
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
-DO $
+DO $block$
 DECLARE result_status text;
-DECLARE token_value text;
-DECLARE expiry_value timestamptz;
-DECLARE approved_value timestamptz;
+        token_value text;
+        expiry_value timestamptz;
+        approved_value timestamptz;
 BEGIN
   SELECT status INTO result_status
   FROM public.record_age_profile('2012-01-01'::date,'guardian@example.test');
@@ -78,12 +78,12 @@ BEGIN
   IF result_status <> 'pending' OR token_value IS NOT NULL OR expiry_value IS NOT NULL OR approved_value IS NOT NULL THEN
     RAISE EXCEPTION 'Legacy minor not_required state was not safely reset';
   END IF;
-END $;
+END $block$;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
 
 -- Profile insert cannot disagree with an existing age-verification DOB.
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
-DO $
+DO $block$
 DECLARE blocked boolean := false;
 BEGIN
   BEGIN
@@ -93,11 +93,11 @@ BEGIN
     IF SQLERRM LIKE '%must match the existing age-verification record%' THEN blocked := true; ELSE RAISE; END IF;
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'Mismatched profile DOB insert was not blocked'; END IF;
-END $;
+END $block$;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
 
 -- Authenticated clients cannot mutate age verification or read token_hash.
-DO $$
+DO $block$
 DECLARE blocked boolean := false;
 BEGIN
   BEGIN
@@ -106,8 +106,8 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN blocked := true;
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'Direct age approval mutation was not blocked'; END IF;
-END $;
-DO $
+END $block$;
+DO $block$
 DECLARE blocked boolean := false;
 BEGIN
   BEGIN
@@ -116,8 +116,8 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN blocked := true;
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'Direct age-verification insert was not blocked'; END IF;
-END $;
-DO $
+END $block$;
+DO $block$
 DECLARE blocked boolean := false;
 BEGIN
   BEGIN
@@ -126,10 +126,10 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN blocked := true;
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'token_hash column read was not blocked'; END IF;
-END $$;
+END $block$;
 
 -- Athlete cannot create a Coach finance account for themselves.
-DO $$
+DO $block$
 DECLARE blocked boolean := false;
 BEGIN
   BEGIN
@@ -138,7 +138,7 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN blocked := true;
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'Athlete self-enrolled into Coach finance'; END IF;
-END $$;
+END $block$;
 
 RESET ROLE;
 
@@ -153,7 +153,7 @@ INSERT INTO public.finance_accounts(id,owner_user_id,owner_type,name,currency)
 VALUES('10000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000004','coach','Other Coach Finance','INR');
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
-DO $$
+DO $block$
 DECLARE account_id uuid;
 BEGIN
   SELECT id INTO account_id FROM public.finance_accounts WHERE owner_user_id=auth.uid() AND owner_type='coach';
@@ -170,7 +170,7 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN
     NULL;
   END;
-END $$;
+END $block$;
 
 -- Pending guardian approval blocks finance visibility and writes.
 RESET ROLE;
@@ -178,9 +178,9 @@ UPDATE public.age_verifications SET status='pending',approved_at=NULL
 WHERE user_id='00000000-0000-0000-0000-000000000001';
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
-DO $$
+DO $block$
 DECLARE visible_count integer;
-DECLARE blocked boolean := false;
+        blocked boolean := false;
 BEGIN
   SELECT count(*) INTO visible_count FROM public.finance_accounts WHERE owner_user_id=auth.uid();
   IF visible_count <> 0 THEN RAISE EXCEPTION 'Age-pending Coach can still read finance account'; END IF;
@@ -190,20 +190,20 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN blocked := true;
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'Age-pending Coach finance write was not blocked'; END IF;
-END $;
+END $block$;
 
 -- The approved Coach RPC can only return the caller's existing account.
-DO $
+DO $block$
 DECLARE account_id uuid;
 BEGIN
   account_id := public.get_or_create_my_coach_finance_account();
   IF account_id <> '10000000-0000-0000-0000-000000000001'::uuid THEN
     RAISE EXCEPTION 'Coach finance RPC returned the wrong account';
   END IF;
-END $;
+END $block$;
 
 -- Self-service role elevation RPC is unavailable to authenticated clients.
-DO $$
+DO $block$
 BEGIN
   IF has_function_privilege('authenticated','public.switch_my_product_role(text)','EXECUTE') THEN
     RAISE EXCEPTION 'Authenticated role can still call switch_my_product_role';
@@ -211,6 +211,6 @@ BEGIN
   IF has_function_privilege('authenticated','public.prepare_parent_approval(text)','EXECUTE') THEN
     RAISE EXCEPTION 'Authenticated role can still call raw guardian-token RPC';
   END IF;
-END $$;
+END $block$;
 
 RESET ROLE;
