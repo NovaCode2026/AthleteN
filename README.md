@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./public/athleten-logo.svg" alt="AthleteN logo" width="112">
+<img src="./public/athleten-logo.svg" alt="AthleteN — official Nova Code brand logo" width="200">
 
 # AthleteN
 
@@ -11,7 +11,7 @@
 <p>
   <img src="https://img.shields.io/badge/PRODUCT-ATHLETE%20PLATFORM-0B1F3A?style=for-the-badge" alt="Athlete platform">
   <img src="https://img.shields.io/badge/SPORT-TAEKWONDO-00AEEF?style=for-the-badge" alt="Taekwondo">
-  <img src="https://img.shields.io/badge/CLIENTS-WEB-ANDROID-6C5CE7?style=for-the-badge" alt="Web and Android">
+  <img src="https://img.shields.io/badge/CLIENTS-WEB%20%2B%20ANDROID-6C5CE7?style=for-the-badge" alt="Web and Android">
   <img src="https://img.shields.io/badge/RELEASE-CANDIDATE-E09B32?style=for-the-badge" alt="Release candidate only">
 </p>
 
