@@ -82,8 +82,9 @@ Use separate test accounts for Athlete, Coach, Academy Admin and Free users:
 
 The checkout Netlify Function currently has a server-side `FREE_LAUNCH = true` gate. This intentionally returns HTTP 503 for paid checkouts even if payment credentials are later added. Do not remove that gate as part of a routine deploy. When paid subscriptions are ready, first complete provider onboarding, legal/refund terms, webhook verification and test-mode acceptance. Then configure the selected provider's server-only credentials and per-plan IDs:
 
-- Razorpay: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, plus `RAZORPAY_PLAN_STUDENT`, `RAZORPAY_PLAN_PRO`, `RAZORPAY_PLAN_ELITE`, `RAZORPAY_PLAN_COACH`, and `RAZORPAY_PLAN_ACADEMY`.
-- Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, plus `STRIPE_PLAN_<PLAN>` values for the plans offered.
+- Razorpay: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, plus new monthly IDs `RAZORPAY_PLAN_V2_PRO_MONTHLY`, `RAZORPAY_PLAN_V2_ELITE_MONTHLY`, `RAZORPAY_PLAN_V2_COACH_MONTHLY`, and `RAZORPAY_PLAN_V2_ACADEMY_MONTHLY`.
+- Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, plus `STRIPE_PLAN_V2_<PLAN>_MONTHLY` for Pro, Elite, Coach and Academy.
+- Student is legacy-only and has no new-sale provider plan ID. Annual provider IDs are not implemented yet.
 - Cashfree: `CASHFREE_CLIENT_ID`, `CASHFREE_CLIENT_SECRET` (also used for Cashfree webhook signature verification).
 
 Set `PAYMENT_PROVIDER` only after the server secrets and plan IDs are configured and tested. Never expose payment secrets to the browser.
