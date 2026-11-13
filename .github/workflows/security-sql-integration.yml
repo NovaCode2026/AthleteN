@@ -2,7 +2,7 @@ name: Security SQL Draft Integration
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, fix/age-verification-release-hardening-20261112]
     paths:
       - "supabase/security/**"
       - "tests/sql/**"
