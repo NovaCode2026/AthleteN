@@ -4,8 +4,6 @@ on:
   pull_request:
     branches: [main, fix/age-verification-release-hardening-20261112]
     paths:
-      - "supabase/migrations/**"
-      - "netlify/ai-budget.mjs"
       - "tests/sql/ai-budget-ledger-integration.sql"
   workflow_dispatch:
 
