@@ -77,6 +77,7 @@ BEGIN
 END;
 $block$;
 RESET ROLE;
+SET ROLE postgres;
 DO $block$
 DECLARE token_value text;
         expiry_value timestamptz;
@@ -159,6 +160,7 @@ END;
 $block$;
 
 RESET ROLE;
+SET ROLE postgres;
 
 -- A verified Coach with age approval can create and manage their own finance account.
 UPDATE public.profiles SET role='coach' WHERE user_id='00000000-0000-0000-0000-000000000001';
@@ -167,6 +169,7 @@ SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001'
 INSERT INTO public.finance_accounts(id,owner_user_id,owner_type,name,currency)
 VALUES('10000000-0000-0000-0000-000000000001',auth.uid(),'coach','Authorized Coach Finance','INR');
 RESET ROLE;
+SET ROLE postgres;
 INSERT INTO public.finance_accounts(id,owner_user_id,owner_type,name,currency)
 VALUES('10000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000004','coach','Other Coach Finance','INR');
 SET ROLE authenticated;
@@ -204,6 +207,7 @@ $block$;
 
 -- Pending guardian approval blocks finance visibility and writes.
 RESET ROLE;
+SET ROLE postgres;
 UPDATE public.age_verifications SET status='pending',approved_at=NULL
 WHERE user_id='00000000-0000-0000-0000-000000000001';
 SET ROLE authenticated;
@@ -236,3 +240,4 @@ END;
 $block$;
 
 RESET ROLE;
+SET ROLE postgres;
