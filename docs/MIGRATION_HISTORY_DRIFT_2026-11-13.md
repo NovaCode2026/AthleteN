@@ -15,6 +15,12 @@ This is a timestamp comparison, not a filename-stem or SQL-equivalence compariso
 
 A name-based match is not sufficient to clear this blocker. A migration file with the wrong timestamp is still unmatched to the CLI even if its SQL or suffix appears equivalent.
 
+## Historical GitHub migration-file recovery check
+
+The repository path history endpoint returned **132 commits** touching `supabase/migrations/` (100 on the first page and 32 on the second). The commit diffs were inspected for migration file additions, modifications, deletions and renames. This recovered no additional exact timestamps beyond the same 24 versions present in the current local tree.
+
+Result: the 153 remote-only timestamps are not recoverable as correctly timestamped SQL migration files from the repository's tracked migration-file history. The missing SQL must be recovered from a trusted external archive/backup or handled through an explicitly reviewed schema-baseline/squash plan. A filename-only placeholder would conceal the gap rather than reconstruct it.
+
 ## Remote versions missing locally
 
 | Remote timestamp | Remote migration name |
