@@ -5,14 +5,16 @@ INSERT INTO public.profiles(user_id,full_name,date_of_birth,role)
 VALUES
  ('00000000-0000-0000-0000-000000000001','Approved athlete','2000-01-01','athlete'),
  ('00000000-0000-0000-0000-000000000002','Pending minor','2012-01-01','athlete'),
- ('00000000-0000-0000-0000-000000000004','Other approved Coach','1998-01-01','coach');
+ ('00000000-0000-0000-0000-000000000004','Other approved Coach','1998-01-01','coach'),
+ ('00000000-0000-0000-0000-000000000005','Approved Academy Admin','1997-01-01','academy_admin');
 
 INSERT INTO public.age_verifications(user_id,date_of_birth,parent_email,status,token_hash,token_expires_at)
 VALUES
  ('00000000-0000-0000-0000-000000000001','2000-01-01',NULL,'approved','hash-approved',now()+interval '1 day'),
  ('00000000-0000-0000-0000-000000000002','2012-01-01','guardian@example.test','pending','hash-pending',now()+interval '1 day'),
  ('00000000-0000-0000-0000-000000000003','2010-02-03','guardian3@example.test','pending','hash-mismatch',now()+interval '1 day'),
- ('00000000-0000-0000-0000-000000000004','1998-01-01',NULL,'approved','hash-coach-4',now()+interval '1 day');
+ ('00000000-0000-0000-0000-000000000004','1998-01-01',NULL,'approved','hash-coach-4',now()+interval '1 day'),
+ ('00000000-0000-0000-0000-000000000005','1997-01-01',NULL,'approved','hash-academy-5',now()+interval '1 day');
 
 -- A legacy minor row must not retain the old not_required bypass state.
 UPDATE public.age_verifications
@@ -193,6 +195,56 @@ BEGIN
   END;
 END;
 $block$;
+
+-- Academy Finance requires both an approved account and a verified Academy Admin role.
+RESET ROLE;
+SET ROLE postgres;
+INSERT INTO public.academies(id,owner_user_id,name,status)
+VALUES
+ ('20000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000004','Unauthorized Coach Academy','active'),
+ ('20000000-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000005','Authorized Academy','active');
+INSERT INTO public.academy_memberships(academy_id,user_id,role,status)
+VALUES('20000000-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000005','academy_admin','active');
+INSERT INTO public.finance_accounts(id,owner_user_id,academy_id,owner_type,name,currency)
+VALUES
+ ('20000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000004','20000000-0000-0000-0000-000000000004','academy','Unauthorized Academy Finance','INR');
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
+DO $block$
+DECLARE visible_count integer;
+        blocked boolean := false;
+BEGIN
+  SELECT count(*) INTO visible_count FROM public.finance_accounts
+   WHERE id='20000000-0000-0000-0000-000000000004';
+  IF visible_count <> 0 THEN RAISE EXCEPTION 'Coach without Academy Admin role can read Academy Finance'; END IF;
+  BEGIN
+    INSERT INTO public.finance_accounts(owner_user_id,academy_id,owner_type,name,currency)
+    VALUES(auth.uid(),'20000000-0000-0000-0000-000000000004','academy','Unauthorized Academy Finance Insert','INR');
+  EXCEPTION WHEN insufficient_privilege THEN blocked := true;
+  END;
+  IF NOT blocked THEN RAISE EXCEPTION 'Coach without Academy Admin role can create Academy Finance'; END IF;
+END;
+$block$;
+
+RESET ROLE;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000005',false);
+SET ROLE authenticated;
+DO $block$
+DECLARE account_id uuid;
+BEGIN
+  INSERT INTO public.finance_accounts(id,owner_user_id,academy_id,owner_type,name,currency)
+  VALUES('20000000-0000-0000-0000-000000000005',auth.uid(),'20000000-0000-0000-0000-000000000005','academy','Authorized Academy Finance','INR');
+  SELECT id INTO account_id FROM public.finance_accounts
+   WHERE id='20000000-0000-0000-0000-000000000005';
+  IF account_id IS NULL THEN RAISE EXCEPTION 'Verified Academy Admin cannot read own finance account'; END IF;
+  INSERT INTO public.finance_transactions(account_id,user_id,type,amount,category,transaction_date)
+  VALUES(account_id,auth.uid(),'income',200,'academy-test',current_date);
+END;
+$block$;
+
+RESET ROLE;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
 
 -- The approved Coach RPC can only return the caller's existing account.
 DO $block$
