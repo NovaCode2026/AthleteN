@@ -57,7 +57,11 @@ test("parent approval edge function preserves approved states and only reissues 
   assert.match(source, /date of birth is locked/i);
   assert.match(source, /get_age_verification_status/);
   assert.ok(source.includes(".from('profiles')") && source.includes(".select('date_of_birth')"));
-  assert.ok(source.includes("if (!profileRow?.date_of_birth)"));
+  assert.ok(source.includes("if (!profileRow)"));
+  assert.ok(source.includes("if (!profileRow.date_of_birth)"));
+  assert.ok(source.includes(".update({ date_of_birth: dateOfBirth })"));
+  assert.ok(source.includes(".is('date_of_birth', null)"));
+  assert.ok(!source.includes("if (!profileRow?.date_of_birth)"));
   assert.ok(source.includes("currentAge?.date_of_birth && currentAge.date_of_birth !== dateOfBirth"));
   assert.ok(source.includes("currentAge?.status === 'approved'"));
   assert.ok(!source.includes("currentAge?.status === 'approved' || currentAge?.status === 'not_required'"));
