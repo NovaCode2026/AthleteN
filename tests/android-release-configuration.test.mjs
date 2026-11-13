@@ -46,6 +46,7 @@ test("QA build visibly warns that it connects to the live database", () => {
   const layout = read("../AthleteN-Mobile/src/app/_layout.tsx");
   assert.match(layout, /EXPO_PUBLIC_APP_CHANNEL === 'qa'/);
   assert.match(layout, /QA BUILD • LIVE DATABASE • TEST ACCOUNT ONLY/);
+  assert.match(layout, /accessibilityRole="alert"/);
 });
 
 test("release documentation distinguishes CI artifacts from store builds", () => {
