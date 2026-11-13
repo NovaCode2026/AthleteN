@@ -1,0 +1,43 @@
+name: AI Budget Ledger SQL Integration
+
+on:
+  pull_request:
+    branches: [main, fix/age-verification-release-hardening-20261112]
+    paths:
+      - "supabase/migrations/**"
+      - "netlify/ai-budget.mjs"
+      - "tests/sql/ai-budget-ledger-integration.sql"
+      - ".github/workflows/ai-budget-sql-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ai-budget-ledger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: athleten_ai_budget_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d athleten_ai_budget_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Apply and exercise isolated AI budget ledger
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_ai_budget_test -v ON_ERROR_STOP=1 -f tests/sql/ai-budget-ledger-integration.sql
