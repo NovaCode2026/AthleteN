@@ -93,20 +93,20 @@ CREATE TABLE public.coach_athlete_links (
 
 CREATE OR REPLACE FUNCTION private.is_platform_admin()
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
-AS $ SELECT false $;
+AS $function$ SELECT false $function$;
 CREATE OR REPLACE FUNCTION private.user_can_manage_athlete(p_athlete_user_id uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
-AS $
+AS $function$
   SELECT EXISTS (
     SELECT 1 FROM public.coach_athlete_links l
     WHERE l.coach_user_id=auth.uid()
       AND l.athlete_user_id=p_athlete_user_id
       AND l.status='active'
   )
-$;
+$function$;
 CREATE OR REPLACE FUNCTION public.can_view_athlete(target_user_id uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
-AS $
+AS $function$
   SELECT target_user_id=auth.uid()
     OR EXISTS (
       SELECT 1 FROM public.coach_athlete_links l
@@ -114,7 +114,7 @@ AS $
         AND l.athlete_user_id=target_user_id
         AND l.status='active'
     )
-$;
+$function$;
 
 CREATE TABLE public.hydration_logs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
 CREATE TABLE public.kyorugi_bouts(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
