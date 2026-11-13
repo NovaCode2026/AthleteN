@@ -17,7 +17,7 @@ alter table public.athleten_ai_budget_monthly enable row level security;
 alter table public.athleten_ai_budget_reservations enable row level security;
 revoke all on table public.athleten_ai_budget_monthly from public,anon,authenticated,service_role;
 revoke all on table public.athleten_ai_budget_reservations from public,anon,authenticated,service_role;
-create or replace function public.reserve_athleten_ai_budget(date,integer,integer)
+create or replace function public.reserve_athleten_ai_budget(p_usage_month date,p_monthly_budget_paise integer,p_reserve_paise integer)
 returns uuid language plpgsql security definer set search_path=public,pg_temp as $$
 declare v public.athleten_ai_budget_monthly%rowtype;v_id uuid;v_current date:=date_trunc('month',now() at time zone 'UTC')::date;
 begin
@@ -32,7 +32,7 @@ begin
  update public.athleten_ai_budget_monthly set reserved_paise=reserved_paise+$3,updated_at=now() where usage_month=$1;
  return v_id;
 end;$$;
-create or replace function public.settle_athleten_ai_budget(uuid,integer)
+create or replace function public.settle_athleten_ai_budget(p_reservation_id uuid,p_actual_cost_paise integer)
 returns boolean language plpgsql security definer set search_path=public,pg_temp as $$
 declare v public.athleten_ai_budget_reservations%rowtype;
 begin
@@ -46,7 +46,7 @@ begin
  update public.athleten_ai_budget_reservations set status='settled',actual_cost_paise=$2,settled_at=now() where id=$1;
  return true;
 end;$$;
-create or replace function public.release_athleten_ai_budget(uuid)
+create or replace function public.release_athleten_ai_budget(p_reservation_id uuid)
 returns boolean language plpgsql security definer set search_path=public,pg_temp as $$
 declare v public.athleten_ai_budget_reservations%rowtype;
 begin
