@@ -12,8 +12,18 @@ const lunaPricing = {
   ATHLETEN_AI_OUTPUT_PRICE_PER_1M_TOKENS_PAISE: "5500"
 };
 
-test("fails closed unless selected model has exact verified prices", () => {
-  assert.equal(readAiBudgetConfig({}), null);
+test("uses versioned conservative defaults for the pinned GPT-6 Luna model", () => {
+  const config = readAiBudgetConfig({});
+  assert.ok(config);
+  assert.equal(config.model, "gpt-6-luna");
+  assert.equal(config.inputPricePerMillionPaise, 1100);
+  assert.equal(config.outputPricePerMillionPaise, 5500);
+  assert.equal(config.monthlyBudgetPaise, 15000);
+  assert.equal(config.maxOutputTokens, 600);
+});
+
+test("fails closed when an alternate model has no exact matching prices", () => {
+  assert.equal(readAiBudgetConfig({ OPENAI_MODEL: "gpt-6.1-sol" }), null);
   assert.equal(readAiBudgetConfig({
     OPENAI_MODEL: "gpt-6-luna",
     ...lunaPricing,
@@ -21,7 +31,20 @@ test("fails closed unless selected model has exact verified prices", () => {
   }), null);
 });
 
-test("defaults to GPT-6 Luna and ₹150 monthly budget with reviewed price config", () => {
+test("requires both rates and an exact model ID for pricing overrides", () => {
+  assert.equal(readAiBudgetConfig({
+    OPENAI_MODEL: "gpt-6-luna",
+    ATHLETEN_AI_PRICING_MODEL: "gpt-6-luna",
+    ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE: "1200"
+  }), null);
+  assert.equal(readAiBudgetConfig({
+    OPENAI_MODEL: "gpt-6-luna",
+    ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE: "1200",
+    ATHLETEN_AI_OUTPUT_PRICE_PER_1M_TOKENS_PAISE: "6000"
+  }), null);
+});
+
+test("defaults to GPT-6 Luna and ₹150 monthly budget with explicit reviewed override", () => {
   const config = readAiBudgetConfig(lunaPricing);
   assert.ok(config);
   assert.equal(config.model, "gpt-6-luna");
