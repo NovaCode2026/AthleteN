@@ -1,13 +1,13 @@
 // @ts-nocheck
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Icon, RefreshButton } from '@/components/mobile-ui';
+import AthleteNLogo from '@/components/athleten-logo';
 
 const c = Colors.dark;
 
@@ -179,7 +179,7 @@ export default function AdminScreen() {
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         <View style={s.topBar}>
           <View style={s.brandRow}>
-            <Image source={require('@/assets/logo.png')} style={s.brandLogo} />
+            <AthleteNLogo width={116} height={64} style={s.brandLogo} />
             <View><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>OWNER COMMAND CENTER</Text></View>
           </View>
           <View style={{flexDirection:'row',alignItems:'center',gap:8}}><RefreshButton onPress={()=>void refresh()} busy={refreshing}/><Pressable style={s.menuButton} onPress={() => setDrawerOpen(true)}><Icon name="menu" size={17} color={c.text} /><Text style={s.menuText}>MENU</Text></Pressable></View>
