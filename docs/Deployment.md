@@ -37,10 +37,17 @@ The existing production site was checked and the core values below are present i
 | `SUPABASE_SERVICE_ROLE_KEY` | Privileged server-side tasks and payment webhooks | **Secret — server only** |
 | `OPENAI_API_KEY` | AI Coach and AI report requests | **Secret — server only** |
 | `OPENAI_MODEL` | Optional model override; the function has a code default | Server only |
+| `ATHLETEN_AI_PRICING_MODEL` | Exact model ID covered by verified prices; must equal `OPENAI_MODEL` | Server only |
+| `ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE` | Verified input cost per 1M tokens, in paise | Server only |
+| `ATHLETEN_AI_OUTPUT_PRICE_PER_1M_TOKENS_PAISE` | Verified output cost per 1M tokens, in paise | Server only |
+| `ATHLETEN_AI_MONTHLY_BUDGET_PAISE` | Platform-wide AI budget per calendar month; defaults to 15000 (₹150) | Server only |
+| `ATHLETEN_AI_MAX_OUTPUT_TOKENS` | Maximum output-token budget per request; defaults to 600 | Server only |
 | `ATHLETEN_SITE_URL` | Canonical site URL used in payment provider return URLs | Server only |
 | `PAYMENT_PROVIDER` | Provider selection: razorpay, stripe or cashfree | Server only |
 
 The server functions currently accept `VITE_SUPABASE_URL` as a fallback for `SUPABASE_URL`; setting `SUPABASE_URL` as well makes the server configuration explicit.
+
+The budgeted AI Coach additionally requires `OPENAI_MODEL` and `ATHLETEN_AI_PRICING_MODEL` to match exactly, plus positive model-specific input/output price values. The current release candidate defaults to `gpt-6-luna`, with conservative planning rates documented in `docs/PRICING_AND_FINANCIAL_CONTROL_V1.md`. The live Production site was audited on 2026-11-13 and these AI configuration variables were absent; configure them only as part of the reviewed deployment that includes both AI budget migrations. Until configuration and migrations are verified together, the new AI Coach endpoint intentionally returns a paused/unavailable response rather than sending unmetered requests.
 
 Use the current publishable/anon key from Supabase Project API Keys. Never put the service-role key, OpenAI key, payment secret, Instagram app secret, or webhook secret in a `VITE_*` variable, source file, or client bundle.
 
