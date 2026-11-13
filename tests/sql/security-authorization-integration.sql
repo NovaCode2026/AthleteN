@@ -57,6 +57,50 @@ UPDATE public.age_verifications
 SET status='not_required',approved_at=now(),token_hash='legacy-token',token_expires_at=now()+interval '1 day'
 WHERE user_id='00000000-0000-0000-0000-000000000002';
 
+-- A legacy minor not_required record must not grant access before the next
+-- age-verification request has had a chance to normalize the row.
+DO $block$
+BEGIN
+  IF public.is_age_approved('00000000-0000-0000-0000-000000000002') THEN
+    RAISE EXCEPTION 'Legacy minor not_required row still grants age approval';
+  END IF;
+END;
+$block$;
+
+-- A not_required row remains valid for an adult whose stored DOB proves 18+.
+UPDATE public.age_verifications
+SET status='not_required'
+WHERE user_id='00000000-0000-0000-0000-000000000004';
+DO $block$
+BEGIN
+  IF NOT public.is_age_approved('00000000-0000-0000-0000-000000000004') THEN
+    RAISE EXCEPTION 'Adult not_required record should be age-approved';
+  END IF;
+END;
+$block$;
+UPDATE public.age_verifications
+SET status='approved'
+WHERE user_id='00000000-0000-0000-0000-000000000004';
+
+-- Preserve the explicit QA override only for the matching signed-in account.
+INSERT INTO private.qa_age_verification_overrides(user_id)
+VALUES('00000000-0000-0000-0000-000000000002');
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
+DO $block$
+BEGIN
+  IF NOT public.is_age_approved('00000000-0000-0000-0000-000000000002') THEN
+    RAISE EXCEPTION 'The explicit own-account QA override was not preserved';
+  END IF;
+  IF public.is_age_approved('00000000-0000-0000-0000-000000000003') THEN
+    RAISE EXCEPTION 'QA override must not approve another account';
+  END IF;
+END;
+$block$;
+RESET ROLE;
+DELETE FROM private.qa_age_verification_overrides
+WHERE user_id='00000000-0000-0000-0000-000000000002';
+
 -- An ordinary authenticated user cannot rewrite or clear their profile DOB.
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
