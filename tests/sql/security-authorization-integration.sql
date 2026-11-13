@@ -4,9 +4,10 @@
 INSERT INTO public.profiles(user_id,full_name,date_of_birth,role)
 VALUES
  ('00000000-0000-0000-0000-000000000001','Approved athlete','2000-01-01','athlete'),
- ('00000000-0000-0000-0000-000000000002','Pending minor','2012-01-01','athlete'),
+ ('00000000-0000-0000-0000-000000000002','Pending minor Coach','2012-01-01','coach'),
  ('00000000-0000-0000-0000-000000000004','Other approved Coach','1998-01-01','coach'),
- ('00000000-0000-0000-0000-000000000005','Approved Academy Admin','1997-01-01','academy_admin');
+ ('00000000-0000-0000-0000-000000000005','Approved Academy Admin','1997-01-01','academy_admin'),
+ ('00000000-0000-0000-0000-000000000006','Approved linked Athlete','2005-04-05','athlete');
 
 INSERT INTO public.age_verifications(user_id,date_of_birth,parent_email,status,token_hash,token_expires_at)
 VALUES
@@ -14,7 +15,42 @@ VALUES
  ('00000000-0000-0000-0000-000000000002','2012-01-01','guardian@example.test','pending','hash-pending',now()+interval '1 day'),
  ('00000000-0000-0000-0000-000000000003','2010-02-03','guardian3@example.test','pending','hash-mismatch',now()+interval '1 day'),
  ('00000000-0000-0000-0000-000000000004','1998-01-01',NULL,'approved','hash-coach-4',now()+interval '1 day'),
- ('00000000-0000-0000-0000-000000000005','1997-01-01',NULL,'approved','hash-academy-5',now()+interval '1 day');
+ ('00000000-0000-0000-0000-000000000005','1997-01-01',NULL,'approved','hash-academy-5',now()+interval '1 day'),
+ ('00000000-0000-0000-0000-000000000006','2005-04-05',NULL,'approved','hash-athlete-6',now()+interval '1 day');
+
+INSERT INTO public.coach_athlete_links(coach_user_id,athlete_user_id,status)
+VALUES
+ ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','active'),
+ ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000006','active'),
+ ('00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000006','active');
+
+INSERT INTO public.hydration_logs(user_id,payload) VALUES
+ ('00000000-0000-0000-0000-000000000002','pending-athlete hydration'),
+ ('00000000-0000-0000-0000-000000000006','approved-athlete hydration');
+INSERT INTO public.kyorugi_bouts(user_id,payload) VALUES
+ ('00000000-0000-0000-0000-000000000002','pending-athlete bout'),
+ ('00000000-0000-0000-0000-000000000006','approved-athlete bout');
+INSERT INTO public.kyorugi_training_metrics(user_id,payload) VALUES
+ ('00000000-0000-0000-0000-000000000002','pending-athlete kyorugi metric'),
+ ('00000000-0000-0000-0000-000000000006','approved-athlete kyorugi metric');
+INSERT INTO public.nutrition_logs(user_id,payload) VALUES
+ ('00000000-0000-0000-0000-000000000002','pending-athlete nutrition'),
+ ('00000000-0000-0000-0000-000000000006','approved-athlete nutrition');
+INSERT INTO public.poomsae_performances(user_id,payload) VALUES
+ ('00000000-0000-0000-0000-000000000002','pending-athlete poomsae'),
+ ('00000000-0000-0000-0000-000000000006','approved-athlete poomsae');
+INSERT INTO public.poomsae_training_metrics(user_id,payload) VALUES
+ ('00000000-0000-0000-0000-000000000002','pending-athlete poomsae metric'),
+ ('00000000-0000-0000-0000-000000000006','approved-athlete poomsae metric');
+INSERT INTO public.taekwondo_belt_history(athlete_user_id,payload) VALUES
+ ('00000000-0000-0000-0000-000000000002','pending-athlete belt'),
+ ('00000000-0000-0000-0000-000000000006','approved-athlete belt');
+INSERT INTO public.taekwondo_training_logs(user_id,payload) VALUES
+ ('00000000-0000-0000-0000-000000000002','pending-athlete taekwondo log'),
+ ('00000000-0000-0000-0000-000000000006','approved-athlete taekwondo log');
+INSERT INTO public.taekwondo_weight_category_decisions(athlete_user_id,payload) VALUES
+ ('00000000-0000-0000-0000-000000000002','pending-athlete weight category'),
+ ('00000000-0000-0000-0000-000000000006','approved-athlete weight category');
 
 -- A legacy minor row must not retain the old not_required bypass state.
 UPDATE public.age_verifications
@@ -245,6 +281,79 @@ $block$;
 RESET ROLE;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
+
+-- Connected-team reads and management require both the coach and athlete to be approved.
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
+DO $block$
+DECLARE visible_count integer;
+BEGIN
+  IF public.can_view_athlete('00000000-0000-0000-0000-000000000002') THEN
+    RAISE EXCEPTION 'Approved coach can_view_athlete returned true for pending athlete';
+  END IF;
+  IF private.user_can_manage_athlete('00000000-0000-0000-0000-000000000002') THEN
+    RAISE EXCEPTION 'Approved coach user_can_manage_athlete returned true for pending athlete';
+  END IF;
+  IF NOT public.can_view_athlete('00000000-0000-0000-0000-000000000006') THEN
+    RAISE EXCEPTION 'Approved coach cannot view an approved linked athlete';
+  END IF;
+  IF NOT private.user_can_manage_athlete('00000000-0000-0000-0000-000000000006') THEN
+    RAISE EXCEPTION 'Approved coach cannot manage an approved linked athlete';
+  END IF;
+  SELECT count(*) INTO visible_count FROM public.hydration_logs
+   WHERE user_id='00000000-0000-0000-0000-000000000002';
+  IF visible_count <> 0 THEN RAISE EXCEPTION 'Pending athlete hydration is visible to coach'; END IF;
+  SELECT count(*) INTO visible_count FROM public.nutrition_logs
+   WHERE user_id='00000000-0000-0000-0000-000000000002';
+  IF visible_count <> 0 THEN RAISE EXCEPTION 'Pending athlete nutrition is visible to coach'; END IF;
+  SELECT count(*) INTO visible_count FROM public.kyorugi_bouts
+   WHERE user_id='00000000-0000-0000-0000-000000000002';
+  IF visible_count <> 0 THEN RAISE EXCEPTION 'Pending athlete Kyorugi data is visible to coach'; END IF;
+  SELECT count(*) INTO visible_count FROM public.kyorugi_training_metrics
+   WHERE user_id='00000000-0000-0000-0000-000000000002';
+  IF visible_count <> 0 THEN RAISE EXCEPTION 'Pending athlete Kyorugi metrics are visible to coach'; END IF;
+  SELECT count(*) INTO visible_count FROM public.poomsae_performances
+   WHERE user_id='00000000-0000-0000-0000-000000000002';
+  IF visible_count <> 0 THEN RAISE EXCEPTION 'Pending athlete Poomsae data is visible to coach'; END IF;
+  SELECT count(*) INTO visible_count FROM public.poomsae_training_metrics
+   WHERE user_id='00000000-0000-0000-0000-000000000002';
+  IF visible_count <> 0 THEN RAISE EXCEPTION 'Pending athlete Poomsae metrics are visible to coach'; END IF;
+  SELECT count(*) INTO visible_count FROM public.taekwondo_belt_history
+   WHERE athlete_user_id='00000000-0000-0000-0000-000000000002';
+  IF visible_count <> 0 THEN RAISE EXCEPTION 'Pending athlete belt history is visible to coach'; END IF;
+  SELECT count(*) INTO visible_count FROM public.taekwondo_training_logs
+   WHERE user_id='00000000-0000-0000-0000-000000000002';
+  IF visible_count <> 0 THEN RAISE EXCEPTION 'Pending athlete Taekwondo logs are visible to coach'; END IF;
+  SELECT count(*) INTO visible_count FROM public.taekwondo_weight_category_decisions
+   WHERE athlete_user_id='00000000-0000-0000-0000-000000000002';
+  IF visible_count <> 0 THEN RAISE EXCEPTION 'Pending athlete weight-category decisions are visible to coach'; END IF;
+END;
+$block$;
+
+-- A pending Coach cannot use a pre-existing link to view even an approved athlete,
+-- and cannot read its own connected-team tables while age approval is pending.
+RESET ROLE;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
+DO $block$
+DECLARE visible_count integer;
+BEGIN
+  IF public.can_view_athlete('00000000-0000-0000-0000-000000000006') THEN
+    RAISE EXCEPTION 'Pending Coach can_view_athlete returned true';
+  END IF;
+  IF private.user_can_manage_athlete('00000000-0000-0000-0000-000000000006') THEN
+    RAISE EXCEPTION 'Pending Coach user_can_manage_athlete returned true';
+  END IF;
+  SELECT count(*) INTO visible_count FROM public.hydration_logs
+   WHERE user_id='00000000-0000-0000-0000-000000000002';
+  IF visible_count <> 0 THEN RAISE EXCEPTION 'Pending Coach can read own hydration data before approval'; END IF;
+  SELECT count(*) INTO visible_count FROM public.taekwondo_training_logs
+   WHERE user_id='00000000-0000-0000-0000-000000000002';
+  IF visible_count <> 0 THEN RAISE EXCEPTION 'Pending Coach can read Taekwondo logs before approval'; END IF;
+END;
+$block$;
+RESET ROLE;
+SET ROLE postgres;
 
 -- The approved Coach RPC can only return the caller's existing account.
 DO $block$
