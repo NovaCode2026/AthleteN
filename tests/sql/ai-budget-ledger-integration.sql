@@ -6,7 +6,7 @@ DO $$ BEGIN CREATE ROLE service_role NOLOGIN BYPASSRLS; EXCEPTION WHEN duplicate
 CREATE SCHEMA IF NOT EXISTS auth;
 CREATE OR REPLACE FUNCTION auth.role()
 RETURNS text LANGUAGE sql STABLE
-AS $$ SELECT coalesce(current_setting('request.jwt.claim.role',true),'') $$;
+AS $function$ SELECT coalesce(current_setting('request.jwt.claim.role',true),'') $function$;
 GRANT USAGE ON SCHEMA auth TO authenticated,service_role;
 GRANT EXECUTE ON FUNCTION auth.role() TO authenticated,service_role;
 
@@ -27,11 +27,16 @@ BEGIN
   IF NOT public.settle_athleten_ai_budget(first_id,600) THEN RAISE EXCEPTION 'Reservation did not settle'; END IF;
   IF NOT public.settle_athleten_ai_budget(first_id,600) THEN RAISE EXCEPTION 'Idempotent settlement failed'; END IF;
   IF public.release_athleten_ai_budget(first_id) THEN RAISE EXCEPTION 'Settled reservation was incorrectly released'; END IF;
+END $$;
+RESET ROLE;
+DO $$
+BEGIN
   IF NOT EXISTS(SELECT 1 FROM public.athleten_ai_budget_monthly
     WHERE usage_month=date_trunc('month',now() at time zone 'UTC')::date
       AND budget_paise=1000 AND reserved_paise=0 AND spent_paise=600)
   THEN RAISE EXCEPTION 'Monthly totals do not reconcile after settlement'; END IF;
 END $$;
+SET ROLE service_role;
 INSERT INTO budget_test_ids
 SELECT 'second',public.reserve_athleten_ai_budget(date_trunc('month',now() at time zone 'UTC')::date,1000,400);
 DO $$
@@ -41,12 +46,15 @@ BEGIN
   IF second_id IS NULL THEN RAISE EXCEPTION 'Expected remaining budget reservation failed'; END IF;
   IF NOT public.release_athleten_ai_budget(second_id) THEN RAISE EXCEPTION 'Reserved budget could not be released'; END IF;
   IF NOT public.release_athleten_ai_budget(second_id) THEN RAISE EXCEPTION 'Idempotent release failed'; END IF;
+END $$;
+RESET ROLE;
+DO $$
+BEGIN
   IF EXISTS(SELECT 1 FROM public.athleten_ai_budget_monthly
     WHERE usage_month=date_trunc('month',now() at time zone 'UTC')::date
       AND (reserved_paise<>0 OR spent_paise<>600))
   THEN RAISE EXCEPTION 'Monthly totals do not reconcile after release'; END IF;
 END $$;
-RESET ROLE;
 SELECT set_config('request.jwt.claim.role','authenticated',false);
 SET ROLE authenticated;
 DO $$
