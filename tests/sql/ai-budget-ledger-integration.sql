@@ -30,13 +30,13 @@ BEGIN
 END $$;
 RESET ROLE;
 SET ROLE postgres;
-DO $
+DO $assert$
 BEGIN
   IF NOT EXISTS(SELECT 1 FROM public.athleten_ai_budget_monthly
     WHERE usage_month=date_trunc('month',now() at time zone 'UTC')::date
       AND budget_paise=1000 AND reserved_paise=0 AND spent_paise=600)
   THEN RAISE EXCEPTION 'Monthly totals do not reconcile after settlement'; END IF;
-END $$;
+END $assert$;
 SET ROLE service_role;
 INSERT INTO budget_test_ids
 SELECT 'second',public.reserve_athleten_ai_budget(date_trunc('month',now() at time zone 'UTC')::date,1000,400);
