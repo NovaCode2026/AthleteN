@@ -2,6 +2,9 @@
 
 ## Decision
 
+The combined source candidate is tracked in [PR #59](https://github.com/NovaCode2026/AthleteN/pull/59). This report is the current release-readiness reference; older PR-specific gate reports are historical snapshots.
+
+
 **Not approved for public production release or paid subscriptions yet.** The combined source candidate includes the current security, pricing, AI-budget and Android-release work, but the production database/deployment contract and real-device acceptance are not complete.
 
 ## Approved pricing decision (2026-11-13)
@@ -26,7 +29,7 @@
 - Production Supabase migration ledger has 177 versions; latest recorded version is `20261112092215`.
 - The exact timestamp comparison is in `docs/MIGRATION_HISTORY_DRIFT_2026-11-13.md`: 116 candidate SQL files, 99 unique local timestamps, 27 exact timestamps shared with production, 150 remote-only timestamps, 72 local-only timestamps, and five duplicate local timestamp groups. This blocks blind CLI migration push/reset/replay.
 - Three applied Nov 4 SQL files were restored from trusted Git history and compared against live schema/policy/function effects; they increased exact timestamp overlap from 24 to 27. This does not resolve the broader drift.
-- A read-only live database query confirmed `public.ai_usage_events` exists with `input_tokens`, `output_tokens`, `total_tokens` and `api_cost_minor`; `public.ai_monthly_budget_ledger` does **not** exist. The new AI endpoint will therefore fail closed until its ledger migration is safely installed and verified.
+- A read-only live database query confirmed `public.ai_usage_events` exists with `input_tokens`, `output_tokens`, `total_tokens` and `api_cost_minor`. The candidate migration `20261112180000_athleten_ai_monthly_budget_ledger.sql` defines the server-only relations `public.athleten_ai_budget_monthly` and `public.athleten_ai_budget_reservations`, plus service-role-only reservation/settlement functions. The candidate migration is not applied to production. Verify both relation states and the full migration history before applying it; the AI endpoint stays fail-closed until the ledger is safely installed and verified.
 - Netlify site `athleten` currently serves production deploy `6af42f978110916eb4db495a`, commit `0c2af19c46d4995dd4ee1b77969fc9055ca9996f` from 2026-11-11, not this candidate branch.
 - Netlify has an `OPENAI_API_KEY` variable. `OPENAI_MODEL` and explicit price overrides are absent; source defaults to `gpt-6-luna`, with built-in conservative rates of ₹11 / 1M input tokens and ₹55 / 1M output tokens, a ₹150 monthly AI budget and 600 max output tokens. The API key's access to that model has not been tested from production.
 - The `gpt-6-luna` model ID and published standard rates ($0.10 input / $0.50 output per 1M tokens) were checked against official OpenAI API docs on 2026-11-13. Source adds a 10% budget buffer over a ₹100/USD planning conversion; actual provider invoices remain authoritative.

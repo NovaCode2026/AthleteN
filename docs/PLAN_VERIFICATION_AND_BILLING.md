@@ -2,7 +2,7 @@
 
 # 💳 AthleteN Plans, Verification & Billing
 
-<img src="https://img.shields.io/badge/PLANS-6%20TIERS-0B1F3A?style=for-the-badge" alt="Six plans">
+<img src="https://img.shields.io/badge/PLANS-5%20PUBLIC%20PLANS-0B1F3A?style=for-the-badge" alt="Six plans">
 <img src="https://img.shields.io/badge/VERIFICATION-ROLE%20AWARE-6C5CE7?style=for-the-badge" alt="Role aware verification">
 <img src="https://img.shields.io/badge/PAYMENTS-WEBHOOK%20CONFIRMED-00B894?style=for-the-badge" alt="Webhook confirmed payments">
 
@@ -31,12 +31,12 @@ AthleteN keeps three things separate:
 | 🆓 **Free** | ₹0 | ₹0 | 0 | Getting started |
 | 🚀 **Pro** | ₹99 | ₹999 | 50 | Athletes |
 | 🏆 **Elite** | ₹199 | ₹1,999 | 200 | Competitive Athletes |
-
-Student remains a legacy plan for existing approved subscribers only. It is not available for new purchases.
 | 🧑‍🏫 **Coach** | ₹499 | ₹4,999 | 750 | Verified Coach accounts |
-| 🏟️ **Academy** | ₹799 | ₹7,999 | 1,000 | Verified Academy Admin accounts |
+| 🏟️ **Academy** | ₹799 | ₹7,999 | 1,000 shared | Verified Academy Admin accounts |
 
-<sub>Prices and quotas are the current product catalogue. Confirm provider billing intervals, tax treatment, renewal and cancellation terms before enabling public paid checkout.</sub>
+**Legacy Student:** existing approved Student subscribers retain their historical entitlement. Student is not available for new purchases.
+
+<sub>Displayed amounts are customer totals inclusive of applicable GST; do not add GST on top. A qualified Indian tax adviser must confirm registration, classification, rate, place-of-supply and invoice treatment before checkout is enabled. Paid checkout and recurring billing remain disabled. Annual prices are intended to be charged once per year when annual billing is implemented.</sub>
 
 ### What paid plans unlock
 

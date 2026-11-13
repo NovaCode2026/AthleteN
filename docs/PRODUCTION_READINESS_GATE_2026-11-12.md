@@ -1,5 +1,7 @@
 # AthleteN Production Readiness Gate — 2026-11-12
 
+> **Historical snapshot — 12 November 2026.** This report documents the earlier PR #57 review and is not the current release decision. For the combined release candidate, use the [13 November release-readiness report](./RELEASE_READINESS_2026-11-12.md) and [migration-history inventory](./MIGRATION_HISTORY_DRIFT_2026-11-13.md).
+
 ## Decision
 
 **NOT APPROVED for public production release yet.** The current branch has passing web, static-analysis, and mobile CI, and the public Netlify deployment is reachable. The release is still blocked by database migration-history reconciliation, the profile-DOB database guard, pending security review/configuration, signed Android distribution, and real-device/two-account acceptance.
