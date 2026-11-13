@@ -9,7 +9,10 @@ GRANT USAGE ON SCHEMA auth TO authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid LANGUAGE sql STABLE
-AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+AS $ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $;
+-- Match Supabase's baseline auth helper grants for the authenticated test role.
+GRANT USAGE ON SCHEMA auth TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated, service_role;
 
 CREATE TABLE public.profiles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
