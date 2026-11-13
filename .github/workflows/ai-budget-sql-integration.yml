@@ -7,7 +7,6 @@ on:
       - "supabase/migrations/**"
       - "netlify/ai-budget.mjs"
       - "tests/sql/ai-budget-ledger-integration.sql"
-      - ".github/workflows/ai-budget-sql-integration.yml"
   workflow_dispatch:
 
 permissions:
