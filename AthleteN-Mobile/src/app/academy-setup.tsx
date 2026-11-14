@@ -22,11 +22,16 @@ export default function AcademySetupScreen() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const hasAcademyRole = profile?.role === 'academy_admin' || profile?.role === 'academy';
 
   useEffect(() => {
     let alive = true;
     (async () => {
       if (!session) return;
+      if (!hasAcademyRole) {
+        if (alive) { setMessage('An approved Academy Admin role is required before creating or editing an Academy workspace.'); setLoading(false); }
+        return;
+      }
       let id = String(profile?.academy_id || '') || null;
 
       if (!id) {
@@ -96,7 +101,7 @@ export default function AcademySetupScreen() {
     })();
 
     return () => { alive = false; };
-  }, [session?.user.id, profile?.academy_id]);
+  }, [session?.user.id, profile?.academy_id, hasAcademyRole]);
 
   async function verifyOrUpdateEmail() {
     setMessage('');
@@ -191,6 +196,20 @@ export default function AcademySetupScreen() {
     );
   }
 
+  if (!hasAcademyRole) {
+    return (
+      <SafeAreaView style={s.screen}>
+        <View style={s.blocked}>
+          <Text style={s.kicker}>ATHLETEN ACADEMY</Text>
+          <Text style={s.blockedTitle}>Academy Admin access required</Text>
+          <Text style={s.blockedText}>An AthleteN Admin must review and assign the Academy Admin role before an Academy workspace can be created or edited. Request a role review through the private Support Center.</Text>
+          <Pressable onPress={()=>router.push('/support')} style={s.button}><Text style={s.buttonText}>REQUEST ROLE REVIEW</Text></Pressable>
+          <Pressable onPress={()=>router.back()} style={s.secondaryButton}><Text style={s.secondaryButtonText}>GO BACK</Text></Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={s.screen}>
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
@@ -239,6 +258,7 @@ const s = StyleSheet.create({
   screen:{flex:1,backgroundColor:c.background},
   content:{padding:22,paddingBottom:45,gap:14},
   loading:{flex:1,alignItems:'center',justifyContent:'center',gap:12},
+  blocked:{flex:1,justifyContent:'center',padding:24,gap:13},blockedTitle:{color:c.text,fontSize:25,fontWeight:'900'},blockedText:{color:c.muted,fontSize:12,lineHeight:19},
   loadingText:{color:c.muted,fontSize:12},
   progress:{flexDirection:'row',gap:6,marginBottom:4},
   progressActive:{flex:1,height:4,borderRadius:4,backgroundColor:c.accent},
