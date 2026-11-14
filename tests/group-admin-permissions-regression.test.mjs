@@ -62,3 +62,17 @@ test("mobile group chat remains usable before the permissions migration is avail
   assert.match(mobile, /if\(!groupSettingsAvailable\|\|/);
   assert.match(mobile, /Only group admins can send messages/);
 });
+
+test("web messaging has the same group role, permission, and member-picker controls", () => {
+  const web = read("../src/components/messaging/MessagingPage.tsx");
+  assert.match(web, /selectedIsGroupCreator&&member\.user_id!==selected\.created_by/);
+  assert.match(web, /Make admin/);
+  assert.match(web, /Remove admin/);
+  assert.match(web, /Who can add members\?/);
+  assert.match(web, /Who can edit group info\?/);
+  assert.match(web, /Who can send messages\?/);
+  assert.match(web, /Add selected members/);
+  assert.match(web, /selectedCreateUsers\.length/);
+  assert.match(web, /disabled=\{!canSendGroupMessage\}/);
+  assert.match(web, /Group settings update pending/);
+});
