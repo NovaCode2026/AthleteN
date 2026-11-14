@@ -9,6 +9,10 @@ ALTER TABLE public.conversations
   ADD COLUMN IF NOT EXISTS only_admins_can_edit_group_info boolean NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS only_admins_can_send_messages boolean NOT NULL DEFAULT false;
 
+ALTER TABLE public.conversations
+  ADD CONSTRAINT conversations_group_description_length_check
+  CHECK (char_length(group_description) <= 500);
+
 -- Preserve the creator as owner and make them an admin in all existing groups.
 UPDATE public.conversation_members cm
 SET is_admin = true
@@ -251,6 +255,10 @@ WITH CHECK (
           OR cm.is_admin = true
         )
     )
+  )
+  AND (
+    (char_length(btrim(coalesce(body, ''))) BETWEEN 1 AND 4000)
+    OR attachment_path IS NOT NULL
   )
 );
 
