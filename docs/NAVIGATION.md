@@ -18,4 +18,4 @@
 
 ## Limits and verification
 
-The bottom bar intentionally has six slots: five user-selected shortcuts plus the required More destination. This keeps the touch targets readable on phones while retaining access to the full feature set. Apply migration 20261110130000_require_more_in_navigation.sql before relying on the database-side invariant. Verify web/mobile sync with two signed-in clients and confirm More cannot be removed.
+The bottom bar intentionally has six slots: five user-selected shortcuts plus the required More destination. This keeps the touch targets readable on phones while retaining access to the full feature set. Apply migration 20261111072407_require_more_in_navigation.sql before relying on the database-side invariant. Verify web/mobile sync with two signed-in clients and confirm More cannot be removed.
