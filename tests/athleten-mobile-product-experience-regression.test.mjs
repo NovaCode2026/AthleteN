@@ -47,6 +47,7 @@ test("Coach and Academy role onboarding is admin-reviewed and Academy setup enfo
   const plans = read("../AthleteN-Mobile/src/app/plans.tsx");
   const academy = read("../AthleteN-Mobile/src/app/academy-setup.tsx");
   const roleDraft = read("../supabase/security/role_and_finance_authorization_hardening.sql");
+  const policies = read("../supabase/policies.sql");
 
   assert.match(plans, /REQUEST A COACH \/ ACADEMY ROLE REVIEW/);
   assert.match(plans, /AthleteN Admin must verify and assign the Coach role/);
@@ -55,6 +56,9 @@ test("Coach and Academy role onboarding is admin-reviewed and Academy setup enfo
   assert.match(academy, /An approved Academy Admin role is required/);
   assert.match(roleDraft, /REVIEW DRAFT ONLY — NOT A DEPLOYABLE MIGRATION/);
   assert.match(roleDraft, /revoke all on function public\.switch_my_product_role\(text\) from public, anon, authenticated/i);
+  const academyInsertPolicy = policies.match(/create policy "academies owner insert"[\\s\\S]*?;/)?.[0] || "";
+  assert.match(academyInsertPolicy, /with check \\(\\(select auth\\.uid\\(\\)\\) = owner_user_id\\)/i);
+  assert.doesNotMatch(academyInsertPolicy, /profiles[\\s\\S]*role[\\s\\S]*academy_admin/i);
 });
 
 test("Account deletion help links to the published request route and does not claim instant deletion", () => {
