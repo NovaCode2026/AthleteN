@@ -62,7 +62,7 @@ export default function AppUpdateGate() {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') void checkForUpdate();
     });
-    const timer = setInterval(() => void checkForUpdate(true), 6 * 60 * 60 * 1000);
+    const timer = setInterval(() => { if (AppState.currentState === 'active') void checkForUpdate(true); }, 15 * 60 * 1000);
     return () => {
       subscription.remove();
       clearInterval(timer);
