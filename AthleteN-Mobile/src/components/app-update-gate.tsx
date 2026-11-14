@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Constants from 'expo-constants';
+import * as Application from 'expo-application';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 
@@ -13,7 +14,11 @@ type Release = {
 };
 
 const c = Colors.dark;
-const installedCode = Number(Constants.expoConfig?.android?.versionCode || 1);
+const nativeBuildCode = Number(Application.nativeBuildVersion);
+const configuredBuildCode = Number(Constants.expoConfig?.android?.versionCode || 1);
+const installedCode = Number.isSafeInteger(nativeBuildCode) && nativeBuildCode > 0
+  ? nativeBuildCode
+  : configuredBuildCode;
 
 export default function AppUpdateGate() {
   const [release, setRelease] = useState<Release | null>(null);
