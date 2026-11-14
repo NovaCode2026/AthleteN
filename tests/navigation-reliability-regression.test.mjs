@@ -16,7 +16,8 @@ test('database navigation contract always appends More and accepts only known de
 test('mobile navigation pins More and exposes five customizable shortcut slots', () => {
   const settings = read('../AthleteN-Mobile/src/app/navigation-settings.tsx');
   const layout = read('../AthleteN-Mobile/src/app/(tabs)/_layout.tsx');
-  assert.match(settings, /const MORE_ID='explore'/);
+  assert.match(settings, /const MORE_ID=REQUIRED_NAV_ITEM/);
+  assert.match(layout, /export const REQUIRED_NAV_ITEM = 'explore'/);
   assert.match(settings, /Choose up to five shortcuts/);
   assert.match(settings, /if\(id===MORE_ID\)/);
   assert.match(layout, /return \[\.\.\.valid, REQUIRED_NAV_ITEM\]/);
