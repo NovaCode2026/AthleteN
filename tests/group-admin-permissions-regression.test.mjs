@@ -82,6 +82,7 @@ test("web messaging has the same group role, permission, and member-picker contr
 
 test("group photo storage is private and scoped to group membership and edit permissions", () => {
   const sql = read("../supabase/migrations/20261114162145_group_admin_permissions_and_settings.sql");
+  const avatarFix = read("../supabase/migrations/20261114162529_fix_group_avatar_storage_policy_path_scope.sql");
   assert.match(sql, /VALUES \('group-avatars', 'group-avatars', false, 5242880/);
   assert.match(sql, /group avatars visible to group members/);
   assert.match(sql, /group admins can upload group avatars/);
@@ -89,8 +90,8 @@ test("group photo storage is private and scoped to group membership and edit per
   assert.match(sql, /public\.conversation_members cm[\s\S]*cm\.user_id = \(SELECT auth\.uid\(\)\)/);
   assert.match(sql, /CREATE OR REPLACE FUNCTION public\.update_group_avatar/);
   assert.match(sql, /Only group admins can change the group photo/);
-  assert.match(avatarFix, /storage\\.foldername\\(objects\\.name\\)/);
-  assert.doesNotMatch(avatarFix, /storage\\.foldername\\(name\\)/);
+  assert.match(avatarFix, /storage\.foldername\(objects\.name\)/);
+  assert.doesNotMatch(avatarFix, /storage\.foldername\(name\)/);
   assert.match(sql, /Uploaded group photo was not found/);
   assert.match(sql, /REVOKE ALL ON FUNCTION public\.update_group_avatar/);
 });
