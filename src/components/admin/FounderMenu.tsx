@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Activity, BadgeCheck, FileText, Flag, Layers3, ShieldCheck, UploadCloud, Users, Wallet } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import "./FounderMenu.css";
@@ -47,7 +47,7 @@ export default function FounderMenu({ userId, role }: Props) {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "info">("info");
 
-  async function loadReleases() {
+  const loadReleases = useCallback(async () => {
     if (!supabase || !isFounder) return;
     setLoading(true);
     try {
@@ -80,9 +80,9 @@ export default function FounderMenu({ userId, role }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [isFounder]);
 
-  useEffect(() => { void loadReleases(); }, [isFounder]);
+  useEffect(() => { void loadReleases(); }, [loadReleases]);
 
   function chooseApk(file: File | null) {
     setMessage("");
@@ -114,6 +114,9 @@ export default function FounderMenu({ userId, role }: Props) {
     if (releaseNotes.length > 10000) throw new Error("Release notes must be 10,000 characters or fewer.");
     if (live && code <= Number(live.version_code)) throw new Error(`Version code must be greater than the currently published code ${live.version_code}.`);
 
+    if (!apk && draft && Number(draft.version_code) !== code) {
+      throw new Error("The saved draft APK was built for a different versionCode. Select the newly built APK before publishing this version.");
+    }
     let downloadUrl = draft?.download_url || "";
     let storagePath = draft?.storage_path || "";
     if (apk) {
