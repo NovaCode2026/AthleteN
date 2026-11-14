@@ -25,7 +25,7 @@ export function getDefaultNavigation(discipline?: string | null) {
 export const NAV_ITEMS = [
  {id:'index',label:'Home',icon:'dashboard',feature:null},
  {id:'training',label:'Train',icon:'training',feature:null},
- {id:'ai',label:'AI Coach',icon:'ai',feature:null},
+ {id:'ai',label:'Intelligence',icon:'chart',feature:null},
  {id:'compete',label:'Compete',icon:'event',feature:null},
  {id:'profile',label:'Profile',icon:'person',feature:null},
  {id:'explore',label:'More',icon:'more',feature:null},
