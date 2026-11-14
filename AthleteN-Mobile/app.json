@@ -10,7 +10,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#05070B",
-        "foregroundImage": "./assets/logo.webp"
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.novacode.athleten",
