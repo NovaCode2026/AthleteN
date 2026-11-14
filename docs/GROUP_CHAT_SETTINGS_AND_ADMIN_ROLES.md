@@ -24,7 +24,9 @@ The mobile and web messaging screens now include:
 - Add Members access based on the group's current permission setting rather than creator-only UI logic.
 - A disabled composer for non-admins when the group is set to admin-only messages.
 
-The existing recent-contact and name / username / account-ID member picker remains the selection flow when a member is allowed to add people. Both clients now use the same permission model and display **Group settings update pending** while the production database is still on the old schema.
+The existing recent-contact and name / username / account-ID member picker remains the selection flow when a member is allowed to add people. Both clients now support a square group photo at creation and from Group Settings, a group description, creator/member metadata, and signed photo display in the conversation list and active-chat header. Mobile uses the already-installed Expo image picker; the web app uses a file picker. Accepted formats are JPEG, PNG and WebP, with a 5 MB limit.
+
+Group photos are stored in a private `group-avatars` bucket. Group members can read them through signed URLs. Upload, replacement and removal are governed by the same group-info permission: when group-info editing is restricted, only the creator and appointed admins can change the photo. Both clients continue to display **Group settings update pending** while the production database is still on the old schema.
 
 ## Database enforcement
 
@@ -32,7 +34,10 @@ The migration draft is `supabase/migrations/20261114182000_group_admin_permissio
 - `set_group_member_admin`
 - `update_group_settings`
 - `update_group_info`
+- `update_group_avatar`
 - updated `add_group_member_by_user` / `add_group_member_by_email`
+
+The migration also creates the private `group-avatars` bucket and member/admin-scoped Storage policies.
 
 Message INSERT RLS is updated so the admin-only sending rule is enforced by PostgreSQL, not just the mobile composer. The prior message body/attachment validation remains in the policy. The RPCs enforce authenticated callers, age approval, group membership, group ownership/admin status and block checks as appropriate.
 
