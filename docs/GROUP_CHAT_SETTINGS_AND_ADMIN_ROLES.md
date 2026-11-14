@@ -16,7 +16,7 @@ The group creator can promote or demote members from the Group Settings panel. A
 
 ## Mobile client
 
-The mobile group chat now includes:
+The mobile and web messaging screens now include:
 - Group Settings panel with the member/admin list.
 - Creator-only Make Admin / Remove Admin actions.
 - Permission controls for adding members, editing group information and sending messages.
@@ -24,7 +24,7 @@ The mobile group chat now includes:
 - Add Members access based on the group's current permission setting rather than creator-only UI logic.
 - A disabled composer for non-admins when the group is set to admin-only messages.
 
-The existing recent-contact and name / username / account-ID member picker remains the selection flow when a member is allowed to add people.
+The existing recent-contact and name / username / account-ID member picker remains the selection flow when a member is allowed to add people. Both clients now use the same permission model and display **Group settings update pending** while the production database is still on the old schema.
 
 ## Database enforcement
 
