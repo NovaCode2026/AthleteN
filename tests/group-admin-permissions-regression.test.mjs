@@ -89,6 +89,8 @@ test("group photo storage is private and scoped to group membership and edit per
   assert.match(sql, /public\.conversation_members cm[\s\S]*cm\.user_id = \(SELECT auth\.uid\(\)\)/);
   assert.match(sql, /CREATE OR REPLACE FUNCTION public\.update_group_avatar/);
   assert.match(sql, /Only group admins can change the group photo/);
+  assert.match(avatarFix, /storage\\.foldername\\(objects\\.name\\)/);
+  assert.doesNotMatch(avatarFix, /storage\\.foldername\\(name\\)/);
   assert.match(sql, /Uploaded group photo was not found/);
   assert.match(sql, /REVOKE ALL ON FUNCTION public\.update_group_avatar/);
 });
