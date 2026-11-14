@@ -30,6 +30,7 @@ test("Android update gate only opens direct HTTPS APK releases and requires Andr
   assert.match(updateGate, /parsedUrl\.protocol === 'https:'/);
   assert.match(updateGate, /pathname\.toLowerCase\(\)\.endsWith\('\.apk'\)/);
   assert.match(updateGate, /Android requires your approval to install an APK/);
+  assert.match(updateGate, /Application\.nativeBuildVersion/);
 });
 
 test("the active Android app refreshes published release metadata every 15 minutes", () => {
