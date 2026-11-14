@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, BadgeCheck, Database, FileText, Flag, KeyRound, Layers3, ShieldCheck, UploadCloud, Users, Wallet } from "lucide-react";
+import { Activity, BadgeCheck, FileText, Flag, Layers3, ShieldCheck, UploadCloud, Users, Wallet } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import "./FounderMenu.css";
 
