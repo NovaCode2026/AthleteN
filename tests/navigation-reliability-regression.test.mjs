@@ -44,3 +44,28 @@ test('mobile profile no longer repeats the same settings destination twice', () 
   const profile = read('../AthleteN-Mobile/src/app/profile.tsx');
   assert.equal((profile.match(/router\.push\('\/settings'\)/g) || []).length, 1);
 });
+
+
+test('mobile navigation preferences refresh the mounted tab bar immediately after save or reset', () => {
+  const settings = read('../AthleteN-Mobile/src/app/navigation-settings.tsx');
+  const layout = read('../AthleteN-Mobile/src/app/(tabs)/_layout.tsx');
+  assert.match(settings, /DeviceEventEmitter\.emit\('athleten-navigation-updated',saved\)/);
+  assert.match(layout, /DeviceEventEmitter\.addListener\('athleten-navigation-updated'/);
+  assert.match(layout, /localRefresh\.remove\(\)/);
+});
+
+test('mobile navigation settings respect Android safe areas and show readable save feedback', () => {
+  const settings = read('../AthleteN-Mobile/src/app/navigation-settings.tsx');
+  assert.match(settings, /SafeAreaView style=\{s\.screen\} edges=\{\['top','bottom'\]\}/);
+  assert.match(settings, /messageBox:/);
+  assert.match(settings, /errorBox:/);
+});
+
+test('performance analysis distinguishes loading, query failure and genuinely empty training data', () => {
+  const ai = read('../AthleteN-Mobile/src/app/ai.tsx');
+  assert.match(ai, /\['training',t\.error\]/);
+  assert.match(ai, /setLoadError\(/);
+  assert.match(ai, /finally\{setRefreshing\(false\)\}/);
+  assert.match(ai, /rows\.length\?daily:\[\]/);
+  assert.match(ai, /hasLoaded\?String\(totalMinutes\):'—'/);
+});
