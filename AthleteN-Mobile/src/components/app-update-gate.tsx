@@ -24,7 +24,7 @@ export default function AppUpdateGate() {
 
   const checkForUpdate = useCallback(async (force = false) => {
     if (Platform.OS !== 'android') return;
-    if (!force && Date.now() - lastCheckedAt.current < 6 * 60 * 60 * 1000) return;
+    if (!force && Date.now() - lastCheckedAt.current < 15 * 60 * 1000) return;
     try {
       const { data, error } = await supabase
         .from('mobile_app_releases')
@@ -44,7 +44,7 @@ export default function AppUpdateGate() {
       let parsedUrl: URL;
       try { parsedUrl = new URL(url); } catch { return; }
       const directApk = parsedUrl.protocol === 'https:' && parsedUrl.pathname.toLowerCase().endsWith('.apk');
-      if (!directApk || !Number.isSafeInteger(Number(next.version_code)) || !Number.isSafeInteger(Number(next.minimum_version_code))) return;
+      if (!directApk || !Number.isSafeInteger(Number(next.version_code)) || Number(next.version_code) < 1 || !Number.isSafeInteger(Number(next.minimum_version_code)) || Number(next.minimum_version_code) < 1 || Number(next.minimum_version_code) > Number(next.version_code)) return;
       if (Number(next.version_code) > installedCode || Number(next.minimum_version_code) > installedCode) {
         setRelease(next);
         setVisible(true);
