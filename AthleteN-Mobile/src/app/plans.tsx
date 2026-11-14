@@ -5,7 +5,7 @@ import { Colors } from '@/constants/theme';
 import { Icon } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { AI_LIMITS, PLAN_NAMES, PlanId, getAiRemaining } from '@/lib/entitlements';
+import { AI_LIMITS, PLAN_NAMES, PLAN_PRICING, PlanId, getAiRemaining } from '@/lib/entitlements';
 
 const c = Colors.dark;
 const PAID_CHECKOUT_ENABLED = false;
@@ -21,15 +21,17 @@ const athletePlans: Array<{
   ai: number;
   audience: string;
   features: string[];
+  legacy?: boolean;
 }> = [
-  { id: 'free', name: 'Free', monthly: 0, yearly: 0, saving: 0, ai: 0, audience: 'Everyone', features: ['Athlete profile', 'Training log', 'Basic progress tracking', 'Tournament and medal history'] },
-  { id: 'pro', name: 'Pro', monthly: 99, yearly: 999, saving: 189, ai: 50, audience: 'Athletes building consistent progress', features: ['Everything in Free', '50 AI Coach requests per month', 'Advanced analytics and training insights', 'Performance reports', 'Competition analysis'] },
-  { id: 'elite', name: 'Elite', monthly: 199, yearly: 1999, saving: 389, ai: 200, audience: 'Competitive athletes', features: ['Everything in Pro', '200 AI Coach requests per month', 'Advanced competition analytics', 'Historical performance trends', 'Exportable reports', 'Priority support'] },
+  { id:'free',name:'Free',monthly:PLAN_PRICING.free.monthly,yearly:PLAN_PRICING.free.yearly,saving:0,ai:AI_LIMITS.free,audience:'For every athlete starting their record',features:['Athlete profile and sporting identity','Core training logs and competition history','Medal records, goals and milestones','Calendar and Athlete Journey','Join a verified academy'] },
+  { id:'student',name:'Student · Legacy',monthly:PLAN_PRICING.student.monthly,yearly:PLAN_PRICING.student.yearly,saving:PLAN_PRICING.student.yearlySaving,ai:AI_LIMITS.student,audience:'Existing approved Student subscribers only · no new purchases',legacy:true,features:['Existing approved Student entitlement is preserved','50 AI Coach requests per month','Existing subscriptions are not repriced','No new Student subscriptions are sold'] },
+  { id:'pro',name:'Pro',monthly:PLAN_PRICING.pro.monthly,yearly:PLAN_PRICING.pro.yearly,saving:PLAN_PRICING.pro.yearlySaving,ai:AI_LIMITS.pro,audience:'Athletes building consistent progress',features:['Everything in Free','50 AI Coach requests per month','Advanced analytics and training insights','Performance reports','Competition analysis'] },
+  { id:'elite',name:'Elite',monthly:PLAN_PRICING.elite.monthly,yearly:PLAN_PRICING.elite.yearly,saving:PLAN_PRICING.elite.yearlySaving,ai:AI_LIMITS.elite,audience:'Competitive athletes',features:['Everything in Pro','200 AI Coach requests per month','Advanced competition analytics','Historical performance trends','Exportable reports','Priority support'] },
 ];
 
 const productPlans = {
-  coach: { name: 'Coach', monthly: 499, yearly: 4999, saving: 989, ai: 750, description: 'AI Match Reports, AI Monthly Coach Reports, a dedicated coaching workspace, athlete management and training monitoring.' },
-  academy_admin: { name: 'Academy', monthly: 799, yearly: 7999, saving: 1589, ai: 1000, description: 'AI Match Reports, AI Monthly Academy Reports, athlete and coach management, attendance, analytics and operations.' },
+  coach: { name:'Coach',monthly:PLAN_PRICING.coach.monthly,yearly:PLAN_PRICING.coach.yearly,saving:PLAN_PRICING.coach.yearlySaving,ai:AI_LIMITS.coach,description:'A workspace for verified coaches managing athlete development.',features:['Dedicated Coach workspace','Athlete roster and progress monitoring','Training-plan and attendance management','Coach reports and feedback','750 AI Coach requests per month'] },
+  academy_admin: { name:'Academy',monthly:PLAN_PRICING.academy.monthly,yearly:PLAN_PRICING.academy.yearly,saving:PLAN_PRICING.academy.yearlySaving,ai:AI_LIMITS.academy,description:'A workspace for verified Academy administrators managing a club or academy.',features:['Dedicated Academy workspace','Athlete and Coach management','Two included Coach seats','Attendance and academy analytics','Competition and operational reports','1,000 shared AI Coach requests per month'] },
 } as const;
 
 export default function PlansScreen() {
@@ -136,7 +138,7 @@ export default function PlansScreen() {
       <Text style={s.currentBadge}>ACTIVE</Text>
     </View>
 
-    {current === 'student' ? <View style={s.note}><Text style={s.noteTitle}>STUDENT PLAN · LEGACY</Text><Text style={s.meta}>Your existing Student entitlement is preserved. Student is no longer offered for new purchases.</Text></View> : null}
+    {current === 'student' ? <View style={s.note}><Text style={s.noteTitle}>STUDENT PLAN · LEGACY</Text><Text style={s.meta}>Your existing Student entitlement is preserved. The legacy catalogue reference is ₹{PLAN_PRICING.student.monthly}/month or ₹{PLAN_PRICING.student.yearly.toLocaleString('en-IN')}/year; existing subscription terms remain unchanged. Student is not available for new purchases.</Text></View> : null}
 
     <View style={s.usage}>
       <View><Text style={s.label}>AI REQUESTS</Text><Text style={s.usageValue}>{loading ? '…' : remaining + ' / ' + limit + ' remaining'}</Text></View>
@@ -163,14 +165,14 @@ export default function PlansScreen() {
             <Text style={s.audience}>{p.audience}</Text>
           </View>
           <View style={s.priceBox}>
-            <><Text style={s.price}>₹{displayedPrice.toLocaleString('en-IN')}</Text><Text style={s.period}>/{period}</Text></>
+            <><Text style={s.price}>₹{displayedPrice.toLocaleString('en-IN')}</Text><Text style={s.period}>/{period}</Text><Text style={s.priceAlt}>₹{p.monthly.toLocaleString('en-IN')}/month · ₹{p.yearly.toLocaleString('en-IN')}/year</Text></>
           </View>
         </View>
         {billing === 'yearly' && p.saving > 0 ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
         <View style={s.aiPill}><Text style={s.aiText}>{p.ai === 0 ? 'No AI requests included' : p.ai + ' AI requests every month'}</Text></View>
         {p.features.map((feature) => <View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
-        <Pressable disabled={active || !!busyPlan || p.id === 'free' || !PAID_CHECKOUT_ENABLED} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => void startCheckout(p.id)}>
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? 'CURRENT PLAN' : p.id === 'free' ? 'FREE PLAN' : !PAID_CHECKOUT_ENABLED ? 'PAID LAUNCH PENDING' : 'CONTINUE TO CHECKOUT'}</Text>}
+        <Pressable disabled={active || !!busyPlan || p.id === 'free' || !!p.legacy || !PAID_CHECKOUT_ENABLED} style={[s.planButton, active && s.planButtonActive, busy && s.planButtonBusy]} onPress={() => void startCheckout(p.id)}>
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={[s.planButtonText, active && s.planButtonTextActive]}>{active ? (p.legacy ? 'CURRENT LEGACY PLAN' : 'CURRENT PLAN') : p.id === 'free' ? 'FREE PLAN' : p.legacy ? 'LEGACY · NO NEW SALES' : !PAID_CHECKOUT_ENABLED ? 'PAID LAUNCH PENDING' : 'CONTINUE TO CHECKOUT'}</Text>}
         </Pressable>
         {p.id === 'free' ? <View style={s.note}>
           <Text style={s.noteTitle}>What Free is missing</Text>
@@ -193,10 +195,15 @@ export default function PlansScreen() {
               <Text style={s.planName}>{p.name}</Text>
               <Text style={s.audience}>{isCurrent ? 'Current workspace' : owned ? 'Active subscription' : 'Separate product'}</Text>
             </View>
-            <Text style={s.price}>₹{(billing === 'yearly' ? p.yearly : p.monthly).toLocaleString('en-IN')}<Text style={s.period}>/{billing === 'yearly' ? 'year' : 'month'}</Text></Text>
+            <View style={{alignItems:'flex-end'}}>
+              <Text style={s.price}>₹{(billing === 'yearly' ? p.yearly : p.monthly).toLocaleString('en-IN')}<Text style={s.period}>/{billing === 'yearly' ? 'year' : 'month'}</Text></Text>
+              <Text style={s.priceAlt}>₹{p.monthly.toLocaleString('en-IN')}/month · ₹{p.yearly.toLocaleString('en-IN')}/year</Text>
+            </View>
           </View>
           <Text style={s.meta}>{p.description}</Text>
           {billing === 'yearly' ? <Text style={s.saving}>Save ₹{p.saving.toLocaleString('en-IN')}/year</Text> : null}
+          <View style={s.aiPill}><Text style={s.aiText}>{p.ai.toLocaleString('en-IN')} AI Coach requests per month</Text></View>
+          {p.features.map((feature)=><View key={feature} style={s.feature}><Icon name="check" size={14} color={c.accentBright}/><Text style={s.featureText}>{feature}</Text></View>)}
           <Pressable
             disabled={!!busyPlan || (isCurrent && owned) || !PAID_CHECKOUT_ENABLED}
             style={[s.planButton, isCurrent && owned && s.planButtonActive, busyPlan ? s.planButtonBusy : null]}
@@ -207,6 +214,20 @@ export default function PlansScreen() {
         </View>;
       })}
       {subscriptions.length > 1 ? <View style={s.subscriptionList}><Text style={s.sectionKicker}>ACTIVE SUBSCRIPTIONS</Text>{subscriptions.map((sub) => <Text key={sub.plan_id} style={s.subscriptionItem}>• {String(sub.plan_id).toUpperCase()} — {sub.status}{sub.current_period_end ? ' · renews ' + String(sub.current_period_end).slice(0,10) : ''}</Text>)}</View> : null}
+    </View>
+
+    <View style={s.accountGuide}>
+      <Text style={s.sectionKicker}>ACCOUNT TYPES & CLOSURE</Text>
+      <Text style={s.productTitle}>How Coach and Academy accounts work</Text>
+      <Text style={s.guideHeading}>Coach account</Text>
+      <Text style={s.meta}>Create a normal AthleteN login first, then open a private Support Center ticket to request a Coach role review. AthleteN Admin must verify and assign the Coach role. After assignment, confirm the account email; the Coach plan can then be selected when paid checkout is enabled.</Text>
+      <Text style={s.guideHeading}>Academy account</Text>
+      <Text style={s.meta}>Create a normal login and request an Academy Admin role through Support Center. After the role is assigned, complete Academy Setup with the academy name, city, state, country, contact email and phone. Verify the contact email and finish setup before Academy plan access is enabled.</Text>
+      <Pressable style={s.guideButton} onPress={()=>router.push('/support')}><Text style={s.guideButtonText}>REQUEST A COACH / ACADEMY ROLE REVIEW</Text></Pressable>
+      <Text style={s.guideHeading}>Close or delete an account</Text>
+      <Text style={s.meta}>Account closure is a verified request, not an instant delete button. The account holder should use the registered email and request account closure, personal-data deletion, or both. For Coach and Academy workspaces, ask Support to plan the transfer or closure of active athlete links and academy memberships first. Some records may need lawful retention.</Text>
+      <Pressable style={s.guideButtonSecondary} onPress={()=>void Linking.openURL('https://athleten.netlify.app/data-deletion.html').catch(()=>setMessage('Could not open the account deletion instructions. Open https://athleten.netlify.app/data-deletion.html in your browser.'))}><Text style={s.guideButtonText}>VIEW ACCOUNT DELETION INSTRUCTIONS</Text></Pressable>
+      <Text style={s.meta}>The deletion page gives the request email, subject line and identity-verification steps. Never send your password, government ID number or payment-card details by email.</Text>
     </View>
 
     {message ? <Text style={s.message}>{message}</Text> : null}
@@ -251,6 +272,7 @@ const s = StyleSheet.create({
   audience:{color:c.muted,fontSize:10,marginTop:2},
   priceBox:{alignItems:'flex-end'},
   price:{color:c.accentBright,fontSize:15,fontWeight:'900',textAlign:'right'},
+  priceAlt:{color:c.muted,fontSize:8,fontWeight:'800',textAlign:'right',marginTop:3},
   period:{color:c.muted,fontSize:9,marginTop:1},
   saving:{color:c.success,fontSize:10,fontWeight:'900'},
   aiPill:{alignSelf:'flex-start',backgroundColor:c.background,borderRadius:999,paddingHorizontal:9,paddingVertical:6},
@@ -263,7 +285,7 @@ const s = StyleSheet.create({
   planButtonBusy:{backgroundColor:c.accent},
   planButtonText:{color:c.text,fontSize:9,fontWeight:'900',letterSpacing:1},
   planButtonTextActive:{color:c.accentBright},
-  productSection:{gap:10,marginTop:4},sectionKicker:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.4},productTitle:{color:c.text,fontSize:18,fontWeight:'900'},productCard:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:18,padding:15,gap:9},productActive:{borderColor:c.accent},productTop:{flexDirection:'row',justifyContent:'space-between',gap:8},subscriptionList:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:15,padding:14,gap:5},subscriptionItem:{color:c.textSecondary,fontSize:10,fontWeight:'800'},note:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:15,padding:14,gap:4},
+  productSection:{gap:10,marginTop:4},accountGuide:{gap:10,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:18,padding:15},guideHeading:{color:c.text,fontSize:12,fontWeight:'900',marginTop:3},guideButton:{backgroundColor:c.accent,borderRadius:11,padding:12,alignItems:'center'},guideButtonSecondary:{borderWidth:1,borderColor:c.borderStrong,borderRadius:11,padding:12,alignItems:'center'},guideButtonText:{color:'#fff',fontSize:9,fontWeight:'900',letterSpacing:.7,textAlign:'center'},sectionKicker:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.4},productTitle:{color:c.text,fontSize:18,fontWeight:'900'},productCard:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:18,padding:15,gap:9},productActive:{borderColor:c.accent},productTop:{flexDirection:'row',justifyContent:'space-between',gap:8},subscriptionList:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:15,padding:14,gap:5},subscriptionItem:{color:c.textSecondary,fontSize:10,fontWeight:'800'},note:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:15,padding:14,gap:4},
   noteTitle:{color:c.text,fontSize:12,fontWeight:'900'},
   back:{borderWidth:1,borderColor:c.border,borderRadius:12,padding:13,alignItems:'center'},
   backText:{color:c.text,fontSize:9,fontWeight:'900',letterSpacing:1},
