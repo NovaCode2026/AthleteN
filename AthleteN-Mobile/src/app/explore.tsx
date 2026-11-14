@@ -17,7 +17,7 @@ export default function ExploreScreen(){
  return <Screen><Header eyebrow="ATHLETEN V2" title="More" subtitle="The rest of the AthleteN command center, rebuilt for mobile."/>
 
   <Section title="PERSONALIZATION">
-   <FeatureRow title="Customize Navigation" text="Choose and reorder the six features on your bottom bar" onPress={()=>router.push({pathname:'/navigation-settings'})}/>
+   <FeatureRow title="Customize Navigation" text="Choose and reorder five shortcuts. More stays pinned as the sixth item." onPress={()=>router.push({pathname:'/navigation-settings'})}/>
   </Section>
   <Section title="ACCOUNT & SUBSCRIPTION">
    <FeatureRow title="Plans & Usage" text="Review your plan, feature access and AI usage" icon="credit-card" onPress={()=>router.push('/plans')}/>
