@@ -59,4 +59,6 @@ There is currently no one-tap delete control for the Coach/Academy account in th
 
 The repository contains `supabase/security/role_and_finance_authorization_hardening.sql` as a **review draft only**. It revokes authenticated execution of `public.switch_my_product_role(text)`, which the 2026-11-12 readiness audit found could otherwise let an authenticated user self-assign Coach or Academy Admin without verification. The draft has not been applied as a migration. Migration-history reconciliation and local non-billable security tests are required before it can be promoted. Do not treat the role-review UI as a substitute for backend authorization.
 
+The current `supabase/policies.sql` definition for `academies owner insert` checks only that the authenticated user matches `owner_user_id`; it does not independently require the caller's profile role to be `academy_admin`. The new Academy Setup screen guard improves the normal UI path, but a client-side guard is not a database authorization boundary. This policy therefore needs a separately reviewed, role-aware RLS hardening change and negative direct-PostgREST/RPC tests after migration-history reconciliation. No such production policy change is claimed here.
+
 The app must not enable public Coach/Academy self-enrolment or paid checkout until this backend gate is resolved and the negative authorization tests pass.
