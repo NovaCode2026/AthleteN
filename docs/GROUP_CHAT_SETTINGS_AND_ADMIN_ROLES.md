@@ -26,11 +26,11 @@ The mobile and web messaging screens now include:
 
 The existing recent-contact and name / username / account-ID member picker remains the selection flow when a member is allowed to add people. Both clients now support a square group photo at creation and from Group Settings, a group description, creator/member metadata, and signed photo display in the conversation list and active-chat header. Mobile uses the already-installed Expo image picker; the web app uses a file picker. Accepted formats are JPEG, PNG and WebP, with a 5 MB limit.
 
-Group photos are stored in a private `group-avatars` bucket. Group members can read them through signed URLs. Upload, replacement and removal are governed by the same group-info permission: when group-info editing is restricted, only the creator and appointed admins can change the photo. The migration was applied to the connected production database on 2026-11-14 (ledger version `20261114162145`). The pending label remains only as a compatibility fallback for stale clients or environments that have not received the schema.
+Group photos are stored in a private `group-avatars` bucket. Group members can read them through signed URLs. Upload, replacement and removal are governed by the same group-info permission: when group-info editing is restricted, only the creator and appointed admins can change the photo. The group-admin/profile migration was applied to the connected production database on 2026-11-14 (ledger version `20261114162145`), and the Storage path qualification fix was applied as `20261114162529`. The pending label remains only as a compatibility fallback for stale clients or environments that have not received the schema.
 
 ## Database enforcement
 
-The migration draft is `supabase/migrations/20261114162145_group_admin_permissions_and_settings.sql`. It adds `conversation_members.is_admin`, the three group permission columns, creator backfill and creator-admin trigger, plus the RPCs:
+The applied migration is `supabase/migrations/20261114162145_group_admin_permissions_and_settings.sql`; its avatar-policy correction is `supabase/migrations/20261114162529_fix_group_avatar_storage_policy_path_scope.sql`. It adds `conversation_members.is_admin`, the three group permission columns, creator backfill and creator-admin trigger, plus the RPCs:
 - `set_group_member_admin`
 - `update_group_settings`
 - `update_group_info`
