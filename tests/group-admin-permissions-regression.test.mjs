@@ -79,3 +79,39 @@ test("web messaging has the same group role, permission, and member-picker contr
   assert.match(web, /groupSearchRequest\.current/);
   assert.match(web, /Group settings update pending/);
 });
+
+test("group photo storage is private and scoped to group membership and edit permissions", () => {
+  const sql = read("../supabase/migrations/20261114182000_group_admin_permissions_and_settings.sql");
+  assert.match(sql, /VALUES \('group-avatars', 'group-avatars', false, 5242880/);
+  assert.match(sql, /group avatars visible to group members/);
+  assert.match(sql, /group admins can upload group avatars/);
+  assert.match(sql, /group admins can delete group avatars/);
+  assert.match(sql, /public\.conversation_members cm[\s\S]*cm\.user_id = \(SELECT auth\.uid\(\)\)/);
+  assert.match(sql, /CREATE OR REPLACE FUNCTION public\.update_group_avatar/);
+  assert.match(sql, /Only group admins can change the group photo/);
+  assert.match(sql, /Uploaded group photo was not found/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.update_group_avatar/);
+});
+
+test("mobile and web group profiles support photo, description and signed image display", () => {
+  const mobile = read("../AthleteN-Mobile/src/app/(tabs)/messages.tsx");
+  const web = read("../src/components/messaging/MessagingPage.tsx");
+  for (const source of [mobile, web]) {
+    assert.match(source, /group_avatar_path/);
+    assert.match(source, /group-avatars/);
+    assert.match(source, /createSignedUrl/);
+    assert.match(source, /group_description/);
+    assert.match(source, /GROUP PHOTO|Group photo/);
+    assert.match(source, /groupCreateDescription/);
+    assert.match(source, /groupCreateAvatar/);
+  }
+  assert.match(mobile, /expo-image-picker/);
+  assert.match(mobile, /arrayBuffer\(\)/);
+  assert.match(mobile, /ADD GROUP PHOTO/);
+  assert.match(mobile, /CHANGE GROUP PHOTO/);
+  assert.match(mobile, /REMOVE PHOTO/);
+  assert.match(web, /Add group photo/);
+  assert.match(web, /Change group photo/);
+  assert.match(web, /Remove photo/);
+  assert.match(web, /groupMembers\.length/);
+});
