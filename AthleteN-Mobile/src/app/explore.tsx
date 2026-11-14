@@ -50,7 +50,8 @@ export default function ExploreScreen(){
    <FeatureRow title="Performance Analytics" text="Training load, weight history, medals and goals" icon="chart" onPress={()=>router.push('/analytics')}/>
    <FeatureRow title="Athlete Reports" text="Generate a shareable snapshot of your athlete record" icon="file-document-outline" onPress={()=>router.push('/reports')}/>
    <FeatureRow title="Tournament Scanner" text="Scan official event pages and accessible public Instagram sources" icon="scan" onPress={()=>router.push('/scanner')}/>
-   <FeatureRow title="AI Coach" text="Training guidance within your plan and safety limits" icon="ai" onPress={()=>router.push('/ai')}/>
+   <FeatureRow title="Athlete Intelligence" text="Charts and performance signals calculated from your saved training, competition, weight and goal records." icon="chart" onPress={()=>router.push('/ai')}/>
+   <FeatureRow title="AI Coach" text="Ask a coaching question and receive a separate AI-generated answer, subject to your plan and service availability." icon="ai" onPress={()=>router.push('/ai-coach')}/>
   </Section>
   <Section title="ATHLETEN COMMUNITY">
    <FeatureRow title="Messages" text="Secure athlete, coach and team messaging" onPress={()=>router.push({pathname:'/messages'})}/>
