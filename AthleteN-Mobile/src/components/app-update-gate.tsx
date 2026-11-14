@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Constants from 'expo-constants';
+import * as Application from 'expo-application';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 
@@ -13,7 +14,11 @@ type Release = {
 };
 
 const c = Colors.dark;
-const installedCode = Number(Constants.expoConfig?.android?.versionCode || 1);
+const nativeBuildCode = Number(Application.nativeBuildVersion);
+const configuredBuildCode = Number(Constants.expoConfig?.android?.versionCode || 1);
+const installedCode = Number.isSafeInteger(nativeBuildCode) && nativeBuildCode > 0
+  ? nativeBuildCode
+  : configuredBuildCode;
 
 export default function AppUpdateGate() {
   const [release, setRelease] = useState<Release | null>(null);
@@ -24,7 +29,7 @@ export default function AppUpdateGate() {
 
   const checkForUpdate = useCallback(async (force = false) => {
     if (Platform.OS !== 'android') return;
-    if (!force && Date.now() - lastCheckedAt.current < 6 * 60 * 60 * 1000) return;
+    if (!force && Date.now() - lastCheckedAt.current < 15 * 60 * 1000) return;
     try {
       const { data, error } = await supabase
         .from('mobile_app_releases')
@@ -44,7 +49,7 @@ export default function AppUpdateGate() {
       let parsedUrl: URL;
       try { parsedUrl = new URL(url); } catch { return; }
       const directApk = parsedUrl.protocol === 'https:' && parsedUrl.pathname.toLowerCase().endsWith('.apk');
-      if (!directApk || !Number.isSafeInteger(Number(next.version_code)) || !Number.isSafeInteger(Number(next.minimum_version_code))) return;
+      if (!directApk || !Number.isSafeInteger(Number(next.version_code)) || Number(next.version_code) < 1 || !Number.isSafeInteger(Number(next.minimum_version_code)) || Number(next.minimum_version_code) < 1 || Number(next.minimum_version_code) > Number(next.version_code)) return;
       if (Number(next.version_code) > installedCode || Number(next.minimum_version_code) > installedCode) {
         setRelease(next);
         setVisible(true);
@@ -62,7 +67,7 @@ export default function AppUpdateGate() {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') void checkForUpdate();
     });
-    const timer = setInterval(() => void checkForUpdate(true), 6 * 60 * 60 * 1000);
+    const timer = setInterval(() => { if (AppState.currentState === 'active') void checkForUpdate(true); }, 15 * 60 * 1000);
     return () => {
       subscription.remove();
       clearInterval(timer);

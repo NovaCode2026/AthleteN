@@ -160,7 +160,6 @@ export default function AdminPanelScreen() {
           {superAdmin || role === 'admin' ? <Action title="Full Admin Command Center" text="Open the server-permission-aware data and operations workspace." onPress={() => router.push('/admin')} /> : null}
           <Action title="Support Workspace" text="Review tickets, assign cases, reply and resolve issues where server permissions allow." onPress={() => router.push('/admin-support')} />
           <Action title="Badge Control" text="Award or revoke eligible badges through protected operations." onPress={() => router.push('/admin-badges')} />
-          {superAdmin ? <Action title="Android Release Control" text="Prepare and publish native Android updates." onPress={() => router.push('/admin-releases')} /> : null}
           <Action title="Audit & Security" text="Review recent privileged mutations and security events." onPress={() => setMessage('Audit events are shown below.')} />
           <Action title="Refresh Control Center" text="Reload users, audit events and feature flags." onPress={() => void refresh()} />
         </View>
