@@ -5,6 +5,7 @@ ALTER TABLE public.conversation_members
 
 ALTER TABLE public.conversations
   ADD COLUMN IF NOT EXISTS group_description text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS group_avatar_path text,
   ADD COLUMN IF NOT EXISTS only_admins_can_add_members boolean NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS only_admins_can_edit_group_info boolean NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS only_admins_can_send_messages boolean NOT NULL DEFAULT false;
@@ -12,6 +13,10 @@ ALTER TABLE public.conversations
 ALTER TABLE public.conversations
   ADD CONSTRAINT conversations_group_description_length_check
   CHECK (char_length(group_description) <= 500);
+
+ALTER TABLE public.conversations
+  ADD CONSTRAINT conversations_group_avatar_path_length_check
+  CHECK (group_avatar_path IS NULL OR char_length(group_avatar_path) <= 300);
 
 -- Preserve the creator as owner and make them an admin in all existing groups.
 UPDATE public.conversation_members cm
@@ -261,6 +266,163 @@ WITH CHECK (
     OR attachment_path IS NOT NULL
   )
 );
+
+
+-- Private group avatars. The first object-path segment is the conversation UUID.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('group-avatars', 'group-avatars', false, 5242880, ARRAY['image/jpeg','image/png','image/webp'])
+ON CONFLICT (id) DO UPDATE
+SET public = false,
+    file_size_limit = EXCLUDED.file_size_limit,
+    allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+DROP POLICY IF EXISTS "group avatars visible to group members" ON storage.objects;
+CREATE POLICY "group avatars visible to group members"
+ON storage.objects FOR SELECT TO authenticated
+USING (
+  bucket_id = 'group-avatars'
+  AND EXISTS (
+    SELECT 1
+    FROM public.conversation_members cm
+    WHERE cm.conversation_id::text = (storage.foldername(name))[1]
+      AND cm.user_id = (SELECT auth.uid())
+  )
+);
+
+DROP POLICY IF EXISTS "group admins can upload group avatars" ON storage.objects;
+CREATE POLICY "group admins can upload group avatars"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'group-avatars'
+  AND EXISTS (
+    SELECT 1
+    FROM public.conversations c
+    JOIN public.conversation_members cm ON cm.conversation_id = c.id
+    WHERE c.id::text = (storage.foldername(name))[1]
+      AND c.kind = 'group'
+      AND cm.user_id = (SELECT auth.uid())
+      AND (
+        c.created_by = (SELECT auth.uid())
+        OR cm.is_admin = true
+        OR c.only_admins_can_edit_group_info = false
+      )
+  )
+);
+
+DROP POLICY IF EXISTS "group admins can replace group avatars" ON storage.objects;
+CREATE POLICY "group admins can replace group avatars"
+ON storage.objects FOR UPDATE TO authenticated
+USING (
+  bucket_id = 'group-avatars'
+  AND EXISTS (
+    SELECT 1
+    FROM public.conversations c
+    JOIN public.conversation_members cm ON cm.conversation_id = c.id
+    WHERE c.id::text = (storage.foldername(name))[1]
+      AND c.kind = 'group'
+      AND cm.user_id = (SELECT auth.uid())
+      AND (
+        c.created_by = (SELECT auth.uid())
+        OR cm.is_admin = true
+        OR c.only_admins_can_edit_group_info = false
+      )
+  )
+)
+WITH CHECK (
+  bucket_id = 'group-avatars'
+  AND EXISTS (
+    SELECT 1
+    FROM public.conversations c
+    JOIN public.conversation_members cm ON cm.conversation_id = c.id
+    WHERE c.id::text = (storage.foldername(name))[1]
+      AND c.kind = 'group'
+      AND cm.user_id = (SELECT auth.uid())
+      AND (
+        c.created_by = (SELECT auth.uid())
+        OR cm.is_admin = true
+        OR c.only_admins_can_edit_group_info = false
+      )
+  )
+);
+
+DROP POLICY IF EXISTS "group admins can delete group avatars" ON storage.objects;
+CREATE POLICY "group admins can delete group avatars"
+ON storage.objects FOR DELETE TO authenticated
+USING (
+  bucket_id = 'group-avatars'
+  AND EXISTS (
+    SELECT 1
+    FROM public.conversations c
+    JOIN public.conversation_members cm ON cm.conversation_id = c.id
+    WHERE c.id::text = (storage.foldername(name))[1]
+      AND c.kind = 'group'
+      AND cm.user_id = (SELECT auth.uid())
+      AND (
+        c.created_by = (SELECT auth.uid())
+        OR cm.is_admin = true
+        OR c.only_admins_can_edit_group_info = false
+      )
+  )
+);
+
+CREATE OR REPLACE FUNCTION public.update_group_avatar(
+  p_conversation_id uuid,
+  p_avatar_path text
+)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_user uuid := auth.uid();
+  v_old_path text;
+  v_creator uuid;
+  v_only_admins boolean;
+  v_is_admin boolean := false;
+BEGIN
+  IF v_user IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT public.is_age_approved(v_user) THEN RAISE EXCEPTION 'Age approval required before changing a group photo'; END IF;
+  SELECT c.group_avatar_path, c.created_by, c.only_admins_can_edit_group_info
+  INTO v_old_path, v_creator, v_only_admins
+  FROM public.conversations c
+  WHERE c.id = p_conversation_id AND c.kind = 'group'
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Group not found'; END IF;
+
+  SELECT cm.is_admin INTO v_is_admin
+  FROM public.conversation_members cm
+  WHERE cm.conversation_id = p_conversation_id AND cm.user_id = v_user;
+  IF NOT FOUND THEN RAISE EXCEPTION 'You are not a member of this group'; END IF;
+
+  IF v_only_admins AND v_creator <> v_user AND NOT coalesce(v_is_admin, false) THEN
+    RAISE EXCEPTION 'Only group admins can change the group photo';
+  END IF;
+
+  IF p_avatar_path IS NOT NULL THEN
+    IF length(p_avatar_path) > 300
+       OR split_part(p_avatar_path, '/', 1) <> p_conversation_id::text
+       OR split_part(p_avatar_path, '/', 2) = ''
+       OR split_part(p_avatar_path, '/', 3) <> '' THEN
+      RAISE EXCEPTION 'Invalid group photo path';
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM storage.objects o
+      WHERE o.bucket_id = 'group-avatars' AND o.name = p_avatar_path
+    ) THEN
+      RAISE EXCEPTION 'Uploaded group photo was not found';
+    END IF;
+  END IF;
+
+  UPDATE public.conversations
+  SET group_avatar_path = p_avatar_path
+  WHERE id = p_conversation_id;
+  RETURN v_old_path;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.update_group_avatar(uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.update_group_avatar(uuid, text) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.set_group_member_admin(uuid, uuid, boolean) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.set_group_member_admin(uuid, uuid, boolean) TO authenticated;
