@@ -31,7 +31,8 @@ test("group settings cover adding members, editing info and sending messages", (
     assert.match(mobile, new RegExp(permission));
   }
   assert.match(sql, /Only group admins can add members/);
-  assert.match(sql, /Only group admins can send messages/);
+  assert.match(sql, /c\.only_admins_can_send_messages = false/);
+  assert.match(sql, /OR cm\.is_admin = true/);
   assert.match(sql, /Only group admins can edit group information/);
   assert.match(mobile, /Who can add members\?/);
   assert.match(mobile, /Who can edit group info\?/);
