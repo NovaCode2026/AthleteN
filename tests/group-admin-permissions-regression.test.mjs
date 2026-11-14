@@ -75,4 +75,7 @@ test("web messaging has the same group role, permission, and member-picker contr
   assert.match(web, /selectedCreateUsers\.length/);
   assert.match(web, /!canSendGroupMessage/);
   assert.match(web, /Group settings update pending/);
+  assert.match(web, /searchRequest\\.current/);
+  assert.match(web, /groupSearchRequest\\.current/);
+  assert.match(web, /Group settings update pending/);
 });
