@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 test("group creator retains ownership and alone can appoint or remove group admins", () => {
-  const sql = read("../supabase/migrations/20261114182000_group_admin_permissions_and_settings.sql");
+  const sql = read("../supabase/migrations/20261114162145_group_admin_permissions_and_settings.sql");
   const mobile = read("../AthleteN-Mobile/src/app/(tabs)/messages.tsx");
 
   assert.match(sql, /ADD COLUMN IF NOT EXISTS is_admin boolean NOT NULL DEFAULT false/);
@@ -18,7 +18,7 @@ test("group creator retains ownership and alone can appoint or remove group admi
 });
 
 test("group settings cover adding members, editing info and sending messages", () => {
-  const sql = read("../supabase/migrations/20261114182000_group_admin_permissions_and_settings.sql");
+  const sql = read("../supabase/migrations/20261114162145_group_admin_permissions_and_settings.sql");
   const mobile = read("../AthleteN-Mobile/src/app/(tabs)/messages.tsx");
 
   for (const permission of [
@@ -41,7 +41,7 @@ test("group settings cover adding members, editing info and sending messages", (
 });
 
 test("settings and member changes are server-authorized and retain safety checks", () => {
-  const sql = read("../supabase/migrations/20261114182000_group_admin_permissions_and_settings.sql");
+  const sql = read("../supabase/migrations/20261114162145_group_admin_permissions_and_settings.sql");
   assert.match(sql, /public\.is_age_approved\(v_user\)/);
   assert.match(sql, /public\.is_age_approved\(p_user_id\)/);
   assert.match(sql, /public\.user_blocks/);
@@ -81,7 +81,7 @@ test("web messaging has the same group role, permission, and member-picker contr
 });
 
 test("group photo storage is private and scoped to group membership and edit permissions", () => {
-  const sql = read("../supabase/migrations/20261114182000_group_admin_permissions_and_settings.sql");
+  const sql = read("../supabase/migrations/20261114162145_group_admin_permissions_and_settings.sql");
   assert.match(sql, /VALUES \('group-avatars', 'group-avatars', false, 5242880/);
   assert.match(sql, /group avatars visible to group members/);
   assert.match(sql, /group admins can upload group avatars/);
