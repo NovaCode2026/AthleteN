@@ -11,7 +11,7 @@
   height: 62px;
   flex: 0 0 112px;
   border-radius: 9px;
-  background: url('/athleten-logo.svg') center / contain no-repeat;
+  background: url('/athleten-logo.webp') center / contain no-repeat;
   box-shadow: 0 0 20px rgba(35, 142, 255, .18);
 }
 .sidebar .brand > span { letter-spacing: -.35px; }
@@ -28,7 +28,7 @@
   width: min(250px, 72vw);
   height: 118px;
   margin: 0 auto 22px;
-  background: url('/athleten-logo.svg') center / contain no-repeat;
+  background: url('/athleten-logo.webp') center / contain no-repeat;
   filter: drop-shadow(0 8px 24px rgba(35, 142, 255, .16));
 }
 .auth-page .auth-card > h1:first-of-type { margin-top: 0; }
@@ -43,7 +43,7 @@
   flex: 0 0 104px;
   border-radius: 9px;
   margin-right: 2px;
-  background: url('/athleten-logo.svg') center / contain no-repeat;
+  background: url('/athleten-logo.webp') center / contain no-repeat;
   box-shadow: 0 0 18px rgba(35, 142, 255, .14);
 }
 .app-shell main > header { display: grid; grid-template-columns: auto 1fr auto; }

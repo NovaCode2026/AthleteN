@@ -40,7 +40,7 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
   }
 
   return <SafeAreaView style={styles.screen}><ScrollView contentContainerStyle={styles.content}>
-    <AthleteNLogo width={190} height={105} style={styles.logo} />
+    <AthleteNLogo width={150} height={150} style={styles.logo} />
     <Text style={styles.title}>Build your athlete profile</Text>
     <Text style={styles.subtitle}>These details personalize your AthleteN experience.</Text>
     {([

@@ -32,12 +32,12 @@ export async function showDesktopNotification(options: DesktopNotificationOption
     await registration.showNotification(options.title, {
       body: options.body,
       tag: options.tag,
-      icon: "/athleten-logo.svg",
-      badge: "/athleten-logo.svg",
+      icon: "/athleten-logo.webp",
+      badge: "/athleten-logo.webp",
       data: { url: options.url || window.location.href },
     });
     return true;
   }
-  new Notification(options.title, { body: options.body, tag: options.tag, icon: "/athleten-logo.svg" });
+  new Notification(options.title, { body: options.body, tag: options.tag, icon: "/athleten-logo.webp" });
   return true;
 }

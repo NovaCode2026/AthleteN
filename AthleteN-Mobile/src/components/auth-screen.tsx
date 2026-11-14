@@ -8,6 +8,7 @@ import { getEmailAuthRedirect, getOAuthRedirect } from '@/lib/auth-links';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
+import AthleteNLogo from '@/components/athleten-logo';
 
 const POLICY_VERSION = '2026-09-17';
 
@@ -195,10 +196,7 @@ export default function AuthScreen() {
       <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={[styles.content,{paddingHorizontal:wide?32:compact?18:24,paddingVertical:shortScreen?14:24,maxWidth:wide?760:undefined,width:wide?'100%':undefined,alignSelf:wide?'center':'stretch',justifyContent:shortScreen?'flex-start':'center'}]}>
-        <View style={styles.brandBlock}>
-          <Image source={require('@/assets/logo.png')} style={styles.logo} />
-          <View><Text style={styles.brand}>ATHLETEN</Text><Text style={styles.brandSub}>ATHLETE PERFORMANCE PLATFORM</Text></View>
-        </View>
+        <View style={styles.brandBlock}><AthleteNLogo width={92} height={92} style={styles.logo} /></View>
 
         <Text style={styles.kicker}>{register ? 'CREATE YOUR ATHLETE PROFILE' : 'WELCOME BACK'}</Text>
         <Text style={[styles.title,{fontSize:wide?38:compact?28:31,lineHeight:wide?44:compact?33:36}]}>{register ? 'Build your AthleteN profile.' : 'Your performance. One place.'}</Text>
@@ -265,8 +263,8 @@ const styles = StyleSheet.create({
   keyboard:{flex:1},
   scrollContent:{flexGrow:1},
   content:{flexGrow:1,paddingHorizontal:24,paddingVertical:24,justifyContent:'center',gap:13,minWidth:0},
-  brandBlock:{flexDirection:'row',alignItems:'center',gap:11,marginBottom:14},
-  logo:{width:54,height:54,borderRadius:16},
+  brandBlock:{alignItems:'flex-start',marginBottom:14},
+  logo:{width:92,height:92},
   brand:{color:Colors.dark.text,fontSize:16,fontWeight:'900',letterSpacing:3.6},
   brandSub:{color:Colors.dark.muted,fontSize:7,fontWeight:'800',letterSpacing:1.1,marginTop:3},
   kicker:{color:Colors.dark.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.6},

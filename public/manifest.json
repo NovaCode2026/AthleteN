@@ -6,5 +6,5 @@
   "display": "standalone",
   "background_color": "#07111f",
   "theme_color": "#07111f",
-  "icons": [{ "src": "/athleten-logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+  "icons": [{ "src": "/athleten-logo.webp", "sizes": "512x512", "type": "image/webp", "purpose": "any maskable" }]
 }

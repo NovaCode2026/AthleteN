@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./public/athleten-logo.svg" alt="AthleteN — official Nova Code brand logo" width="200">
+<img src="./public/athleten-logo.webp" alt="AthleteN — official Nova Code brand logo" width="200">
 
 # AthleteN
 

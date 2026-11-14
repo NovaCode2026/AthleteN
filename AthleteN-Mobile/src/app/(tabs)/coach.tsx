@@ -134,7 +134,7 @@ export default function Coach() {
     <View style={{ gap: 18 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
-          <Image source={require('@/assets/logo.png')} style={{ width: 42, height: 42, borderRadius: 13 }} contentFit="cover" />
+          <Image source={require('@/assets/logo.webp')} style={{ width: 42, height: 42, borderRadius: 13 }} contentFit="cover" />
           <View><Text style={{ color: c.text, fontSize: 15, fontWeight: '900', letterSpacing: 2.2 }}>ATHLETEN</Text><Text style={{ color: c.muted, fontSize: 7, fontWeight: '800', letterSpacing: 1 }}>COACH PERFORMANCE</Text></View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
