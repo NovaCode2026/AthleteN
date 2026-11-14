@@ -118,3 +118,14 @@ test("mobile and web group profiles support photo, description and signed image 
   assert.match(web, /Remove photo/);
   assert.match(web, /groupMembers\.length/);
 });
+
+test("mobile member-add refresh errors are handled without undefined references", () => {
+  const mobile = read("../AthleteN-Mobile/src/app/(tabs)/messages.tsx");
+  const addFlow = mobile.slice(
+    mobile.indexOf("async function addSelectedMembers"),
+    mobile.indexOf("async function updateGroupAdmin")
+  );
+  assert.match(addFlow, /let refreshError:string\\|null=null/);
+  assert.match(addFlow, /if\\(refreshError\\)/);
+  assert.doesNotMatch(addFlow, /membersError/);
+});
