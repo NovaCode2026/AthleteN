@@ -80,8 +80,11 @@ function Bar({state,navigation}:{state:any;navigation:any}) {
 
 export default function TabLayout(){
  const {profile}=useAuth();
+ const pathname=usePathname();
  const eligible=NAV_ITEMS.filter(x=>!x.feature||hasFeature(profile?.plan_id,x.feature,profile?.role));
- return <Tabs tabBar={(p:any)=><Bar {...p}/>} screenOptions={{headerShown:false,sceneStyle:{backgroundColor:c.background}}}>
+ // Academy has its own workspace navigation; hide the athlete-wide bar there to prevent stacked nav bars.
+ const isAcademyWorkspace=pathname==='/academy'||pathname.endsWith('/academy');
+ return <Tabs tabBar={(p:any)=>isAcademyWorkspace?null:<Bar {...p}/>} screenOptions={{headerShown:false,sceneStyle:{backgroundColor:c.background}}}>
   {eligible.filter(x=>TAB_SCREEN_IDS.has(x.id)).map(x=><Tabs.Screen key={x.id} name={x.id}/>)}
  </Tabs>;
 }
