@@ -157,6 +157,7 @@ export default function AdminPanelScreen() {
 
         <View style={s.panel}>
           <Text style={s.section}>ROLE-AUTHORIZED WORKSPACES</Text>
+          {superAdmin ? <Action title="Founder Workspace" text="Platform oversight, founding members and release controls on mobile." onPress={() => router.push('/founder')} /> : null}
           {superAdmin || role === 'admin' ? <Action title="Full Admin Command Center" text="Open the server-permission-aware data and operations workspace." onPress={() => router.push('/admin')} /> : null}
           <Action title="Support Workspace" text="Review tickets, assign cases, reply and resolve issues where server permissions allow." onPress={() => router.push('/admin-support')} />
           <Action title="Badge Control" text="Award or revoke eligible badges through protected operations." onPress={() => router.push('/admin-badges')} />

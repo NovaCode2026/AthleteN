@@ -2,7 +2,7 @@
 
 ## Current delivery model
 
-AthleteN uses a **published signed-APK release feed** for Android native app updates. The Super Admin can publish a release from the Web Admin Command Center. The website can now upload the signed APK into Supabase Storage or accept an existing direct HTTPS APK URL.
+AthleteN uses a **published signed-APK release feed** for Android native app updates. The Super Admin can publish a release from the Web Admin Command Center or AthleteN Mobile. Both release controls can upload the signed APK into Supabase Storage or accept an existing direct HTTPS APK URL. The mobile Founder Workspace provides a role-authorized path to Android Release Control.
 
 This is a native APK update flow, not an Expo OTA (over-the-air) JavaScript update service. Android users receive an in-app update prompt; Android still requires the user to approve the package installer.
 
@@ -12,7 +12,7 @@ The next mobile native build is prepared as version `1.0.4`; `AthleteN-Mobile/ea
 
 1. Build a sideloadable Android APK either by running `eas build --platform android --profile release-apk --non-interactive` from `AthleteN-Mobile`, or by manually starting **AthleteN Android Sideload Release APK** in GitHub Actions. The workflow uses the `EXPO_TOKEN` repository secret and the `release-apk` EAS profile.
 2. Verify the completed EAS build's actual package name (`com.novacode.athleten`), signing identity and generated Android `versionCode`. EAS remote versioning is authoritative for this profile; do not assume the local `app.json` value is the final code. The local app version is prepared as `1.0.4` / code `5`, but check the build result before publishing.
-3. Sign in to the Web Admin Command Center as a Super Admin and open **Android Auto-Update Release**. Enter the version name, actual version code from the EAS build and minimum supported version code.
+3. Sign in as a Super Admin and open **Android Auto-Update Release** in the Web Admin Command Center, or open **Founder Workspace → Android Release Control** in AthleteN Mobile. Enter the version name, actual version code from the EAS build and minimum supported version code.
 4. Upload the signed `.apk` file directly in the panel (maximum 50 MB), or provide a direct HTTPS URL whose path ends in `.apk`. Uploaded files are stored in the public-download bucket `mobile-release-apks`; public access is intentional for end-user downloads, while Storage RLS permits uploads and deletes only for authenticated Super Admins.
 5. Add release notes and publish. The panel uploads the APK first, then updates the active release row. If publishing the database record fails after upload, it attempts to remove the just-uploaded file. A new version code must exceed the current published version, and the new release cannot accidentally reuse the old APK URL.
 6. Verify the published row in Supabase and test update detection using an Android build with a lower version code.
@@ -56,7 +56,7 @@ A separate EAS Update rollout can later deliver compatible JavaScript and asset 
 - [ ] New APK is signed with the existing signing key and retains the Android package ID.
 - [ ] APK installs as an update over the currently installed app.
 - [ ] Version code is higher than the current public release.
-- [ ] Super Admin can upload an APK and publish from the Web Admin Command Center.
+- [ ] Super Admin can upload an APK and publish from both the Web Admin Command Center and AthleteN Mobile.
 - [ ] Non-Super Admin cannot upload, delete or publish; Supabase RLS rejects unauthorized requests.
 - [ ] A lower installed version receives the optional update prompt.
 - [ ] A build below minimum supported version receives a non-dismissible prompt.
