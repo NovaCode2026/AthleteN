@@ -15,6 +15,48 @@ type Release = {
 const c = Colors.dark;
 const installedCode = Number(Constants.nativeBuildVersion || Constants.expoConfig?.android?.versionCode || 1);
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const CHECK_RETRY_INTERVAL_MS = 5 * 60 * 1000;
+const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[+-][0-9A-Za-z.-]+)?$/;
+
+function parseRelease(data: unknown): Release | null {
+  if (!data || typeof data !== 'object') return null;
+
+  const row = data as Record<string, unknown>;
+  const version = typeof row.version === 'string' ? row.version.trim() : '';
+  const versionCode = Number(row.version_code);
+  const minimumCode = Number(row.minimum_version_code);
+  const downloadUrl = typeof row.download_url === 'string' ? row.download_url.trim() : '';
+
+  if (
+    !VERSION_PATTERN.test(version) ||
+    !Number.isSafeInteger(versionCode) ||
+    versionCode < 1 ||
+    !Number.isSafeInteger(minimumCode) ||
+    minimumCode < 1 ||
+    minimumCode > versionCode
+  ) return null;
+
+  try {
+    const parsedUrl = new URL(downloadUrl);
+    if (
+      parsedUrl.protocol !== 'https:' ||
+      !parsedUrl.hostname ||
+      parsedUrl.username ||
+      parsedUrl.password ||
+      !parsedUrl.pathname.toLowerCase().endsWith('.apk')
+    ) return null;
+  } catch {
+    return null;
+  }
+
+  return {
+    version,
+    version_code: versionCode,
+    minimum_version_code: minimumCode,
+    download_url: downloadUrl,
+    release_notes: typeof row.release_notes === 'string' ? row.release_notes : null,
+  };
+}
 
 export default function AppUpdateGate() {
   const [release, setRelease] = useState<Release | null>(null);
@@ -23,13 +65,18 @@ export default function AppUpdateGate() {
   const [checking, setChecking] = useState(false);
   const [message, setMessage] = useState('');
   const lastCheckedAt = useRef(0);
+  const lastCheckSucceeded = useRef(false);
   const checkInFlight = useRef(false);
 
   const checkForUpdate = useCallback(async (force = false) => {
     if (Platform.OS !== 'android' || checkInFlight.current) return;
-    if (!force && Date.now() - lastCheckedAt.current < CHECK_INTERVAL_MS) return;
+
+    const now = Date.now();
+    const interval = lastCheckSucceeded.current ? CHECK_INTERVAL_MS : CHECK_RETRY_INTERVAL_MS;
+    if (!force && now - lastCheckedAt.current < interval) return;
 
     checkInFlight.current = true;
+    lastCheckedAt.current = now;
     setChecking(true);
     try {
       const { data, error } = await supabase
@@ -39,8 +86,13 @@ export default function AppUpdateGate() {
         .eq('published', true)
         .maybeSingle();
 
-      if (error) return;
-      lastCheckedAt.current = Date.now();
+      if (error) {
+        lastCheckSucceeded.current = false;
+        setMessage('The update service could not be reached. AthleteN will retry automatically; use Check Again to retry now.');
+        return;
+      }
+
+      lastCheckSucceeded.current = true;
 
       if (!data) {
         setRelease(null);
@@ -49,38 +101,17 @@ export default function AppUpdateGate() {
         return;
       }
 
-      const next = data as Release;
-      const versionCode = Number(next.version_code);
-      const minimumCode = Number(next.minimum_version_code);
-      let parsedUrl: URL;
-      try {
-        parsedUrl = new URL(String(next.download_url || ''));
-      } catch {
-        return;
-      }
-
-      const validRelease =
-        typeof next.version === 'string' &&
-        next.version.trim().length > 0 &&
-        Number.isSafeInteger(versionCode) &&
-        versionCode > 0 &&
-        Number.isSafeInteger(minimumCode) &&
-        minimumCode > 0 &&
-        minimumCode <= versionCode &&
-        parsedUrl.protocol === 'https:' &&
-        Boolean(parsedUrl.hostname) &&
-        !parsedUrl.username &&
-        !parsedUrl.password &&
-        parsedUrl.pathname.toLowerCase().endsWith('.apk');
-
-      if (!validRelease) {
+      const next = parseRelease(data);
+      if (!next) {
+        // Never leave an old update prompt visible when the published feed is invalid.
         setRelease(null);
         setVisible(false);
+        setMessage('');
         return;
       }
 
-      if (versionCode > installedCode || minimumCode > installedCode) {
-        setRelease({ ...next, version_code: versionCode, minimum_version_code: minimumCode });
+      if (next.version_code > installedCode) {
+        setRelease(next);
         setVisible(true);
         setMessage('');
       } else {
@@ -89,7 +120,8 @@ export default function AppUpdateGate() {
         setMessage('');
       }
     } catch {
-      // A failed release check must never block sign-in, training or saved athlete data.
+      lastCheckSucceeded.current = false;
+      setMessage('The update service could not be reached. AthleteN will retry automatically; use Check Again to retry now.');
     } finally {
       checkInFlight.current = false;
       setChecking(false);
@@ -116,7 +148,7 @@ export default function AppUpdateGate() {
     setMessage('');
     try {
       await Linking.openURL(release.download_url);
-      setMessage('The signed APK download has opened. When Android finishes downloading it, open the file and approve the system installer to replace AthleteN. Your current app stays installed until Android confirms the update.');
+      setMessage('The APK download link has opened. After the file downloads, open it and approve Android’s installer. AthleteN stays installed until Android confirms the update.');
     } catch {
       setMessage('The APK link could not be opened. Check your connection or contact AthleteN support.');
     } finally {
@@ -147,9 +179,9 @@ export default function AppUpdateGate() {
           <Pressable disabled={checking} onPress={retryCheck} style={s.secondary}>
             <Text style={s.secondaryText}>{checking ? 'CHECKING…' : 'CHECK AGAIN'}</Text>
           </Pressable>
-          <Text style={s.hint}>AthleteN checks for published releases on launch and when reopened. Android requires your approval to install the downloaded APK; ordinary apps cannot silently replace themselves.</Text>
+          <Text style={s.hint}>AthleteN checks on launch and when reopened. Successful checks are cached for six hours; temporary failures are retried after five minutes. Android requires your approval to install the downloaded APK.</Text>
           {!required ? <Pressable onPress={() => setVisible(false)} style={s.secondary}><Text style={s.secondaryText}>NOT NOW</Text></Pressable> : null}
-          {message ? <Text style={s.message}>{message}</Text> : null}
+          {message ? <Text accessibilityLiveRegion="polite" style={s.message}>{message}</Text> : null}
         </View>
       </View>
     </Modal>
