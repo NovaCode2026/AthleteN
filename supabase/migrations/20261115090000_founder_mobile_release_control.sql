@@ -2,6 +2,42 @@
 -- Existing mobile_app_releases remains the single public "current release" row
 -- consumed by Android clients. Drafts never replace the live row.
 
+-- Public download bucket for signed Android APKs. Upload/delete are
+-- restricted to Super Admins; public access is intentionally read-only.
+insert into storage.buckets (
+  id, name, public, file_size_limit, allowed_mime_types
+) values (
+  'athleten-mobile-releases',
+  'athleten-mobile-releases',
+  true,
+  157286400,
+  array['application/vnd.android.package-archive']::text[]
+)
+on conflict (id) do nothing;
+
+drop policy if exists "Super admins upload AthleteN release APKs" on storage.objects;
+create policy "Super admins upload AthleteN release APKs"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'athleten-mobile-releases'
+    and exists (
+      select 1 from public.profiles p
+      where p.user_id = auth.uid() and p.role = 'super_admin'
+    )
+  );
+
+drop policy if exists "Super admins delete AthleteN release APKs" on storage.objects;
+create policy "Super admins delete AthleteN release APKs"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'athleten-mobile-releases'
+    and exists (
+      select 1 from public.profiles p
+      where p.user_id = auth.uid() and p.role = 'super_admin'
+    )
+  );
+
+
 create table if not exists public.mobile_app_release_drafts (
   id boolean primary key default true check (id = true),
   version text not null,
