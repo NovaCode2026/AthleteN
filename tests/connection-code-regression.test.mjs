@@ -8,7 +8,7 @@ const team = readFileSync(new URL("../AthleteN-Mobile/src/app/team.tsx", import.
 test("connection codes are tied to the account's current role and academy", () => {
   assert.match(migration, /owner_type = 'coach'[\s\S]*p\.role = 'coach'/);
   assert.match(migration, /owner_type = 'academy'[\s\S]*p\.role = 'academy_admin'/);
-  assert.match(migration, /SET code = v_normalized, academy_id = v_academy/);
+  assert.match(migration, /SET code\\s*=\\s*v_normalized,\\s*academy_id\\s*=\\s*v_academy/i);
   assert.match(migration, /SET active = false/);
 });
 
