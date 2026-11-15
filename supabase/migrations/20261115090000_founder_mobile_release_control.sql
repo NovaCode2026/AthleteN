@@ -2,6 +2,28 @@
 -- Existing mobile_app_releases remains the single public "current release" row
 -- consumed by Android clients. Drafts never replace the live row.
 
+-- Keep anonymous update checks working before login. The previous shared
+-- SELECT policy queried profiles for anon, but anon has no SELECT on profiles.
+-- Split the policy so anonymous clients can read published metadata only.
+drop policy if exists "published mobile release is readable" on public.mobile_app_releases;
+drop policy if exists "anon can read published mobile release" on public.mobile_app_releases;
+drop policy if exists "authenticated can read published release or super admin" on public.mobile_app_releases;
+
+create policy "anon can read published mobile release"
+  on public.mobile_app_releases for select to anon
+  using (published = true);
+
+create policy "authenticated can read published release or super admin"
+  on public.mobile_app_releases for select to authenticated
+  using (
+    published = true
+    or exists (
+      select 1 from public.profiles p
+      where p.user_id = auth.uid() and p.role = 'super_admin'
+    )
+  );
+
+
 -- Public download bucket for signed Android APKs. Upload/delete are
 -- restricted to Super Admins; public access is intentionally read-only.
 insert into storage.buckets (
