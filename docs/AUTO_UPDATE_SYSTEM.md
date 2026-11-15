@@ -8,7 +8,7 @@ The next mobile native build is prepared as version `1.0.4`; `AthleteN-Mobile/ea
 
 ## Publishing a release
 
-1. Build a sideloadable Android APK from `AthleteN-Mobile` using the new EAS profile: `eas build --platform android --profile release-apk --non-interactive`. The profile uses the production EAS environment, remote version management, automatic version-code incrementing, internal distribution and APK output.
+1. Build a sideloadable Android APK either by running `eas build --platform android --profile release-apk --non-interactive` from `AthleteN-Mobile`, or by manually starting **AthleteN Android Sideload Release APK** in GitHub Actions. The workflow uses the `EXPO_TOKEN` repository secret and the `release-apk` EAS profile. The profile uses the production EAS environment, remote version management, automatic version-code incrementing, internal distribution and APK output.
 2. Verify the completed EAS build's actual package name (`com.novacode.athleten`), signing identity and generated Android `versionCode`. EAS remote versioning is authoritative for this profile; do not assume the local `app.json` value is the final code. The local app version is prepared as `1.0.4` / code `5`, but check the build result before publishing.
 3. Upload the signed APK to a stable HTTPS direct-file URL whose path ends in `.apk`. A GitHub release web page is not a direct APK URL.
 4. In the Web Admin Command Center, sign in as a Super Admin and open **Android Auto-Update Release**. The mobile Super Admin Dashboard also links to Android Release Control.
@@ -34,11 +34,19 @@ The update check is best-effort: a network or release-feed failure does not bloc
 
 The current Supabase table is a singleton current-release record, not a release history or draft queue. Saving an unpublished record would replace the single row and hide the previous release from clients. Therefore both release controls publish directly, and the mobile release screen does not offer a destructive draft action. A future release-history workflow needs a separate reviewed schema with immutable release rows and an explicit active-release pointer.
 
+The GitHub Actions workflow is manual-only and does not publish a release record. After EAS finishes, retrieve the signed APK from the EAS build page, upload it to the direct HTTPS asset host, then publish its URL from the Super Admin panel.
+
 ## OTA updates and scope
 
 Expo Updates is **not configured in the current mobile binary**: the current app configuration does not include the `expo-updates` native module, an Updates URL or a runtime version policy. The present system therefore delivers native Android APK updates; it does not silently patch JavaScript bundles in place.
 
 A separate EAS Update rollout can later deliver compatible JavaScript and asset changes without replacing the APK. That requires installing/configuring `expo-updates`, setting the EAS project Updates URL and a deliberate runtime-version policy, adding release channels to EAS build profiles, producing a new native build with that module, and testing update compatibility. Changes to native dependencies, permissions, config plugins or the Expo SDK still require a new native binary. Do not publish an OTA update until those prerequisites and rollback/recovery behavior are tested.
+
+
+## Official Expo references
+
+- [EAS app version management](https://docs.expo.dev/build-reference/app-versions/)
+- [Building APKs for Android devices](https://docs.expo.dev/build-reference/apk/)
 
 ## Verification checklist
 
