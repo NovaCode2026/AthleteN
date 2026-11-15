@@ -26,7 +26,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "test profiles read own" ON public.profiles;
 CREATE POLICY "test profiles read own" ON public.profiles
   FOR SELECT TO authenticated USING (user_id = (SELECT auth.uid()));
-GRANT SELECT ON public.profiles TO authenticated;
+GRANT SELECT ON public.profiles TO anon, authenticated;
 
 CREATE TABLE IF NOT EXISTS public.mobile_app_releases (
   id boolean PRIMARY KEY DEFAULT true CHECK (id = true),
