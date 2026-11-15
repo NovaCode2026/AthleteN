@@ -48,6 +48,9 @@ const emptyForm: FormState = {
   downloadUrl: "",
   releaseNotes: "",
 };
+const RELEASE_BUCKET_ID = "athleten-mobile-releases";
+const MAX_RELEASE_APK_BYTES = 150 * 1024 * 1024;
+const APK_CONTENT_TYPE = "application/vnd.android.package-archive";
 
 function isValidApkUrl(value: string) {
   try {
@@ -82,6 +85,7 @@ export default function FounderCommandCenter({ userId, role }: { userId: string;
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [apkFile, setApkFile] = useState<File | null>(null);
 
   const load = useCallback(async () => {
     if (role !== "super_admin") {
@@ -132,7 +136,7 @@ export default function FounderCommandCenter({ userId, role }: { userId: string;
 
   useEffect(() => { void load(); }, [load]);
 
-  function validate(requireApk: boolean) {
+  function validate(requireApk: boolean, downloadUrl = form.downloadUrl) {
     const versionCode = Number(form.versionCode);
     const minimumVersionCode = Number(form.minimumVersionCode);
     if (!/^\d+\.\d+\.\d+(?:[+-][0-9A-Za-z.-]+)?$/.test(form.version.trim())) {
@@ -146,11 +150,11 @@ export default function FounderCommandCenter({ userId, role }: { userId: string;
     if (current && versionCode <= current.version_code) {
       throw new Error("The next Android release must use a versionCode greater than the currently published release (" + current.version_code + ").");
     }
-    if (form.downloadUrl.trim() && !isValidApkUrl(form.downloadUrl)) {
+    if (downloadUrl.trim() && !isValidApkUrl(downloadUrl)) {
       throw new Error("Enter a direct HTTPS URL ending in .apk. A release webpage is not an APK download.");
     }
-    if (requireApk && !isValidApkUrl(form.downloadUrl)) {
-      throw new Error("Add the direct HTTPS URL for the signed APK before publishing.");
+    if (requireApk && !isValidApkUrl(downloadUrl)) {
+      throw new Error("Upload the signed APK or enter its direct HTTPS download URL before publishing.");
     }
     if (form.releaseNotes.length > 10000) {
       throw new Error("Release notes must be 10,000 characters or fewer.");
@@ -158,27 +162,73 @@ export default function FounderCommandCenter({ userId, role }: { userId: string;
     return { version_code: versionCode, minimum_version_code: minimumVersionCode };
   }
 
+  async function uploadSelectedApk(): Promise<{ downloadUrl: string; path: string | null }> {
+    const existingUrl = form.downloadUrl.trim();
+    if (!apkFile) return { downloadUrl: existingUrl, path: null };
+    if (!apkFile.name.toLowerCase().endsWith(".apk") || apkFile.size <= 0) {
+      throw new Error("Choose a valid .apk file.");
+    }
+    if (apkFile.size > MAX_RELEASE_APK_BYTES) {
+      throw new Error("The APK exceeds the 150 MB release upload limit.");
+    }
+    if (!supabase) throw new Error("Supabase is not configured in this build.");
+
+    const versionCode = Number(form.versionCode);
+    if (!Number.isSafeInteger(versionCode) || versionCode < 1) {
+      throw new Error("Enter a valid Android versionCode before uploading the APK.");
+    }
+    const path = "android/" + versionCode + "/" + crypto.randomUUID() + ".apk";
+    const { error: uploadError } = await supabase.storage
+      .from(RELEASE_BUCKET_ID)
+      .upload(path, apkFile, {
+        cacheControl: "31536000",
+        contentType: APK_CONTENT_TYPE,
+        upsert: false,
+      });
+    if (uploadError) throw uploadError;
+
+    const downloadUrl = supabase.storage.from(RELEASE_BUCKET_ID).getPublicUrl(path).data.publicUrl;
+    if (!isValidApkUrl(downloadUrl)) {
+      await supabase.storage.from(RELEASE_BUCKET_ID).remove([path]);
+      throw new Error("Supabase Storage returned an invalid public APK URL.");
+    }
+    return { downloadUrl, path };
+  }
+
   async function saveDraft() {
     if (role !== "super_admin" || !userId || !supabase || saving || publishing) return;
     setError("");
     setNotice("");
+    setSaving(true);
+    let uploadedPath: string | null = null;
     try {
-      const codes = validate(false);
-      setSaving(true);
+      validate(false, apkFile ? "" : form.downloadUrl);
+      const asset = await uploadSelectedApk();
+      uploadedPath = asset.path;
+      const codes = validate(false, asset.downloadUrl);
       const { error: saveError } = await supabase.from("mobile_app_release_drafts").upsert({
         id: true,
         version: form.version.trim(),
         version_code: codes.version_code,
         minimum_version_code: codes.minimum_version_code,
-        download_url: form.downloadUrl.trim(),
+        download_url: asset.downloadUrl,
         release_notes: form.releaseNotes.trim(),
         updated_by: userId,
         updated_at: new Date().toISOString(),
       }, { onConflict: "id" });
       if (saveError) throw saveError;
-      setNotice("Draft saved. The currently published release remains live for athletes.");
+      uploadedPath = null;
+      setApkFile(null);
+      setForm(previous => ({ ...previous, downloadUrl: asset.downloadUrl }));
+      setNotice(asset.path
+        ? "APK uploaded and draft saved. The currently published release remains live for athletes."
+        : "Draft saved. The currently published release remains live for athletes.");
       await load();
     } catch (saveError) {
+      if (uploadedPath) {
+        const { error: cleanupError } = await supabase.storage.from(RELEASE_BUCKET_ID).remove([uploadedPath]);
+        if (cleanupError) console.warn("Could not clean up unused release APK:", cleanupError.message);
+      }
       setError(saveError instanceof Error ? saveError.message : "Draft could not be saved.");
     } finally {
       setSaving(false);
@@ -189,22 +239,33 @@ export default function FounderCommandCenter({ userId, role }: { userId: string;
     if (role !== "super_admin" || !userId || !supabase || saving || publishing) return;
     setError("");
     setNotice("");
+    let uploadedPath: string | null = null;
     try {
-      const codes = validate(true);
-      const confirmation = "Publish AthleteN " + form.version + " (Android versionCode " + codes.version_code + ")? This will make the APK available to Android users.";
+      validate(false, apkFile ? "" : form.downloadUrl);
+      const confirmation = "Publish AthleteN " + form.version + " (Android versionCode " + form.versionCode + ")? This will make the APK available to Android users.";
       if (!window.confirm(confirmation)) return;
       setPublishing(true);
+      const asset = await uploadSelectedApk();
+      uploadedPath = asset.path;
+      const codes = validate(true, asset.downloadUrl);
       const { error: publishError } = await supabase.rpc("publish_mobile_app_release", {
         p_version: form.version.trim(),
         p_version_code: codes.version_code,
         p_minimum_version_code: codes.minimum_version_code,
-        p_download_url: form.downloadUrl.trim(),
+        p_download_url: asset.downloadUrl,
         p_release_notes: form.releaseNotes.trim(),
       });
       if (publishError) throw publishError;
+      uploadedPath = null;
+      setApkFile(null);
+      setForm(previous => ({ ...previous, downloadUrl: asset.downloadUrl }));
       setNotice("Release published. The app will detect it on its next update check; Android users still approve installation.");
       await load();
     } catch (publishError) {
+      if (uploadedPath) {
+        const { error: cleanupError } = await supabase.storage.from(RELEASE_BUCKET_ID).remove([uploadedPath]);
+        if (cleanupError) console.warn("Could not clean up unused release APK:", cleanupError.message);
+      }
       setError(publishError instanceof Error ? publishError.message : "Release could not be published.");
     } finally {
       setPublishing(false);
@@ -261,7 +322,8 @@ export default function FounderCommandCenter({ userId, role }: { userId: string;
             <label>Version name<input value={form.version} onChange={event => setForm({ ...form, version: event.target.value })} placeholder="1.0.4"/></label>
             <label>Android versionCode<input type="number" min="1" step="1" value={form.versionCode} onChange={event => setForm({ ...form, versionCode: event.target.value })}/></label>
             <label>Minimum supported versionCode<input type="number" min="1" step="1" value={form.minimumVersionCode} onChange={event => setForm({ ...form, minimumVersionCode: event.target.value })}/></label>
-            <label className="founder-wide">Signed APK download URL<input value={form.downloadUrl} onChange={event => setForm({ ...form, downloadUrl: event.target.value })} placeholder="https://downloads.example.com/athleten-1.0.4.apk"/></label>
+            <label className="founder-wide">Upload signed Android APK<input className="founder-file-input" type="file" accept=".apk,application/vnd.android.package-archive" onChange={event => setApkFile(event.currentTarget.files?.[0] || null)} disabled={saving || publishing}/><small>APK only · maximum 150 MB · stored in AthleteN public downloads, upload restricted to Super Admins</small>{apkFile && <small className="founder-file-selected">Selected: {apkFile.name} · {(apkFile.size / (1024 * 1024)).toFixed(1)} MB</small>}</label>
+            <label className="founder-wide">Or paste a direct HTTPS APK URL<input value={form.downloadUrl} onChange={event => setForm({ ...form, downloadUrl: event.target.value })} placeholder="https://downloads.example.com/athleten-1.0.4.apk"/></label>
             <label className="founder-wide">Release notes<textarea rows={5} value={form.releaseNotes} onChange={event => setForm({ ...form, releaseNotes: event.target.value })} maxLength={10000} placeholder="Describe the changes in this release."/></label>
             <div className="founder-actions founder-wide">
               <button type="button" className="founder-button secondary" onClick={() => void saveDraft()} disabled={saving || publishing}><UploadCloud size={16}/>{saving ? "Saving…" : "Save draft"}</button>
@@ -274,7 +336,7 @@ export default function FounderCommandCenter({ userId, role }: { userId: string;
           <ul>
             <li>Use the same Android application ID and production signing key as the installed app.</li>
             <li>Build the APK with a versionCode greater than the currently published build.</li>
-            <li>Host the signed APK at a stable direct HTTPS URL ending in .apk.</li>
+            <li>Upload the signed APK here or paste a direct HTTPS URL ending in .apk.</li>
             <li>Install-test the APK over the existing app before publishing it to users.</li>
             <li>Publishing makes the release visible; each Android user must approve installation.</li>
           </ul>
