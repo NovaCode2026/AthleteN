@@ -31,7 +31,7 @@ test("APK release UI has no hard-coded size ceiling and explains the project lim
 test("APK upload still requires a signed APK and Super Admin authorization", () => {
   const release = read("../AthleteN-Mobile/src/app/admin-releases.tsx");
 
-  assert.match(release, /application\\/vnd\\.android\\.package-archive/);
+  assert.ok(release.includes('application/vnd.android.package-archive'));
   assert.match(release, /\.upload\(filePath, apkBytes/);
   assert.match(release, /updated_by: session\.user\.id/);
   assert.match(release, /published: true/);
