@@ -4,15 +4,15 @@
 
 AthleteN currently uses a **published signed-APK release feed** for Android native app updates. It is not an Expo OTA (over-the-air) JavaScript update service.
 
-The source of truth is the singleton Supabase row in `public.mobile_app_releases` (`id = true`). Only the currently published release is stored in that row. The Super Admin release controls publish directly to that row; a draft cannot be stored separately in the current schema.
+The next mobile native build is prepared as version `1.0.4`; `AthleteN-Mobile/eas.json` now includes a `release-apk` profile for a signed APK and automatic remote Android version-code incrementing. The final `versionCode` shown by EAS must be copied into the release record. The source of truth is the singleton Supabase row in `public.mobile_app_releases` (`id = true`). Only the currently published release is stored in that row. The Super Admin release controls publish directly to that row; a draft cannot be stored separately in the current schema.
 
 ## Publishing a release
 
-1. Build a new Android APK with EAS or the approved release build workflow.
-2. Verify that the APK uses package name `com.novacode.athleten`, is signed with the same Android signing key as the installed app, and has a strictly higher Android `versionCode`.
+1. Build a sideloadable Android APK from `AthleteN-Mobile` using the new EAS profile: `eas build --platform android --profile release-apk --non-interactive`. The profile uses the production EAS environment, remote version management, automatic version-code incrementing, internal distribution and APK output.
+2. Verify the completed EAS build's actual package name (`com.novacode.athleten`), signing identity and generated Android `versionCode`. EAS remote versioning is authoritative for this profile; do not assume the local `app.json` value is the final code. The local app version is prepared as `1.0.4` / code `5`, but check the build result before publishing.
 3. Upload the signed APK to a stable HTTPS direct-file URL whose path ends in `.apk`. A GitHub release web page is not a direct APK URL.
 4. In the Web Admin Command Center, sign in as a Super Admin and open **Android Auto-Update Release**. The mobile Super Admin Dashboard also links to Android Release Control.
-5. Enter the version name, version code, minimum supported version code, direct APK URL and release notes. Publish only after the APK has been verified.
+5. Enter the version name, actual version code from the EAS build, minimum supported version code, direct APK URL and release notes. Publish only after the APK has been verified.
 6. Verify the published row in Supabase and test update detection using an Android build with a lower version code.
 
 The release control validates version syntax, positive integer version codes, the minimum-version boundary, HTTPS direct-APK URLs and release-note length. Supabase RLS restricts writes to authenticated Super Admin accounts and requires `updated_by` to match the signed-in user.
