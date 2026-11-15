@@ -26,7 +26,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "test profiles read own" ON public.profiles;
 CREATE POLICY "test profiles read own" ON public.profiles
   FOR SELECT TO authenticated USING (user_id = (SELECT auth.uid()));
-GRANT SELECT ON public.profiles TO anon, authenticated;
+GRANT SELECT ON public.profiles TO authenticated;
 
 CREATE TABLE IF NOT EXISTS public.mobile_app_releases (
   id boolean PRIMARY KEY DEFAULT true CHECK (id = true),
@@ -192,8 +192,16 @@ BEGIN
 END $$;
 RESET ROLE;
 
+-- The public release policy must not require anon to read profiles.
+DO $
+BEGIN
+  IF has_table_privilege('anon', 'public.profiles', 'SELECT') THEN
+    RAISE EXCEPTION 'Anonymous profile access was unexpectedly granted by the fixture';
+  END IF;
+END $;
+
 -- Published APK metadata is visible to anonymous app clients, but the release RPC is not.
-DO $$
+DO $
 BEGIN
   IF has_function_privilege('anon', 'public.publish_mobile_app_release(text,integer,integer,text,text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Anonymous clients can execute the release publishing RPC';
