@@ -150,7 +150,7 @@ export default function AppUpdateGate() {
     setMessage('');
     try {
       await Linking.openURL(release.download_url);
-      setMessage('The APK download link has opened. After the file downloads, open it and approve Android’s installer. AthleteN stays installed until Android confirms the update.');
+      setMessage('The APK download link has opened. After the file downloads, open it and approve the system installer. AthleteN stays installed until Android confirms the update.');
     } catch {
       setMessage('The APK link could not be opened. Check your connection or contact AthleteN support.');
     } finally {
@@ -181,7 +181,7 @@ export default function AppUpdateGate() {
           <Pressable disabled={checking} onPress={retryCheck} style={s.secondary}>
             <Text style={s.secondaryText}>{checking ? 'CHECKING…' : 'CHECK AGAIN'}</Text>
           </Pressable>
-          <Text style={s.hint}>AthleteN checks on launch and when reopened. Successful checks are cached for six hours; temporary failures are retried after five minutes. Android requires your approval to install the downloaded APK.</Text>
+          <Text style={s.hint}>AthleteN checks on launch and when reopened. Successful checks are cached for six hours; temporary failures are retried after five minutes. Android requires your approval to install the downloaded APK; ordinary apps cannot silently replace themselves.</Text>
           {!required ? <Pressable onPress={() => setVisible(false)} style={s.secondary}><Text style={s.secondaryText}>NOT NOW</Text></Pressable> : null}
           {message ? <Text accessibilityLiveRegion="polite" style={s.message}>{message}</Text> : null}
         </View>
