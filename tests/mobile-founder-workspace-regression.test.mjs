@@ -37,3 +37,23 @@ test("APK upload still requires a signed APK and Super Admin authorization", () 
   assert.match(release, /published: true/);
   assert.match(release, /profile\?\.role === 'super_admin'/);
 });
+
+test("mobile Team screen requires a typed Coach or Academy connection code", () => {
+  const team = read("../AthleteN-Mobile/src/app/team.tsx");
+
+  assert.match(team, /COACH CODE/);
+  assert.match(team, /ACADEMY CODE/);
+  assert.match(team, /connect_athlete_by_code_typed/);
+  assert.match(team, /p_expected_type:connectionType/);
+  assert.doesNotMatch(team, /rpc\('connect_athlete_by_code'/);
+});
+
+test("mobile calendar marks medal achievements and shows details for the selected date", () => {
+  const calendar = read("../AthleteN-Mobile/src/app/(tabs)/calendar.tsx");
+
+  assert.match(calendar, /from\('medals'\)/);
+  assert.match(calendar, /_kind:'achievement'/);
+  assert.match(calendar, /events\.some\(e=>keyOf\(new Date\(e\._date\)\)===keyOf\(d\)\)/);
+  assert.match(calendar, /selectedEvents=events\.filter/);
+  assert.match(calendar, /e\._kind==='achievement'/);
+});
