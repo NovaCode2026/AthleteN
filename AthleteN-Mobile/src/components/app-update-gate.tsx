@@ -13,18 +13,24 @@ type Release = {
 };
 
 const c = Colors.dark;
-const installedCode = Number(Constants.expoConfig?.android?.versionCode || 1);
+const installedCode = Number(Constants.nativeBuildVersion || Constants.expoConfig?.android?.versionCode || 1);
+const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 export default function AppUpdateGate() {
   const [release, setRelease] = useState<Release | null>(null);
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [message, setMessage] = useState('');
   const lastCheckedAt = useRef(0);
+  const checkInFlight = useRef(false);
 
   const checkForUpdate = useCallback(async (force = false) => {
-    if (Platform.OS !== 'android') return;
-    if (!force && Date.now() - lastCheckedAt.current < 6 * 60 * 60 * 1000) return;
+    if (Platform.OS !== 'android' || checkInFlight.current) return;
+    if (!force && Date.now() - lastCheckedAt.current < CHECK_INTERVAL_MS) return;
+
+    checkInFlight.current = true;
+    setChecking(true);
     try {
       const { data, error } = await supabase
         .from('mobile_app_releases')
@@ -32,28 +38,61 @@ export default function AppUpdateGate() {
         .eq('id', true)
         .eq('published', true)
         .maybeSingle();
+
       if (error) return;
       lastCheckedAt.current = Date.now();
+
       if (!data) {
+        setRelease(null);
+        setVisible(false);
+        setMessage('');
+        return;
+      }
+
+      const next = data as Release;
+      const versionCode = Number(next.version_code);
+      const minimumCode = Number(next.minimum_version_code);
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(String(next.download_url || ''));
+      } catch {
+        return;
+      }
+
+      const validRelease =
+        typeof next.version === 'string' &&
+        next.version.trim().length > 0 &&
+        Number.isSafeInteger(versionCode) &&
+        versionCode > 0 &&
+        Number.isSafeInteger(minimumCode) &&
+        minimumCode > 0 &&
+        minimumCode <= versionCode &&
+        parsedUrl.protocol === 'https:' &&
+        Boolean(parsedUrl.hostname) &&
+        !parsedUrl.username &&
+        !parsedUrl.password &&
+        parsedUrl.pathname.toLowerCase().endsWith('.apk');
+
+      if (!validRelease) {
         setRelease(null);
         setVisible(false);
         return;
       }
-      const next = data as Release;
-      const url = String(next.download_url || '');
-      let parsedUrl: URL;
-      try { parsedUrl = new URL(url); } catch { return; }
-      const directApk = parsedUrl.protocol === 'https:' && parsedUrl.pathname.toLowerCase().endsWith('.apk');
-      if (!directApk || !Number.isSafeInteger(Number(next.version_code)) || !Number.isSafeInteger(Number(next.minimum_version_code))) return;
-      if (Number(next.version_code) > installedCode || Number(next.minimum_version_code) > installedCode) {
-        setRelease(next);
+
+      if (versionCode > installedCode || minimumCode > installedCode) {
+        setRelease({ ...next, version_code: versionCode, minimum_version_code: minimumCode });
         setVisible(true);
+        setMessage('');
       } else {
         setRelease(null);
         setVisible(false);
+        setMessage('');
       }
     } catch {
-      // Updates are best-effort; network problems must not block sign-in or training.
+      // A failed release check must never block sign-in, training or saved athlete data.
+    } finally {
+      checkInFlight.current = false;
+      setChecking(false);
     }
   }, []);
 
@@ -62,14 +101,14 @@ export default function AppUpdateGate() {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') void checkForUpdate();
     });
-    const timer = setInterval(() => void checkForUpdate(true), 6 * 60 * 60 * 1000);
+    const timer = setInterval(() => void checkForUpdate(true), CHECK_INTERVAL_MS);
     return () => {
       subscription.remove();
       clearInterval(timer);
     };
   }, [checkForUpdate]);
 
-  const required = Boolean(release && Number(release.minimum_version_code) > installedCode);
+  const required = Boolean(release && release.minimum_version_code > installedCode);
 
   async function downloadUpdate() {
     if (!release || busy) return;
@@ -77,12 +116,18 @@ export default function AppUpdateGate() {
     setMessage('');
     try {
       await Linking.openURL(release.download_url);
-      setMessage('The direct APK link has opened. Android should start downloading it. When the download finishes, open the APK and approve Android’s installer prompt. Your current app remains installed until Android confirms the update.');
+      setMessage('The signed APK download has opened. When Android finishes downloading it, open the file and approve the system installer to replace AthleteN. Your current app stays installed until Android confirms the update.');
     } catch {
-      setMessage('Could not open the download link. Check your internet connection or contact AthleteN support.');
+      setMessage('The APK link could not be opened. Check your connection or contact AthleteN support.');
     } finally {
       setBusy(false);
     }
+  }
+
+  function retryCheck() {
+    lastCheckedAt.current = 0;
+    setMessage('');
+    void checkForUpdate(true);
   }
 
   if (!visible || !release) return null;
@@ -93,13 +138,16 @@ export default function AppUpdateGate() {
         <View style={s.card}>
           <Text style={s.kicker}>ATHLETEN RELEASE CONTROL</Text>
           <Text style={s.title}>Update available</Text>
-          <Text style={s.version}>Version {release.version}</Text>
-          <Text style={s.body}>{required ? 'This release is marked as required. Update to continue using the latest supported AthleteN version.' : 'A newer AthleteN version is ready.'}</Text>
+          <Text style={s.version}>Version {release.version} · Build {release.version_code}</Text>
+          <Text style={s.body}>{required ? 'This release is required to keep using the supported AthleteN version. Install it to continue.' : 'A newer AthleteN Android release is ready.'}</Text>
           {release.release_notes ? <ScrollView style={s.notesScroll} nestedScrollEnabled><Text style={s.notes}>{release.release_notes}</Text></ScrollView> : null}
-          <Pressable disabled={busy} onPress={() => void downloadUpdate()} style={[s.primary, busy && s.disabled]}>
-            <Text style={s.primaryText}>{busy ? 'OPENING DOWNLOAD…' : 'DOWNLOAD UPDATE'}</Text>
+          <Pressable disabled={busy || checking} onPress={() => void downloadUpdate()} style={[s.primary, (busy || checking) && s.disabled]}>
+            <Text style={s.primaryText}>{busy ? 'OPENING APK…' : 'DOWNLOAD UPDATE'}</Text>
           </Pressable>
-          <Text style={s.hint}>This checks for a published release on app launch and when you return to the app. Android requires your approval to install an APK; apps cannot silently replace themselves on ordinary phones.</Text>
+          <Pressable disabled={checking} onPress={retryCheck} style={s.secondary}>
+            <Text style={s.secondaryText}>{checking ? 'CHECKING…' : 'CHECK AGAIN'}</Text>
+          </Pressable>
+          <Text style={s.hint}>AthleteN checks for published releases on launch and when reopened. Android requires your approval to install the downloaded APK; ordinary apps cannot silently replace themselves.</Text>
           {!required ? <Pressable onPress={() => setVisible(false)} style={s.secondary}><Text style={s.secondaryText}>NOT NOW</Text></Pressable> : null}
           {message ? <Text style={s.message}>{message}</Text> : null}
         </View>
@@ -121,7 +169,7 @@ const s = StyleSheet.create({
   primaryText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900', letterSpacing: 0.8 },
   disabled: { opacity: 0.6 },
   hint: { color: c.muted, fontSize: 10, lineHeight: 15 },
-  secondary: { alignItems: 'center', padding: 10 },
+  secondary: { borderWidth: 1, borderColor: c.border, borderRadius: 12, alignItems: 'center', padding: 10 },
   secondaryText: { color: c.muted, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
   message: { color: c.accentBright, fontSize: 11, lineHeight: 16 },
 });
