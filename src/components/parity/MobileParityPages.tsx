@@ -87,9 +87,70 @@ export function SupportTicketsPage({setToast}:{setToast:Toast}){
 
 
 export function TeamConnectionPage({setToast}:{setToast:Toast}){
- const auth=useAuth();const uid=auth.user?.id;const [code,setCode]=useState("");const [busy,setBusy]=useState(false);
- async function connect(){if(!code.trim()){setToast({type:"error",message:"Enter a coach or academy connection code."});return;}setBusy(true);const {data,error}=await supabase.rpc("connect_athlete_by_code",{p_code:code.trim()});setBusy(false);if(error)setToast({type:"error",message:error.message});else{setCode("");setToast({type:"success",message:data?.type==="coach"?"Coach connected.":"Academy connection completed."});}}
- return <Page title="Team & Academy" subtitle="Connect your AthleteN account to a coach or academy using their official code."><section className="card panel"><h3>Connect to your team</h3><p className="messaging-help">Only share connection codes with the coach or academy you intend to connect with.</p><div className="inline-form"><input value={code} onChange={e=>setCode(e.target.value)} placeholder="Coach or academy code" maxLength={40}/><button className="btn primary" disabled={busy||!uid} onClick={()=>void connect()}>{busy?"Connecting…":"Connect"}</button></div></section><section className="card panel"><h3>Messaging</h3><p>Once connected, use Messages to coordinate training and competition plans.</p><a className="btn" href="/messages">Open messages</a></section></Page>
+ const auth=useAuth();
+ const uid=auth.user?.id;
+ const [code,setCode]=useState("");
+ const [connectionType,setConnectionType]=useState<"coach"|"academy">("coach");
+ const [busy,setBusy]=useState(false);
+ const [loading,setLoading]=useState(true);
+ const [connection,setConnection]=useState<{coach:string|null;academy:string|null}>({coach:null,academy:null});
+
+ const load=useCallback(async()=>{
+  if(!uid){setLoading(false);return;}
+  const {data,error}=await supabase.from("profiles").select("coach,academy").eq("user_id",uid).maybeSingle();
+  if(error)setToast({type:"error",message:error.message});
+  else setConnection({coach:data?.coach||null,academy:data?.academy||null});
+  setLoading(false);
+ },[uid,setToast]);
+
+ useEffect(()=>{void load()},[load]);
+
+ async function connect(){
+  const cleanCode=code.trim();
+  if(!cleanCode){setToast({type:"error",message:"Enter the official "+(connectionType==="coach"?"Coach":"Academy")+" connection code."});return;}
+  if(!uid){setToast({type:"error",message:"Please sign in again before connecting."});return;}
+  setBusy(true);
+  const {error}=await supabase.rpc("connect_athlete_by_code_typed",{
+   p_code:cleanCode,
+   p_expected_type:connectionType
+  });
+  setBusy(false);
+  if(error){setToast({type:"error",message:error.message});return;}
+  setCode("");
+  setToast({type:"success",message:connectionType==="coach"?"Coach connected securely.":"Academy connected securely."});
+  await load();
+ }
+
+ return <Page title="Team & Academy" subtitle="Connect with the official Coach or Academy code. AthleteN verifies the code before creating the connection.">
+  <section className="card panel">
+   <h3>Your current connections</h3>
+   {loading?<p className="empty-copy">Checking your team connections…</p>:<div className="grid two">
+    <div><span className="eyebrow">COACH</span><p><strong>{connection.coach||"Not connected"}</strong></p></div>
+    <div><span className="eyebrow">ACADEMY</span><p><strong>{connection.academy||"Not connected"}</strong></p></div>
+   </div>}
+  </section>
+  <section className="card panel">
+   <h3>Connect to your team</h3>
+   <p className="messaging-help">Use a connection code shared by the Coach or Academy. Do not enter a person's or academy's name here.</p>
+   <div className="segmented-control" role="group" aria-label="Connection type">
+    <button type="button" className={connectionType==="coach"?"active":""} aria-pressed={connectionType==="coach"} onClick={()=>{setConnectionType("coach");setCode("");}}>Coach code</button>
+    <button type="button" className={connectionType==="academy"?"active":""} aria-pressed={connectionType==="academy"} onClick={()=>{setConnectionType("academy");setCode("");}}>Academy code</button>
+   </div>
+   <label className="field">
+    <span>{connectionType==="coach"?"COACH CONNECTION CODE":"ACADEMY CONNECTION CODE"}</span>
+    <input value={code} onChange={e=>setCode(e.target.value)} placeholder={connectionType==="coach"?"Enter Coach code":"Enter Academy code"} maxLength={30} autoCapitalize="characters" autoCorrect="off"/>
+   </label>
+   <div className="inline-form">
+    <button className="btn primary" disabled={busy||!uid||!code.trim()} onClick={()=>void connect()}>{busy?"Connecting…":connectionType==="coach"?"Connect Coach":"Connect Academy"}</button>
+   </div>
+   <p className="messaging-help">The server checks that the code belongs to the selected connection type, and still enforces account approval and role permissions.</p>
+  </section>
+  <section className="card panel">
+   <h3>Messaging</h3>
+   <p>Once connected, use Messages to coordinate training and competition plans.</p>
+   <a className="btn" href="/messages">Open messages</a>
+  </section>
+ </Page>;
 }
 
 export function TrainingSessionPage({setToast}:{setToast:Toast}){
