@@ -45,8 +45,11 @@ test("Team & Academy asks for a typed Coach or Academy code, not names", () => {
 test("Founder dashboard counts real academy workspaces and labels feature flags honestly", () => {
   const founder = read("../AthleteN-Mobile/src/app/founder.tsx");
 
-  assert.ok(founder.includes("from('academies').select('id,status')"));
-  assert.ok(founder.includes("academies.filter((row) => row.status === 'active').length"));
+  assert.ok(founder.includes("count: 'exact', head: true"));
+  assert.ok(founder.includes(".eq('status', 'active')"));
+  assert.ok(founder.includes(".or('current_period_end.is.null,current_period_end.gt.' + now)"));
+  assert.ok(founder.includes("setHealth('OFFLINE')"));
+  assert.ok(founder.includes("finally {\n      setRefreshing(false);"));
   assert.ok(founder.includes("paidSubscriptions"));
   assert.ok(founder.includes("openTickets"));
   assert.ok(founder.includes("pendingPayments"));
