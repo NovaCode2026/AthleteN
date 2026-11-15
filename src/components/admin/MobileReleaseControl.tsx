@@ -15,7 +15,7 @@ type ReleaseRow = {
 
 type Props = { role: string; userId: string };
 
-const VERSION_PATTERN = /^\\d+\\.\\d+\\.\\d+(?:[+-][0-9A-Za-z.-]+)?$/;
+const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[+-][0-9A-Za-z.-]+)?$/;
 
 export default function MobileReleaseControl({ role, userId }: Props) {
   const allowed = role === "super_admin";
