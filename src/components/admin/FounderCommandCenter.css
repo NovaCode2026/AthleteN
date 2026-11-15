@@ -57,3 +57,7 @@
 .founder-denied svg{color:#ff8a96}
 .founder-denied p{margin:0;color:#9fb4c9;font-size:13px}
 @media(max-width:760px){.founder-hero{align-items:flex-start}.founder-mark{width:76px;height:76px;flex-basis:76px;border-radius:18px}.founder-kpis{grid-template-columns:1fr}.founder-form-grid{grid-template-columns:1fr}.founder-wide{grid-column:auto}.founder-panel{padding:15px}.founder-panel-head{align-items:flex-start}.founder-live-status{font-size:8px}.founder-history-row{flex-wrap:wrap}.founder-rollback{margin-left:44px}}
+
+.founder-file-input{padding:10px!important;background:#07182a!important;border:1px dashed #3a647e!important}
+.founder-file-input::file-selector-button{margin-right:12px;border:1px solid #2d6b86;border-radius:8px;background:#123650;color:#d8f4ff;padding:8px 10px;font:inherit;font-weight:800;cursor:pointer}
+.founder-file-selected{color:#6fe2b2!important;overflow-wrap:anywhere}
