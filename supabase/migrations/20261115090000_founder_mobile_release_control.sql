@@ -35,7 +35,11 @@ insert into storage.buckets (
   157286400,
   array['application/vnd.android.package-archive']::text[]
 )
-on conflict (id) do nothing;
+on conflict (id) do update set
+  name = excluded.name,
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 drop policy if exists "Super admins upload AthleteN release APKs" on storage.objects;
 create policy "Super admins upload AthleteN release APKs"
