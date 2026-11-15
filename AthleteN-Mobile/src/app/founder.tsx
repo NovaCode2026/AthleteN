@@ -66,54 +66,62 @@ export default function FounderWorkspaceScreen() {
     setRefreshing(true);
     setMessage('');
     setHealth('CHECKING');
-    const [
-      profilesResult, academiesResult, subscriptionsResult, ticketsResult,
-      paymentsResult, announcementsResult, flagsResult, releaseResult, auditResult,
-    ] = await Promise.all([
-      supabase.from('profiles').select('user_id,role,founder_badge,plan_id'),
-      supabase.from('academies').select('id,status'),
-      supabase.from('subscriptions').select('plan_id,status,current_period_end'),
-      supabase.from('support_tickets').select('id,status'),
-      supabase.from('payment_orders').select('id,status'),
-      supabase.from('announcements').select('id,published_at'),
-      supabase.from('feature_flags').select('id,flag_key,description,enabled,audience').order('flag_key'),
-      supabase.from('mobile_app_releases').select('version,version_code,minimum_version_code,published,updated_at').eq('id', true).maybeSingle(),
-      supabase.from('audit_logs').select('id,action,entity_table,created_at').order('created_at', { ascending: false }).limit(10),
-    ]);
+    try {
+      const count = async (query) => {
+        const result = await query;
+        return { count: result.count ?? 0, error: result.error };
+      };
+      const now = new Date().toISOString();
+      const [
+        users, athletes, coaches, admins, founders, academies,
+        paidSubscriptions, openTickets, pendingPayments, announcements,
+        flagsResult, releaseResult, auditResult,
+      ] = await Promise.all([
+        count(supabase.from('profiles').select('user_id', { count: 'exact', head: true })),
+        count(supabase.from('profiles').select('user_id', { count: 'exact', head: true }).eq('role', 'athlete')),
+        count(supabase.from('profiles').select('user_id', { count: 'exact', head: true }).eq('role', 'coach')),
+        count(supabase.from('profiles').select('user_id', { count: 'exact', head: true }).in('role', ['support_admin', 'admin', 'super_admin'])),
+        count(supabase.from('profiles').select('user_id', { count: 'exact', head: true }).eq('founder_badge', true)),
+        count(supabase.from('academies').select('id', { count: 'exact', head: true }).eq('status', 'active')),
+        count(supabase.from('subscriptions').select('id', { count: 'exact', head: true })
+          .in('status', ['active', 'trialing']).neq('plan_id', 'free')
+          .or('current_period_end.is.null,current_period_end.gt.' + now)),
+        count(supabase.from('support_tickets').select('id', { count: 'exact', head: true }).not('status', 'in', '(resolved,closed)')),
+        count(supabase.from('payment_orders').select('id', { count: 'exact', head: true }).eq('status', 'pending')),
+        count(supabase.from('announcements').select('id', { count: 'exact', head: true }).not('published_at', 'is', null)),
+        supabase.from('feature_flags').select('id,flag_key,description,enabled,audience').order('flag_key'),
+        supabase.from('mobile_app_releases').select('version,version_code,minimum_version_code,published,updated_at').eq('id', true).maybeSingle(),
+        supabase.from('audit_logs').select('id,action,entity_table,created_at').order('created_at', { ascending: false }).limit(10),
+      ]);
 
-    const profiles = profilesResult.data || [];
-    const academies = academiesResult.data || [];
-    const subscriptions = subscriptionsResult.data || [];
-    const tickets = ticketsResult.data || [];
-    const payments = paymentsResult.data || [];
-    const announcements = announcementsResult.data || [];
-    const flagsData = flagsResult.data || [];
-    const failed = [
-      profilesResult, academiesResult, subscriptionsResult, ticketsResult,
-      paymentsResult, announcementsResult, flagsResult, releaseResult, auditResult,
-    ].filter((result) => result.error);
-
-    setStats({
-      users: profiles.length,
-      athletes: profiles.filter((row) => row.role === 'athlete').length,
-      coaches: profiles.filter((row) => row.role === 'coach').length,
-      academies: academies.filter((row) => row.status === 'active').length,
-      admins: profiles.filter((row) => ['support_admin', 'admin', 'super_admin'].includes(row.role)).length,
-      founders: profiles.filter((row) => Boolean(row.founder_badge)).length,
-      paidSubscriptions: subscriptions.filter((row) =>
-        ['active', 'trialing'].includes(row.status) && row.plan_id !== 'free' &&
-        (!row.current_period_end || new Date(row.current_period_end).getTime() > Date.now())
-      ).length,
-      openTickets: tickets.filter((row) => !['resolved', 'closed'].includes(row.status)).length,
-      pendingPayments: payments.filter((row) => row.status === 'pending').length,
-      announcements: announcements.filter((row) => Boolean(row.published_at)).length,
-    });
-    setFlags(flagsData);
-    setRelease(releaseResult.data || null);
-    setAudits(auditResult.data || []);
-    setHealth(failed.length ? 'PARTIAL DATA' : 'CONNECTED');
-    if (failed.length) setMessage(failed.map((result) => result.error?.message).filter(Boolean).join(' · '));
-    setRefreshing(false);
+      const countResults = [users, athletes, coaches, admins, founders, academies, paidSubscriptions, openTickets, pendingPayments, announcements];
+      const failed = [
+        ...countResults.filter((result) => result.error),
+        ...[flagsResult, releaseResult, auditResult].filter((result) => result.error),
+      ];
+      setStats({
+        users: users.count,
+        athletes: athletes.count,
+        coaches: coaches.count,
+        academies: academies.count,
+        admins: admins.count,
+        founders: founders.count,
+        paidSubscriptions: paidSubscriptions.count,
+        openTickets: openTickets.count,
+        pendingPayments: pendingPayments.count,
+        announcements: announcements.count,
+      });
+      setFlags(flagsResult.data || []);
+      setRelease(releaseResult.data || null);
+      setAudits(auditResult.data || []);
+      setHealth(failed.length ? 'PARTIAL DATA' : 'CONNECTED');
+      if (failed.length) setMessage(failed.map((result) => result.error?.message).filter(Boolean).join(' · '));
+    } catch (error) {
+      setHealth('OFFLINE');
+      setMessage(error instanceof Error ? error.message : 'Founder data could not be refreshed.');
+    } finally {
+      setRefreshing(false);
+    }
   }, [allowed, session?.user.id]);
 
   useEffect(() => { void load(); }, [load]);
