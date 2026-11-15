@@ -56,7 +56,7 @@ test("Founder dashboard counts real academy workspaces and labels feature flags 
   assert.ok(founder.includes("not the number of product modules"));
   assert.ok(founder.includes("const PRODUCT_MODULES = ["));
   assert.ok(founder.includes("IMPLEMENTED MODULES"));
-  assert.ok(founder.includes("VIEW ALL " + "'));
+  assert.ok(founder.includes("'VIEW ALL ' + PRODUCT_MODULES.length + ' MODULES'"));
   assert.ok(founder.includes("empty table does not mean AthleteN has zero product features"));
   assert.doesNotMatch(founder, /LIVE FEATURES/);
 });
