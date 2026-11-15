@@ -731,3 +731,12 @@ input, select, textarea, button { max-width: 100%; }
 .athleten-calendar-status{font-size:11px;color:#9edfff;line-height:1.5}
 @media(max-width:920px){.athleten-calendar-layout{grid-template-columns:1fr}.athleten-calendar-side{grid-template-columns:1fr 1fr;align-items:start}}
 @media(max-width:640px){.athleten-calendar-panel{padding:12px}.athleten-calendar-layout{gap:12px}.athleten-calendar-side{grid-template-columns:1fr}.athleten-calendar-month h3{min-width:145px;font-size:15px}.athleten-calendar-weekdays,.athleten-calendar-grid{gap:3px}.athleten-calendar-day,.athleten-calendar-empty{min-height:58px;border-radius:9px}.athleten-calendar-day{padding:6px 2px;gap:5px}.athleten-calendar-number{width:24px;height:24px;font-size:11px}.athleten-calendar-dots{gap:3px}.athleten-calendar-dot{width:5px;height:5px}.athleten-calendar-add-grid{grid-template-columns:1fr}}
+
+
+/* AthleteN Team & Academy code selector */
+.segmented-control{display:flex;gap:6px;padding:5px;border:1px solid rgba(104,137,170,.24);border-radius:13px;background:rgba(7,19,33,.72);width:fit-content;max-width:100%}
+.segmented-control button{min-height:36px;padding:0 14px;border:1px solid transparent;border-radius:9px;background:transparent;color:#91a9c2;font:inherit;font-size:11px;font-weight:850;cursor:pointer;transition:background .15s ease,border-color .15s ease,color .15s ease}
+.segmented-control button:hover{color:#e7f4ff;background:rgba(66,128,188,.12)}
+.segmented-control button.active{color:#f4f9ff;border-color:rgba(75,157,247,.48);background:linear-gradient(135deg,rgba(49,125,219,.3),rgba(39,92,161,.2));box-shadow:inset 0 0 0 1px rgba(102,177,255,.12)}
+.segmented-control button:focus-visible{outline:2px solid #63aeff;outline-offset:2px}
+@media(max-width:440px){.segmented-control{width:100%}.segmented-control button{flex:1;padding:0 9px}}

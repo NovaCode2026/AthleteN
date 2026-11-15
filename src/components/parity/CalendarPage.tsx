@@ -220,7 +220,6 @@ export default function CalendarPage() {
     setDraft({ title: "", event_type: "training", event_date: newKey + "T18:00", notes: "" });
     setShowAdd(false);
     setNotice("Event saved. Its date now has a calendar marker.");
-    await load();
   }
 
   async function deleteEvent(item: CalendarItem) {
