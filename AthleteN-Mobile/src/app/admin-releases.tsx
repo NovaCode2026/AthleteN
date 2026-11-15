@@ -36,7 +36,16 @@ export default function AdminReleasesScreen() {
     if (!allowed) return;
     const { data, error } = await supabase.from('mobile_app_releases').select('*').eq('id', true).maybeSingle();
     if (error) { setMessage(error.message); return; }
-    if (!data) return;
+    if (!data) {
+      setCurrent(null);
+      setPublished(false);
+      setVersion('1.0.4');
+      setVersionCode('5');
+      setMinimumVersionCode('4');
+      setDownloadUrl('');
+      setNotes('');
+      return;
+    }
     const row = data as ReleaseRow;
     setCurrent(row);
     setVersion(row.version);
@@ -125,7 +134,7 @@ export default function AdminReleasesScreen() {
         <Field label="SIGNED APK DOWNLOAD URL (HTTPS)" value={downloadUrl} onChangeText={setDownloadUrl} placeholder="https://github.com/.../releases/download/..." />
         <Text style={s.label}>RELEASE NOTES</Text>
         <TextInput multiline value={notes} onChangeText={setNotes} placeholder="What changed in this release?" placeholderTextColor={c.muted} style={[s.input, s.notesInput]} />
-        <View style={s.statusRow}><View style={{ flex: 1 }}><Text style={s.label}>PUBLICATION</Text><Text style={s.body}>{published ? 'Live to normal Android users' : 'No release published'}</Text></View><View style={[s.pill, published && s.pillOn]}><Text style={s.pillText}>{published ? 'PUBLISHED' : 'DRAFT'}</Text></View></View>
+        <View style={s.statusRow}><View style={{ flex: 1 }}><Text style={s.label}>PUBLICATION</Text><Text style={s.body}>{published ? 'Live to normal Android users' : current ? 'Release record is not published' : 'No release has been published yet'}</Text></View><View style={[s.pill, published && s.pillOn]}><Text style={s.pillText}>{published ? 'PUBLISHED' : 'NOT LIVE'}</Text></View></View>
         {current?.updated_at ? <Text style={s.small}>Last saved: {new Date(current.updated_at).toLocaleString()}</Text> : null}
         <Pressable disabled={busy} onPress={() => void publish()} style={[s.primary, busy && s.disabled]}><Text style={s.primaryText}>PUBLISH TO ANDROID USERS</Text></Pressable>
         {busy ? <ActivityIndicator color={c.accentBright} /> : null}
