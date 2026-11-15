@@ -11,7 +11,6 @@ import { supabase } from '@/lib/supabase';
 const c = Colors.dark;
 const APK_BUCKET = 'mobile-release-apks';
 const APK_MIME_TYPE = 'application/vnd.android.package-archive';
-const MAX_APK_SIZE_BYTES = 50 * 1024 * 1024;
 
 type ReleaseRow = {
   version: string;
@@ -82,11 +81,6 @@ export default function AdminReleasesScreen() {
         setMessage('Select a signed Android .apk file.');
         return;
       }
-      if (asset.size != null && (asset.size <= 0 || asset.size > MAX_APK_SIZE_BYTES)) {
-        setApkFile(null);
-        setMessage('The APK must be larger than 0 bytes and no larger than 50 MB.');
-        return;
-      }
       setApkFile({ name, uri: asset.uri, size: asset.size, mimeType: asset.mimeType });
       setDownloadUrl('');
       setMessage('APK selected. Verify its version code and signing key before publishing.');
@@ -151,15 +145,10 @@ export default function AdminReleasesScreen() {
     let uploadedPath: string | null = null;
     try {
       if (apkFile) {
-        if (apkFile.size != null && (apkFile.size <= 0 || apkFile.size > MAX_APK_SIZE_BYTES)) {
-          throw new Error('The selected APK is invalid or exceeds the 50 MB upload limit.');
-        }
         const response = await fetch(apkFile.uri);
         if (!response.ok) throw new Error('Could not read the selected APK from the device cache.');
         const apkBytes = await response.arrayBuffer();
-        if (apkBytes.byteLength <= 0 || apkBytes.byteLength > MAX_APK_SIZE_BYTES) {
-          throw new Error('The APK must be larger than 0 bytes and no larger than 50 MB.');
-        }
+        if (apkBytes.byteLength <= 0) throw new Error('The selected APK is empty.');
         const safeVersion = cleanVersion.replace(/[^0-9A-Za-z.-]/g, '-');
         const filePath = code + '/' + Date.now() + '-AthleteN-' + safeVersion + '.apk';
         const { error: uploadError } = await supabase.storage.from(APK_BUCKET).upload(filePath, apkBytes, {
@@ -198,7 +187,10 @@ export default function AdminReleasesScreen() {
       setMessage('Release published. Android devices will detect it on their next automatic check.');
       await load();
     } catch (error) {
-      const baseMessage = error instanceof Error ? error.message : 'The Android release could not be published.';
+      const rawMessage = error instanceof Error ? error.message : 'The Android release could not be published.';
+      const baseMessage = /maximum|file.?size|payload too large|413/i.test(rawMessage)
+        ? rawMessage + ' Supabase currently enforces a 50 MB global upload ceiling on this Free project. Use the direct HTTPS APK URL field for a larger file, or raise the project Storage limit in Supabase.'
+        : rawMessage;
       if (uploadedPath) {
         const { error: cleanupError } = await supabase.storage.from(APK_BUCKET).remove([uploadedPath]);
         setMessage(cleanupError
@@ -244,7 +236,7 @@ export default function AdminReleasesScreen() {
           <Field label="MINIMUM SUPPORTED VERSION CODE" value={minimumVersionCode} onChangeText={setMinimumVersionCode} placeholder="1" keyboardType="number-pad" />
 
           <View style={s.uploadBox}>
-            <Text style={s.label}>SIGNED APK FILE (MAX 50 MB)</Text>
+            <Text style={s.label}>SIGNED APK FILE · NO APP-SIDE SIZE CAP</Text>
             <Pressable disabled={busy} onPress={() => void chooseApk()} style={[s.secondary, busy && s.disabled]}>
               <Text style={s.secondaryText}>{apkFile ? 'CHOOSE A DIFFERENT APK' : 'SELECT APK FROM DEVICE'}</Text>
             </Pressable>
@@ -256,7 +248,7 @@ export default function AdminReleasesScreen() {
                 </View>
                 <Pressable disabled={busy} onPress={() => { setApkFile(null); setMessage('Selected APK cleared.'); }}><Text style={s.clearText}>CLEAR</Text></Pressable>
               </View>
-            ) : <Text style={s.body}>Upload the signed APK directly from your phone. The file is stored in AthleteN’s release bucket.</Text>}
+            ) : <Text style={s.body}>Upload the signed APK directly from your phone. The app has no APK size cap. Supabase Free projects currently enforce a 50 MB global file limit; use a direct HTTPS APK URL for larger files until the project Storage limit is raised.</Text>}
             <Text style={s.or}>OR USE A DIRECT HTTPS APK LINK</Text>
             <TextInput value={downloadUrl} onChangeText={setDownloadUrl} editable={!Boolean(apkFile) && !busy} placeholder="https://downloads.example.com/athleten.apk" placeholderTextColor={c.muted} autoCapitalize="none" autoCorrect={false} keyboardType="url" style={[s.input, Boolean(apkFile) && s.inputDisabled]} />
           </View>
@@ -272,7 +264,7 @@ export default function AdminReleasesScreen() {
         <View style={s.panel}>
           <Text style={s.label}>HOW AUTOMATIC UPDATES WORK</Text>
           <Text style={s.body}>AthleteN checks for a published release on app launch, when the app returns to the foreground, and on a periodic check while it is open. An optional or required update prompt opens the signed APK download. Android still asks the device owner to approve the system installer; ordinary apps cannot silently replace their installed APK.</Text>
-          <Text style={s.body}>Keep the same package name and signing key for every APK. Increase versionCode for each release. JavaScript-only over-the-air updates are a separate feature and are not enabled in the current native binary.</Text>
+          <Text style={s.body}>Keep the same package name and signing key for every APK. Increase versionCode for each release. The release bucket has no additional per-bucket size cap; the Supabase project-wide Storage plan limit still applies. JavaScript-only over-the-air updates are a separate feature and are not enabled in the current native binary.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

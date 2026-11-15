@@ -13,11 +13,11 @@ The next mobile native build is prepared as version `1.0.4`; `AthleteN-Mobile/ea
 1. Build a sideloadable Android APK either by running `eas build --platform android --profile release-apk --non-interactive` from `AthleteN-Mobile`, or by manually starting **AthleteN Android Sideload Release APK** in GitHub Actions. The workflow uses the `EXPO_TOKEN` repository secret and the `release-apk` EAS profile.
 2. Verify the completed EAS build's actual package name (`com.novacode.athleten`), signing identity and generated Android `versionCode`. EAS remote versioning is authoritative for this profile; do not assume the local `app.json` value is the final code. The local app version is prepared as `1.0.4` / code `5`, but check the build result before publishing.
 3. Sign in as a Super Admin and open **Android Auto-Update Release** in the Web Admin Command Center, or open **Founder Workspace → Android Release Control** in AthleteN Mobile. Enter the version name, actual version code from the EAS build and minimum supported version code.
-4. Upload the signed `.apk` file directly in the panel (maximum 50 MB), or provide a direct HTTPS URL whose path ends in `.apk`. Uploaded files are stored in the public-download bucket `mobile-release-apks`; public access is intentional for end-user downloads, while Storage RLS permits uploads and deletes only for authenticated Super Admins.
+4. Upload the signed `.apk` file directly in the panel, or provide a direct HTTPS URL whose path ends in `.apk`. The release bucket has no additional per-bucket file-size cap. The connected Supabase organization is currently on the Free plan, which imposes a **50 MB project-wide Storage upload limit**; a 104 MB APK must use a direct HTTPS download URL until the project's global Storage limit is raised. Uploaded files are stored in the public-download bucket `mobile-release-apks`; public access is intentional for end-user downloads, while Storage RLS permits uploads and deletes only for authenticated Super Admins.
 5. Add release notes and publish. The panel uploads the APK first, then updates the active release row. If publishing the database record fails after upload, it attempts to remove the just-uploaded file. A new version code must exceed the current published version, and the new release cannot accidentally reuse the old APK URL.
 6. Verify the published row in Supabase and test update detection using an Android build with a lower version code.
 
-The release control validates version syntax, positive integer version codes, the minimum-version boundary, APK type and size, HTTPS direct-APK URLs and release-note length. Supabase RLS restricts release-row writes to authenticated Super Admin accounts and requires `updated_by` to match the signed-in user. Storage RLS separately restricts APK upload/delete to authenticated Super Admins.
+The release control validates version syntax, positive integer version codes, the minimum-version boundary, APK type, HTTPS direct-APK URLs and release-note length. It does not impose an application-side APK size limit; Supabase's project-wide Storage limit remains authoritative. Supabase RLS restricts release-row writes to authenticated Super Admin accounts and requires `updated_by` to match the signed-in user. Storage RLS separately restricts APK upload/delete to authenticated Super Admins.
 
 ## What Android users experience
 
@@ -61,7 +61,7 @@ A separate EAS Update rollout can later deliver compatible JavaScript and asset 
 - [ ] A lower installed version receives the optional update prompt.
 - [ ] A build below minimum supported version receives a non-dismissible prompt.
 - [ ] An installed version at or above the published version receives no prompt.
-- [ ] An invalid URL, file type, file size or malformed release is rejected safely.
+- [ ] An invalid URL, file type or malformed release is rejected safely; test an APK larger than the project's global Storage file-size limit through a direct download URL.
 - [ ] Download link opens and Android system installer completes an update.
 - [ ] Check Again works and foreground checking respects throttling.
 - [ ] Physical-device tests cover offline startup, failed downloads, cancellation and successful installation.
