@@ -110,7 +110,9 @@ export default function AppUpdateGate() {
         return;
       }
 
-      if (next.version_code > installedCode) {
+      const versionCode = next.version_code;
+      const minimumCode = next.minimum_version_code;
+      if (versionCode > installedCode || minimumCode > installedCode) {
         setRelease(next);
         setVisible(true);
         setMessage('');
