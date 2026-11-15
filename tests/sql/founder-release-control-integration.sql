@@ -193,15 +193,15 @@ END $$;
 RESET ROLE;
 
 -- The public release policy must not require anon to read profiles.
-DO $
+DO $anon_access$
 BEGIN
   IF has_table_privilege('anon', 'public.profiles', 'SELECT') THEN
     RAISE EXCEPTION 'Anonymous profile access was unexpectedly granted by the fixture';
   END IF;
-END $;
+END $anon_access$;
 
 -- Published APK metadata is visible to anonymous app clients, but the release RPC is not.
-DO $
+DO $release_security$
 BEGIN
   IF has_function_privilege('anon', 'public.publish_mobile_app_release(text,integer,integer,text,text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Anonymous clients can execute the release publishing RPC';
@@ -211,7 +211,7 @@ BEGIN
      has_table_privilege('authenticated', 'public.mobile_app_release_history', 'DELETE') THEN
     RAISE EXCEPTION 'Authenticated clients can alter release history directly';
   END IF;
-END $$;
+END $release_security$;
 SET ROLE anon;
 DO $$
 BEGIN
