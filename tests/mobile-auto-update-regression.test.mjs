@@ -112,3 +112,17 @@ test("manual GitHub Actions workflow builds the release APK through the producti
   assert.match(workflow, /--profile release-apk/);
   assert.match(workflow, /--non-interactive/);
 });
+
+test("Android update checks validate release metadata, clear stale prompts and throttle transient failures", () => {
+  const gate = read("../AthleteN-Mobile/src/components/app-update-gate.tsx");
+
+  assert.match(gate, /function parseRelease\(data: unknown\): Release \| null/);
+  assert.match(gate, /VERSION_PATTERN\.test\(version\)/);
+  assert.match(gate, /parsedUrl\.protocol !== 'https:'/);
+  assert.match(gate, /!parsedUrl\.pathname\.toLowerCase\(\)\.endsWith\('\.apk'\)/);
+  assert.match(gate, /CHECK_RETRY_INTERVAL_MS = 5 \* 60 \* 1000/);
+  assert.match(gate, /lastCheckSucceeded\.current \? CHECK_INTERVAL_MS : CHECK_RETRY_INTERVAL_MS/);
+  assert.match(gate, /lastCheckedAt\.current = now/);
+  assert.match(gate, /lastCheckSucceeded\.current = false/);
+  assert.match(gate, /setRelease\(null\);\s*setVisible\(false\);\s*setMessage\(''\);/);
+});
