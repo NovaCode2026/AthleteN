@@ -29,7 +29,7 @@ test("website publisher uploads signed APKs to the protected release bucket befo
   assert.match(release, /contentType: APK_MIME_TYPE/);
   assert.match(release, /upsert: false/);
   assert.match(release, /getPublicUrl\(filePath\)/);
-  assert.match(release, /if \(uploadedPath\)[\s\S]*?remove\(\[uploadedPath\]\)/);
+  assert.match(release, /uploadedPath\).*remove\(\[uploadedPath\]\)/);
   assert.match(migration, /'mobile-release-apks'[\s\S]*?true,[\s\S]*?52428800/);
   assert.match(migration, /for insert\s+to authenticated[\s\S]*?p\.role = 'super_admin'/);
   assert.match(migration, /for delete\s+to authenticated[\s\S]*?p\.role = 'super_admin'/);

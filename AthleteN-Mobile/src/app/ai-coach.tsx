@@ -69,7 +69,7 @@ export default function AICoachScreen(){
   </View>
   <View style={s.usageCard}>
    <View style={s.usageTop}><View><Text style={s.usageLabel}>MONTHLY AI REQUESTS</Text><Text style={s.usageValue}>{loadingUsage?'Checking…':usage.used+' / '+usage.limit+' used'}</Text></View><Text style={s.remaining}>{loadingUsage?'—':remaining+' left'}</Text></View>
-   <View style={s.track}><View style={[s.fill,{width:usage.limit?Math.min(100,usage.used/usage.limit*100)+'%':'0%'}]}/></View>
+   <View style={s.track}><View style={[s.fill,{width: `${usage.limit ? Math.min(100, (usage.used / usage.limit) * 100) : 0}%` as `${number}%`}]}/></View>
    <Text style={s.hint}>Your current plan: {planId.replace('_',' ').toUpperCase()}. Free includes 0 AI requests.</Text>
   </View>
   <View style={s.card}>

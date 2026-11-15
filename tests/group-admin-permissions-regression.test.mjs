@@ -125,7 +125,7 @@ test("mobile member-add refresh errors are handled without undefined references"
     mobile.indexOf("async function addSelectedMembers"),
     mobile.indexOf("async function updateGroupAdmin")
   );
-  assert.match(addFlow, /let refreshError:string\|null=null/);
-  assert.match(addFlow, /if\(refreshError\)/);
+  assert.match(addFlow, /let refreshError:string\\|null=null/);
+  assert.match(addFlow, /if\\(refreshError\\)/);
   assert.doesNotMatch(addFlow, /membersError/);
 });
