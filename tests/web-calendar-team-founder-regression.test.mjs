@@ -53,7 +53,7 @@ test("Founder dashboard counts real academy workspaces and labels feature flags 
   assert.ok(founder.includes("announcements"));
   assert.ok(founder.includes("Owner Command Center"));
   assert.ok(founder.includes("Android Release Control"));
-  assert.ok(founder.includes("not the number of product modules"));
+  assert.ok(founder.includes("not database feature-flag records"));
   assert.ok(founder.includes("const PRODUCT_MODULES = ["));
   assert.ok(founder.includes("IMPLEMENTED MODULES"));
   assert.ok(founder.includes("'VIEW ALL ' + PRODUCT_MODULES.length + ' MODULES'"));
