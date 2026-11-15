@@ -7,6 +7,7 @@ on:
       - "supabase/migrations/**"
       - "netlify/ai-budget.mjs"
       - "tests/sql/ai-budget-ledger-integration.sql"
+      - "tests/sql/founder-release-control-integration.sql"
       - ".github/workflows/ai-budget-sql-integration.yml"
   workflow_dispatch:
 
@@ -41,3 +42,7 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h 127.0.0.1 -U postgres -d athleten_ai_budget_test -v ON_ERROR_STOP=1 -f tests/sql/ai-budget-ledger-integration.sql
+      - name: Apply and exercise Founder release control
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_ai_budget_test -v ON_ERROR_STOP=1 -f tests/sql/founder-release-control-integration.sql
