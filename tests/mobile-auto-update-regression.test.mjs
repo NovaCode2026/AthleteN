@@ -64,3 +64,16 @@ test("production release-table RLS restricts writes to the authenticated Super A
   assert.match(hardening, /grant select on table public\.mobile_app_releases to anon, authenticated/);
   assert.match(hardening, /updated_by = auth\.uid\(\)/);
 });
+
+test("EAS release profile builds an APK and increments the remote Android version code", () => {
+  const eas = read("../AthleteN-Mobile/eas.json");
+  const app = read("../AthleteN-Mobile/app.json");
+
+  assert.match(eas, /"appVersionSource": "remote"/);
+  assert.match(eas, /"release-apk": \{/);
+  assert.match(eas, /"environment": "production"/);
+  assert.match(eas, /"autoIncrement": true/);
+  assert.match(eas, /"buildType": "apk"/);
+  assert.match(app, /"version": "1\.0\.4"/);
+  assert.match(app, /"versionCode": 5/);
+});
