@@ -77,3 +77,13 @@ test("EAS release profile builds an APK and increments the remote Android versio
   assert.match(app, /"version": "1\.0\.4"/);
   assert.match(app, /"versionCode": 5/);
 });
+
+test("manual GitHub Actions workflow builds the release APK through the production EAS profile", () => {
+  const workflow = read("../.github/workflows/android-release-apk.yml");
+
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /secrets\.EXPO_TOKEN/);
+  assert.match(workflow, /--platform android/);
+  assert.match(workflow, /--profile release-apk/);
+  assert.match(workflow, /--non-interactive/);
+});
