@@ -22,9 +22,9 @@ export default function AdminReleasesScreen() {
   const router = useRouter();
   const { profile, session } = useAuth();
   const allowed = profile?.role === 'super_admin';
-  const [version, setVersion] = useState('1.0.2');
-  const [versionCode, setVersionCode] = useState('3');
-  const [minimumVersionCode, setMinimumVersionCode] = useState('1');
+  const [version, setVersion] = useState('1.0.4');
+  const [versionCode, setVersionCode] = useState('5');
+  const [minimumVersionCode, setMinimumVersionCode] = useState('4');
   const [downloadUrl, setDownloadUrl] = useState('');
   const [notes, setNotes] = useState('');
   const [published, setPublished] = useState(false);
@@ -49,7 +49,7 @@ export default function AdminReleasesScreen() {
 
   useEffect(() => { void load(); }, [allowed]);
 
-  async function save(nextPublished: boolean) {
+  async function publish() {
     if (!allowed || !session || busy) return;
     const code = Number(versionCode);
     const minimum = Number(minimumVersionCode);
@@ -78,8 +78,8 @@ export default function AdminReleasesScreen() {
       setMessage('Release notes must be 10,000 characters or fewer.');
       return;
     }
-    if (nextPublished && current && code < current.version_code) {
-      setMessage('A published Android release cannot move to a lower version code. Increase the code for a newer release.');
+    if (current?.published && code <= current.version_code) {
+      setMessage('The next published APK must use a version code higher than the currently published release.');
       return;
     }
     if (minimum > code) {
@@ -95,14 +95,14 @@ export default function AdminReleasesScreen() {
       minimum_version_code: minimum,
       download_url: downloadUrl.trim(),
       release_notes: notes.trim(),
-      published: nextPublished,
+      published: true,
       updated_by: session.user.id,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' });
     setBusy(false);
     if (error) { setMessage(error.message); return; }
-    setPublished(nextPublished);
-    setMessage(nextPublished ? 'Release published. Android users will be prompted to update when they check in.' : 'Release saved as a draft; users will not see it.');
+    setPublished(true);
+    setMessage('Release published. Android users will be prompted to update when they check in.');
     await load();
   }
 
@@ -115,20 +115,19 @@ export default function AdminReleasesScreen() {
       <Pressable onPress={() => router.back()}><Text style={s.back}>‹ BACK</Text></Pressable>
       <Text style={s.kicker}>ANDROID RELEASE CONTROL</Text>
       <Text style={s.title}>Pre-Play-Store updates</Text>
-      <Text style={s.body}>Upload the signed APK to a stable HTTPS direct-file URL ending in .apk first. Save as draft to prepare it; publish only after you verify the APK and version code. When published, the app checks on launch and prompts users with this download link.</Text>
+      <Text style={s.body}>Upload the signed APK to a stable HTTPS direct-file URL ending in .apk first. Verify its package name, signing key and version code, then publish it here. Android clients check for this release on launch and when reopened.</Text>
       <View style={s.panel}>
         <Text style={s.label}>INSTALLED BUILD</Text>
         <Text style={s.body}>Installed build metadata: version {String(Constants.expoConfig?.version || 'unknown')} · Android version code {String(Constants.expoConfig?.android?.versionCode || 'unknown')}. Every distributed update must use the same application ID and signing key.</Text>
-        <Field label="VERSION NAME" value={version} onChangeText={setVersion} placeholder="1.0.2" />
-        <Field label="ANDROID VERSION CODE" value={versionCode} onChangeText={setVersionCode} placeholder="3" keyboardType="number-pad" />
+        <Field label="VERSION NAME" value={version} onChangeText={setVersion} placeholder="1.0.4" />
+        <Field label="ANDROID VERSION CODE" value={versionCode} onChangeText={setVersionCode} placeholder="5" keyboardType="number-pad" />
         <Field label="MINIMUM SUPPORTED VERSION CODE" value={minimumVersionCode} onChangeText={setMinimumVersionCode} placeholder="1" keyboardType="number-pad" />
         <Field label="SIGNED APK DOWNLOAD URL (HTTPS)" value={downloadUrl} onChangeText={setDownloadUrl} placeholder="https://github.com/.../releases/download/..." />
         <Text style={s.label}>RELEASE NOTES</Text>
         <TextInput multiline value={notes} onChangeText={setNotes} placeholder="What changed in this release?" placeholderTextColor={c.muted} style={[s.input, s.notesInput]} />
-        <View style={s.statusRow}><View style={{ flex: 1 }}><Text style={s.label}>PUBLICATION</Text><Text style={s.body}>{published ? 'Live to normal users' : 'Draft — hidden from users'}</Text></View><View style={[s.pill, published && s.pillOn]}><Text style={s.pillText}>{published ? 'PUBLISHED' : 'DRAFT'}</Text></View></View>
+        <View style={s.statusRow}><View style={{ flex: 1 }}><Text style={s.label}>PUBLICATION</Text><Text style={s.body}>{published ? 'Live to normal Android users' : 'No release published'}</Text></View><View style={[s.pill, published && s.pillOn]}><Text style={s.pillText}>{published ? 'PUBLISHED' : 'DRAFT'}</Text></View></View>
         {current?.updated_at ? <Text style={s.small}>Last saved: {new Date(current.updated_at).toLocaleString()}</Text> : null}
-        <Pressable disabled={busy} onPress={() => void save(false)} style={[s.secondary, busy && s.disabled]}><Text style={s.secondaryText}>SAVE DRAFT</Text></Pressable>
-        <Pressable disabled={busy} onPress={() => void save(true)} style={[s.primary, busy && s.disabled]}><Text style={s.primaryText}>PUBLISH TO ANDROID USERS</Text></Pressable>
+        <Pressable disabled={busy} onPress={() => void publish()} style={[s.primary, busy && s.disabled]}><Text style={s.primaryText}>PUBLISH TO ANDROID USERS</Text></Pressable>
         {busy ? <ActivityIndicator color={c.accentBright} /> : null}
         {message ? <Text style={s.message}>{message}</Text> : null}
       </View>
