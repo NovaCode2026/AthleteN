@@ -23,14 +23,14 @@ The release control validates version syntax, positive integer version codes, th
 
 The mobile update gate checks the published release:
 - when the app starts;
-- when the app returns to the foreground, subject to a six-hour check interval;
+- when the app returns to the foreground, subject to a six-hour interval after a successful check; transient failures are retried after five minutes;
 - and on a six-hour periodic check while the app process remains active.
 
 When the published version code is newer than the installed build, the app displays an optional update prompt. When the minimum supported version code is newer than the installed build, the prompt is mandatory and cannot be dismissed. The prompt includes release notes and a manual **Check Again** action.
 
 Tapping **Download Update** opens the direct APK URL. Android then requires the user to open/approve the system installer. A normal Android app cannot silently replace its own installed APK on consumer devices. The existing app remains installed until Android confirms the update.
 
-The update check is best-effort: a network or release-feed failure does not block sign-in, training or access to existing athlete data.
+The update check is best-effort: a network or release-feed failure does not block sign-in, training or access to existing athlete data. Failed checks are throttled to one retry every five minutes to avoid repeated requests during outages; successful checks are cached for six hours. Invalid release metadata clears any stale prompt rather than presenting an outdated download.
 
 ## Important release-table constraint
 
