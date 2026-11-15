@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Download, RefreshCw, ShieldCheck, UploadCloud } from "lucide-react";
+import { AlertTriangle, RefreshCw, ShieldCheck, UploadCloud } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
 type ReleaseRow = {
