@@ -19,8 +19,31 @@ test("website Android release publishing is restricted to Super Admin and writes
   assert.match(admin, /isSuperAdmin && <MobileReleaseControl role=\{role\} userId=\{userId\} \/>/);
 });
 
+test("website publisher uploads signed APKs to the protected release bucket before publishing", () => {
+  const release = read("../src/components/admin/MobileReleaseControl.tsx");
+  const migration = read("../supabase/migrations/20261115080229_mobile_release_apk_storage.sql");
+
+  assert.match(release, /APK_BUCKET = "mobile-release-apks"/);
+  assert.match(release, /MAX_APK_SIZE_BYTES = 50 \* 1024 \* 1024/);
+  assert.match(release, /storage\s*\.from\(APK_BUCKET\)\s*\.upload\(filePath, apkFile/);
+  assert.match(release, /contentType: APK_MIME_TYPE/);
+  assert.match(release, /upsert: false/);
+  assert.match(release, /getPublicUrl\(filePath\)/);
+  assert.match(release, /uploadedPath\).*remove\(\[uploadedPath\]\)/);
+  assert.match(migration, /'mobile-release-apks'[\s\S]*?true,[\s\S]*?52428800/);
+  assert.match(migration, /for insert\s+to authenticated[\s\S]*?p\.role = 'super_admin'/);
+  assert.match(migration, /for delete\s+to authenticated[\s\S]*?p\.role = 'super_admin'/);
+});
+
+test("a new APK release cannot accidentally reuse the previous build's download URL", () => {
+  const release = read("../src/components/admin/MobileReleaseControl.tsx");
+  assert.match(release, /code > current\.version_code && releaseDownloadUrl === current\.download_url/);
+  assert.match(release, /Upload the new APK or enter a new direct link/);
+});
+
 test("Android app checks published releases on launch, foreground and the scheduled interval", () => {
   const gate = read("../AthleteN-Mobile/src/components/app-update-gate.tsx");
+  const layout = read("../AthleteN-Mobile/src/app/_layout.tsx");
 
   assert.match(gate, /Platform\.OS !== 'android'/);
   assert.match(gate, /\.eq\('published', true\)/);
@@ -30,6 +53,8 @@ test("Android app checks published releases on launch, foreground and the schedu
   assert.match(gate, /versionCode > installedCode \|\| minimumCode > installedCode/);
   assert.match(gate, /function retryCheck\(\)/);
   assert.match(gate, /Linking\.openURL\(release\.download_url\)/);
+  assert.match(layout, /import AppUpdateGate from '@\/components\/app-update-gate';/);
+  assert.match(layout, /<AppUpdateGate \/>/);
 });
 
 test("required Android updates cannot be dismissed and the device installer remains user-approved", () => {
