@@ -54,7 +54,20 @@ test("Founder dashboard counts real academy workspaces and labels feature flags 
   assert.ok(founder.includes("Owner Command Center"));
   assert.ok(founder.includes("Android Release Control"));
   assert.ok(founder.includes("not the number of product modules"));
+  assert.ok(founder.includes("const PRODUCT_MODULES = ["));
+  assert.ok(founder.includes("IMPLEMENTED MODULES"));
+  assert.ok(founder.includes("VIEW ALL " + "'));
+  assert.ok(founder.includes("empty table does not mean AthleteN has zero product features"));
   assert.doesNotMatch(founder, /LIVE FEATURES/);
+});
+
+test("web form controls use consistent dark-theme text, textarea and focus styling", () => {
+  const css = read("../src/styles/main.css");
+  assert.ok(css.includes("ATHLETEN_FORM_CONTROLS_CONTRAST_FIX"));
+  assert.ok(css.includes("textarea::placeholder"));
+  assert.ok(css.includes("input:focus-visible"));
+  assert.ok(css.includes("select option"));
+  assert.ok(css.includes("box-shadow: 0 0 0 1000px #10243b inset"));
 });
 
 test("Team & Academy selector has responsive visible styles", () => {

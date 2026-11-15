@@ -9,6 +9,40 @@ import { supabase } from '@/lib/supabase';
 import { Icon } from '@/components/mobile-ui';
 
 const c = Colors.dark;
+
+const PRODUCT_MODULES = [
+  { group: 'ATHLETE WORKSPACE', title: 'Athlete dashboard & profile', description: 'Sporting identity, profile details and athlete overview.', route: '/' },
+  { group: 'ATHLETE WORKSPACE', title: 'Taekwondo hub', description: 'Kyorugi, Poomsae and discipline-specific athlete records.', route: '/taekwondo' },
+  { group: 'ATHLETE WORKSPACE', title: 'Training & training plans', description: 'Sessions, history, plans and progress tracking.', route: '/training' },
+  { group: 'ATHLETE WORKSPACE', title: 'Calendar & reminders', description: 'Month calendar, date markers, event details and reminders.', route: '/calendar' },
+  { group: 'ATHLETE WORKSPACE', title: 'Competition & match records', description: 'Tournaments, match results and competition preparation.', route: '/compete' },
+  { group: 'ATHLETE WORKSPACE', title: 'Medals & certificates', description: 'Achievement records and sporting certificates.', route: '/medals' },
+  { group: 'ATHLETE WORKSPACE', title: 'Attendance', description: 'Training attendance and participation history.', route: '/attendance' },
+  { group: 'ATHLETE WORKSPACE', title: 'Weight & performance records', description: 'Athlete performance logs and weight history.', route: '/weight' },
+  { group: 'ATHLETE WORKSPACE', title: 'Goals & athlete journey', description: 'Milestones, progress and personal sporting journey.', route: '/athlete-journey' },
+  { group: 'ATHLETE WORKSPACE', title: 'Documents & athlete passport', description: 'Private records, documents and athlete identity passport.', route: '/athlete-passport' },
+  { group: 'ATHLETE WORKSPACE', title: 'Competition checklist', description: 'Equipment and competition preparation checklist.', route: '/checklist' },
+  { group: 'TEAM & COMMUNICATION', title: 'Coach & Academy connections', description: 'Connect using typed Coach or Academy codes.', route: '/team' },
+  { group: 'TEAM & COMMUNICATION', title: 'Coach workspace', description: 'Coach roster, athlete oversight and training tools; role-gated.', route: '/coach-athletes' },
+  { group: 'TEAM & COMMUNICATION', title: 'Academy workspace', description: 'Academy members, coaches and operations; role-gated.', route: '/academy' },
+  { group: 'TEAM & COMMUNICATION', title: 'Messages & groups', description: 'Direct messages, group conversations and delivery receipts.', route: '/messages' },
+  { group: 'TEAM & COMMUNICATION', title: 'Notifications', description: 'In-app alerts, push notifications and preferences.', route: '/notifications' },
+  { group: 'TOOLS & INSIGHTS', title: 'AI Coach', description: 'AI coaching interface; paid-plan, safety and server-budget gates apply.', route: '/ai-coach' },
+  { group: 'TOOLS & INSIGHTS', title: 'Tournament scanner', description: 'Tournament notices and organizer discovery; integration access applies.', route: '/scanner' },
+  { group: 'TOOLS & INSIGHTS', title: 'Analytics & intelligence reports', description: 'Performance analytics and subscription-gated intelligence reports.', route: '/analytics' },
+  { group: 'TOOLS & INSIGHTS', title: 'Nutrition & hydration', description: 'Nutrition and hydration logs with applicable coach controls.', route: '/nutrition' },
+  { group: 'TOOLS & INSIGHTS', title: 'Competition mode & missions', description: 'Competition preparation tools and athlete missions.', route: '/competition-mode' },
+  { group: 'TOOLS & INSIGHTS', title: 'Badges & achievements', description: 'Badge collection and achievement history.', route: '/badges' },
+  { group: 'COMMUNITY & ACCOUNT', title: 'Plans & subscriptions', description: 'Plan comparison, billing status and usage overview.', route: '/plans' },
+  { group: 'COMMUNITY & ACCOUNT', title: 'Verification & parent approval', description: 'Account trust, age verification and guardian approval workflows.', route: '/verification' },
+  { group: 'COMMUNITY & ACCOUNT', title: 'Support centre', description: 'Private support tickets and account help.', route: '/support' },
+  { group: 'COMMUNITY & ACCOUNT', title: 'Feedback & roadmap', description: 'Product suggestions, roadmap status and votes.', route: '/roadmap' },
+  { group: 'FOUNDER & PLATFORM OPERATIONS', title: 'Owner Command Center', description: 'Full admin resource catalogue across platform data and operations.', route: '/admin' },
+  { group: 'FOUNDER & PLATFORM OPERATIONS', title: 'User, role & entitlement management', description: 'User lookup, approved plan assignment and privileged role controls.', route: '/admin-panel' },
+  { group: 'FOUNDER & PLATFORM OPERATIONS', title: 'Badge administration', description: 'Award eligible badges and inspect permanent system awards.', route: '/admin-badges' },
+  { group: 'FOUNDER & PLATFORM OPERATIONS', title: 'Support operations', description: 'Review, assign and resolve user support cases.', route: '/admin-support' },
+  { group: 'FOUNDER & PLATFORM OPERATIONS', title: 'Android release control', description: 'Publish signed APK releases and manage update delivery.', route: '/admin-releases' },
+];
 const EMPTY_STATS = {
   users: 0, athletes: 0, coaches: 0, academies: 0, admins: 0,
   founders: 0, paidSubscriptions: 0, openTickets: 0, pendingPayments: 0, announcements: 0,
@@ -25,6 +59,7 @@ export default function FounderWorkspaceScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState('');
   const [health, setHealth] = useState('CHECKING');
+  const [showAllModules, setShowAllModules] = useState(false);
 
   const load = useCallback(async () => {
     if (!allowed || !session || !supabase) return;
@@ -127,6 +162,7 @@ export default function FounderWorkspaceScreen() {
           <Stat label="OPEN SUPPORT TICKETS" value={stats.openTickets}/>
           <Stat label="PENDING PAYMENTS" value={stats.pendingPayments}/>
           <Stat label="PUBLISHED ANNOUNCEMENTS" value={stats.announcements}/>
+          <Stat label="IMPLEMENTED MODULES" value={PRODUCT_MODULES.length}/>
         </View>
 
         <View style={s.panel}>
@@ -166,10 +202,37 @@ export default function FounderWorkspaceScreen() {
 
         <View style={s.panel}>
           <View style={s.sectionRow}>
-            <Text style={s.section}>CONFIGURABLE FEATURE FLAGS</Text>
+            <Text style={s.section}>IMPLEMENTED PRODUCT MODULES</Text>
+            <Text style={s.flagSummary}>{PRODUCT_MODULES.length} BUILT IN</Text>
+          </View>
+          <Text style={s.body}>This inventory counts product modules present in the app, not database feature-flag records. Access to individual modules still follows account role, age approval, subscription and integration requirements.</Text>
+          {PRODUCT_MODULES.slice(0, showAllModules ? PRODUCT_MODULES.length : 10).map((module, index) => (
+            <View key={module.title} style={s.moduleRow}>
+              <View style={s.moduleNumber}><Text style={s.moduleNumberText}>{String(index + 1).padStart(2, '0')}</Text></View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                {index === 0 || PRODUCT_MODULES[index - 1].group !== module.group
+                  ? <Text style={s.moduleGroup}>{module.group}</Text>
+                  : null}
+                <Text style={s.cardTitle}>{module.title}</Text>
+                <Text style={s.meta}>{module.description}</Text>
+              </View>
+              <Pressable accessibilityRole="button" accessibilityLabel={'Open ' + module.title} onPress={() => router.push(module.route)} style={s.moduleOpen}>
+                <Icon name="arrow" size={15} color={c.accentBright}/>
+              </Pressable>
+            </View>
+          ))}
+          <Pressable onPress={() => setShowAllModules((value) => !value)} style={s.fullCommand}>
+            <Text style={s.fullCommandText}>{showAllModules ? 'SHOW FEWER MODULES' : 'VIEW ALL ' + PRODUCT_MODULES.length + ' MODULES'}</Text>
+            <Icon name={showAllModules ? 'chevron-up' : 'chevron-down'} size={16} color={c.accentBright}/>
+          </Pressable>
+        </View>
+
+        <View style={s.panel}>
+          <View style={s.sectionRow}>
+            <Text style={s.section}>DATABASE FEATURE FLAGS</Text>
             <Text style={s.flagSummary}>{enabledFlags} ENABLED · {flags.length} CONFIGURED</Text>
           </View>
-          <Text style={s.body}>This metric counts configurable database flags, not the number of product modules available in AthleteN. The feature_flags table currently contains {flags.length} configured entries.</Text>
+          <Text style={s.body}>This is a separate operational setting count. The feature_flags table currently contains {flags.length} configured switches; an empty table does not mean AthleteN has zero product features.</Text>
           {flags.length ? flags.map((flag) => (
             <View key={flag.id} style={s.flagRow}>
               <View style={{ flex: 1 }}>
@@ -253,6 +316,11 @@ const s = StyleSheet.create({
   cardTitle: { color: c.text, fontSize: 12, fontWeight: '900' },
   meta: { color: c.muted, fontSize: 9, lineHeight: 14, marginTop: 2 },
   domain: { borderTopWidth: 1, borderTopColor: c.border, paddingTop: 10, gap: 3 },
+  moduleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, borderTopWidth: 1, borderTopColor: c.border, paddingTop: 10 },
+  moduleNumber: { width: 30, height: 30, borderRadius: 10, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  moduleNumberText: { color: c.accentBright, fontSize: 9, fontWeight: '900' },
+  moduleGroup: { color: c.accentBright, fontSize: 7, fontWeight: '900', letterSpacing: 1.1, marginBottom: 4 },
+  moduleOpen: { width: 32, height: 32, borderRadius: 10, backgroundColor: c.background, alignItems: 'center', justifyContent: 'center' },
   domainTitle: { color: c.text, fontSize: 10, fontWeight: '900' },
   fullCommand: { minHeight: 44, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: c.border, paddingTop: 10 },
   fullCommandText: { color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },

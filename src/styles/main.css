@@ -740,3 +740,83 @@ input, select, textarea, button { max-width: 100%; }
 .segmented-control button.active{color:#f4f9ff;border-color:rgba(75,157,247,.48);background:linear-gradient(135deg,rgba(49,125,219,.3),rgba(39,92,161,.2));box-shadow:inset 0 0 0 1px rgba(102,177,255,.12)}
 .segmented-control button:focus-visible{outline:2px solid #63aeff;outline-offset:2px}
 @media(max-width:440px){.segmented-control{width:100%}.segmented-control button{flex:1;padding:0 9px}}
+
+/* ATHLETEN_FORM_CONTROLS_CONTRAST_FIX */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="submit"]):not([type="button"]),
+textarea,
+select {
+  color: #edf6ff;
+  background-color: #10243b;
+  border: 1px solid #2b4a6b;
+  border-radius: 11px;
+  color-scheme: dark;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="submit"]):not([type="button"]),
+select {
+  min-height: 42px;
+  padding: 10px 12px;
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 112px;
+  padding: 11px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #8196af;
+  opacity: 1;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  border-color: #62aaff;
+  outline: 3px solid rgba(60, 145, 255, 0.2);
+  outline-offset: 1px;
+}
+
+select option {
+  color: #edf6ff;
+  background: #0c1d32;
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #edf6ff;
+  box-shadow: 0 0 0 1000px #10243b inset;
+  transition: background-color 9999s ease-out;
+}
+
+@media (max-width: 560px) {
+  .modal-backdrop {
+    padding: 10px;
+    align-items: end;
+  }
+  .modal {
+    width: 100%;
+    max-height: min(92vh, 900px);
+    padding: 20px 16px;
+  }
+}
