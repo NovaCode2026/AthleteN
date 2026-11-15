@@ -23,7 +23,7 @@ create table if not exists public.mobile_app_release_drafts (
 
 alter table public.mobile_app_release_drafts enable row level security;
 revoke all on table public.mobile_app_release_drafts from public, anon, authenticated;
-grant select, insert, update on table public.mobile_app_release_drafts to authenticated;
+grant select, insert, update, delete on table public.mobile_app_release_drafts to authenticated;
 
 drop policy if exists "super admins read mobile release drafts" on public.mobile_app_release_drafts;
 create policy "super admins read mobile release drafts"
@@ -58,6 +58,14 @@ create policy "super admins update mobile release drafts"
     )
     and updated_by = auth.uid()
   );
+
+drop policy if exists "super admins delete mobile release drafts" on public.mobile_app_release_drafts;
+create policy "super admins delete mobile release drafts"
+  on public.mobile_app_release_drafts for delete to authenticated
+  using (exists (
+    select 1 from public.profiles p
+    where p.user_id = auth.uid() and p.role = 'super_admin'
+  ));
 
 create table if not exists public.mobile_app_release_history (
   id uuid primary key default gen_random_uuid(),
@@ -144,7 +152,7 @@ create or replace function public.publish_mobile_app_release(
 )
 returns public.mobile_app_releases
 language plpgsql
-security definer
+security invoker
 set search_path = public, pg_temp
 as $$
 declare
