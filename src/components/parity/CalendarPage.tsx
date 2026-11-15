@@ -175,6 +175,14 @@ export default function CalendarPage() {
 
   const selectedItems = eventsByDay.get(selectedDay) || [];
 
+  function selectDay(key: string) {
+    setSelectedDay(key);
+    setDraft((current) => {
+      const time = current.event_date.includes("T") ? current.event_date.slice(10) : "T18:00";
+      return { ...current, event_date: key + time };
+    });
+  }
+
   function changeMonth(delta: number) {
     const next = new Date(month.getFullYear(), month.getMonth() + delta, 1);
     const nextDay = dateKey(next);
@@ -279,7 +287,7 @@ export default function CalendarPage() {
                   className={classes}
                   type="button"
                   key={key}
-                  onClick={() => setSelectedDay(key)}
+                  onClick={() => selectDay(key)}
                   aria-label={dateLabel(key) + (dayItems.length ? ", " + dayItems.length + " scheduled items" : ", no scheduled items")}
                   aria-pressed={key === selectedDay}
                 >
