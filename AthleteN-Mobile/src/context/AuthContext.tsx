@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
@@ -33,8 +33,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profileLoading, setProfileLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [syncVersion, setSyncVersion] = useState(0);
+  // Ignore profile/bootstrap responses that belong to an earlier account or auth event.
+  const profileRequestVersion = useRef(0);
+  const authEventVersion = useRef(0);
+  const activeProfileUserId = useRef<string | null>(null);
 
   const loadProfile = async (userId: string) => {
+    const requestVersion = ++profileRequestVersion.current;
+    if (activeProfileUserId.current !== userId) {
+      activeProfileUserId.current = userId;
+      setProfile(null);
+    }
     setProfileLoading(true);
     try {
       const result = await withTimeout(
@@ -43,17 +52,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'Profile request timed out. Check your network and Supabase configuration.'
       );
       if (result.error) throw result.error;
+      if (requestVersion !== profileRequestVersion.current || activeProfileUserId.current !== userId) return;
       setProfile(result.data ? result.data as Profile : null);
       setAuthError(null);
     } catch (error) {
+      if (requestVersion !== profileRequestVersion.current || activeProfileUserId.current !== userId) return;
       setProfile(null);
       setAuthError(error instanceof Error ? error.message : 'Could not load your AthleteN profile.');
     } finally {
-      setProfileLoading(false);
+      if (requestVersion === profileRequestVersion.current && activeProfileUserId.current === userId) {
+        setProfileLoading(false);
+      }
     }
   };
 
   const bootstrap = async () => {
+    const observedAuthEventVersion = authEventVersion.current;
     setLoading(true);
     setAuthError(null);
 
@@ -70,14 +84,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'Supabase auth request timed out. Check your internet connection.'
       );
       if (result.error) throw result.error;
+      // An auth event (for example, sign-out) wins over a slower getSession call.
+      if (authEventVersion.current !== observedAuthEventVersion) return;
 
       const nextSession = result.data.session;
+      const nextUserId = nextSession?.user.id ?? null;
+      if (activeProfileUserId.current !== nextUserId) {
+        profileRequestVersion.current += 1;
+        activeProfileUserId.current = nextUserId;
+        setProfile(null);
+        setProfileLoading(false);
+      }
       setSession(nextSession);
       setLoading(false);
       if (nextSession) await loadProfile(nextSession.user.id);
     } catch (error) {
+      if (authEventVersion.current !== observedAuthEventVersion) return;
+      profileRequestVersion.current += 1;
+      activeProfileUserId.current = null;
       setSession(null);
       setProfile(null);
+      setProfileLoading(false);
       setLoading(false);
       setAuthError(error instanceof Error ? error.message : 'Could not connect to AthleteN.');
     }
@@ -87,12 +114,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void bootstrap();
 
     const { data } = supabase.auth.onAuthStateChange((_event, next) => {
+      authEventVersion.current += 1;
+      const nextUserId = next?.user.id ?? null;
+      if (activeProfileUserId.current !== nextUserId) {
+        profileRequestVersion.current += 1;
+        activeProfileUserId.current = nextUserId;
+        setProfile(null);
+        setProfileLoading(false);
+      }
       setSession(next);
+      setLoading(false);
       if (next) void loadProfile(next.user.id);
-      else setProfile(null);
+      else setAuthError(null);
     });
 
-    return () => data.subscription.unsubscribe();
+    return () => {
+      authEventVersion.current += 1;
+      profileRequestVersion.current += 1;
+      activeProfileUserId.current = null;
+      data.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -174,7 +215,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Do not block sign-out if this device's token cleanup is temporarily unavailable.
           }
         }
-        await supabase.auth.signOut();
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
       },
     }}>
       {children}
