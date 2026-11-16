@@ -8,18 +8,17 @@ const migration = readFileSync(
 );
 
 test("the private approval lookup cannot be called by client roles", () => {
-  assert.match(migration, /CREATE OR REPLACE FUNCTION private\\.user_age_is_approved/i);
-  assert.match(
-    migration,
-    /REVOKE ALL ON FUNCTION private\\.user_age_is_approved\\(uuid\\)\\s+FROM PUBLIC, anon, authenticated, service_role/i
-  );
+  assert.ok(migration.includes("CREATE OR REPLACE FUNCTION private.user_age_is_approved(p_user_id uuid)"));
+  assert.ok(migration.includes(
+    "REVOKE ALL ON FUNCTION private.user_age_is_approved(uuid)\n  FROM PUBLIC, anon, authenticated, service_role;"
+  ));
 });
 
 test("the public approval status RPC is scoped to self, platform admins, or service role", () => {
-  assert.match(migration, /p_user_id = \\(SELECT auth\\.uid\\(\\)\\)/i);
-  assert.match(migration, /private\\.is_platform_admin\\(\\)/i);
-  assert.match(migration, /coalesce\\(auth\\.role\\(\\), ''\\) = 'service_role'/i);
-  assert.match(migration, /ELSE false/i);
+  assert.ok(migration.includes("p_user_id = (SELECT auth.uid())"));
+  assert.ok(migration.includes("private.is_platform_admin()"));
+  assert.ok(migration.includes("coalesce(auth.role(), '') = 'service_role'"));
+  assert.ok(migration.includes("ELSE false"));
 });
 
 test("every internal cross-user approval check is redirected to the private helper", () => {
@@ -49,8 +48,7 @@ test("every internal cross-user approval check is redirected to the private help
     assert.ok(migration.includes(mapping), `Missing private mapping for ${functionName}(${argument})`);
   }
 
-  assert.match(
-    migration,
-    /replace\\(item\\.old_expression, 'public\\.is_age_approved', 'private\\.user_age_is_approved'\\)/i
-  );
+  assert.ok(migration.includes(
+    "replace(item.old_expression, 'public.is_age_approved', 'private.user_age_is_approved')"
+  ));
 });
