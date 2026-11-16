@@ -11,7 +11,7 @@ import { getAiLimit } from '@/lib/entitlements';
 import PlanSection from '@/components/plan-section';
 
 type Tab='Dashboard'|'People'|'Training'|'Events'|'Finance';
-type Member={user_id:string;role:string;status:string;full_name?:string|null;belt?:string|null;discipline?:string|null;username?:string|null};
+type Member={user_id:string;role:string;status:string;full_name?:string|null;belt?:string|null;discipline?:string|null;username?:string|null;weight_kg?:number|null;competition_weight_category?:string|null};
 type Session={id:string;session_date:string;start_time:string;title:string};
 type Event={id:string;name:string;starts_at:string;location?:string|null;status?:string|null};
 
@@ -99,7 +99,7 @@ export default function Academy(){
   const base=(m.data||[]) as any[];
   const ids=base.map(x=>x.user_id);
   if(ids.length){
-   const p=await supabase.from('profiles').select('user_id,full_name,belt,discipline,username').in('user_id',ids);
+   const p=await supabase.from('profiles').select('user_id,full_name,belt,discipline,username,weight_kg,competition_weight_category').in('user_id',ids);
    const map=new Map((p.data||[]).map((x:any)=>[x.user_id,x]));
    setMembers(base.map(x=>({...x,...(map.get(x.user_id)||{})})));
   }else setMembers([]);
@@ -255,9 +255,16 @@ export default function Academy(){
 
   {tab==='People'?<View style={{gap:10}}>
    <Text style={{color:c.text,fontSize:23,fontWeight:'900'}}>People</Text>
-   <Text style={{color:c.muted,fontSize:10}}>Manage academy athletes and coaches.</Text>
+   <Text style={{color:c.muted,fontSize:10}}>Manage academy athletes and coaches. Tap an athlete to open their complete performance record.</Text>
    <Card><Text style={{color:c.text,fontSize:14,fontWeight:'900'}}>Invite coaches with your academy code</Text><Text style={{color:c.muted,fontSize:10,marginTop:5}}>Share this code with a coach. They join the academy from their own Coach Profile by entering the code. This prevents an academy from linking a coach without that coach's action.</Text><Text selectable style={{color:c.accentBright,fontSize:20,fontWeight:'900',marginTop:10}}>{savedCode||'ACADEMY CODE NOT SET'}</Text></Card>
-   {members.length?members.map(m=><Card key={m.user_id} style={{padding:13}}><View style={{flexDirection:'row',alignItems:'center',gap:11}}><View style={{width:40,height:40,borderRadius:12,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'}}><Icon name={m.role==='coach'?'coaches':'athletes'} size={18}/></View><View style={{flex:1}}><Text style={{color:c.text,fontSize:12,fontWeight:'900'}}>{m.full_name||m.username||'Member'}</Text><Text style={{color:c.muted,fontSize:9,marginTop:3}}>{m.role.toUpperCase()} · {m.discipline||'Taekwondo'}{m.belt?' · '+m.belt:''}</Text></View>{m.role==='academy_admin'?<Text style={{color:c.muted,fontSize:7,fontWeight:'900'}}>ADMIN</Text>:<Pressable disabled={busy} onPress={()=>void removeMember(m.user_id)} style={{borderWidth:1,borderColor:'#8b3a45',borderRadius:9,paddingHorizontal:8,paddingVertical:6}}><Text style={{color:'#ff8f9f',fontSize:7,fontWeight:'900'}}>REMOVE</Text></Pressable>}</View></Card>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No connected people yet</Text><Text style={{color:c.muted,fontSize:10,marginTop:4}}>Share the academy code so coaches and athletes can join from their own accounts.</Text></Card>}
+   {members.length?members.map(m=><Card key={m.user_id} style={{padding:13}}><View style={{flexDirection:'row',alignItems:'center',gap:10}}>
+    <Pressable disabled={m.role!=='athlete'} onPress={()=>router.push({pathname:'/academy-athlete-detail',params:{athleteId:m.user_id}})} style={{flex:1,minWidth:0,flexDirection:'row',alignItems:'center',gap:10}}>
+     <View style={{width:40,height:40,borderRadius:12,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'}}><Icon name={m.role==='coach'?'coaches':'athletes'} size={18}/></View>
+     <View style={{flex:1,minWidth:0}}><Text style={{color:c.text,fontSize:12,fontWeight:'900'}}>{m.full_name||m.username||'Member'}</Text><Text style={{color:c.muted,fontSize:9,marginTop:3}}>{m.role.toUpperCase()} · {m.discipline||'Taekwondo'}{m.belt?' · '+m.belt:''}</Text>{m.role==='athlete'?<Text style={{color:c.accentBright,fontSize:8,fontWeight:'900',marginTop:4}}>{m.weight_kg?Number(m.weight_kg).toFixed(1)+' kg':'Weight not set'} · {m.competition_weight_category||'Category not set'} · VIEW PROFILE ›</Text>:null}</View>
+     {m.role==='athlete'?<Icon name="arrow" size={17} color={c.accentBright}/>:null}
+    </Pressable>
+    {m.role==='academy_admin'?<Text style={{color:c.muted,fontSize:7,fontWeight:'900'}}>ADMIN</Text>:<Pressable disabled={busy} onPress={()=>void removeMember(m.user_id)} style={{borderWidth:1,borderColor:'#8b3a45',borderRadius:9,paddingHorizontal:8,paddingVertical:6}}><Text style={{color:'#ff8f9f',fontSize:7,fontWeight:'900'}}>REMOVE</Text></Pressable>}
+   </View></Card>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No connected people yet</Text><Text style={{color:c.muted,fontSize:10,marginTop:4}}>Share the academy code so coaches and athletes can join from their own accounts.</Text></Card>}
   </View>:null}
 
   {tab==='Training'?<View style={{gap:9}}><Text style={{color:c.text,fontSize:23,fontWeight:'900'}}>Training</Text><Text style={{color:c.muted,fontSize:10}}>Create academy groups, assign coaches and athletes, and manage the generated schedule.</Text><Card style={{paddingBottom:92}}><Text style={{color:c.text,fontSize:14,fontWeight:'900'}}>Create training group</Text><Field label="GROUP NAME" value={groupName} onChangeText={setGroupName} placeholder="Elite Kyorugi"/><Field label="FOCUS" value={groupFocus} onChangeText={setGroupFocus} placeholder="Kyorugi conditioning"/><Field label="COACH USERNAME / NAME" value={groupCoach} onChangeText={setGroupCoach} placeholder="coach_username"/><Field label="ATHLETES (COMMA-SEPARATED, OPTIONAL)" value={groupAthletes} onChangeText={setGroupAthletes} placeholder="athlete1, athlete2"/><Field label="DAYS" value={groupDays} onChangeText={setGroupDays} placeholder="Mon,Wed,Fri"/><Field label="START TIME (HH:MM)" value={groupTime} onChangeText={setGroupTime} placeholder="17:00"/><Field label="DURATION (MINUTES)" value={groupDuration} onChangeText={setGroupDuration} keyboardType="number-pad" placeholder="90"/><Button title="CREATE TRAINING GROUP" onPress={()=>void createTrainingGroup()} busy={busy}/></Card>{sessions.length?sessions.map(s=><Card key={s.id}><Text style={{color:c.text,fontWeight:'900'}}>{s.title}</Text><Text style={{color:c.muted,fontSize:9,marginTop:4}}>{new Date(s.session_date).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})} · {s.start_time?.slice(0,5)}</Text></Card>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No sessions yet</Text><Text style={{color:c.muted,fontSize:10,marginTop:4}}>Create a group above to generate the academy schedule.</Text></Card>}</View>:null}
