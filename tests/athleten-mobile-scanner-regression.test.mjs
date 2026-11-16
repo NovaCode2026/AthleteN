@@ -167,3 +167,10 @@ test("scanner discovers same-site pages and linked public PDFs without crawling 
   assert.ok(links.includes("https://cdn.example.org/official-notice.pdf"));
   assert.ok(!links.includes("https://other.example.org/random"));
 });
+
+test("web tournament scanner checks the caller's age approval before scanning public sources", () => {
+  const scanner = read("netlify/functions/tournament-scan.mjs");
+  assert.match(scanner, /get_age_verification_status/);
+  assert.match(scanner, /Account approval is required before using Tournament Scanner/);
+  assert.match(scanner, /\["approved",\s*"not_required",\s*"qa_verified"\]/);
+});

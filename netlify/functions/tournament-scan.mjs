@@ -569,6 +569,13 @@ export default async function handler(request) {
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
   if (userError || !userData?.user) return json({ error: "Please sign in again before scanning." }, 401);
   const userId = userData.user.id;
+  const ageStatusResult = await supabase.rpc("get_age_verification_status");
+  if (ageStatusResult.error) return json({ error: "Age approval could not be verified. Please retry." }, 503);
+  const ageRows = ageStatusResult.data;
+  const ageStatus = Array.isArray(ageRows) ? ageRows[0]?.status : ageRows?.status;
+  if (!["approved", "not_required", "qa_verified"].includes(String(ageStatus || ""))) {
+    return json({ error: "Account approval is required before using Tournament Scanner." }, 403);
+  }
   const { data: profile, error: profileError } = await supabase.from("profiles").select("user_id, plan_id").eq("user_id", userId).maybeSingle();
   if (profileError) return json({ error: "Unable to verify your scanner entitlement." }, 503);
   if (!profile) return json({ error: "Complete onboarding before using Tournament Scanner." }, 403);

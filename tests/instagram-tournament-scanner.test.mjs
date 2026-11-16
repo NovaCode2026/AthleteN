@@ -62,3 +62,32 @@ test("administrative dates are excluded from generic tournament-date extraction"
   assert.match(backend, /const administrative = \/\(\?:reporting\|check\[- \]\?in\|checkin\|weigh\[- \]\?in\|registration\|deadline\|last\\s\+date\|arrival\)/);
   assert.match(backend, /if \(administrative\.test\(prefix\) && !eventContext\.test\(prefix\)\) continue/);
 });
+
+test("Instagram scanner outbound requests use exact approved hosts, HTTPS, DNS checks and manual redirects", () => {
+  assert.match(backend, /assertPublicHttpUrl/);
+  assert.match(backend, /redirect:\s*"manual"/);
+  assert.match(backend, /isAllowedInstagramHost/);
+  assert.match(backend, /isAllowedInstagramMediaHost/);
+  assert.doesNotMatch(backend, /redirect:\s*"follow"/);
+  assert.match(backend, /OUTBOUND_HOST_BLOCKED/);
+});
+
+test("Instagram scanner bounds HTML, JSON and poster image bodies before buffering", () => {
+  assert.match(backend, /readBoundedResponseBuffer/);
+  assert.match(backend, /MAX_INSTAGRAM_HTML_BYTES/);
+  assert.match(backend, /MAX_INSTAGRAM_JSON_BYTES/);
+  assert.match(backend, /MAX_INSTAGRAM_IMAGE_BYTES/);
+  assert.doesNotMatch(backend, /response\.arrayBuffer\(\)|response\.text\(\)|response\.json\(\)/);
+  assert.match(backend, /POSTER_IMAGE_CONTENT_TYPE_UNSUPPORTED/);
+});
+
+test("Instagram scanner requires the caller's own approved age-verification status before service-role operations", () => {
+  assert.match(backend, /get_age_verification_status/);
+  assert.match(backend, /\["approved",\s*"not_required",\s*"qa_verified"\]/);
+  assert.match(backend, /Account approval is required before using the Instagram Tournament Scanner/);
+});
+
+test("Instagram source URLs are restricted to HTTPS Instagram domains", () => {
+  assert.match(backend, /Only public HTTPS Instagram post, reel, or profile URLs are supported/);
+  assert.match(backend, /parsed\.protocol !== "https:"/);
+});

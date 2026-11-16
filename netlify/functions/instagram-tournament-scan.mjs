@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { assertPublicHttpUrl } from "./tournament-scan.mjs";
 
 const TOURNAMENT_WORDS = /(taekwondo|tournament|championship|championships|open|cup|games|kyorugi|poomsae|registration|weigh[- ]?in|draw|fixture|entry|medal|cadet|junior|senior|rules|scoring|PSS|protector|venue|schedule|fee|accommodation|transport|results?|competition|state|national)/i;
 const IG_PATHS_TO_IGNORE = new Set(["p","reel","reels","explore","accounts","direct","about","legal","privacy","terms","challenge","stories"]);
@@ -18,15 +19,85 @@ export const eventDatePatterns = [
   /\b(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,12}(?:\s+20\d{2})?)\b/i
 ];
 
-async function fetchBounded(url, options = {}, timeoutMs = 7000) {
+const INSTAGRAM_SOURCE_HOSTS = new Set(["instagram.com", "www.instagram.com", "api.instagram.com"]);
+const MAX_INSTAGRAM_HTML_BYTES = 4 * 1024 * 1024;
+const MAX_INSTAGRAM_JSON_BYTES = 2 * 1024 * 1024;
+const MAX_INSTAGRAM_IMAGE_BYTES = 12 * 1024 * 1024;
+
+export function isAllowedInstagramHost(hostname) {
+  return INSTAGRAM_SOURCE_HOSTS.has(String(hostname || "").toLowerCase());
+}
+
+export function isAllowedInstagramMediaHost(hostname) {
+  const host = String(hostname || "").toLowerCase();
+  return host === "cdninstagram.com" || host.endsWith(".cdninstagram.com") ||
+    host === "fbcdn.net" || host.endsWith(".fbcdn.net");
+}
+
+async function validateInstagramOutboundUrl(value, allowedHost) {
+  let url;
+  try { url = new URL(String(value || "")); } catch { throw new Error("INVALID_OUTBOUND_URL"); }
+  if (url.protocol !== "https:" || url.username || url.password || url.port) {
+    throw new Error("UNSUPPORTED_OUTBOUND_URL");
+  }
+  if (!allowedHost(url.hostname)) throw new Error("OUTBOUND_HOST_BLOCKED");
+  await assertPublicHttpUrl(url.toString());
+  return url;
+}
+
+async function fetchBounded(url, options = {}, timeoutMs = 7000, allowedHost = isAllowedInstagramHost) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Math.max(500, timeoutMs));
   try {
-    return await fetch(url, { ...options, signal: controller.signal, redirect: "follow" });
+    let currentUrl = String(url || "");
+    for (let redirects = 0; redirects <= 4; redirects += 1) {
+      const checkedUrl = await validateInstagramOutboundUrl(currentUrl, allowedHost);
+      const response = await fetch(checkedUrl.toString(), {
+        ...options,
+        signal: controller.signal,
+        redirect: "manual"
+      });
+      if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+      const location = response.headers.get("location");
+      await response.body?.cancel().catch(() => {});
+      if (!location) throw new Error("REDIRECT_WITHOUT_LOCATION");
+      if (redirects === 4) throw new Error("TOO_MANY_REDIRECTS");
+      currentUrl = new URL(location, checkedUrl).toString();
+    }
+    throw new Error("TOO_MANY_REDIRECTS");
   } finally {
     clearTimeout(timer);
   }
 }
+
+async function readBoundedResponseBuffer(response, maxBytes) {
+  const declaredLength = Number(response.headers.get("content-length") || 0);
+  if (declaredLength > maxBytes) throw new Error("SOURCE_TOO_LARGE");
+  if (!response.body) return Buffer.alloc(0);
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => {});
+        throw new Error("SOURCE_TOO_LARGE");
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks, total);
+}
+
+async function readBoundedResponseText(response, maxBytes) {
+  return (await readBoundedResponseBuffer(response, maxBytes)).toString("utf8");
+}
+
 function env(name) { return Netlify.env.get(name); }
 
 function authClient(token) {
@@ -155,7 +226,7 @@ async function analyzeTournamentImage(imageUrl, deadline = Date.now() + 30000) {
           "Referer": "https://www.instagram.com/",
           Accept: "image/jpeg,image/png,image/webp,image/*,*/*;q=0.8"
         }
-      }, 10000);
+      }, 10000, isAllowedInstagramMediaHost);
       lastStatus = candidateResponse.status;
       if (candidateResponse.ok) {
         response = candidateResponse;
@@ -166,8 +237,11 @@ async function analyzeTournamentImage(imageUrl, deadline = Date.now() + 30000) {
 
     if (!response) return { poster: null, error: `POSTER_IMAGE_HTTP_${lastStatus || 0}` };
 
-    const contentType = (response.headers.get("content-type") || "image/jpeg").split(";")[0].toLowerCase();
-    const buffer = Buffer.from(await response.arrayBuffer());
+    const contentType = (response.headers.get("content-type") || "").split(";")[0].toLowerCase();
+    if (!/^image\/(?:jpeg|png|webp|gif|avif|heic|heif)$/i.test(contentType)) {
+      return { poster: null, error: "POSTER_IMAGE_CONTENT_TYPE_UNSUPPORTED" };
+    }
+    const buffer = await readBoundedResponseBuffer(response, MAX_INSTAGRAM_IMAGE_BYTES);
     console.log("instagram-tournament-ocr-image", {
       contentType,
       bytes: buffer.length,
@@ -1127,13 +1201,15 @@ async function fetchInstagram(url) {
 
   for (const candidate of candidates) {
     try {
-      const response = await fetchBounded(candidate.url, { headers }, 7000);
+      const response = await fetchBounded(candidate.url, { headers }, 7000, isAllowedInstagramHost);
       lastStatus = response.status;
       if (!response.ok) continue;
 
       const contentType = response.headers.get("content-type") || "";
       if (candidate.kind === "oembed" || candidate.kind === "json" || /json/i.test(contentType)) {
-        const data = await response.json().catch(() => null);
+        const dataText = await readBoundedResponseText(response, MAX_INSTAGRAM_JSON_BYTES);
+        let data = null;
+        try { data = JSON.parse(dataText); } catch { data = null; }
         const title = clean(data?.title || data?.graphql?.shortcode_media?.title || "");
         const author = clean(data?.author_name || data?.graphql?.shortcode_media?.owner?.username || "");
         const captionText = clean(
@@ -1165,7 +1241,7 @@ async function fetchInstagram(url) {
         continue;
       }
 
-      const html = await response.text();
+      const html = await readBoundedResponseText(response, MAX_INSTAGRAM_HTML_BYTES);
       const candidateCaption = extractCaption(html);
       const candidateTitle = extractTitle(html, candidateCaption);
       const visible = clean(`${candidateTitle} ${candidateCaption}`);
@@ -1292,9 +1368,9 @@ async function scanPublicSource(sourceUrl) {
         Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
         Referer: "https://www.instagram.com/"
-      }}, 6500);
+      }}, 6500, isAllowedInstagramHost);
       if (!page.ok) return null;
-      const html = await page.text();
+      const html = await readBoundedResponseText(page, MAX_INSTAGRAM_HTML_BYTES);
       const profileCaption = extractCaption(html);
       const profileTitle = extractTitle(html);
       const postUrls = instagramPostUrls(html).slice(0, MAX_ACCOUNT_POSTS);
@@ -1844,6 +1920,17 @@ export default async function handler(request) {
   } catch {}
   if (!user) return json({ error: "Please sign in again before scanning." }, 401);
 
+  const authClientForApproval = authClient(accessToken);
+  const ageStatusResult = await authClientForApproval.rpc("get_age_verification_status");
+  if (ageStatusResult.error) return json({ error: "Age approval could not be verified. Please retry." }, 503);
+  const ageRows = ageStatusResult.data;
+  const ageStatus = Array.isArray(ageRows) ? ageRows[0]?.status : ageRows?.status;
+  if (!["approved", "not_required", "qa_verified"].includes(String(ageStatus || ""))) {
+    return json({ error: "Account approval is required before using the Instagram Tournament Scanner." }, 403);
+  }
+
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (declaredLength > 16 * 1024) return json({ error: "Scanner request is too large." }, 413);
   const body = await request.json().catch(() => ({}));
   const action = String(body.action || "").trim().toLowerCase();
 
@@ -1953,7 +2040,10 @@ export default async function handler(request) {
   const sourceUrl = String(body.sourceUrl || "").trim();
   let parsed;
   try { parsed = new URL(sourceUrl); } catch { return json({ error: "Enter a valid Instagram post, reel, or profile URL." }, 400); }
-  if (!/(^|\.)instagram\.com$/i.test(parsed.hostname)) return json({ error: "Only Instagram sources are supported here." }, 400);
+  if (sourceUrl.length > 2048 || parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.port ||
+      !isAllowedInstagramHost(parsed.hostname)) {
+    return json({ error: "Only public HTTPS Instagram post, reel, or profile URLs are supported." }, 400);
+  }
 
   try {
     const result = await scanPublicSource(sourceUrl);
