@@ -207,16 +207,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut: async () => {
         const userId = session?.user.id;
         // Best-effort token cleanup prevents a shared device receiving alerts
-        // for the previous account after sign-out.
+        // for the previous account after sign-out. Bound the wait so a slow
+        // device-token request cannot keep the user inside the old account.
         if (userId) {
           try {
-            await unregisterPushNotifications(userId);
+            await withTimeout(
+              unregisterPushNotifications(userId),
+              2500,
+              'Push-token cleanup timed out.'
+            );
           } catch {
-            // Do not block sign-out if this device's token cleanup is temporarily unavailable.
+            // Never block account sign-out on best-effort notification cleanup.
           }
         }
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
+
+        // Supabase normally emits SIGNED_OUT through onAuthStateChange. Clear
+        // the in-memory session explicitly as an idempotent fallback, and
+        // invalidate any profile/bootstrap response still in flight.
+        authEventVersion.current += 1;
+        profileRequestVersion.current += 1;
+        activeProfileUserId.current = null;
+        setSession(null);
+        setProfile(null);
+        setProfileLoading(false);
+        setLoading(false);
+        setAuthError(null);
       },
     }}>
       {children}
