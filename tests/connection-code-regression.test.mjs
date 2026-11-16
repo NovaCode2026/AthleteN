@@ -23,3 +23,17 @@ test("Android team connection changes use an in-app password modal, not Alert.pr
   assert.doesNotMatch(team, /Alert\.prompt/);
   assert.match(team, /connect_athlete_by_code_typed/);
 });
+
+const reservationMigration = readFileSync(new URL("../supabase/migrations/20261116012408_permanently_reserve_case_insensitive_connection_codes.sql", import.meta.url), "utf8");
+
+test("codes are case-insensitive, trimmed, globally unique and stay reserved when inactive", () => {
+  assert.match(reservationMigration, /CREATE UNIQUE INDEX connection_codes_code_lower_unique\\s+ON public\\.connection_codes \\(lower\\(btrim\\(code\\)\\)\\)/i);
+  assert.doesNotMatch(reservationMigration, /WHERE\\s+active/i);
+  assert.match(migration, /lower\\(btrim\\(cc\\.code\\)\\)=lower\\(v_normalized\\)/i);
+  assert.match(migration, /That code is already reserved/i);
+});
+
+test("code redemption compares entered codes without case sensitivity or surrounding spaces", () => {
+  assert.match(migration, /lower\\(btrim\\(cc\\.code\\)\\)=lower\\(btrim\\(p_code\\)\\)/i);
+  assert.match(migration, /lower\\(btrim\\(cc\\.code\\)\\)=lower\\(btrim\\(p_code\\)\\)/i);
+});
