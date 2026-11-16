@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 test('mobile auth ignores stale profile responses after account changes or sign-out', () => {
-  const source = fs.readFileSync('src/context/AuthContext.tsx', 'utf8');
+  const source = fs.readFileSync(new URL('../src/context/AuthContext.tsx', import.meta.url), 'utf8');
   assert.match(source, /profileRequestVersion\s*=\s*useRef/);
   assert.match(source, /activeProfileUserId\s*=\s*useRef/);
   assert.match(source, /authEventVersion\s*=\s*useRef/);
