@@ -53,7 +53,7 @@ test('sign-out invalidates pending registration and deletes only the current acc
 
   assert.match(unregister, /pushRegistrationGeneration\s*\+=\s*1/);
   assert.match(unregister, /\.delete\(\)[\s\S]*?\.eq\('user_id',\s*userId\)[\s\S]*?\.eq\('token',\s*token\)/);
-  assert.match(authSource, /await unregisterPushNotifications\(userId\)/);
+  assert.match(authSource, /await withTimeout\(\s*unregisterPushNotifications\(userId\),\s*2500/);
   assert.match(authSource, /await supabase\.auth\.signOut\(\)/);
 });
 
