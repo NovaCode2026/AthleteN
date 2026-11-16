@@ -162,7 +162,7 @@ export default function AcademyAthleteDetail(){
   const rows:any[]=[];
   groupSessions.filter((row:any)=>row.status!=='cancelled').forEach((row:any)=>{
    const record=attendanceMap.get(row.id);
-   rows.push({id:'group-'+row.id,day:String(row.session_date).slice(0,10),kind:'attendance',title:row.title||'Academy training',time:row.start_time,subtitle:(groupNames.get(row.group_id)||'Training group')+(row.training_type?' · '+row.training_type:''),status:record?.status||'not marked',note:record?.note||row.notes||null});
+   rows.push({id:'group-'+row.id,day:String(row.session_date).slice(0,10),kind:'attendance',title:row.title||'Academy training',time:row.start_time,subtitle:(groupNames.get(row.group_id)||'Training group')+(row.training_type?' · '+row.training_type:''),status:record?.status||(String(row.session_date)<=dayKey(new Date())?'not marked':'scheduled'),note:record?.note||row.notes||null});
   });
   calendarEvents.forEach((row:any)=>rows.push({id:'calendar-'+row.id,day:dayKey(new Date(row.event_date)),kind:row.event_type||'reminder',title:row.title, time:row.event_date,subtitle:row.notes||'Athlete calendar event',status:null}));
   training.forEach((row:any)=>rows.push({id:'training-'+row.id,day:String(row.session_date).slice(0,10),kind:'training log',title:row.title||'Logged training',time:null,subtitle:(row.minutes?row.minutes+' minutes':'')+(row.intensity?' · '+row.intensity:''),status:null,note:row.notes}));
