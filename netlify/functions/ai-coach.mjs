@@ -63,9 +63,10 @@ function createUserSupabaseClient(accessToken) {
   });
 }
 
-async function cancelReservation(supabase, reservationId, userId) {
+async function cancelReservation(admin, reservationId, userId) {
   if (!reservationId) return;
-  await supabase.rpc("cancel_ai_usage", { p_usage_id: reservationId, p_user_id: userId }).catch(() => undefined);
+  const { error } = await admin.rpc("cancel_ai_usage", { p_usage_id: reservationId, p_user_id: userId });
+  if (error) console.error("AI usage reservation cancellation failed:", error);
 }
 async function settlePlatformBudget(admin, id, actualCostPaise) {
   if (!id) return { error: new Error("AI budget reservation is missing.") };
@@ -240,7 +241,7 @@ export default async function handler(request) {
   if (budgetReservationError) { console.error("AI budget reservation failed:", budgetReservationError); return json("AI Coach is paused because the protected monthly budget ledger is not ready.", 503); }
   if (!budgetReservationId) return json("The monthly AthleteN AI operating budget has been reached.", 429);
 
-  const { data: reservationId, error: reservationError } = await supabase.rpc("reserve_ai_usage", {
+  const { data: reservationId, error: reservationError } = await budgetAdmin.rpc("reserve_ai_usage", {
     p_user_id: userId,
     p_plan_id: planId,
     p_topic: topic,
@@ -270,7 +271,7 @@ export default async function handler(request) {
   } catch (error) {
     const settled = await settlePlatformBudget(budgetAdmin, budgetReservationId, reservedCostPaise);
     if (settled.error) console.error("AI timeout budget settlement failed:", settled.error);
-    await cancelReservation(supabase, reservationId, userId);
+    await cancelReservation(budgetAdmin, reservationId, userId);
     if (error?.name === "AbortError") {
       return json("AI Coach timed out. Please try again.", 504);
     }
@@ -283,14 +284,14 @@ export default async function handler(request) {
   if (!response.ok) {
     const settled = await settlePlatformBudget(budgetAdmin, budgetReservationId, reservedCostPaise);
     if (settled.error) console.error("AI error-response budget settlement failed:", settled.error);
-    await cancelReservation(supabase, reservationId, userId);
+    await cancelReservation(budgetAdmin, reservationId, userId);
     return json("AI Coach request failed. Please try again later.", 502);
   }
   const answer = extractResponseText(payload);
   if (!answer) {
     const settled = await settlePlatformBudget(budgetAdmin, budgetReservationId, reservedCostPaise);
     if (settled.error) console.error("AI unreadable-response budget settlement failed:", settled.error);
-    await cancelReservation(supabase, reservationId, userId);
+    await cancelReservation(budgetAdmin, reservationId, userId);
     return json("AI Coach returned an unreadable response. Please try again.", 502);
   }
   const usage = payload?.usage || {};
@@ -302,7 +303,7 @@ export default async function handler(request) {
     : reservedCostPaise;
   const { error: budgetSettlementError } = await settlePlatformBudget(budgetAdmin, budgetReservationId, actualCostPaise);
   if (budgetSettlementError) console.error("AI budget settlement failed; reservation remains held:", budgetSettlementError);
-  const { error: meterError } = await supabase.from("ai_usage_events").update({
+  const { error: meterError } = await budgetAdmin.from("ai_usage_events").update({
     tokens_used:totalTokens, input_tokens:inputTokens ?? 0, output_tokens:outputTokens ?? 0,
     total_tokens:totalTokens, api_cost_minor:actualCostPaise
   }).eq("id", reservationId).eq("user_id", userId);
