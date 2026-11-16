@@ -8,35 +8,49 @@ const migration = readFileSync(
 );
 
 test("the private approval lookup cannot be called by client roles", () => {
-  assert.match(migration, /CREATE OR REPLACE FUNCTION private\.user_age_is_approved/i);
+  assert.match(migration, /CREATE OR REPLACE FUNCTION private\\.user_age_is_approved/i);
   assert.match(
     migration,
-    /REVOKE ALL ON FUNCTION private\.user_age_is_approved\(uuid\)\s+FROM PUBLIC, anon, authenticated, service_role/i
+    /REVOKE ALL ON FUNCTION private\\.user_age_is_approved\\(uuid\\)\\s+FROM PUBLIC, anon, authenticated, service_role/i
   );
 });
 
 test("the public approval status RPC is scoped to self, platform admins, or service role", () => {
-  assert.match(migration, /p_user_id = \(SELECT auth\.uid\(\)\)/i);
-  assert.match(migration, /private\.is_platform_admin\(\)/i);
-  assert.match(migration, /coalesce\(auth\.role\(\), ''\) = 'service_role'/i);
+  assert.match(migration, /p_user_id = \\(SELECT auth\\.uid\\(\\)\\)/i);
+  assert.match(migration, /private\\.is_platform_admin\\(\\)/i);
+  assert.match(migration, /coalesce\\(auth\\.role\\(\\), ''\\) = 'service_role'/i);
   assert.match(migration, /ELSE false/i);
 });
 
-test("internal workflows use the private lookup for other participants", () => {
-  for (const expression of [
-    "private.user_age_is_approved(v_coach)",
-    "private.user_age_is_approved(p_athlete_user_id)",
-    "private.user_age_is_approved(p_coach_user_id)",
-    "private.user_age_is_approved(v_athlete)",
-    "private.user_age_is_approved(p_user_id)",
-    "private.user_age_is_approved(v_code.owner_user_id)",
-    "private.user_age_is_approved(p_recipient_id)",
-    "private.user_age_is_approved(NEW.coach_user_id)",
-    "private.user_age_is_approved(m.athlete_user_id)",
-    "private.user_age_is_approved(cc.owner_user_id)",
-    "private.user_age_is_approved(p.user_id)",
-    "private.user_age_is_approved(NEW.athlete_user_id)"
-  ]) {
-    assert.ok(migration.includes(expression), `Missing private target lookup: ${expression}`);
+test("every internal cross-user approval check is redirected to the private helper", () => {
+  const targetChecks = [
+    ["academy_add_coach", "v_coach"],
+    ["academy_create_tournament", "p_athlete_user_id"],
+    ["academy_create_tournament", "p_coach_user_id"],
+    ["academy_create_training_group", "p_coach_user_id"],
+    ["academy_create_training_group", "v_athlete"],
+    ["add_group_member_by_user", "p_user_id"],
+    ["coach_add_athlete_by_account_code", "v_athlete"],
+    ["connect_athlete_by_code", "v_code.owner_user_id"],
+    ["connect_coach_to_academy_by_code", "v_code.owner_user_id"],
+    ["create_coach_training_group", "v_athlete"],
+    ["create_direct_conversation_by_user", "p_recipient_id"],
+    ["ensure_training_group_conversation", "NEW.coach_user_id"],
+    ["ensure_training_group_conversation", "m.athlete_user_id"],
+    ["get_my_connection_code", "cc.owner_user_id"],
+    ["publish_announcement", "p.user_id"],
+    ["search_messaging_users", "p.user_id"],
+    ["sync_training_group_chat_member", "NEW.athlete_user_id"],
+    ["sync_training_group_chat_member", "v_coach"]
+  ];
+
+  for (const [functionName, argument] of targetChecks) {
+    const mapping = `('${functionName}', 'public.is_age_approved(${argument})')`;
+    assert.ok(migration.includes(mapping), `Missing private mapping for ${functionName}(${argument})`);
   }
+
+  assert.match(
+    migration,
+    /replace\\(item\\.old_expression, 'public\\.is_age_approved', 'private\\.user_age_is_approved'\\)/i
+  );
 });
