@@ -2,7 +2,7 @@ import React from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import { Pressable, Text, View, useColorScheme } from 'react-native';
 import AthleteNLogo from '@/components/athleten-logo';
-import { useRouter, usePathname } from 'expo-router';
+import { useRouter, usePathname, useSegments } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
@@ -58,13 +58,18 @@ function AuthRouteGuard() {
   const { session, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const segments = useSegments();
+  const isProtectedTabRoute = segments[0] === '(tabs)';
+
   React.useEffect(() => {
     if (loading || session) return;
-    // Supabase email confirmation and recovery links must reach the callback
-    // before an authenticated session exists. Redirecting these routes to "/"
-    // would break password reset and email verification.
-    if (!PUBLIC_AUTH_PATHS.has(pathname)) router.replace('/');
-  }, [loading, session?.user.id, pathname, router]);
+    // Expo Router omits route-group names from usePathname(). As a result, the
+    // protected tab home can also report "/" and be mistaken for the public
+    // login entry route. Route segments disambiguate the two cases after logout.
+    // Supabase email confirmation and recovery links remain public.
+    const isPublicEntryRoute = PUBLIC_AUTH_PATHS.has(pathname) && !isProtectedTabRoute;
+    if (!isPublicEntryRoute) router.replace('/');
+  }, [loading, session?.user.id, pathname, isProtectedTabRoute, router]);
   return null;
 }
 
