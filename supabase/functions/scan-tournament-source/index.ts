@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { assertPublicHttpUrl } from "./url-safety.mjs";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -132,11 +133,99 @@ async function hash(text:string){
   const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(text));
   return [...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,"0")).join("");
 }
-async function fetchPage(sourceUrl:string){
-  try{
-    const res=await fetch(sourceUrl,{redirect:"follow",headers:{"User-Agent":"AthleteN-Scanner/2.0","Accept":"text/html,application/xhtml+xml"}});
-    return {res};
-  }catch(error){return {error:String(error)}}
+
+const MAX_SOURCE_PAGE_BYTES = 2 * 1024 * 1024;
+const MAX_PAGE_FETCH_MS = 6500;
+
+async function resolvePublicHost(hostname: string): Promise<string[]> {
+  const lookups = await Promise.all(
+    (["A", "AAAA"] as const).map(async (recordType) => {
+      try {
+        return await Deno.resolveDns(hostname, recordType);
+      } catch {
+        return [];
+      }
+    })
+  );
+  const addresses = lookups.flat();
+  if (!addresses.length) throw new Error("HOST_LOOKUP_FAILED");
+  return addresses;
+}
+
+async function readBoundedHtml(response: Response): Promise<string> {
+  const declaredLength = Number(response.headers.get("content-length") || 0);
+  if (declaredLength > MAX_SOURCE_PAGE_BYTES) throw new Error("SOURCE_TOO_LARGE");
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_SOURCE_PAGE_BYTES) {
+        await reader.cancel().catch(() => {});
+        throw new Error("SOURCE_TOO_LARGE");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
+async function fetchPage(sourceUrl: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), MAX_PAGE_FETCH_MS);
+  try {
+    let currentUrl = sourceUrl;
+    let response: Response | null = null;
+    for (let redirects = 0; redirects <= 4; redirects += 1) {
+      const checkedUrl = await assertPublicHttpUrl(currentUrl, resolvePublicHost);
+      response = await fetch(checkedUrl.toString(), {
+        redirect: "manual",
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "AthleteN-Scanner/2.0",
+          "Accept": "text/html,application/xhtml+xml,text/plain,application/xml"
+        }
+      });
+      if (![301, 302, 303, 307, 308].includes(response.status)) {
+        currentUrl = checkedUrl.toString();
+        break;
+      }
+      const location = response.headers.get("location");
+      if (!location) throw new Error("REDIRECT_WITHOUT_LOCATION");
+      if (redirects === 4) throw new Error("TOO_MANY_REDIRECTS");
+      currentUrl = new URL(location, checkedUrl).toString();
+    }
+    if (!response) throw new Error("SOURCE_FETCH_FAILED");
+    if (!response.ok) return { res: response, url: currentUrl };
+
+    const contentType = (response.headers.get("content-type") || "").toLowerCase();
+    if (!contentType.includes("text/html") &&
+        !contentType.includes("application/xhtml+xml") &&
+        !contentType.includes("text/plain") &&
+        !contentType.includes("application/xml") &&
+        !contentType.includes("text/xml")) {
+      throw new Error("UNSUPPORTED_CONTENT");
+    }
+    const html = await readBoundedHtml(response);
+    return { res: response, html, url: currentUrl };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "SOURCE_FETCH_FAILED";
+    return { error: message || "SOURCE_FETCH_FAILED" };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 Deno.serve(async(req)=>{
@@ -148,9 +237,21 @@ Deno.serve(async(req)=>{
     const userClient=createClient(url,anon,{global:{headers:{Authorization:"Bearer "+token}}});
     const authResult=await userClient.auth.getUser();const user=authResult.data.user;
     if(authResult.error||!user)return new Response(JSON.stringify({error:"Unauthorized"}),{status:401,headers:{...cors,"Content-Type":"application/json"}});
-    const admin=createClient(url,service);const body=await req.json();
-    const scanId=String(body.scan_id||"");const sourceUrl=String(body.source_url||"").trim();
-    if(!scanId||!sourceUrl)return new Response(JSON.stringify({error:"scan_id and source_url are required"}),{status:400,headers:{...cors,"Content-Type":"application/json"}});
+    const ageStatusResult=await userClient.rpc("get_age_verification_status");
+    if(ageStatusResult.error)return new Response(JSON.stringify({error:"Age approval could not be verified. Please retry."}),{status:503,headers:{...cors,"Content-Type":"application/json"}});
+    const ageRows=ageStatusResult.data;
+    const ageStatus=Array.isArray(ageRows)?ageRows[0]?.status:ageRows?.status;
+    if(!["approved","not_required","qa_verified"].includes(String(ageStatus||"")))return new Response(JSON.stringify({error:"Account approval is required before using the tournament scanner."}),{status:403,headers:{...cors,"Content-Type":"application/json"}});
+    const admin=createClient(url,service);
+    const declaredLength=Number(req.headers.get("content-length")||0);
+    if(declaredLength>16*1024)return new Response(JSON.stringify({error:"Scanner request is too large."}),{status:413,headers:{...cors,"Content-Type":"application/json"}});
+    const body=await req.json();
+    const scanId=String(body.scan_id||"").trim();const sourceUrl=String(body.source_url||"").trim();
+    if(!scanId||!sourceUrl||sourceUrl.length>2048)return new Response(JSON.stringify({error:"A scan ID and a source URL under 2,048 characters are required."}),{status:400,headers:{...cors,"Content-Type":"application/json"}});
+    if(!/^[0-9a-f-]{36}$/i.test(scanId))return new Response(JSON.stringify({error:"A valid scan ID is required."}),{status:400,headers:{...cors,"Content-Type":"application/json"}});
+    try{await assertPublicHttpUrl(sourceUrl,resolvePublicHost);}catch{
+      return new Response(JSON.stringify({error:"The source must be a public HTTP or HTTPS website. Private and internal network addresses are blocked."}),{status:422,headers:{...cors,"Content-Type":"application/json"}});
+    }
     const found=await admin.from("tournament_scans").select("*").eq("id",scanId).eq("user_id",user.id).maybeSingle();
     if(!found.data)return new Response(JSON.stringify({error:"Scan record not found"}),{status:404,headers:{...cors,"Content-Type":"application/json"}});
     const first=await fetchPage(sourceUrl);
@@ -169,16 +270,16 @@ Deno.serve(async(req)=>{
     }
 
     const checked=new Date().toISOString();
-    const firstHtml=await firstRes.text();
+    const firstHtml=first.html||"";
     const isInstagram=/instagram\.com/i.test(sourceUrl);
     let monitoredUrls=[sourceUrl];
     let accountUrl="";
-    const pages:{url:string,html:string}[]=[{url:sourceUrl,html:firstHtml}];
+    const pages:{url:string,html:string}[]=[{url:first.url||sourceUrl,html:firstHtml}];
     if(isInstagram){
       accountUrl=instagramProfileFromHtml(firstHtml,sourceUrl);
       if(accountUrl && accountUrl!==sourceUrl){
         const profileFetch=await fetchPage(accountUrl);
-        if(profileFetch.res?.ok)pages.push({url:accountUrl,html:await profileFetch.res.text()});
+        if(profileFetch.res?.ok&&profileFetch.html)pages.push({url:profileFetch.url||accountUrl,html:profileFetch.html});
       }
       const discoveryHtml=pages.map(p=>p.html).join("\n");
       const discoveredPosts=instagramPostLinks(discoveryHtml,sourceUrl);
@@ -190,7 +291,7 @@ Deno.serve(async(req)=>{
     for(const u of monitoredUrls){
       if(pages.some(p=>p.url===u))continue;
       const fetched=await fetchPage(u);
-      if(fetched.res?.ok)pages.push({url:u,html:await fetched.res.text()});
+      if(fetched.res?.ok&&fetched.html)pages.push({url:fetched.url||u,html:fetched.html});
     }
 
     const combinedHtml=pages.map(p=>p.html).join("\n");
