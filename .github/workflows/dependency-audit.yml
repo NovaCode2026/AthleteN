@@ -1,0 +1,50 @@
+name: Dependency Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "AthleteN-Mobile/package.json"
+      - "AthleteN-Mobile/package-lock.json"
+      - ".github/workflows/dependency-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Enable Corepack and activate pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Audit production and development dependency tree
+        run: pnpm audit --audit-level=high
+
+  mobile:
+    name: Android dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install locked dependencies
+        working-directory: AthleteN-Mobile
+        run: npm ci
+      - name: Audit production and development dependency tree
+        working-directory: AthleteN-Mobile
+        run: npm audit --audit-level=high
