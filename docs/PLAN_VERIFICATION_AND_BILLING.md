@@ -199,3 +199,35 @@ The repository's `FREE_LAUNCH` switch in `netlify/functions/create-checkout.mjs`
 **AthleteN — verify first. Pay securely. Train smarter.**
 
 </div>
+
+
+## Billing-period contract and provider configuration
+
+The checkout request accepts a plan and a billing period. The browser/mobile client never supplies a price:
+
+```json
+{
+  "planId": "pro",
+  "billingPeriod": "yearly"
+}
+```
+
+Allowed periods are `monthly` and `yearly`. If omitted, the server currently defaults to `monthly`. The server calculates the rupee amount in paise from `netlify/payment-common.mjs` and uses a provider-specific recurring plan ID. It rejects other billing periods and does not trust client-submitted amounts.
+
+| Plan | Monthly total | Yearly total |
+|---|---:|---:|
+| Pro | ₹99 | ₹999 |
+| Elite | ₹199 | ₹1,999 |
+| Coach | ₹499 | ₹4,999 |
+| Academy | ₹799 | ₹7,999 |
+
+Provider plan IDs must be configured separately for each period:
+
+- Razorpay: `RAZORPAY_PLAN_V2_<PLAN>_MONTHLY` and `RAZORPAY_PLAN_V2_<PLAN>_YEARLY`
+- Stripe: `STRIPE_PLAN_V2_<PLAN>_MONTHLY` and `STRIPE_PLAN_V2_<PLAN>_YEARLY`
+
+Replace `<PLAN>` with `PRO`, `ELITE`, `COACH` or `ACADEMY`. Each external plan/price must match the corresponding table amount and the intended recurring interval. Razorpay yearly subscriptions use a 10-cycle cap; monthly subscriptions use a 120-cycle cap.
+
+**Cashfree is not currently enabled for this recurring checkout route.** The code previously used Cashfree's Payment Gateway `/pg/orders` flow, which creates an order/payment session, not the subscription mandate lifecycle. A separate Cashfree Subscriptions API implementation, renewal/cancellation webhook handling and sandbox acceptance are required before enabling it for recurring plans.
+
+**Paid launch remains disabled.** `FREE_LAUNCH = true` is intentionally unchanged. Configure provider plan IDs and merchant credentials only under an adult-authorized account, and keep live payment collection disabled until the recurring lifecycle, refunds, tax review, webhooks and device acceptance are complete.
