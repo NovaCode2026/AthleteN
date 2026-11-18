@@ -62,13 +62,6 @@ CREATE TABLE public.payment_events (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.payment_events (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  provider text NOT NULL,
-  provider_event_id text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
 \ir ../../supabase/migrations/20261118000300_harden_paid_subscription_activation.sql
 
 -- The same provider event cannot be recorded twice; event IDs are provider-scoped.
