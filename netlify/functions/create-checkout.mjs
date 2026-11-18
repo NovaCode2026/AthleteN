@@ -76,6 +76,11 @@ async function cashfreeCheckout(supabase, user, planId, amountMinor, verificatio
   const clientSecret = env("CASHFREE_CLIENT_SECRET");
   if (!clientId || !clientSecret) throw new Error("CASHFREE_NOT_CONFIGURED");
 
+  const customerEmail = typeof user.email === "string" ? user.email.trim() : "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+    throw new Error("CASHFREE_CUSTOMER_EMAIL_REQUIRED");
+  }
+
   const amount = amountMinor / 100;
   const response = await fetch("https://api.cashfree.com/pg/orders", {
     method: "POST",
@@ -89,7 +94,7 @@ async function cashfreeCheckout(supabase, user, planId, amountMinor, verificatio
       order_id: `athleten_${crypto.randomUUID().replaceAll("-", "")}`,
       order_amount: amount,
       order_currency: "INR",
-      customer_details: { customer_id: user.id, customer_email: user.email || "athlete@athleten.local" },
+      customer_details: { customer_id: user.id, customer_email: user.email.trim().toLowerCase() },
       order_meta: {
         return_url: `${siteUrl()}/checkout/success?order_id={order_id}`,
         notify_url: `${siteUrl()}/.netlify/functions/payment-webhook`
@@ -139,8 +144,19 @@ export default async function handler(request) {
       (planId === "coach" && profile.role === "coach") ||
       (planId === "academy" && profile.role === "academy_admin");
     if (!roleAllowed) return json({ error: "This plan is only available to the matching verified account type." }, 403);
-    if (["coach", "academy"].includes(planId) && !user.email_confirmed_at) {
-      return json({ error: "Verify your AthleteN account email before purchasing this plan." }, 403);
+    if (!user.email_confirmed_at) {
+      return json({ error: "Verify your AthleteN account email before purchasing a paid plan." }, 403);
+    }
+
+    const { data: ageApproved, error: ageApprovalError } = await supabase.rpc("is_age_approved", {
+      p_user_id: user.id
+    });
+    if (ageApprovalError) {
+      console.error("checkout age-approval verification failed:", ageApprovalError);
+      return json({ error: "Unable to verify the account's age/guardian approval." }, 503);
+    }
+    if (ageApproved !== true) {
+      return json({ error: "Complete the required age and parent/guardian approval before purchasing a paid plan." }, 403);
     }
     // Coach checkout relies on the existing verified Coach role.
     // Academy checkout reuses the existing owner setup + contact-email verification.
@@ -174,6 +190,9 @@ export default async function handler(request) {
   } catch (error) {
     console.error("create-checkout", error);
     const code = error instanceof Error ? error.message : "CHECKOUT_FAILED";
+    if (code === "CASHFREE_CUSTOMER_EMAIL_REQUIRED") {
+      return json({ error: "A valid account email is required for Cashfree checkout." }, 400);
+    }
     if (code === "RAZORPAY_NOT_CONFIGURED" || code === "STRIPE_NOT_CONFIGURED" || code === "CASHFREE_NOT_CONFIGURED") {
       return json({ error: "The selected payment provider is not configured on the server yet." }, 503);
     }
