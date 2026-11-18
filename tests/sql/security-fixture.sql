@@ -97,7 +97,9 @@ CREATE TABLE public.academies (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_user_id uuid NOT NULL,
   name text NOT NULL,
-  status text NOT NULL DEFAULT 'active'
+  status text NOT NULL DEFAULT 'active',
+  setup_completed boolean NOT NULL DEFAULT true,
+  contact_email_verified_at timestamptz DEFAULT now()
 );
 CREATE TABLE public.academy_memberships (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -147,6 +149,13 @@ CREATE TABLE public.poomsae_training_metrics(id uuid PRIMARY KEY DEFAULT gen_ran
 CREATE TABLE public.taekwondo_belt_history(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),athlete_user_id uuid NOT NULL,payload text);
 CREATE TABLE public.taekwondo_training_logs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,payload text);
 CREATE TABLE public.taekwondo_weight_category_decisions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),athlete_user_id uuid NOT NULL,payload text);
+
+CREATE TABLE public.student_verifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  status text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
 CREATE TABLE public.finance_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -245,6 +254,10 @@ GRANT EXECUTE ON FUNCTION private.user_can_manage_athlete(uuid) TO authenticated
 GRANT EXECUTE ON FUNCTION public.can_view_athlete(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_age_approved(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated;
+CREATE OR REPLACE FUNCTION public.can_start_paid_checkout(p_user_id uuid, p_plan_id text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $ SELECT auth.uid() = p_user_id $;
+GRANT EXECUTE ON FUNCTION public.can_start_paid_checkout(uuid,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.can_manage_finance_account(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_or_create_my_coach_finance_account() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.switch_my_product_role(text) TO authenticated;
