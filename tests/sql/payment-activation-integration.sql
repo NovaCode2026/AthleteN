@@ -64,6 +64,7 @@ CREATE TABLE public.payment_events (
 GRANT SELECT ON public.subscriptions TO service_role;
 
 \ir ../../supabase/migrations/20261118000300_harden_paid_subscription_activation.sql
+\ir ../../supabase/migrations/20261118000500_subscription_cancel_at_period_end.sql
 
 -- The same provider event cannot be recorded twice; event IDs are provider-scoped.
 INSERT INTO public.payment_events(provider, provider_event_id) VALUES ('stripe', 'evt_unique_1');
@@ -120,6 +121,14 @@ BEGIN
   IF v_sub.status <> 'active' OR v_sub.current_period_end <= now() THEN
     RAISE EXCEPTION 'Verified monthly subscription did not activate with a future period';
   END IF;
+  IF v_sub.cancel_at_period_end IS DISTINCT FROM false THEN
+    RAISE EXCEPTION 'New subscriptions must default to no scheduled cancellation';
+  END IF;
+  UPDATE public.subscriptions SET cancel_at_period_end = true WHERE id = v_sub.id;
+  IF NOT EXISTS (SELECT 1 FROM public.subscriptions WHERE id = v_sub.id AND cancel_at_period_end = true) THEN
+    RAISE EXCEPTION 'Period-end cancellation flag was not persisted';
+  END IF;
+  UPDATE public.subscriptions SET cancel_at_period_end = false WHERE id = v_sub.id;
 
   -- Idempotent provider retry updates the same user/plan row rather than duplicating it.
   v_sub := public.activate_paid_subscription(
