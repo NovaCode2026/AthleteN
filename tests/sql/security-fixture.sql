@@ -259,7 +259,7 @@ GRANT EXECUTE ON FUNCTION public.is_age_approved(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated;
 CREATE OR REPLACE FUNCTION public.can_start_paid_checkout(p_user_id uuid, p_plan_id text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
-AS $ SELECT auth.uid() = p_user_id $;
+AS $function$ SELECT auth.uid() = p_user_id $function$;
 GRANT EXECUTE ON FUNCTION public.can_start_paid_checkout(uuid,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.can_manage_finance_account(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_or_create_my_coach_finance_account() TO authenticated;
