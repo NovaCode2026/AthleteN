@@ -100,9 +100,11 @@ Creates a provider checkout session after checking:
 - Existing Academy owner/workspace setup and verified contact email for Academy
 - Supported payment provider configuration
 
-Provider integrations are scaffolded for Razorpay, Stripe and Cashfree.
+The request body uses `planId` and optional `billingPeriod` (`monthly` or `yearly`; defaults to monthly). The server owns the price calculation and accepts only recurring adapters configured for the selected period. Currently, the route supports Razorpay and Stripe subscriptions. Cashfree's separate recurring Subscriptions API is not yet integrated; the Cashfree Payment Gateway one-time `/pg/orders` flow is deliberately not exposed as a recurring subscription.
 
-**Current launch gate:** the function contains `FREE_LAUNCH = true`. Paid checkout is intentionally blocked until provider onboarding and acceptance testing are completed. Do not switch this off simply to make the button work.
+Before creating a provider session, the server requires a confirmed account email, a successful server-side `is_age_approved` check (including guardian approval where required), the matching product role, and completed Academy owner/setup/contact-email verification when purchasing Academy.
+
+**Current launch gate:** the function contains `FREE_LAUNCH = true`. Paid checkout is intentionally blocked until provider onboarding, monthly/yearly recurring plan IDs, webhook lifecycle, refund handling and acceptance testing are completed. Do not switch this off simply to make the button work.
 
 ## 💳 Payment webhook
 
