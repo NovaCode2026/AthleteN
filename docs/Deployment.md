@@ -96,7 +96,11 @@ The checkout Netlify Function currently has a server-side `FREE_LAUNCH = true` g
 
 Set `PAYMENT_PROVIDER` only after the server secrets and plan IDs are configured and tested. Never expose payment secrets to the browser.
 
-**Billing-cycle blocker:** the current checkout API does not accept a monthly/yearly selector. The mobile UI displays both cycles, but paid checkout is globally disabled in both client and server. New monthly provider IDs are versioned as `RAZORPAY_PLAN_V2_<PLAN>_MONTHLY` or `STRIPE_PLAN_V2_<PLAN>_MONTHLY`; do not reuse legacy provider IDs. Annual provider plan IDs, amounts, renewal periods and selected-cycle persistence must be implemented and verified end to end before enabling checkout. Cashfree is excluded from recurring subscription checkout because its current code path creates one-time orders.
+**Release-candidate billing contract:** the web and mobile Plans screens send `planId` plus `billingPeriod` (`monthly` or `yearly`). The server calculates the amount in paise from `netlify/payment-common.mjs`; never accept a client-supplied amount. The new amounts are Pro ₹99 / ₹999, Elite ₹199 / ₹1,999, Coach ₹499 / ₹4,999 and Academy ₹799 / ₹7,999 (monthly / yearly). Configure period-specific Razorpay or Stripe recurring plan IDs using `RAZORPAY_PLAN_V2_<PLAN>_MONTHLY`, `RAZORPAY_PLAN_V2_<PLAN>_YEARLY`, `STRIPE_PLAN_V2_<PLAN>_MONTHLY` and `STRIPE_PLAN_V2_<PLAN>_YEARLY`. Verify each provider product has the matching INR amount and recurring interval. The webhook now requires a confirmed provider subscription period end and rechecks account age/guardian approval and product role before granting access.
+
+Cashfree Payment Gateway `/pg/orders` creates a one-time payment order and is intentionally not exposed as a recurring subscription adapter. Cashfree Subscriptions API, renewals and cancellation require a separate implementation and sandbox acceptance.
+
+**Paid checkout remains disabled:** `FREE_LAUNCH = true` in the server and client paid-checkout flags remain off. This PR does not configure provider credentials, execute sandbox charges or enable live collection. Do not remove the gate until provider monthly/yearly sandbox flows, webhook replay/idempotency, failures, renewal, cancellation/refund, tax/legal and device acceptance all pass.
 
 ## Supabase Auth URLs
 
