@@ -234,10 +234,10 @@ AS $$ SELECT NULL::uuid $$;
 
 CREATE OR REPLACE FUNCTION public.switch_my_product_role(text)
 RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=''
-AS $ SELECT '{}'::jsonb $;
+AS $function$ SELECT '{}'::jsonb $function$;
 CREATE OR REPLACE FUNCTION public.choose_account_plan(text, boolean DEFAULT false)
 RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=''
-AS $ SELECT '{}'::jsonb $;
+AS $function$ SELECT '{}'::jsonb $function$;
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE ON public.profiles TO authenticated;
