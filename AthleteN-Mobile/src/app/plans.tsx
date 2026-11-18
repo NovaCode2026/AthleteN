@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Icon } from '@/components/mobile-ui';
@@ -42,6 +42,7 @@ export default function PlansScreen() {
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
+  const [cancelBusy, setCancelBusy] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const role = String(profile?.role || 'athlete');
 
@@ -53,7 +54,7 @@ export default function PlansScreen() {
       if (!session) { if (alive) setLoading(false); return; }
       const [u, s] = await Promise.all([
         supabase.from('subscription_usage').select('ai_requests_used,ai_requests_limit').eq('user_id', session.user.id).order('usage_month', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('subscriptions').select('plan_id,status,current_period_end,provider').eq('user_id', session.user.id).in('status', ['active','trialing','past_due']).order('created_at', { ascending: false }),
+        supabase.from('subscriptions').select('id,plan_id,status,current_period_end,provider,cancel_at_period_end').eq('user_id', session.user.id).in('status', ['active','trialing','past_due']).order('created_at', { ascending: false }),
       ]);
       if (!alive) return;
       setUsage(u.data || null);
@@ -116,6 +117,45 @@ export default function PlansScreen() {
     } finally { setBusyPlan(null); }
   }
 
+  async function scheduleCancellation(subscriptionId: string) {
+    if (!session) { setMessage('Please sign in again to manage this subscription.'); return; }
+    setCancelBusy(subscriptionId);
+    setMessage('');
+    try {
+      const baseUrl = (process.env.EXPO_PUBLIC_ATHLETEN_API_URL || 'https://athleten.netlify.app').replace(/\\/$/, '');
+      const response = await fetch(baseUrl + '/.netlify/functions/cancel-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+        body: JSON.stringify({ subscriptionId })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Cancellation could not be scheduled.');
+      setMessage(payload.message || 'Cancellation is scheduled at the end of your current billing period.');
+      const { data, error } = await supabase.from('subscriptions')
+        .select('id,plan_id,status,current_period_end,provider,cancel_at_period_end')
+        .eq('user_id', session.user.id)
+        .in('status', ['active','trialing','past_due'])
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setSubscriptions(data || []);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Cancellation could not be scheduled.');
+    } finally {
+      setCancelBusy(null);
+    }
+  }
+
+  function confirmCancellation(subscriptionId: string) {
+    Alert.alert(
+      'Schedule cancellation?',
+      'Your paid access remains active through the current billing period. No immediate cancellation will occur.',
+      [
+        { text: 'Keep subscription', style: 'cancel' },
+        { text: 'Cancel at period end', style: 'destructive', onPress: () => { void scheduleCancellation(subscriptionId); } }
+      ]
+    );
+  }
+
   const used = usage?.ai_requests_used ?? 0;
   const remaining = getAiRemaining(current, used);
   const limit = AI_LIMITS[current] ?? 0;
@@ -138,6 +178,31 @@ export default function PlansScreen() {
     </View>
 
     {current === 'student' ? <View style={s.note}><Text style={s.noteTitle}>STUDENT PLAN · LEGACY</Text><Text style={s.meta}>Your existing Student entitlement is preserved. The legacy catalogue reference is ₹{PLAN_PRICING.student.monthly}/month or ₹{PLAN_PRICING.student.yearly.toLocaleString('en-IN')}/year; existing subscription terms remain unchanged. Student is not available for new purchases.</Text></View> : null}
+
+    {subscriptions.map((subscription) => {
+      const providerManaged = ['stripe', 'razorpay'].includes(String(subscription.provider || ''));
+      const periodEnd = subscription.current_period_end
+        ? new Date(subscription.current_period_end).toLocaleDateString('en-IN')
+        : 'Not available';
+      return <View key={subscription.id} style={s.note}>
+        <Text style={s.noteTitle}>{PLAN_NAMES[subscription.plan_id as PlanId] || subscription.plan_id} SUBSCRIPTION</Text>
+        <Text style={s.meta}>Provider: {subscription.provider || 'manual'} · Status: {subscription.status}</Text>
+        <Text style={s.meta}>Access through: {periodEnd}</Text>
+        {subscription.cancel_at_period_end
+          ? <Text style={s.meta}>Cancellation is scheduled. Your access remains available through the current period.</Text>
+          : providerManaged && subscription.current_period_end
+            ? <Pressable
+                disabled={cancelBusy === subscription.id}
+                style={[s.planButton, cancelBusy === subscription.id && s.planButtonBusy]}
+                onPress={() => confirmCancellation(subscription.id)}
+              >
+                {cancelBusy === subscription.id
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={s.planButtonText}>CANCEL AT PERIOD END</Text>}
+              </Pressable>
+            : <Text style={s.meta}>Contact AthleteN support for cancellation assistance for this subscription.</Text>}
+      </View>;
+    })}
 
     <View style={s.usage}>
       <View><Text style={s.label}>AI REQUESTS</Text><Text style={s.usageValue}>{loading ? '…' : remaining + ' / ' + limit + ' remaining'}</Text></View>
