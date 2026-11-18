@@ -234,7 +234,10 @@ AS $$ SELECT NULL::uuid $$;
 
 CREATE OR REPLACE FUNCTION public.switch_my_product_role(text)
 RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=''
-AS $$ SELECT '{}'::jsonb $$;
+AS $ SELECT '{}'::jsonb $;
+CREATE OR REPLACE FUNCTION public.choose_account_plan(text, boolean DEFAULT false)
+RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=''
+AS $ SELECT '{}'::jsonb $;
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE ON public.profiles TO authenticated;
@@ -261,3 +264,4 @@ GRANT EXECUTE ON FUNCTION public.can_start_paid_checkout(uuid,text) TO authentic
 GRANT EXECUTE ON FUNCTION public.can_manage_finance_account(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_or_create_my_coach_finance_account() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.switch_my_product_role(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.choose_account_plan(text,boolean) TO authenticated;
