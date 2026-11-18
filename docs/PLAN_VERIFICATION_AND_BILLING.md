@@ -231,3 +231,12 @@ Replace `<PLAN>` with `PRO`, `ELITE`, `COACH` or `ACADEMY`. Each external plan/p
 **Cashfree is not currently enabled for this recurring checkout route.** The code previously used Cashfree's Payment Gateway `/pg/orders` flow, which creates an order/payment session, not the subscription mandate lifecycle. A separate Cashfree Subscriptions API implementation, renewal/cancellation webhook handling and sandbox acceptance are required before enabling it for recurring plans.
 
 **Paid launch remains disabled.** `FREE_LAUNCH = true` is intentionally unchanged. Configure provider plan IDs and merchant credentials only under an adult-authorized account, and keep live payment collection disabled until the recurring lifecycle, refunds, tax review, webhooks and device acceptance are complete.
+
+
+## Customer cancellation
+
+The release candidate supports cancellation at the end of the active paid period for provider-managed Stripe and Razorpay subscriptions. It does not cancel immediately and does not remove the paid entitlement before `current_period_end`. Customers must be able to see the effective access-through date and whether a cancellation is already scheduled.
+
+The authenticated endpoint is `POST /.netlify/functions/cancel-subscription` with the AthleteN subscription row ID. It verifies the user owns the row, derives the provider subscription ID from the server-side database record, checks for a future billing-period end, schedules provider cancellation, and then stores `cancel_at_period_end=true`. Provider webhooks reconcile later status changes. Manual/legacy/trial and Cashfree PG one-time records require support handling, not an invented recurring cancellation.
+
+The database field is added by candidate migration `20261118000500_subscription_cancel_at_period_end.sql`. Do not deploy the UI or endpoint before the migration has been applied through the reconciled release migration plan.
