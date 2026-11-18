@@ -95,6 +95,7 @@ BEGIN
         provider_subscription_id = EXCLUDED.provider_subscription_id,
         status = 'active',
         current_period_end = EXCLUDED.current_period_end,
+        cancel_at_period_end = false,
         updated_at = pg_catalog.now()
   RETURNING * INTO v_result;
 
