@@ -61,7 +61,7 @@ CREATE TABLE public.payment_events (
   provider_event_id text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-GRANT SELECT ON public.subscriptions TO service_role;
+GRANT SELECT, UPDATE ON public.subscriptions TO service_role;
 
 \ir ../../supabase/migrations/20261118000300_harden_paid_subscription_activation.sql
 \ir ../../supabase/migrations/20261118000500_subscription_cancel_at_period_end.sql
