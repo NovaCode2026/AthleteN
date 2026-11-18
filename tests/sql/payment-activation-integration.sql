@@ -62,7 +62,31 @@ CREATE TABLE public.payment_events (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE public.payment_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider text NOT NULL,
+  provider_event_id text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 \ir ../../supabase/migrations/20261118000300_harden_paid_subscription_activation.sql
+
+-- The same provider event cannot be recorded twice; event IDs are provider-scoped.
+INSERT INTO public.payment_events(provider, provider_event_id) VALUES ('stripe', 'evt_unique_1');
+DO $dedupe$
+DECLARE
+  v_blocked boolean := false;
+BEGIN
+  BEGIN
+    INSERT INTO public.payment_events(provider, provider_event_id) VALUES ('stripe', 'evt_unique_1');
+  EXCEPTION WHEN unique_violation THEN
+    v_blocked := true;
+  END;
+  IF NOT v_blocked THEN RAISE EXCEPTION 'Duplicate provider event ID was accepted'; END IF;
+  INSERT INTO public.payment_events(provider, provider_event_id) VALUES ('razorpay', 'evt_unique_1');
+END
+$dedupe$;
+
 
 -- The same provider event cannot be recorded twice; event IDs are scoped by provider.
 INSERT INTO public.payment_events(provider, provider_event_id) VALUES ('stripe', 'evt_unique_1');
