@@ -105,13 +105,12 @@ export default function PlansScreen() {
       const response = await fetch(baseUrl + '/.netlify/functions/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
-        body: JSON.stringify({ planId })
+        body: JSON.stringify({ planId, billingPeriod: billing })
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || 'Checkout could not be started.');
       if (payload.checkoutUrl) await Linking.openURL(payload.checkoutUrl);
-      else if (payload.paymentSessionId) setMessage('Payment session created. Complete checkout in the supported Cashfree payment flow.');
-      else throw new Error('The payment provider did not return a checkout link.');
+      else throw new Error('The recurring subscription provider did not return a checkout link.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Checkout could not be started.');
     } finally { setBusyPlan(null); }
