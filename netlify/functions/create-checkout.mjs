@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { authenticate, env, json, logPaymentEvent, planPricesMinor, providerPlanKey, serverSupabase, siteUrl } from "../payment-common.mjs";
 
 const paidPlans = new Set(["pro", "elite", "coach", "academy"]);
-const providers = new Set(["razorpay", "stripe"]);
+const providers = new Set(["razorpay", "stripe", "cashfree"]);
 
 async function razorpayCheckout(supabase, user, planId, amountMinor, verificationId) {
   const keyId = env("RAZORPAY_KEY_ID");
@@ -159,9 +159,12 @@ export default async function handler(request) {
     }
 
     const amountMinor = planPricesMinor[planId];
-    const result = provider === "razorpay"
-      ? await razorpayCheckout(supabase, user, planId, amountMinor, null)
-      : await stripeCheckout(supabase, user, planId, amountMinor, null);
+    const checkoutByProvider = {
+      razorpay: razorpayCheckout,
+      stripe: stripeCheckout,
+      cashfree: cashfreeCheckout
+    };
+    const result = await checkoutByProvider[provider](supabase, user, planId, amountMinor, null);
 
     await logPaymentEvent(supabase, {
       user_id: user.id, provider, event_type: "checkout.created", amount_minor: amountMinor,
