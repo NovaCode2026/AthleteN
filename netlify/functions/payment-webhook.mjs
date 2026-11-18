@@ -285,7 +285,11 @@ export default async function handler(request) {
       const providerPaymentId = payload.data?.payment?.cf_payment_id || payload.data?.cf_payment_id || payload.cf_payment_id;
       const { data: order } = await supabase.from("payment_orders").select("*").eq("provider", "cashfree").eq("provider_order_id", providerOrderId).maybeSingle();
       if (order?.metadata?.purpose === "trial") {
-        await activateTrialFromOrder(supabase, order, String(providerPaymentId || providerOrderId || ""), String(event || "payment.success"), {});
+        await activateTrialFromOrder(
+          supabase, order, String(providerPaymentId || providerOrderId || ""),
+          String(event || "payment.success"),
+          { provider_event_id: String(providerPaymentId || providerOrderId || ""), cashfree_order_id: providerOrderId }
+        );
       } else if (order) {
         // Cashfree PG /pg/orders is a one-time payment API. A one-time payment
         // must never activate a recurring AthleteN subscription.
