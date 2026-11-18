@@ -237,6 +237,7 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
   const [studentStatus, setStudentStatus] = useState<string>("not_submitted");
   const [studentLoading, setStudentLoading] = useState(false);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("yearly");
   const role = String(profile.role || "athlete");
   const currentPlan = String(profile.plan_id || "free");
   useEffect(() => {
@@ -301,13 +302,12 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
       }
       const response = await fetch("/.netlify/functions/create-checkout", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: JSON.stringify({ planId })
+        body: JSON.stringify({ planId, billingPeriod })
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Checkout could not be started.");
       if (payload.checkoutUrl) window.location.assign(payload.checkoutUrl);
-      else if (payload.paymentSessionId) onToast({ type: "warning", message: "Checkout session created. Cashfree checkout needs its configured mobile/web payment component." });
-      else throw new Error("The payment provider did not return a checkout link.");
+      else throw new Error("The recurring subscription provider did not return a checkout link.");
     } catch (error) {
       onToast({ type: "error", message: error instanceof Error ? error.message : "Checkout could not be started." });
     } finally { setBusyPlan(null); }
@@ -324,6 +324,14 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
       </div>
       <span className="status-chip success">{currentPlan === "free" ? "Free plan" : "Current plan"}</span>
     </section>
+    <section className="card panel" aria-label="Billing period">
+      <p className="eyebrow">Billing period</p>
+      <div className="inline-actions" role="group" aria-label="Choose monthly or yearly billing">
+        <button className={billingPeriod === "monthly" ? "btn primary" : "btn"} type="button" aria-pressed={billingPeriod === "monthly"} onClick={() => setBillingPeriod("monthly")}>Monthly</button>
+        <button className={billingPeriod === "yearly" ? "btn primary" : "btn"} type="button" aria-pressed={billingPeriod === "yearly"} onClick={() => setBillingPeriod("yearly")}>Yearly</button>
+      </div>
+      <p className="notice">Yearly plans are billed once per year. Paid checkout is still disabled while release gates are open.</p>
+    </section>
     <section className="plan-grid" aria-label="AthleteN plans">
       {visiblePlans.map((plan) => {
         const isFree = plan.id === "free";
@@ -335,7 +343,9 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
             {isCurrent && <span className="status-chip success">Current plan</span>}
           </div>
           <h3>{plan.name}</h3>
-          <div className="plan-price"><strong>{plan.price}</strong></div>
+          <div className="plan-price"><strong>{plan.monthlyPrice == null || plan.yearlyPrice == null
+            ? plan.price
+            : `₹${(billingPeriod === "yearly" ? plan.yearlyPrice : plan.monthlyPrice).toLocaleString("en-IN")}/${billingPeriod === "yearly" ? "year" : "month"}`}</strong></div>
           <p className="plan-ai">{plan.aiLimit.toLocaleString("en-IN")} AI Coach requests per month</p>
           <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
           {plan.id === "student" && <p className="notice" role="status">{studentLoading ? "Checking verification…" : statusLabel}</p>}
