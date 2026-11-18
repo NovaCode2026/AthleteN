@@ -149,3 +149,10 @@ Use a test account for each role; do not use a real athlete's private data for a
 A successful Netlify build is not proof of full production acceptance. Android push must be tested on a physical device with notification permission granted. Two-account messaging and offline/background delivery must be tested separately. Web notifications while the browser is fully closed require a configured browser push subscription and are not covered by the current active-session desktop notifications.
 
 Do not mark the release as production-ready until the device, security, and post-deploy acceptance checks are complete.
+
+
+### Subscription cancellation release gate
+
+The candidate exposes authenticated, account-scoped end-of-period cancellation for recurring Stripe and Razorpay subscriptions. It never requests immediate cancellation. Stripe uses `cancel_at_period_end=true`; Razorpay uses `cancel_at_cycle_end=true`. The user keeps access through the provider-confirmed period end, and webhook updates synchronize the stored cancellation flag. Cashfree Payment Gateway orders are one-time payments and do not use this recurring cancellation endpoint.
+
+The endpoint and UI depend on `subscriptions.cancel_at_period_end` from migration `20261118000500_subscription_cancel_at_period_end.sql`. Keep cancellation unavailable in production until the complete migration history is reconciled, the migration is applied, provider sandbox scheduling and webhooks have been verified, and both web and physical Android flows pass. Do not test by creating real charges or canceling a real customer subscription.
