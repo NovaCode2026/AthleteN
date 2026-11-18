@@ -54,6 +54,10 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h 127.0.0.1 -U postgres -d athleten_security_test -v ON_ERROR_STOP=1 -f supabase/security/age_gated_coach_access_hardening.sql
+      - name: Apply November 30 candidate security migration
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_security_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261118000400_harden_team_finance_and_checkout_eligibility.sql
       - name: Run DOB, guardian, Coach and Academy authorization assertions
         env:
           PGPASSWORD: postgres
