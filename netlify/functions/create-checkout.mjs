@@ -2,12 +2,14 @@ import { createClient } from "@supabase/supabase-js";
 import { authenticate, env, json, logPaymentEvent, planPricesMinor, providerPlanKey, serverSupabase, siteUrl } from "../payment-common.mjs";
 
 const paidPlans = new Set(["pro", "elite", "coach", "academy"]);
-const providers = new Set(["razorpay", "stripe", "cashfree"]);
+// Cashfree PG orders are one-time payments, not recurring subscriptions. Keep
+// Cashfree disabled here until its dedicated Subscriptions API lifecycle is built.
+const providers = new Set(["razorpay", "stripe"]);
 
-async function razorpayCheckout(supabase, user, planId, amountMinor, verificationId) {
+async function razorpayCheckout(supabase, user, planId, amountMinor, verificationId, billingPeriod) {
   const keyId = env("RAZORPAY_KEY_ID");
   const secret = env("RAZORPAY_KEY_SECRET");
-  const planKey = env(providerPlanKey("RAZORPAY", planId));
+  const planKey = env(providerPlanKey("RAZORPAY", planId, billingPeriod));
   if (!keyId || !secret || !planKey) throw new Error("RAZORPAY_NOT_CONFIGURED");
 
   const auth = Buffer.from(`${keyId}:${secret}`).toString("base64");
@@ -16,9 +18,9 @@ async function razorpayCheckout(supabase, user, planId, amountMinor, verificatio
     headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       plan_id: planKey,
-      total_count: 120,
+      total_count: billingPeriod === "yearly" ? 10 : 120,
       customer_notify: 1,
-      notes: { athleten_user_id: user.id, athleten_plan_id: planId, verification_id: verificationId }
+      notes: { athleten_user_id: user.id, athleten_plan_id: planId, billing_period: billingPeriod, verification_id: verificationId }
     })
   });
   const data = await response.json().catch(() => ({}));
@@ -28,15 +30,15 @@ async function razorpayCheckout(supabase, user, planId, amountMinor, verificatio
     user_id: user.id, plan_id: planId, provider: "razorpay", amount_minor: amountMinor,
     currency: "INR", status: "pending", verification_id: verificationId,
     provider_subscription_id: data.id, checkout_url: data.short_url || null,
-    metadata: { provider_plan_id: planKey }
+    metadata: { provider_plan_id: planKey, billing_period: billingPeriod }
   }).select().single();
   if (error) throw error;
   return { orderId: order.id, provider: "razorpay", checkoutUrl: data.short_url, providerSubscriptionId: data.id };
 }
 
-async function stripeCheckout(supabase, user, planId, amountMinor, verificationId) {
+async function stripeCheckout(supabase, user, planId, amountMinor, verificationId, billingPeriod) {
   const secret = env("STRIPE_SECRET_KEY");
-  const priceId = env(providerPlanKey("STRIPE", planId));
+  const priceId = env(providerPlanKey("STRIPE", planId, billingPeriod));
   if (!secret || !priceId) throw new Error("STRIPE_NOT_CONFIGURED");
 
   const params = new URLSearchParams();
@@ -49,8 +51,10 @@ async function stripeCheckout(supabase, user, planId, amountMinor, verificationI
   params.set("metadata[user_id]", user.id);
   params.set("metadata[plan_id]", planId);
   params.set("metadata[verification_id]", verificationId);
+  params.set("metadata[billing_period]", billingPeriod);
   params.set("subscription_data[metadata][user_id]", user.id);
   params.set("subscription_data[metadata][plan_id]", planId);
+  params.set("subscription_data[metadata][billing_period]", billingPeriod);
   params.set("subscription_data[metadata][verification_id]", verificationId);
 
   const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
@@ -65,7 +69,7 @@ async function stripeCheckout(supabase, user, planId, amountMinor, verificationI
     user_id: user.id, plan_id: planId, provider: "stripe", amount_minor: amountMinor,
     currency: "INR", status: "pending", verification_id: verificationId,
     provider_order_id: data.id, checkout_url: data.url,
-    metadata: { provider_price_id: priceId }
+    metadata: { provider_price_id: priceId, billing_period: billingPeriod }
   }).select().single();
   if (error) throw error;
   return { orderId: order.id, provider: "stripe", checkoutUrl: data.url, providerSessionId: data.id };
@@ -129,8 +133,10 @@ export default async function handler(request) {
     const body = await request.json().catch(() => ({}));
     const planId = String(body.planId || "").toLowerCase();
     const provider = String(body.provider || env("PAYMENT_PROVIDER") || "razorpay").toLowerCase();
+    const billingPeriod = String(body.billingPeriod || "monthly").toLowerCase();
     if (!paidPlans.has(planId)) return json({ error: "This plan is not available for automated checkout." }, 400);
-    if (!providers.has(provider)) return json({ error: "Unsupported payment provider." }, 400);
+    if (!["monthly", "yearly"].includes(billingPeriod)) return json({ error: "Choose a valid monthly or yearly billing period." }, 400);
+    if (!providers.has(provider)) return json({ error: "Unsupported recurring subscription provider. Cashfree PG one-time orders are not enabled for subscriptions." }, 400);
 
     const supabase = serverSupabase();
     const { data: profile, error: profileError } = await supabase
@@ -174,19 +180,21 @@ export default async function handler(request) {
       if (!academy) return json({ error: "Complete the existing Academy verification and setup before purchasing the Academy plan." }, 403);
     }
 
-    const amountMinor = planPricesMinor[planId];
+    const amountMinor = planPricesMinor[billingPeriod]?.[planId];
+    if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) {
+      return json({ error: "The selected plan and billing period are not configured." }, 503);
+    }
     const checkoutByProvider = {
       razorpay: razorpayCheckout,
-      stripe: stripeCheckout,
-      cashfree: cashfreeCheckout
+      stripe: stripeCheckout
     };
-    const result = await checkoutByProvider[provider](supabase, user, planId, amountMinor, null);
+    const result = await checkoutByProvider[provider](supabase, user, planId, amountMinor, null, billingPeriod);
 
     await logPaymentEvent(supabase, {
       user_id: user.id, provider, event_type: "checkout.created", amount_minor: amountMinor,
-      currency: "INR", status: "pending", metadata: { plan_id: planId, payment_order_id: result.orderId }
+      currency: "INR", status: "pending", metadata: { plan_id: planId, billing_period: billingPeriod, payment_order_id: result.orderId }
     });
-    return json({ ...result, planId, amountMinor, currency: "INR", verification: "approved" });
+    return json({ ...result, planId, billingPeriod, amountMinor, currency: "INR", verification: "approved" });
   } catch (error) {
     console.error("create-checkout", error);
     const code = error instanceof Error ? error.message : "CHECKOUT_FAILED";
