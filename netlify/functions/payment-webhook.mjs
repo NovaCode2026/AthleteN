@@ -106,10 +106,11 @@ async function retrieveStripeSubscription(subscriptionId) {
   };
 }
 
-async function setExistingSubscriptionStatus(supabase, provider, providerSubscriptionId, status, periodEnd = null) {
-  if (!providerSubscriptionId || !["active", "past_due", "canceled"].includes(status)) return;
+async function setExistingSubscriptionStatus(supabase, provider, providerSubscriptionId, status, periodEnd = null, cancelAtPeriodEnd = null) {
+  if (!providerSubscriptionId || !["active", "trialing", "past_due", "canceled"].includes(status)) return;
   const update = { status, updated_at: new Date().toISOString() };
   if (periodEnd) update.current_period_end = periodEnd;
+  if (typeof cancelAtPeriodEnd === "boolean") update.cancel_at_period_end = cancelAtPeriodEnd;
   const { error } = await supabase.from("subscriptions").update(update)
     .eq("provider", provider)
     .eq("provider_subscription_id", providerSubscriptionId);
@@ -224,6 +225,21 @@ export default async function handler(request) {
           || object?.parent?.subscription_details?.subscription
           || null;
         if (subscriptionId) await setExistingSubscriptionStatus(supabase, "stripe", subscriptionId, "past_due");
+        return json({ received: true });
+      }
+
+      if (event === "customer.subscription.updated") {
+        if (object?.id) {
+          const providerStatus = String(object.status || "").toLowerCase();
+          const mappedStatus = ["active", "trialing"].includes(providerStatus)
+            ? providerStatus
+            : providerStatus === "canceled" ? "canceled" : "past_due";
+          await setExistingSubscriptionStatus(
+            supabase, "stripe", object.id, mappedStatus,
+            stripeSubscriptionPeriodEnd(object),
+            object.cancel_at_period_end === true
+          );
+        }
         return json({ received: true });
       }
 
