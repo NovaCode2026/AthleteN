@@ -128,7 +128,15 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.subscriptions WHERE id = v_sub.id AND cancel_at_period_end = true) THEN
     RAISE EXCEPTION 'Period-end cancellation flag was not persisted';
   END IF;
-  UPDATE public.subscriptions SET cancel_at_period_end = false WHERE id = v_sub.id;
+  -- A later verified activation/renewal clears a pending cancellation.
+  v_sub := public.activate_paid_subscription(
+    '10000000-0000-0000-0000-000000000001',
+    'pro', 'stripe', 'cus_test', 'sub_monthly',
+    now() + interval '2 months'
+  );
+  IF v_sub.cancel_at_period_end IS DISTINCT FROM false THEN
+    RAISE EXCEPTION 'Reactivation did not clear scheduled cancellation';
+  END IF;
 
   -- Idempotent provider retry updates the same user/plan row rather than duplicating it.
   v_sub := public.activate_paid_subscription(
