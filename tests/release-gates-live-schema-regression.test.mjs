@@ -34,3 +34,14 @@ test("Coach and Academy finance access requires an approved account and matching
   assert.match(financeMigration, /REVOKE ALL ON FUNCTION public\.can_manage_finance_account\(uuid\) FROM public,anon/i);
   assert.match(financeMigration, /REVOKE ALL ON FUNCTION public\.get_or_create_my_coach_finance_account\(\) FROM public,anon/i);
 });
+
+const ageAccessMigration = readFileSync(new URL("../supabase/migrations/20261119015354_require_two_sided_age_approval_for_connected_athlete_access.sql", import.meta.url), "utf8");
+const wellnessAgeMigration = readFileSync(new URL("../supabase/migrations/20261119015408_age_gate_connected_taekwondo_and_wellness_data.sql", import.meta.url), "utf8");
+
+test("connected athlete access requires approval for both coach and athlete", () => {
+  assert.match(ageAccessMigration, /public\.is_age_approved\(auth\.uid\(\)\)/);
+  assert.match(ageAccessMigration, /private\.user_age_is_approved\(target_user_id\)/);
+  assert.match(ageAccessMigration, /private\.user_age_is_approved\(p_athlete_user_id\)/);
+  assert.match(ageAccessMigration, /a\.status='not_required' and a\.date_of_birth <=/);
+  assert.equal((wellnessAgeMigration.match(/as restrictive for all to authenticated/g) || []).length, 9);
+});
