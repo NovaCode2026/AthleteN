@@ -62,7 +62,7 @@ jobs:
             echo "No lockfile changes were produced."
             exit 0
           fi
-          git commit -m "chore: remediate compatible dependency advisories [skip ci]"
+          git commit -m "chore: remediate compatible dependency advisories"
           git push origin "HEAD:${BRANCH_NAME}"
 
       - name: Audit web dependencies
