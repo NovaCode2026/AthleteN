@@ -8,7 +8,7 @@ const migration = readFileSync(
 );
 
 test("unverified product-role switching is revoked from all client roles", () => {
-  assert.match(migration, /REVOKE ALL ON FUNCTION public\\.switch_my_product_role\\(text\\) FROM PUBLIC/i);
-  assert.match(migration, /REVOKE ALL ON FUNCTION public\\.switch_my_product_role\\(text\\) FROM anon/i);
-  assert.match(migration, /REVOKE ALL ON FUNCTION public\\.switch_my_product_role\\(text\\) FROM authenticated/i);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public[.]switch_my_product_role[(]text[)] FROM PUBLIC/i);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public[.]switch_my_product_role[(]text[)] FROM anon/i);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public[.]switch_my_product_role[(]text[)] FROM authenticated/i);
 });
