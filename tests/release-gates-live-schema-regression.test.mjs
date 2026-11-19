@@ -23,3 +23,14 @@ test("AI Coach fails closed if the platform budget ledger cannot reserve spend",
   assert.match(aiCoach, /reserve_athleten_ai_budget/);
   assert.match(aiCoach, /if \(budgetReservationError\).*AI Coach is paused because the protected monthly budget ledger is not ready/s);
 });
+
+const financeMigration = readFileSync(new URL("../supabase/migrations/20261119015254_finance_role_and_age_authorization_hardening.sql", import.meta.url), "utf8");
+
+test("Coach and Academy finance access requires an approved account and matching product role", () => {
+  assert.match(financeMigration, /public\.is_age_approved\(auth\.uid\(\)\)/);
+  assert.match(financeMigration, /p\.role='coach'/);
+  assert.match(financeMigration, /p\.role='academy_admin'/);
+  assert.match(financeMigration, /set search_path=''/);
+  assert.match(financeMigration, /REVOKE ALL ON FUNCTION public\.can_manage_finance_account\(uuid\) FROM public,anon/i);
+  assert.match(financeMigration, /REVOKE ALL ON FUNCTION public\.get_or_create_my_coach_finance_account\(\) FROM public,anon/i);
+});
