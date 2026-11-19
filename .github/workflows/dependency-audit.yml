@@ -42,7 +42,14 @@ jobs:
 
       - name: Apply compatible Android dependency security updates (no force)
         working-directory: AthleteN-Mobile
-        run: npm audit fix
+        shell: bash
+        run: |
+          set +e
+          npm audit fix
+          status=$?
+          set -e
+          echo "npm audit fix exit status: $status"
+          echo "Continuing so compatible lockfile updates can be committed; the strict audit below remains the release gate."
 
       - name: Commit regenerated lockfiles back to the release candidate
         env:
