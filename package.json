@@ -2,7 +2,7 @@
   "name": "athleten-taekwondo",
   "version": "2.0.0",
   "description": "Production-ready AthleteN V2 Taekwondo Edition with React, TypeScript, Supabase, Netlify, and secure OpenAI coaching.",
-  "private": false,
+  "private": true,
   "type": "module",
   "keywords": [
     "athleten",
