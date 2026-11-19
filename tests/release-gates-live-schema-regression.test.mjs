@@ -44,4 +44,6 @@ test("connected athlete access requires approval for both coach and athlete", ()
   assert.match(ageAccessMigration, /private\.user_age_is_approved\(p_athlete_user_id\)/);
   assert.match(ageAccessMigration, /a\.status='not_required' and a\.date_of_birth <=/);
   assert.equal((wellnessAgeMigration.match(/as restrictive for all to authenticated/g) || []).length, 9);
+  const helperMigration = readFileSync(new URL("../supabase/migrations/20261119015503_use_authorized_age_gate_helper_for_wellness_rls.sql", import.meta.url), "utf8");
+  assert.equal((helperMigration.match(/public\.can_view_athlete\(/g) || []).length, 18);
 });
