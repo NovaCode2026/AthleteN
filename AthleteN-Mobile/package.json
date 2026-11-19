@@ -67,5 +67,11 @@
     }
   },
   "private": true,
-  "description": "AthleteN mobile application"
+  "description": "AthleteN mobile application",
+  "overrides": {
+    "decode-uri-component": "0.5.1",
+    "@expo/fingerprint": {
+      "minimatch": "11.0.9"
+    }
+  }
 }

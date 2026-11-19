@@ -4,12 +4,26 @@
   "description": "Production-ready AthleteN V2 Taekwondo Edition with React, TypeScript, Supabase, Netlify, and secure OpenAI coaching.",
   "private": true,
   "type": "module",
-  "keywords": ["athleten", "taekwondo", "react", "typescript", "vite", "supabase", "netlify", "sports-tech"],
+  "keywords": [
+    "athleten",
+    "taekwondo",
+    "react",
+    "typescript",
+    "vite",
+    "supabase",
+    "netlify",
+    "sports-tech"
+  ],
   "author": "Nova Code",
   "license": "UNLICENSED",
   "homepage": "https://github.com/NovaCode2026/AthleteN#readme",
-  "repository": { "type": "git", "url": "git+https://github.com/NovaCode2026/AthleteN.git" },
-  "bugs": { "url": "https://github.com/NovaCode2026/AthleteN/issues" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NovaCode2026/AthleteN.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NovaCode2026/AthleteN/issues"
+  },
   "scripts": {
     "dev": "npx --yes netlify-cli dev",
     "build": "vite build && node scripts/write-netlify-redirects.mjs",
@@ -31,5 +45,13 @@
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^6.4.4"
   },
-  "engines": { "node": "22.x" }
+  "engines": {
+    "node": "22.x"
+  },
+  "pnpm": {
+    "overrides": {
+      "nanoid@3": "3.3.18",
+      "source-map-js": "1.2.4"
+    }
+  }
 }
