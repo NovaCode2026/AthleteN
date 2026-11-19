@@ -1,0 +1,103 @@
+name: Dependency Audit and Remediation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "AthleteN-Mobile/package.json"
+      - "AthleteN-Mobile/package-lock.json"
+      - ".github/workflows/dependency-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release-dependency-remediation:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'release/nov30-hardening-20261118' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout the release candidate branch
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Enable Corepack and activate pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+
+      - name: Re-resolve the web lockfile for patched Vite and transitive packages
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Apply compatible Android dependency security updates (no force)
+        working-directory: AthleteN-Mobile
+        shell: bash
+        run: |
+          set +e
+          npm audit fix
+          status=$?
+          set -e
+          echo "npm audit fix exit status: $status"
+          echo "Continuing so compatible lockfile updates can be committed; the strict audit below remains the release gate."
+
+      - name: Commit regenerated lockfiles back to the release candidate
+        env:
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml AthleteN-Mobile/package-lock.json
+          if git diff --cached --quiet; then
+            echo "No lockfile changes were produced."
+            exit 0
+          fi
+          git commit -m "chore: remediate compatible dependency advisories"
+          git push origin "HEAD:${BRANCH_NAME}"
+
+      - name: Audit web dependencies
+        run: pnpm audit --audit-level=high
+
+      - name: Verify web regression tests and production build
+        run: |
+          pnpm test
+          pnpm build
+
+      - name: Audit Android dependencies
+        working-directory: AthleteN-Mobile
+        run: npm audit --audit-level=high
+
+      - name: Android contract tests
+        working-directory: AthleteN-Mobile
+        run: npm test
+
+      - name: Android TypeScript check
+        working-directory: AthleteN-Mobile
+        run: npx tsc --noEmit
+
+      - name: Android ESLint check
+        working-directory: AthleteN-Mobile
+        run: npm run lint
+
+      - name: Android bundle export
+        working-directory: AthleteN-Mobile
+        run: npx expo export --platform android --output-dir .expo/ci-export
+
+      - name: Expo doctor
+        working-directory: AthleteN-Mobile
+        run: npx --yes expo-doctor@1.20.5
+
+      - name: Remove CI export
+        if: always()
+        working-directory: AthleteN-Mobile
+        run: rm -rf .expo/ci-export

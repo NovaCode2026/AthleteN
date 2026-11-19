@@ -100,9 +100,11 @@ Creates a provider checkout session after checking:
 - Existing Academy owner/workspace setup and verified contact email for Academy
 - Supported payment provider configuration
 
-Provider integrations are scaffolded for Razorpay, Stripe and Cashfree.
+The request body uses `planId` and optional `billingPeriod` (`monthly` or `yearly`; defaults to monthly). The server owns the price calculation and accepts only recurring adapters configured for the selected period. Currently, the route supports Razorpay and Stripe subscriptions. Cashfree's separate recurring Subscriptions API is not yet integrated; the Cashfree Payment Gateway one-time `/pg/orders` flow is deliberately not exposed as a recurring subscription.
 
-**Current launch gate:** the function contains `FREE_LAUNCH = true`. Paid checkout is intentionally blocked until provider onboarding and acceptance testing are completed. Do not switch this off simply to make the button work.
+Before creating a provider session, the server requires a confirmed account email, a successful server-side `is_age_approved` check (including guardian approval where required), the matching product role, and completed Academy owner/setup/contact-email verification when purchasing Academy.
+
+**Current launch gate:** the function contains `FREE_LAUNCH = true`. Paid checkout is intentionally blocked until provider onboarding, monthly/yearly recurring plan IDs, webhook lifecycle, refund handling and acceptance testing are completed. Do not switch this off simply to make the button work.
 
 ## 💳 Payment webhook
 
@@ -132,3 +134,18 @@ The authoritative table definitions and access rules are in `supabase/migrations
 ## 🔒 Secret handling
 
 Server-only variables include Supabase service-role credentials, OpenAI API key, payment-provider API credentials and webhook signing secrets. Never expose these through `VITE_*`, `EXPO_PUBLIC_*`, client source or mobile bundles.
+
+
+### Period-end subscription cancellation
+
+Authenticated customers can request cancellation of their own active Stripe or Razorpay recurring subscription:
+
+`POST /.netlify/functions/cancel-subscription`
+
+```json
+{ "subscriptionId": "the-athleten-subscription-row-id" }
+```
+
+The server derives the provider subscription ID from the caller-owned database row; the client cannot select another account's provider reference. Stripe is updated with `cancel_at_period_end=true`; Razorpay receives `cancel_at_cycle_end=true`. The endpoint records `cancel_at_period_end=true` only after the provider confirms the request. Current access remains active through `current_period_end`. Repeated requests are idempotent at the AthleteN layer. The Stripe `customer.subscription.updated` webhook synchronizes the provider's cancellation flag.
+
+Cashfree one-time Payment Gateway orders, manual subscriptions and records without a verified future period are not eligible for automated recurring cancellation. Direct clients cannot mutate this flag; service-role server code performs the update. The new column is introduced by the candidate migration `20261118000500_subscription_cancel_at_period_end.sql` and is not live until the migration-history gate is completed.

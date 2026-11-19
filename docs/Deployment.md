@@ -96,7 +96,11 @@ The checkout Netlify Function currently has a server-side `FREE_LAUNCH = true` g
 
 Set `PAYMENT_PROVIDER` only after the server secrets and plan IDs are configured and tested. Never expose payment secrets to the browser.
 
-**Billing-cycle blocker:** the current checkout API does not accept a monthly/yearly selector. The mobile UI displays both cycles, but paid checkout is globally disabled in both client and server. New monthly provider IDs are versioned as `RAZORPAY_PLAN_V2_<PLAN>_MONTHLY` or `STRIPE_PLAN_V2_<PLAN>_MONTHLY`; do not reuse legacy provider IDs. Annual provider plan IDs, amounts, renewal periods and selected-cycle persistence must be implemented and verified end to end before enabling checkout. Cashfree is excluded from recurring subscription checkout because its current code path creates one-time orders.
+**Release-candidate billing contract:** the web and mobile Plans screens send `planId` plus `billingPeriod` (`monthly` or `yearly`). The server calculates the amount in paise from `netlify/payment-common.mjs`; never accept a client-supplied amount. The new amounts are Pro ₹99 / ₹999, Elite ₹199 / ₹1,999, Coach ₹499 / ₹4,999 and Academy ₹799 / ₹7,999 (monthly / yearly). Configure period-specific Razorpay or Stripe recurring plan IDs using `RAZORPAY_PLAN_V2_<PLAN>_MONTHLY`, `RAZORPAY_PLAN_V2_<PLAN>_YEARLY`, `STRIPE_PLAN_V2_<PLAN>_MONTHLY` and `STRIPE_PLAN_V2_<PLAN>_YEARLY`. Verify each provider product has the matching INR amount and recurring interval. The webhook now requires a confirmed provider subscription period end and rechecks account age/guardian approval and product role before granting access.
+
+Cashfree Payment Gateway `/pg/orders` creates a one-time payment order and is intentionally not exposed as a recurring subscription adapter. Cashfree Subscriptions API, renewals and cancellation require a separate implementation and sandbox acceptance.
+
+**Paid checkout remains disabled:** `FREE_LAUNCH = true` in the server and client paid-checkout flags remain off. This PR does not configure provider credentials, execute sandbox charges or enable live collection. Do not remove the gate until provider monthly/yearly sandbox flows, webhook replay/idempotency, failures, renewal, cancellation/refund, tax/legal and device acceptance all pass.
 
 ## Supabase Auth URLs
 
@@ -145,3 +149,10 @@ Use a test account for each role; do not use a real athlete's private data for a
 A successful Netlify build is not proof of full production acceptance. Android push must be tested on a physical device with notification permission granted. Two-account messaging and offline/background delivery must be tested separately. Web notifications while the browser is fully closed require a configured browser push subscription and are not covered by the current active-session desktop notifications.
 
 Do not mark the release as production-ready until the device, security, and post-deploy acceptance checks are complete.
+
+
+### Subscription cancellation release gate
+
+The candidate exposes authenticated, account-scoped end-of-period cancellation for recurring Stripe and Razorpay subscriptions. It never requests immediate cancellation. Stripe uses `cancel_at_period_end=true`; Razorpay uses `cancel_at_cycle_end=true`. The user keeps access through the provider-confirmed period end, and webhook updates synchronize the stored cancellation flag. Cashfree Payment Gateway orders are one-time payments and do not use this recurring cancellation endpoint.
+
+The endpoint and UI depend on `subscriptions.cancel_at_period_end` from migration `20261118000500_subscription_cancel_at_period_end.sql`. Keep cancellation unavailable in production until the complete migration history is reconciled, the migration is applied, provider sandbox scheduling and webhooks have been verified, and both web and physical Android flows pass. Do not test by creating real charges or canceling a real customer subscription.
