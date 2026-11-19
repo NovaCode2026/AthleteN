@@ -13,7 +13,7 @@ test("unverified product-role switching is revoked from all client roles", () =>
 });
 
 test("AI budget ledger functions use a fixed empty search path and server-only grants", () => {
-  assert.equal((budgetMigration.match(/SECURITY DEFINER SET search_path=''/g) || []).length, 3);
+  assert.equal((budgetMigration.match(/SECURITY DEFINER SET search_path=''/gi) || []).length, 3);
   assert.match(budgetMigration, /REVOKE ALL ON FUNCTION public\.reserve_athleten_ai_budget\(date,integer,integer\) FROM public,anon,authenticated/i);
   assert.match(budgetMigration, /GRANT EXECUTE ON FUNCTION public\.reserve_athleten_ai_budget\(date,integer,integer\) TO service_role/i);
   assert.match(budgetMigration, /REVOKE ALL ON TABLE public\.athleten_ai_budget_monthly FROM public,anon,authenticated,service_role/i);
