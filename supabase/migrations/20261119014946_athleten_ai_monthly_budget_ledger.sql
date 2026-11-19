@@ -61,7 +61,7 @@ begin
  if v.status='settled' then return v.actual_cost_paise=p_actual_cost_paise; end if;
  if v.status<>'reserved' then return false; end if;
  update public.athleten_ai_budget_monthly
- set reserved_paise=pg_catalog.greatest(0,reserved_paise-v.reserved_paise),
+ set reserved_paise=greatest(0::bigint,reserved_paise-v.reserved_paise),
      spent_paise=spent_paise+p_actual_cost_paise,updated_at=pg_catalog.now()
  where usage_month=v.usage_month;
  update public.athleten_ai_budget_reservations
@@ -82,7 +82,7 @@ begin
  if v.status='released' then return true; end if;
  if v.status<>'reserved' then return false; end if;
  update public.athleten_ai_budget_monthly
- set reserved_paise=pg_catalog.greatest(0,reserved_paise-v.reserved_paise),updated_at=pg_catalog.now()
+ set reserved_paise=greatest(0::bigint,reserved_paise-v.reserved_paise),updated_at=pg_catalog.now()
  where usage_month=v.usage_month;
  update public.athleten_ai_budget_reservations
  set status='released',settled_at=pg_catalog.now()
