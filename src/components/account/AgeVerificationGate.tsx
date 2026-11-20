@@ -8,8 +8,8 @@ type Props = { profile: Profile; refresh: () => Promise<void>; children: React.R
 
 function normalizeDob(value: string) {
   const raw = String(value || "").trim();
-  const iso = raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
-  const dmy = raw.match(/^(\\d{2})-(\\d{2})-(\\d{4})$/);
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const dmy = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
   const year = Number(iso?.[1] || dmy?.[3]);
   const month = Number(iso?.[2] || dmy?.[2]);
   const day = Number(iso?.[3] || dmy?.[1]);
