@@ -16,9 +16,15 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
  const load=useCallback(async()=>{
   if(!uid)return;
   setLoading(true);
-  const {data,error}=await supabase.from("notifications")
+  let {data,error}=await supabase.from("notifications")
    .select("id,title,body,notification_type,action_route,message_id,announcement_id,attendance_record_id,created_at,read_at")
    .eq("user_id",uid).order("created_at",{ascending:false}).limit(50);
+  if(error && String(error.message||"").toLowerCase().includes("attendance_record_id")){
+   const fallback=await supabase.from("notifications")
+    .select("id,title,body,notification_type,action_route,message_id,announcement_id,created_at,read_at")
+    .eq("user_id",uid).order("created_at",{ascending:false}).limit(50);
+   data=fallback.data;error=fallback.error;
+  }
   if(error)setToast({type:"error",message:error.message});
   else setRows(data||[]);
   setLoading(false);
