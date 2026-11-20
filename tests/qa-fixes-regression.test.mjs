@@ -75,3 +75,57 @@ test("plans and scanner grouping layouts remain responsive and horizontally scro
   assert.match(styles, /\.scan-table-wrap\{width:100%;max-width:100%;overflow-x:auto/);
   assert.match(styles, /\.scanner-group-actions\{display:grid;grid-template-columns:minmax\(180px,1fr\) auto auto/);
 });
+
+
+test("Android age verification accepts DD-MM-YYYY and submits only a validated ISO date", () => {
+  const ageScreen = read("../AthleteN-Mobile/src/components/age-verification-screen.tsx");
+  const onboarding = read("../AthleteN-Mobile/src/components/onboarding-screen.tsx");
+  assert.match(ageScreen, /function normalizeDob/);
+  assert.match(ageScreen, /const iso=raw\.match/);
+  assert.match(ageScreen, /const dmy=raw\.match/);
+  assert.match(ageScreen, /Date\.UTC\(year,month-1,day\)/);
+  assert.match(ageScreen, /date_of_birth:normalizedDob/);
+  assert.match(onboarding, /const dmy = raw\.match/);
+  assert.match(onboarding, /YYYY-MM-DD or DD-MM-YYYY/);
+});
+
+test("Android dashboard keeps subscription information in Plans instead of a duplicate plan card", () => {
+  const home = read("../AthleteN-Mobile/src/app/home.tsx");
+  const plans = read("../AthleteN-Mobile/src/app/plans.tsx");
+  assert.doesNotMatch(home, /PlanSection/);
+  assert.match(plans, /CURRENT PLAN/);
+  assert.match(plans, /flexWrap:'wrap'/);
+  assert.match(plans, /PLAN_PRICING/);
+});
+
+test("Android notifications open source messages and announcements, and support safe inbox management", () => {
+  const mobile = read("../AthleteN-Mobile/src/app/notifications.tsx");
+  assert.match(mobile, /message_id,announcement_id/);
+  assert.match(mobile, /select\('conversation_id'\)/);
+  assert.match(mobile, /params: \{ conversationId:/);
+  assert.match(mobile, /eq\('id', row\.announcement_id\)/);
+  assert.match(mobile, /from\('notifications'\)\.delete\(\)\.eq\('id', row\.id\)\.eq\('user_id', session\.user\.id\)/);
+  assert.match(mobile, /from\('notifications'\)\.delete\(\)\.eq\('user_id', session\.user\.id\)/);
+  assert.match(mobile, /MARK ALL READ/);
+  assert.match(mobile, /CLEAR ALL/);
+  assert.match(mobile, /original message, announcement or athlete record will remain/);
+});
+
+test("Android scanner keeps scan confidence honest and supports grouped and manually validated merges", () => {
+  const mobile = read("../AthleteN-Mobile/src/app/scanner.tsx");
+  assert.match(mobile, /scanStatusLabel/);
+  assert.match(mobile, /REVIEW REQUIRED/);
+  assert.match(mobile, /Not detected/);
+  assert.match(mobile, /action:'create_group'/);
+  assert.match(mobile, /action:'merge'/);
+  assert.match(mobile, /selectedScanIds/);
+  assert.match(mobile, /Review and merge/);
+});
+
+test("Android menu selection resets the selected screen scroll position", () => {
+  const mobileUi = read("../AthleteN-Mobile/src/components/mobile-ui.tsx");
+  const tabs = read("../AthleteN-Mobile/src/app/(tabs)/_layout.tsx");
+  assert.match(mobileUi, /DeviceEventEmitter\.addListener\('athleten-scroll-to-top'/);
+  assert.match(mobileUi, /<ScrollView ref=\{scrollRef\}/);
+  assert.match(tabs, /DeviceEventEmitter\.emit\('athleten-scroll-to-top'\)/);
+});
