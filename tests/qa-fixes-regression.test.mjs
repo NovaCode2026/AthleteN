@@ -78,8 +78,8 @@ test("plans and scanner grouping layouts remain responsive and horizontally scro
 
 
 test("Android age verification accepts DD-MM-YYYY and submits only a validated ISO date", () => {
-  const ageScreen = read("../AthleteN-Mobile/src/components/age-verification-screen.tsx");
-  const onboarding = read("../AthleteN-Mobile/src/components/onboarding-screen.tsx");
+  const ageScreen = read("AthleteN-Mobile/src/components/age-verification-screen.tsx");
+  const onboarding = read("AthleteN-Mobile/src/components/onboarding-screen.tsx");
   assert.match(ageScreen, /function normalizeDob/);
   assert.match(ageScreen, /const iso=raw\.match/);
   assert.match(ageScreen, /const dmy=raw\.match/);
@@ -90,8 +90,8 @@ test("Android age verification accepts DD-MM-YYYY and submits only a validated I
 });
 
 test("Android dashboard keeps subscription information in Plans instead of a duplicate plan card", () => {
-  const home = read("../AthleteN-Mobile/src/app/home.tsx");
-  const plans = read("../AthleteN-Mobile/src/app/plans.tsx");
+  const home = read("AthleteN-Mobile/src/app/home.tsx");
+  const plans = read("AthleteN-Mobile/src/app/plans.tsx");
   assert.doesNotMatch(home, /PlanSection/);
   assert.match(plans, /CURRENT PLAN/);
   assert.match(plans, /flexWrap:'wrap'/);
@@ -99,7 +99,7 @@ test("Android dashboard keeps subscription information in Plans instead of a dup
 });
 
 test("Android notifications open source messages and announcements, and support safe inbox management", () => {
-  const mobile = read("../AthleteN-Mobile/src/app/notifications.tsx");
+  const mobile = read("AthleteN-Mobile/src/app/notifications.tsx");
   assert.match(mobile, /message_id,announcement_id/);
   assert.match(mobile, /select\('conversation_id'\)/);
   assert.match(mobile, /params: \{ conversationId:/);
@@ -112,7 +112,7 @@ test("Android notifications open source messages and announcements, and support 
 });
 
 test("Android scanner keeps scan confidence honest and supports grouped and manually validated merges", () => {
-  const mobile = read("../AthleteN-Mobile/src/app/scanner.tsx");
+  const mobile = read("AthleteN-Mobile/src/app/scanner.tsx");
   assert.match(mobile, /scanStatusLabel/);
   assert.match(mobile, /REVIEW REQUIRED/);
   assert.match(mobile, /Not detected/);
@@ -123,8 +123,8 @@ test("Android scanner keeps scan confidence honest and supports grouped and manu
 });
 
 test("Android menu selection resets the selected screen scroll position", () => {
-  const mobileUi = read("../AthleteN-Mobile/src/components/mobile-ui.tsx");
-  const tabs = read("../AthleteN-Mobile/src/app/(tabs)/_layout.tsx");
+  const mobileUi = read("AthleteN-Mobile/src/components/mobile-ui.tsx");
+  const tabs = read("AthleteN-Mobile/src/app/(tabs)/_layout.tsx");
   assert.match(mobileUi, /DeviceEventEmitter\.addListener\('athleten-scroll-to-top'/);
   assert.match(mobileUi, /<ScrollView ref=\{scrollRef\}/);
   assert.match(tabs, /DeviceEventEmitter\.emit\('athleten-scroll-to-top'\)/);
