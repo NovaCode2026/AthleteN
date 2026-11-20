@@ -6,9 +6,22 @@ import type { Profile } from "../../types";
 type AgeStatus = { date_of_birth: string; parent_email?: string | null; status: "not_required" | "pending" | "approved" | "rejected"; token_expires_at?: string | null; approved_at?: string | null; };
 type Props = { profile: Profile; refresh: () => Promise<void>; children: React.ReactNode };
 
+function normalizeDob(value: string) {
+  const raw = String(value || "").trim();
+  const iso = raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  const dmy = raw.match(/^(\\d{2})-(\\d{2})-(\\d{4})$/);
+  const year = Number(iso?.[1] || dmy?.[3]);
+  const month = Number(iso?.[2] || dmy?.[2]);
+  const day = Number(iso?.[3] || dmy?.[1]);
+  if (!iso && !dmy) return "";
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return "";
+  return date.toISOString().slice(0, 10);
+}
 function ageFromDob(value: string) {
-  if (!value) return -1;
-  const dob = new Date(`${value}T00:00:00`);
+  const normalized = normalizeDob(value);
+  if (!normalized) return -1;
+  const dob = new Date(`${normalized}T00:00:00`);
   if (Number.isNaN(dob.getTime())) return -1;
   const now = new Date();
   let age = now.getFullYear() - dob.getFullYear();
@@ -20,7 +33,7 @@ function ageFromDob(value: string) {
 export default function AgeVerificationGate({ profile, refresh, children }: Props) {
   const supabase = requireSupabase();
   const [status, setStatus] = useState<AgeStatus | null>(null);
-  const [dateOfBirth, setDateOfBirth] = useState(profile.date_of_birth || "");
+  const [dateOfBirth, setDateOfBirth] = useState(() => normalizeDob(profile.date_of_birth || "") || profile.date_of_birth || "");
   const [parentEmail, setParentEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -46,15 +59,17 @@ export default function AgeVerificationGate({ profile, refresh, children }: Prop
     setBusy(true);
     setMessage("");
     try {
-      const age = ageFromDob(dateOfBirth);
-      if (age < 0) throw new Error("Enter a valid date of birth.");
+      const normalizedDob = normalizeDob(dateOfBirth);
+      const age = ageFromDob(normalizedDob);
+      if (!normalizedDob || age < 0) throw new Error("Enter a valid date of birth.");
       if (age < 18 && !parentEmail.trim()) throw new Error("A parent or guardian email is required for users under 18.");
       const { data, error } = await supabase.functions.invoke("start-parent-approval", {
-        body: { date_of_birth: dateOfBirth, parent_email: parentEmail.trim(), full_name: profile.full_name || "your athlete" }
+        body: { date_of_birth: normalizedDob, parent_email: parentEmail.trim(), full_name: profile.full_name || "your athlete" }
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      setStatus({ date_of_birth: dateOfBirth, parent_email: parentEmail.trim(), status: data?.status || "pending", token_expires_at: data?.expires_at || null });
+      setDateOfBirth(normalizedDob);
+      setStatus({ date_of_birth: normalizedDob, parent_email: parentEmail.trim(), status: data?.status || "pending", token_expires_at: data?.expires_at || null });
       await refresh();
       setMessage(age < 18 ? "Approval request sent to the parent/guardian email. You can enter AthleteN after they approve." : "Age verified. Your account is ready.");
     } catch (error) {
