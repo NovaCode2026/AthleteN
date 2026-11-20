@@ -820,3 +820,15 @@ select:-webkit-autofill {
     padding: 20px 16px;
   }
 }
+
+
+/* AthleteN QA: responsive plans and actionable notification rows */
+.plan-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));align-items:stretch}
+.plan-card{min-width:0;overflow-wrap:anywhere}
+.plan-card-head{min-width:0}
+.notification-row{align-items:center;gap:10px}
+.notification-open{display:flex;align-items:center;justify-content:space-between;gap:14px;flex:1;min-width:0;padding:0;border:0;background:transparent;color:inherit;text-align:left}
+.notification-open:disabled{opacity:.65;cursor:wait}
+.notification-open-label{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;color:#9fcfff;font-size:.78rem;font-weight:800}
+.notification-delete{flex:0 0 auto}
+@media(max-width:560px){.notification-open{align-items:flex-start;flex-direction:column;gap:7px}.notification-row{padding:13px 4px}}
