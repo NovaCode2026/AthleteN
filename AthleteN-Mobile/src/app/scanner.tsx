@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
-import { Header } from '@/components/mobile-ui';
+import { Header, useNavigationScrollToTop } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -15,10 +15,12 @@ const clean=(v:any)=>String(v??'').replace(/&quot;/gi,'"').replace(/&#39;|&apos;
 const isInstagram=(u:string)=>/instagram\.com/i.test(u);
 const labelize=(v:string)=>v.replace(/_/g,' ').replace(/\b\w/g,x=>x.toUpperCase());
 const fmt=(v?:string|null)=>{if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?v:d.toLocaleString();};
+const scanStatusLabel=(status?:string|null)=>{const value=String(status||'').toLowerCase();if(value==='checked')return 'REVIEW REQUIRED';if(value==='blocked')return 'BLOCKED';if(value==='failed')return 'FAILED';if(value==='pending')return 'PENDING';return 'UNKNOWN';};
+const scanStatusColor=(status?:string|null)=>{const value=String(status||'').toLowerCase();return ['checked','blocked','failed','pending'].includes(value)?c.warning:c.muted;};
 const validInstagram=(u:string)=>{try{const x=new URL(u);const p=x.pathname.split('/').filter(Boolean);if(!/(^|\.)instagram\.com$/i.test(x.hostname)||!p.length)return false;if((p[0]==='p'||p[0]==='reel'||p[0]==='reels')&&p[1])return true;return p.length===1&&/^[a-zA-Z0-9._]{1,30}$/.test(p[0])}catch{return false}};
 
 export default function ScannerScreen(){
- const {session,syncVersion}=useAuth();
+ const {session,syncVersion}=useAuth();\n const scrollRef=useNavigationScrollToTop();
  const [kind,setKind]=useState<SourceType>('website');
  const [url,setUrl]=useState('');
  const [scans,setScans]=useState<Scan[]>([]);
@@ -26,7 +28,7 @@ export default function ScannerScreen(){
  const [busy,setBusy]=useState(false);
  const [refreshing,setRefreshing]=useState(false);
  const [scanning,setScanning]=useState<string|null>(null);
- const [message,setMessage]=useState('');
+ const [message,setMessage]=useState('');\n const [groupMode,setGroupMode]=useState(false);\n const [groupName,setGroupName]=useState('');\n const [selectedScanIds,setSelectedScanIds]=useState<string[]>([]);\n const [grouping,setGrouping]=useState(false);\n const [merging,setMerging]=useState(false);
 
  const load=useCallback(async()=>{
   if(!session)return;
@@ -64,12 +66,44 @@ export default function ScannerScreen(){
   }catch(e){setMessage(e instanceof Error?e.message:'Could not start the scan.')}finally{setBusy(false)}
  }
  async function remove(id:string){setBusy(true);const {error}=await supabase.from('tournament_scans').delete().eq('id',id).eq('user_id',session?.user.id);setBusy(false);if(error)setMessage(error.message);else{if(selected?.id===id)setSelected(null);await load()}}
+ function toggleScanSelection(id:string){setSelectedScanIds(current=>current.includes(id)?current.filter(x=>x!==id):[...current,id]);}
+ const scannerEndpoint=(process.env.EXPO_PUBLIC_ATHLETEN_API_URL||'https://athleten.netlify.app').replace(/\\/$/,'')+'/.netlify/functions/instagram-tournament-scan';
+ async function createTournamentGroup(){
+  if(!session||selectedScanIds.length<2){setMessage('Select at least two scans to create a tournament group.');return;}
+  if(!groupName.trim()){setMessage('Enter a tournament group name first.');return;}
+  setGrouping(true);setMessage('');
+  try{
+   const response=await fetch(scannerEndpoint,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({action:'create_group',scanIds:selectedScanIds,groupName:groupName.trim()})});
+   const payload=await response.json().catch(()=>({}));
+   if(!response.ok)throw new Error(String(payload?.error||'Tournament group creation failed.'));
+   const name=groupName.trim();setGroupName('');setSelectedScanIds([]);setGroupMode(false);await load();setMessage('Tournament group "'+name+'" created. Original scans were kept.');
+  }catch(e){setMessage(e instanceof Error?e.message:'Tournament group creation failed.');}
+  finally{setGrouping(false);}
+ }
+ async function mergeSelectedScans(){
+  if(!session||selectedScanIds.length<2){setMessage('Select at least two scans of the same tournament to merge.');return;}
+  if(selectedScanIds.length>10){setMessage('Merge up to 10 scans at a time.');return;}
+  Alert.alert('Merge selected scans?','Only scans with sufficient matching tournament evidence can be merged. The server validates the match and removes duplicate scan rows after a successful merge.',[
+   {text:'Cancel',style:'cancel'},
+   {text:'Review and merge',style:'destructive',onPress:()=>{void (async()=>{
+    setMerging(true);setMessage('');
+    try{
+     const response=await fetch(scannerEndpoint,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({action:'merge',scanIds:selectedScanIds})});
+     const payload=await response.json().catch(()=>({}));
+     if(!response.ok)throw new Error(String(payload?.error||'Tournament merge failed.'));
+     if(payload?.scan)setSelected(payload.scan as Scan);
+     setSelectedScanIds([]);setGroupMode(false);await load();setMessage('Selected tournament evidence was merged after server-side matching checks.');
+    }catch(e){setMessage(e instanceof Error?e.message:'Tournament merge failed.');}
+    finally{setMerging(false);}
+   })();}},
+  ]);
+ }
  const details=selected?.details||{};const fields=details.fields||{};const facts=details.important_facts||{};
  const primary=useMemo(()=>Object.entries(fields).filter(([k,v])=>k!=='description'&&clean(v)),[fields]);
  const pdfs=selected?.pdfs?.length?selected.pdfs:details.pdfs||[];
  const poster=[['Sport',fields.poster_sport],['Disciplines',fields.poster_disciplines],['Events / divisions',fields.poster_events],['Age categories',fields.poster_age_categories],['Weight categories',fields.poster_weight_categories],['Gender categories',fields.poster_gender_categories],['Eligibility',fields.poster_eligibility],['City',fields.poster_city],['State',fields.poster_state],['Country',fields.poster_country],['Organizer',fields.organizer],['Host',fields.poster_host],['Reporting date',fields.reporting_date_text],['Reporting time',fields.reporting_time],['Registration',fields.poster_registration],['Registration deadline',fields.poster_registration_deadline],['Registration link',fields.poster_registration_link],['Fees',fields.fees],['Contact',fields.poster_contact],['Phone',fields.poster_phone],['Email',fields.poster_email],['Website',fields.poster_website],['Rules',fields.poster_rules],['Scoring system',fields.poster_scoring_system],['Competition system',fields.poster_competition_system],['Rounds',fields.poster_rounds],['Equipment',fields.poster_equipment],['Schedule',fields.poster_schedule],['Weigh-in',fields.poster_weigh_in],['Medals',fields.poster_medals],['Prizes',fields.poster_prizes],['Accommodation',fields.poster_accommodation],['Transport',fields.poster_transport],['Documents',fields.poster_documents],['Notices',fields.poster_notices],['Highlights',fields.poster_highlights],['Hashtags',fields.poster_hashtags],['Reel transcript',fields.reel_transcript]].filter(x=>clean(x[1]));
 
- return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>void refreshScans()} tintColor={c.accent} colors={[c.accent]} progressBackgroundColor={c.surface}/> }>
+ return <SafeAreaView style={s.screen} edges={['top']}><ScrollView ref={scrollRef} contentContainerStyle={s.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>void refreshScans()} tintColor={c.accent} colors={[c.accent]} progressBackgroundColor={c.surface}/> }>
   <Header back eyebrow="ATHLETEN INTELLIGENCE" title="Tournament Scanner" subtitle="Scan tournament websites, notices, schedules, results, PDFs and public Instagram tournament posts." right={<View style={s.aiBadge}><Text style={s.aiBadgeText}>AI</Text></View>}/>
   <View style={s.tabs}>
    <Pressable onPress={()=>setKind('website')} style={[s.tab,kind==='website'&&s.activeTab]}><Text style={[s.tabTitle,kind==='website'&&s.activeText]}>WEBSITE</Text><Text style={s.tabSub}>Site, notice, schedule or PDF</Text></Pressable>
@@ -78,7 +112,7 @@ export default function ScannerScreen(){
   <View style={s.hero}><Text style={s.kicker}>SOURCE INTELLIGENCE</Text><Text style={s.heroTitle}>Scan once. Track changes.</Text><Text style={s.heroText}>{kind==='website'?'The scanner follows relevant same-site pages, notices, schedules, results, rules, equipment, registration pages and linked PDFs.':'The scanner extracts tournament evidence from the public post/reel and preserves poster intelligence when available.'}</Text><TextInput value={url} onChangeText={setUrl} placeholder={kind==='website'?'https://example.com/tournament':'https://instagram.com/p/..., /reel/..., or /account'} placeholderTextColor={c.muted} autoCapitalize="none" keyboardType="url" style={s.input}/><Pressable onPress={()=>void saveAndScan()} disabled={busy||!!scanning} style={s.button}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>SCAN</Text>}</Pressable></View>
   {message?<View style={[s.messageBox, /blocked|could not|failed|unavailable|error code|retry in/i.test(message)?{borderColor:c.warning}:null]}><Text style={s.message}>{message}</Text></View>:null}
 
-  {selected?<><View style={s.panel}><View style={s.panelHead}><View style={{flex:1}}><Text style={s.eyebrow}>LATEST INTELLIGENCE</Text><Text style={s.panelTitle}>{clean(isInstagram(selected.source_url)?facts.tournament_name:selected.tournament_name)||'Tournament information'}</Text><Text style={s.panelSub}>{clean(details.description)||'Information extracted from the source and relevant pages.'}</Text></View><Text style={[s.status, String(selected.status || '').toLowerCase() === 'blocked' ? { color: c.warning } : { color: c.success }]}>{String(selected.status||'checked').toUpperCase()}</Text></View>
+  {selected?<><View style={s.panel}><View style={s.panelHead}><View style={{flex:1}}><Text style={s.eyebrow}>LATEST INTELLIGENCE</Text><Text style={s.panelTitle}>{clean(isInstagram(selected.source_url)?facts.tournament_name:selected.tournament_name)||'Tournament information'}</Text><Text style={s.panelSub}>{clean(details.description)||'Information extracted from the source and relevant pages.'}</Text></View><Text style={[s.status,{color:scanStatusColor(selected.status)}]}>{scanStatusLabel(selected.status)}</Text></View>
    <View style={s.grid}><Summary label={isInstagram(selected.source_url)?'TOURNAMENT DATES':'DATE'} value={clean(isInstagram(selected.source_url)?facts.tournament_dates:selected.tournament_date)}/><Summary label="VENUE" value={clean(facts.venue||selected.venue)}/><Summary label="REGISTRATION" value={clean(facts.registration_deadline||selected.registration_deadline)}/>{details.pages_scanned?<Summary label="PAGES SCANNED" value={String(details.pages_scanned)}/>:null}</View></View>
 
    {isInstagram(selected.source_url)?<Section title="Tournament intelligence" subtitle="Only valuable facts supported by accessible tournament evidence are shown.">{[['City / State',facts.city_state],['Age categories',facts.age_categories],['Weight categories',facts.weight_categories],['Registration fee',facts.registration_fee],['Registration deadline',facts.registration_deadline],['Registration link',facts.registration_link],['Official contact',facts.official_contact],['Organizer',facts.organizer],['Scoring / equipment',facts.equipment_and_scoring],['Medals / prizes',facts.medals_prizes],['Important highlights',facts.important_highlights],['Important notice',facts.important_notice],['Evidence conflicts',facts.evidence_conflicts]].filter(x=>clean(x[1])).map(x=><Detail key={String(x[0])} label={String(x[0])} value={x[1]}/>)}</Section>:<Section title="All available tournament information" subtitle="Structured facts plus relevant source information, not just date and venue.">{primary.length?primary.map(x=><Detail key={x[0]} label={labelize(x[0])} value={x[1]}/>):<Text style={s.emptyText}>No labeled fields were detected.</Text>}</Section>}
@@ -97,12 +131,13 @@ export default function ScannerScreen(){
    <View style={s.actions}><Pressable onPress={()=>void runScan(selected.source_url,selected.id)} disabled={!!scanning} style={s.buttonSmall}>{scanning===selected.id?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>SCAN AGAIN</Text>}</Pressable><Pressable onPress={()=>void Linking.openURL(selected.source_url)} style={s.secondary}><Text style={s.secondaryText}>OPEN SOURCE</Text></Pressable></View>
   </>:<View style={s.empty}><Text style={s.emptyTitle}>No tournament intelligence yet</Text><Text style={s.emptyText}>Choose Website or Instagram above and run your first scan.</Text></View>}
 
-  <View style={s.sectionHead}><Text style={s.sectionLabel}>SAVED SCANS</Text><Text style={s.count}>{scans.length}</Text></View>
-  {scans.map(row=><View key={row.id} style={s.saved}><Text style={s.savedTitle}>{clean(row.tournament_name)||'Tournament source'}</Text><Text style={s.savedUrl} numberOfLines={1}>{row.source_url}</Text><Text style={s.savedMeta}>{clean(row.tournament_date)||'Date not detected'} · {clean(row.venue)||'Venue not detected'}</Text>{row.details?.tournament_group?.name?<Text style={s.group}>GROUP · {row.details.tournament_group.name}</Text>:null}<View style={s.savedActions}><Pressable onPress={()=>setSelected(row)} style={s.secondary}><Text style={s.secondaryText}>OPEN</Text></Pressable><Pressable onPress={()=>void runScan(row.source_url,row.id)} disabled={!!scanning} style={s.buttonTiny}><Text style={s.buttonText}>{scanning===row.id?'...':'SCAN'}</Text></Pressable><Pressable onPress={()=>void remove(row.id)} disabled={busy} style={s.delete}><Text style={s.deleteText}>DELETE</Text></Pressable></View></View>)}
+  <View style={s.sectionHead}><Text style={s.sectionLabel}>SAVED SCANS</Text><View style={{flexDirection:'row',alignItems:'center',gap:8}}><Text style={s.count}>{scans.length}</Text><Pressable onPress={()=>{setGroupMode(v=>!v);setSelectedScanIds([]);setMessage('')}} style={s.secondary}><Text style={s.secondaryText}>{groupMode?'CANCEL':'SELECT'}</Text></Pressable></View></View>
+  {groupMode?<View style={s.groupTools}><Text style={s.savedMeta}>Select at least two scans. Create a group to keep separate source records together, or merge only when the server confirms they describe the same tournament.</Text><TextInput value={groupName} onChangeText={setGroupName} placeholder="Tournament group name" placeholderTextColor={c.muted} style={s.input}/><Text style={s.count}>{selectedScanIds.length} selected</Text><View style={s.savedActions}><Pressable onPress={()=>void createTournamentGroup()} disabled={grouping||merging||selectedScanIds.length<2} style={s.buttonTiny}><Text style={s.buttonText}>{grouping?'SAVING…':'CREATE GROUP'}</Text></Pressable><Pressable onPress={()=>void mergeSelectedScans()} disabled={grouping||merging||selectedScanIds.length<2} style={s.secondary}><Text style={s.secondaryText}>{merging?'MERGING…':'MERGE SELECTED'}</Text></Pressable></View></View>:null}
+  {scans.map(row=><View key={row.id} style={[s.saved,groupMode&&selectedScanIds.includes(row.id)&&{borderColor:c.accent,backgroundColor:c.accentSoft}]}><Text style={s.savedTitle}>{clean(row.tournament_name)||'Tournament source'}</Text><Text style={s.savedUrl} numberOfLines={1}>{row.source_url}</Text><Text style={s.savedMeta}>{clean(row.tournament_date)||'Date not detected'} · {clean(row.venue)||'Venue not detected'}</Text><Text style={s.savedMeta}>Status · {scanStatusLabel(row.status)}</Text>{row.details?.tournament_group?.name?<Text style={s.group}>GROUP · {row.details.tournament_group.name}</Text>:null}<View style={s.savedActions}>{groupMode?<Pressable onPress={()=>toggleScanSelection(row.id)} style={selectedScanIds.includes(row.id)?s.buttonTiny:s.secondary}><Text style={selectedScanIds.includes(row.id)?s.buttonText:s.secondaryText}>{selectedScanIds.includes(row.id)?'SELECTED':'SELECT'}</Text></Pressable>:<><Pressable onPress={()=>setSelected(row)} style={s.secondary}><Text style={s.secondaryText}>OPEN</Text></Pressable><Pressable onPress={()=>void runScan(row.source_url,row.id)} disabled={!!scanning} style={s.buttonTiny}><Text style={s.buttonText}>{scanning===row.id?'...':'SCAN'}</Text></Pressable><Pressable onPress={()=>void remove(row.id)} disabled={busy} style={s.delete}><Text style={s.deleteText}>DELETE</Text></Pressable></>}</View></View>)}
  </ScrollView></SafeAreaView>
 }
 
-function Summary({label,value}:{label:string;value:string}){if(!value)return null;return <View style={s.summary}><Text style={s.summaryLabel}>{label}</Text><Text style={s.summaryValue}>{clean(value)}</Text></View>}
+function Summary({label,value}:{label:string;value:string}){return <View style={s.summary}><Text style={s.summaryLabel}>{label}</Text><Text style={s.summaryValue}>{clean(value)||'Not detected'}</Text></View>}
 function Detail({label,value}:{label:string;value:any}){const v=clean(value);if(!v)return null;return <View style={s.detail}><Text style={s.detailLabel}>{label}</Text><Text style={s.detailValue}>{v}</Text></View>}
 function Section({title,subtitle,children}:{title:string;subtitle?:string;children:React.ReactNode}){return <View style={s.panel}><Text style={s.panelTitle}>{title}</Text>{subtitle?<Text style={s.panelSub}>{subtitle}</Text>:null}<View>{children}</View></View>}
 function LinkRow({label,url}:{label:string;url:string}){return <Pressable onPress={()=>void Linking.openURL(url)} style={s.link}><Text style={s.linkText} numberOfLines={3}>{label}</Text><Text style={s.open}>OPEN</Text></Pressable>}
@@ -117,5 +152,5 @@ const s=StyleSheet.create({
  grid:{flexDirection:'row',flexWrap:'wrap',gap:8},summary:{width:'48%',backgroundColor:c.background,borderRadius:12,padding:10},summaryLabel:{color:c.muted,fontSize:7,fontWeight:'900',letterSpacing:.8},summaryValue:{color:c.text,fontSize:10,fontWeight:'800',marginTop:4},
  detail:{borderTopWidth:1,borderTopColor:c.border,paddingVertical:10,gap:4},detailLabel:{color:c.muted,fontSize:8,fontWeight:'900',letterSpacing:.7},detailValue:{color:c.textSecondary,fontSize:10,lineHeight:16},empty:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:18,padding:18,gap:6},emptyTitle:{color:c.text,fontSize:14,fontWeight:'800'},emptyText:{color:c.muted,fontSize:10,lineHeight:16},
  link:{flexDirection:'row',alignItems:'center',gap:8,borderTopWidth:1,borderTopColor:c.border,paddingVertical:11},linkText:{color:c.accentBright,fontSize:9,lineHeight:14,flex:1},open:{color:c.text,fontSize:8,fontWeight:'900'},actions:{flexDirection:'row',gap:8},secondary:{borderWidth:1,borderColor:c.borderStrong,borderRadius:10,paddingHorizontal:13,paddingVertical:10,alignItems:'center',justifyContent:'center'},secondaryText:{color:c.text,fontSize:9,fontWeight:'900',letterSpacing:.7},
- sectionHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:2},sectionLabel:{color:c.muted,fontSize:9,fontWeight:'900',letterSpacing:1.5},count:{color:c.accentBright,fontSize:9,fontWeight:'900'},saved:{backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:18,padding:13,gap:6},savedTitle:{color:c.text,fontSize:14,fontWeight:'900'},savedUrl:{color:c.accentBright,fontSize:8},savedMeta:{color:c.muted,fontSize:9},group:{color:c.warning,fontSize:8,fontWeight:'900'},savedActions:{flexDirection:'row',gap:6,justifyContent:'flex-end'},delete:{borderWidth:1,borderColor:'#61303A',borderRadius:10,paddingHorizontal:10,paddingVertical:9,alignItems:'center'},deleteText:{color:c.danger,fontSize:8,fontWeight:'900'}
+ sectionHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:2},sectionLabel:{color:c.muted,fontSize:9,fontWeight:'900',letterSpacing:1.5},count:{color:c.accentBright,fontSize:9,fontWeight:'900'},groupTools:{backgroundColor:c.surface,borderWidth:1,borderColor:c.accent,borderRadius:16,padding:13,gap:9},saved:{backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:18,padding:13,gap:6},savedTitle:{color:c.text,fontSize:14,fontWeight:'900'},savedUrl:{color:c.accentBright,fontSize:8},savedMeta:{color:c.muted,fontSize:9},group:{color:c.warning,fontSize:8,fontWeight:'900'},savedActions:{flexDirection:'row',gap:6,justifyContent:'flex-end'},delete:{borderWidth:1,borderColor:'#61303A',borderRadius:10,paddingHorizontal:10,paddingVertical:9,alignItems:'center'},deleteText:{color:c.danger,fontSize:8,fontWeight:'900'}
 });
