@@ -307,7 +307,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
         </section>}
       </section> : <>
       <section className="card panel">
-        <div className="panel-head"><div><p className="eyebrow">Latest intelligence</p><h3>{selectedScan.tournament_name || "Tournament source"}</h3><p>{details?.description || "Information extracted from the source and relevant pages."}</p></div><span className={`status ${selectedScan.status === "blocked" ? "blocked" : ""}`}>{selectedScan.status || "checked"}</span></div>
+        <div className="panel-head"><div><p className="eyebrow">Latest intelligence</p><h3>{selectedScan.tournament_name || "Tournament source"}</h3><p>{details?.description || "Information extracted from the source and relevant pages."}</p></div><span className={`status ${selectedScan.status === "blocked" ? "blocked" : ""}`}>{selectedScan.status === "blocked" ? "Blocked" : "Review extracted details"}</span></div>
         <div className="scan-summary">
           {dateDisplay && <div className="summary-item"><CalendarDays size={16}/><span>Date</span><strong>{dateDisplay}</strong></div>}
           {selectedScan.venue && <div className="summary-item"><MapPin size={16}/><span>Venue</span><strong>{selectedScan.venue}</strong></div>}
