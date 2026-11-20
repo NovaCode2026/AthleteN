@@ -1,7 +1,8 @@
 // @ts-nocheck
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, DeviceEventEmitter, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useRef } from 'react';
 import { Colors } from '@/constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AthleteNLogo from '@/components/athleten-logo';
@@ -21,6 +22,16 @@ export function SupportContact(){
   <Pressable onPress={openSupport} hitSlop={8}><Text style={{color:c.accentBright,fontSize:9,fontWeight:'900'}}>CREATE SUPPORT TICKET</Text></Pressable>
   <Text style={{color:c.muted,fontSize:8}}>Support: novacode.create@gmail.com</Text>
  </View>;
+}
+export function useNavigationScrollToTop() {
+ const ref = useRef<any>(null);
+ useEffect(() => {
+  const subscription = DeviceEventEmitter.addListener('athleten-scroll-to-top', () => {
+   ref.current?.scrollTo?.({ y: 0, animated: false });
+  });
+  return () => subscription.remove();
+ }, []);
+ return ref;
 }
 export function Screen({children,scroll=true,bottomBar}:{children:React.ReactNode;scroll?:boolean;bottomBar?:React.ReactNode}){
  const body=<View style={s.wrap}>{children}</View>;
