@@ -15,8 +15,8 @@ import AthleteNLogo from '@/components/athleten-logo';
 
 const c = Colors.dark;
 
-function ScreenLikeProfile({
-  const scrollRef=useNavigationScrollToTop();router,profile,session,signOut}:{router:any;profile:any;session:any;signOut:()=>void}){
+function ScreenLikeProfile({router,profile,session,signOut}:{router:any;profile:any;session:any;signOut:()=>void}){
+  const scrollRef=useNavigationScrollToTop();
   return <ScrollView ref={scrollRef} style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
     <View style={s.brandRow}><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>ACADEMY PROFILE</Text></View>
     <View style={s.card}>
