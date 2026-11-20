@@ -849,3 +849,7 @@ select:-webkit-autofill {
 .status.review-required{border-color:rgba(247,199,106,.45);color:#f7d28a}
 .notification-row{min-width:0}
 @media(max-width:760px){.scanner-merge-bar{grid-template-columns:1fr}.scanner-group-actions{grid-template-columns:1fr}.scanner-group-actions .btn{width:100%}}
+
+.notification-source-detail{display:grid;gap:14px}
+.notification-source-detail .inline-actions{flex-wrap:wrap}
+.notification-source-detail .tag{max-width:100%;overflow-wrap:anywhere}
