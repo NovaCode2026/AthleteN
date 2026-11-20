@@ -16,7 +16,8 @@ const c=Colors.dark;
 
 export default function HomeScreen(){
  const {session,profile,syncVersion}=useAuth(); const router=useRouter(); const {width:screenWidth}=useWindowDimensions(); const wideLayout=screenWidth>=700; const compactLayout=screenWidth<420; const compactHeader=screenWidth<430;
- const scrollRef=useNavigationScrollToTop();\n const [greeting,setGreeting]=useState(getGreeting);
+ const scrollRef=useNavigationScrollToTop();
+ const [greeting,setGreeting]=useState(getGreeting);
  const [refreshing,setRefreshing]=useState(false);const [minutes,setMinutes]=useState(0);const [sessions,setSessions]=useState(0);const [chart,setChart]=useState<ChartPoint[]>([]);const [weight,setWeight]=useState<number|null>(null);const [medals,setMedals]=useState(0);const [next,setNext]=useState<any>(null);const [streak,setStreak]=useState(calculateStreak([]));const [unread,setUnread]=useState(0);
  const load=useCallback(async()=>{
   if(!session)return; const uid=session.user.id; const now=new Date(); const days:string[]=[];
