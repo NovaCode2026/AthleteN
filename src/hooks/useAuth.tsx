@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { requireSupabase, supabase } from "../lib/supabase";
-import AccountPlanGate from "../components/account/AccountPlanGate";
 
 interface Credentials { email: string; password: string; }
 interface SignUpCredentials extends Credentials { metadata?: Record<string, string>; }
@@ -135,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut: async () => { const { error } = await requireSupabase().auth.signOut(); if (error) throw error; }
   }), [session, loading, profileBootstrapError]);
 
-  return <AuthContext.Provider value={value}>{children}<AccountPlanGate user={session?.user ?? null} /></AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
