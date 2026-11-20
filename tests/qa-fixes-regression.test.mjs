@@ -20,7 +20,7 @@ test("age verification normalizes ISO and DD-MM-YYYY input to a strict calendar-
   assert.match(age, /Date\.UTC\(year, month - 1, day\)/);
   assert.match(age, /date\.getUTCFullYear\(\) !== year/);
   assert.match(age, /body: \{ date_of_birth: normalizedDob/);
-  assert.match(read("supabase/functions/start-parent-approval/index.ts"), /dateOfBirth\.toISOString\(\)\.slice\(0, 10\) !== dateOfBirth/);
+  assert.match(read("supabase/functions/start-parent-approval/index.ts"), /parsedDob\\.toISOString\(\)\.slice\(0, 10\) !== dateOfBirth/);
 });
 
 test("floating Account Plan gate is no longer mounted in authenticated app shell", () => {
