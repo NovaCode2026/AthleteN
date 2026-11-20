@@ -15,8 +15,8 @@ const scanner = read("src/components/instagram/InstagramOrganizerScanner.tsx");
 const styles = read("src/styles/main.css");
 
 test("age verification normalizes ISO and DD-MM-YYYY input to a strict calendar-valid ISO date", () => {
-  assert.match(age, /const iso = raw\\.match/);
-  assert.match(age, /const dmy = raw\\.match/);
+  assert.match(age, /const iso = raw\.match/);
+  assert.match(age, /const dmy = raw\.match/);
   assert.match(age, /Date\.UTC\(year, month - 1, day\)/);
   assert.match(age, /date\.getUTCFullYear\(\) !== year/);
   assert.match(age, /body: \{ date_of_birth: normalizedDob/);
