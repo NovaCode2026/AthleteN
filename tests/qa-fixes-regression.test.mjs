@@ -65,7 +65,9 @@ test("bulk mark-as-read is a single user-scoped update", () => {
 });
 
 test("scanner makes absent extracted facts explicit and never labels unreviewed extraction as confirmed", () => {
-  assert.match(scanner, /Review extracted details/);
+  assert.match(scanner, /function scanStatusLabel/);
+  assert.match(scanner, /Review required/);
+  assert.match(scanner, /value === "failed"\) return "Failed"/);
   assert.match(scanner, /Not detected/);
   assert.match(scanner, /Open source/);
   assert.match(scanner, /Only valuable facts supported by accessible evidence are shown|Only valuable facts supported by accessible tournament evidence are shown/);
