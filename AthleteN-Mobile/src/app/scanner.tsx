@@ -67,7 +67,7 @@ export default function ScannerScreen(){
  }
  async function remove(id:string){setBusy(true);const {error}=await supabase.from('tournament_scans').delete().eq('id',id).eq('user_id',session?.user.id);setBusy(false);if(error)setMessage(error.message);else{if(selected?.id===id)setSelected(null);await load()}}
  function toggleScanSelection(id:string){setSelectedScanIds(current=>current.includes(id)?current.filter(x=>x!==id):[...current,id]);}
- const scannerEndpoint=(process.env.EXPO_PUBLIC_ATHLETEN_API_URL||'https://athleten.netlify.app').replace(/\\/$/,'')+'/.netlify/functions/instagram-tournament-scan';
+ const scannerEndpoint=(process.env.EXPO_PUBLIC_ATHLETEN_API_URL||'https://athleten.netlify.app').replace(/\/$/,'')+'/.netlify/functions/instagram-tournament-scan';
  async function createTournamentGroup(){
   if(!session||selectedScanIds.length<2){setMessage('Select at least two scans to create a tournament group.');return;}
   if(!groupName.trim()){setMessage('Enter a tournament group name first.');return;}
