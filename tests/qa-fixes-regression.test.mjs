@@ -13,7 +13,6 @@ const notifications = read("src/components/parity/NotificationPages.tsx");
 const messaging = read("src/components/messaging/MessagingPage.tsx");
 const scanner = read("src/components/instagram/InstagramOrganizerScanner.tsx");
 const styles = read("src/styles/main.css");
-const notificationMigration = read("supabase/migrations/20261120101500_notification_source_targets.sql");
 
 test("age verification normalizes ISO and DD-MM-YYYY input to a strict calendar-valid ISO date", () => {
   assert.match(age, /const iso = raw\.match\(\/\^\\d\{4\}-\\d\{2\}-\\d\{2\}\$\/\)/);
