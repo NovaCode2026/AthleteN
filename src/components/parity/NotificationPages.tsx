@@ -95,7 +95,11 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
     window.dispatchEvent(new PopStateEvent("popstate"));
     return;
    }
-   setToast({type:"warning",message:"This notification has no linked source record yet."});
+   if(String(row.notification_type||"").toLowerCase()==="training"){
+    setToast({type:"warning",message:"This older attendance alert has no saved attendance-record link, so AthleteN cannot open the exact original record. The notification itself can still be deleted."});
+   }else{
+    setToast({type:"warning",message:"This notification has no linked source record yet."});
+   }
    await load();
   }catch(error){
    setToast({type:"error",message:error instanceof Error?error.message:"Notification could not be opened."});
