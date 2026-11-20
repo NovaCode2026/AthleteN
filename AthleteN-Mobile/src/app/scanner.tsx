@@ -20,7 +20,8 @@ const scanStatusColor=(status?:string|null)=>{const value=String(status||'').toL
 const validInstagram=(u:string)=>{try{const x=new URL(u);const p=x.pathname.split('/').filter(Boolean);if(!/(^|\.)instagram\.com$/i.test(x.hostname)||!p.length)return false;if((p[0]==='p'||p[0]==='reel'||p[0]==='reels')&&p[1])return true;return p.length===1&&/^[a-zA-Z0-9._]{1,30}$/.test(p[0])}catch{return false}};
 
 export default function ScannerScreen(){
- const {session,syncVersion}=useAuth();\n const scrollRef=useNavigationScrollToTop();
+ const {session,syncVersion}=useAuth();
+ const scrollRef=useNavigationScrollToTop();
  const [kind,setKind]=useState<SourceType>('website');
  const [url,setUrl]=useState('');
  const [scans,setScans]=useState<Scan[]>([]);
@@ -28,7 +29,12 @@ export default function ScannerScreen(){
  const [busy,setBusy]=useState(false);
  const [refreshing,setRefreshing]=useState(false);
  const [scanning,setScanning]=useState<string|null>(null);
- const [message,setMessage]=useState('');\n const [groupMode,setGroupMode]=useState(false);\n const [groupName,setGroupName]=useState('');\n const [selectedScanIds,setSelectedScanIds]=useState<string[]>([]);\n const [grouping,setGrouping]=useState(false);\n const [merging,setMerging]=useState(false);
+ const [message,setMessage]=useState('');
+ const [groupMode,setGroupMode]=useState(false);
+ const [groupName,setGroupName]=useState('');
+ const [selectedScanIds,setSelectedScanIds]=useState<string[]>([]);
+ const [grouping,setGrouping]=useState(false);
+ const [merging,setMerging]=useState(false);
 
  const load=useCallback(async()=>{
   if(!session)return;
