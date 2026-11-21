@@ -45,3 +45,15 @@
 @media (max-width: 700px) { .tournament-scanner .scanner-source-picker, .tournament-scanner .info-grid { grid-template-columns: 1fr; } .tournament-scanner .scan-form { grid-template-columns: 1fr; } .tournament-scanner .detail-row { grid-template-columns: 1fr; gap: 4px; } }
 
 .scanner-merge-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:14px;padding:14px 16px;border:1px solid rgba(73,215,255,.2);border-radius:10px;background:rgba(8,24,41,.72)}.scanner-merge-bar>div:first-child{display:grid;gap:4px}.scanner-merge-bar span{color:var(--muted,#8fa7bf);font-size:12px}.scanner-merge-bar .scanner-group-actions{display:flex;align-items:center;gap:8px}.scanner-merge-bar input{min-width:210px;border:1px solid rgba(151,194,235,.18);border-radius:9px;background:rgba(22,46,73,.8);color:var(--text);padding:10px 12px}@media(max-width:760px){.scanner-merge-bar{align-items:stretch;flex-direction:column}.scanner-merge-bar .scanner-group-actions{flex-direction:column;align-items:stretch}.scanner-merge-bar input{min-width:0;width:100%}.scanner-merge-bar .btn{width:100%}}
+
+
+/* QA refinement: keep scanner controls readable at every viewport and preserve real scan states. */
+.tournament-scanner .scanner-merge-bar{display:grid;grid-template-columns:minmax(180px,1fr) minmax(0,2fr);gap:14px;align-items:center}
+.tournament-scanner .scanner-group-actions{display:grid;grid-template-columns:minmax(180px,1fr) auto auto;gap:8px;min-width:0}
+.tournament-scanner .scanner-group-actions input{width:100%;min-width:0}
+.tournament-scanner .scan-table-wrap{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+.tournament-scanner .scan-table-wrap table{width:100%;min-width:900px;max-width:none;table-layout:auto}
+.tournament-scanner .status.review-required{color:#f7d28a;background:rgba(247,199,106,.1)}
+.tournament-scanner .status.pending{color:#9fcfff;background:rgba(35,142,255,.12)}
+.tournament-scanner .status.failed{color:var(--red);background:rgba(255,125,141,.1)}
+@media(max-width:760px){.tournament-scanner .scanner-merge-bar{grid-template-columns:1fr}.tournament-scanner .scanner-group-actions{grid-template-columns:1fr}.tournament-scanner .scanner-group-actions .btn{width:100%}}

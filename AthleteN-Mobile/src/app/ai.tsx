@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { useNavigationScrollToTop } from '@/components/mobile-ui';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ const c=Colors.dark;
 type Insight={tag:string;title:string;text:string};
 
 export default function AIScreen(){
+ const scrollRef=useNavigationScrollToTop();
  const {session,profile}=useAuth(); const router=useRouter();const [refreshing,setRefreshing]=useState(false);const [training,setTraining]=useState<ChartPoint[]>([]);const [weight,setWeight]=useState<ChartPoint[]>([]);const [insights,setInsights]=useState<Insight[]>([]);const [goals,setGoals]=useState({total:0,completed:0});const [upcoming,setUpcoming]=useState(0);const [totalMinutes,setTotalMinutes]=useState(0);const [hasLoaded,setHasLoaded]=useState(false);const [loadError,setLoadError]=useState('');
  const load=useCallback(async()=>{
   if(!session){setLoadError('Sign in to view your saved performance data.');return}
@@ -43,7 +45,7 @@ export default function AIScreen(){
   finally{setRefreshing(false)}
  },[session]);
  useEffect(()=>{void load()},[load]);
- return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+ return <SafeAreaView style={s.screen} edges={['top']}><ScrollView ref={scrollRef} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
   <View><Text style={s.kicker}>ATHLETEN INTELLIGENCE</Text><Text style={s.title}>Performance, understood.</Text><Text style={s.sub}>A data dashboard, not a chat: saved training, competition, weight and goal records become charts, trends and performance signals.</Text></View>
   <Pressable onPress={()=>router.push('/ai-coach')} style={s.hero}><View style={{flex:1}}><Text style={s.kicker}>CONVERSATIONAL COACH</Text><Text style={s.title}>Ask AI Coach a question</Text><Text style={s.sub}>AI Coach is a separate question-and-answer experience. Use it for a coaching conversation; use this page for account-record analysis.</Text><Text style={s.openCoach}>OPEN AI COACH →</Text></View><Icon name="arrow" size={18} color={c.muted}/></Pressable>
   <View style={s.hero}><View style={s.heroTop}><Text style={s.heroKicker}>{(profile?.discipline||'Taekwondo').toUpperCase()} PERFORMANCE</Text><View style={s.live}><View style={[s.dot,(!hasLoaded||loadError)&&{backgroundColor:c.warning}]}/><Text style={[s.liveText,loadError&&{color:c.warning}]}>{loadError?'SYNC ISSUE':refreshing?'SYNCING':hasLoaded?'LIVE DATA':'CONNECTING'}</Text></View></View><Text style={s.heroTitle}>Your athlete picture</Text><Text style={s.heroText}>No invented numbers. AthleteN only analyzes records saved to your account.</Text><Pressable onPress={()=>void load()} disabled={refreshing} style={s.refresh}>{refreshing?<ActivityIndicator color="#fff"/>:<Text style={s.refreshText}>REFRESH ANALYSIS</Text>}</Pressable></View>

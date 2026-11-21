@@ -1,3 +1,4 @@
+import { useNavigationScrollToTop } from '@/components/mobile-ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -13,6 +14,7 @@ import { Icon } from '@/components/mobile-ui';
 const c=Colors.dark;
 
 export default function TrainingScreen(){
+ const scrollRef=useNavigationScrollToTop();
  const router=useRouter();
  const {session,profile,syncVersion}=useAuth();
  const discipline=String(profile?.discipline||'').toLowerCase();
@@ -29,7 +31,7 @@ export default function TrainingScreen(){
 })();
 
  if(!['kyorugi','poomsae'].includes(discipline))return <SafeAreaView style={s.screen} edges={['top']}><View style={s.content}><Text style={s.kicker}>TAEKWONDO TRAINING</Text><Text style={s.title}>Choose your discipline</Text><Text style={s.sub}>Select Taekwondo, then choose Kyorugi or Poomsae in your profile before logging discipline-specific training.</Text><Pressable onPress={()=>router.push('/profile')} style={s.button}><Text style={s.buttonText}>OPEN PROFILE & SELECT</Text></Pressable></View></SafeAreaView>;
- return <SafeAreaView style={s.screen} edges={['top']}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+ return <SafeAreaView style={s.screen} edges={['top']}><ScrollView ref={scrollRef} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
   <View><Text style={s.kicker}>ATHLETEN PERFORMANCE</Text><Text style={s.title}>{isPoomsae?'Poomsae Training':'Kyorugi Training'}</Text><Text style={s.sub}>{isPoomsae?'Form practice, accuracy, repetitions and performance-focused sessions.':'Sparring, footwork, rounds and fight-focused training sessions.'}</Text></View>
   <PerformanceBars title="Recent workload" subtitle="Latest logged sessions" data={recent} unit="m"/>
   <View style={s.hero}><Text style={s.heroTitle}>TRAINING PROGRAM</Text><Text style={s.heroSub}>Create a flexible training window that matches your goal.</Text></View>

@@ -37,6 +37,18 @@ function formatDate(value?: string | null) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
+function scanStatusLabel(status?: string | null) {
+  const value = String(status || "").toLowerCase();
+  if (value === "blocked") return "Blocked";
+  if (value === "failed") return "Failed";
+  if (value === "pending") return "Pending";
+  if (value === "checked") return "Review required";
+  return "Unknown";
+}
+function scanStatusClass(status?: string | null) {
+  const value = String(status || "").toLowerCase();
+  return value === "blocked" || value === "failed" || value === "pending" ? value : "review-required";
+}
 function labelize(value: string) { return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
 async function readError(response: Response, fallback: string) {
   const raw = await response.text().catch(() => "");
@@ -229,7 +241,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
             <h3>{importantFacts.tournament_name || "Tournament information"}</h3>
             <p>Only valuable facts supported by accessible tournament evidence are shown. Unsupported fields are omitted.</p>
           </div>
-          <span className="status">{selectedScan.status || "checked"}</span>
+          <span className={`status ${scanStatusClass(selectedScan.status)}`}>{scanStatusLabel(selectedScan.status)}</span>
         </div>
         <div className="scan-summary">
           {importantFacts.tournament_dates && <div className="summary-item"><CalendarDays size={16}/><span>Tournament dates</span><strong>{importantFacts.tournament_dates}</strong></div>}
@@ -307,7 +319,7 @@ export default function InstagramOrganizerScanner({ accessToken, setToast }: Pro
         </section>}
       </section> : <>
       <section className="card panel">
-        <div className="panel-head"><div><p className="eyebrow">Latest intelligence</p><h3>{selectedScan.tournament_name || "Tournament source"}</h3><p>{details?.description || "Information extracted from the source and relevant pages."}</p></div><span className={`status ${selectedScan.status === "blocked" ? "blocked" : ""}`}>{selectedScan.status || "checked"}</span></div>
+        <div className="panel-head"><div><p className="eyebrow">Latest intelligence</p><h3>{selectedScan.tournament_name || "Tournament source"}</h3><p>{details?.description || "Information extracted from the source and relevant pages."}</p></div><span className={`status ${scanStatusClass(selectedScan.status)}`}>{scanStatusLabel(selectedScan.status)}</span></div>
         <div className="scan-summary">
           {dateDisplay && <div className="summary-item"><CalendarDays size={16}/><span>Date</span><strong>{dateDisplay}</strong></div>}
           {selectedScan.venue && <div className="summary-item"><MapPin size={16}/><span>Venue</span><strong>{selectedScan.venue}</strong></div>}
@@ -439,7 +451,7 @@ ${section.source_url}` : ""}</span></div>)}</div></section>}
           </button>
         </div>
       </div>
-      {!scans.length ? <div className="empty-state"><strong>No tournament scans yet.</strong><p>Choose a source above and run your first scan.</p></div> : <div className="scan-table-wrap"><table><thead><tr><th>Select</th><th>Source</th><th>Tournament</th><th>Date</th><th>Venue</th><th>Last checked</th><th>Status</th><th>Details</th></tr></thead><tbody>{scans.map((scanRow) => <tr key={scanRow.id}><td><input type="checkbox" aria-label={`Select ${scanRow.tournament_name || "tournament scan"} for merge`} checked={mergeSelection.includes(scanRow.id)} onChange={(event) => setMergeSelection((current) => event.target.checked ? [...current, scanRow.id] : current.filter((id) => id !== scanRow.id))}/></td><td className="source-cell">{scanRow.source_url}</td><td>{scanRow.tournament_name || ""}{scanRow.details?.tournament_group?.name ? <small style={{display:"block"}}>📁 {scanRow.details.tournament_group.name}</small> : null}</td><td>{scanRow.tournament_date || ""}</td><td>{scanRow.venue || ""}</td><td>{formatDate(scanRow.last_checked_at)}</td><td><span className={`status ${scanRow.status === "blocked" ? "blocked" : ""}`}>{scanRow.status || ""}</span></td><td><button className="plain" type="button" onClick={() => setSelectedScan(scanRow)}>Open intelligence</button></td></tr>)}</tbody></table></div>}
+      {!scans.length ? <div className="empty-state"><strong>No tournament scans yet.</strong><p>Choose a source above and run your first scan.</p></div> : <div className="scan-table-wrap"><table><thead><tr><th>Select</th><th>Source</th><th>Tournament</th><th>Date</th><th>Venue</th><th>Last checked</th><th>Status</th><th>Details</th></tr></thead><tbody>{scans.map((scanRow) => <tr key={scanRow.id}><td><input type="checkbox" aria-label={`Select ${scanRow.tournament_name || "tournament scan"} for merge`} checked={mergeSelection.includes(scanRow.id)} onChange={(event) => setMergeSelection((current) => event.target.checked ? [...current, scanRow.id] : current.filter((id) => id !== scanRow.id))}/></td><td className="source-cell"><a href={scanRow.source_url} target="_blank" rel="noreferrer">Open source</a></td><td>{scanRow.tournament_name || <span className="scan-missing">Not detected</span>}{scanRow.details?.tournament_group?.name ? <small style={{display:"block"}}>📁 {scanRow.details.tournament_group.name}</small> : null}</td><td>{scanRow.tournament_date || <span className="scan-missing">Not detected</span>}</td><td>{scanRow.venue || <span className="scan-missing">Not detected</span>}</td><td>{formatDate(scanRow.last_checked_at)}</td><td><span className={`status ${scanStatusClass(scanRow.status)}`}>{scanStatusLabel(scanRow.status)}</span></td><td><button className="plain" type="button" onClick={() => setSelectedScan(scanRow)}>Open intelligence</button></td></tr>)}</tbody></table></div>}
     </section>
   </div>;
 }

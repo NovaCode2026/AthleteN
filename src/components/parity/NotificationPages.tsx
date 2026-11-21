@@ -1,17 +1,144 @@
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw, CheckCheck } from "lucide-react";
+import { RefreshCw, CheckCheck, Trash2, ExternalLink } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
 const fields=[["training","Training"],["competitions","Competitions"],["messages","Messages"],["coach_academy","Coach / Academy"],["achievements","Achievements"],["system","System"]] as const;
 const defaults={training:true,competitions:true,messages:true,coach_academy:true,achievements:true,system:true};
+type NotificationSource = { kind: "announcement" | "attendance"; title: string; body: string; meta: string[] };
+
 export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"error"|"warning";message:string})=>void}){
- const uid=useAuth().user?.id;const [rows,setRows]=useState<any[]>([]);const [loading,setLoading]=useState(true);
- const load=useCallback(async()=>{if(!uid)return;setLoading(true);const {data,error}=await supabase.from("notifications").select("id,title,body,created_at,read_at").eq("user_id",uid).order("created_at",{ascending:false}).limit(50);if(error)setToast({type:"error",message:error.message});else setRows(data||[]);setLoading(false)},[uid,setToast]);
- useEffect(()=>{void load();if(!uid)return;const ch=supabase.channel("web-notifications-"+uid).on("postgres_changes",{event:"INSERT",schema:"public",table:"notifications",filter:"user_id=eq."+uid},()=>{void load()}).subscribe();return()=>{void supabase.removeChannel(ch)}},[load,uid]);
- async function read(id:string){const {error}=await supabase.from("notifications").update({read_at:new Date().toISOString()}).eq("id",id).eq("user_id",uid);if(error)setToast({type:"error",message:error.message});else await load()}
- async function readAll(){const unread=rows.filter(x=>!x.read_at);for(const row of unread){const {error}=await supabase.from("notifications").update({read_at:new Date().toISOString()}).eq("id",row.id).eq("user_id",uid);if(error){setToast({type:"error",message:error.message});return}}await load();setToast({type:"success",message:"Notifications marked as read."})}
- return <><div className="page-head"><div><p className="eyebrow">AthleteN</p><h2>Notifications</h2><p className="messaging-help">Competition, account, coach and platform updates.</p></div><div className="inline-actions"><button className="btn" onClick={()=>void load()}><RefreshCw size={15}/> Refresh</button><button className="btn primary" disabled={!rows.some(x=>!x.read_at)} onClick={()=>void readAll()}><CheckCheck size={15}/> Mark all read</button></div></div><section className="card panel">{loading?<p>Loading notifications…</p>:rows.length?rows.map(x=><button type="button" className="notification-row" key={x.id} onClick={()=>void read(x.id)}><span className={"notification-dot "+(x.read_at?"read":"new")}/><span className="notification-copy"><strong>{x.title||"AthleteN notification"}</strong>{x.body&&<span>{x.body}</span>}<small>{x.created_at?new Date(x.created_at).toLocaleString():"—"} · {x.read_at?"READ":"NEW"}</small></span></button>):<div className="empty"><strong>No notifications yet.</strong><p>Updates will appear here when AthleteN sends them to your account.</p></div>}</section></>
+ const uid=useAuth().user?.id;
+ const [rows,setRows]=useState<any[]>([]);
+ const [loading,setLoading]=useState(true);
+ const [busy,setBusy]=useState(false);
+ const [selectedSource,setSelectedSource]=useState<NotificationSource|null>(null);
+
+ const load=useCallback(async()=>{
+  if(!uid)return;
+  setLoading(true);
+  let {data,error}=await supabase.from("notifications")
+   .select("id,title,body,notification_type,action_route,message_id,announcement_id,attendance_record_id,created_at,read_at")
+   .eq("user_id",uid).order("created_at",{ascending:false}).limit(50);
+  if(error && String(error.message||"").toLowerCase().includes("attendance_record_id")){
+   const fallback=await supabase.from("notifications")
+    .select("id,title,body,notification_type,action_route,message_id,announcement_id,created_at,read_at")
+    .eq("user_id",uid).order("created_at",{ascending:false}).limit(50);
+   data=fallback.data;error=fallback.error;
+  }
+  if(error)setToast({type:"error",message:error.message});
+  else setRows(data||[]);
+  setLoading(false);
+ },[uid,setToast]);
+
+ useEffect(()=>{
+  void load();
+  if(!uid)return;
+  const ch=supabase.channel("web-notifications-"+uid)
+   .on("postgres_changes",{event:"*",schema:"public",table:"notifications",filter:"user_id=eq."+uid},()=>{void load()})
+   .subscribe();
+  return()=>{void supabase.removeChannel(ch)};
+ },[load,uid]);
+
+ async function markRead(id:string){
+  const {error}=await supabase.from("notifications").update({read_at:new Date().toISOString()}).eq("id",id).eq("user_id",uid);
+  if(error)throw error;
+ }
+
+ async function openNotification(row:any){
+  if(!uid||busy)return;
+  setBusy(true);
+  try{
+   await markRead(row.id);
+   if(row.message_id){
+    const {data,error}=await supabase.from("messages").select("conversation_id").eq("id",row.message_id).maybeSingle();
+    if(error)throw error;
+    if(data?.conversation_id){
+     await load();
+     const route="/messages?conversation="+encodeURIComponent(data.conversation_id);
+     window.history.pushState({}, "", route);
+     window.dispatchEvent(new PopStateEvent("popstate"));
+     return;
+    }
+    setToast({type:"warning",message:"The original message is no longer available. It may have been deleted."});
+    await load();
+    return;
+   }
+   if(row.announcement_id){
+    const {data,error}=await supabase.from("announcements").select("id,title,body,published_at").eq("id",row.announcement_id).maybeSingle();
+    if(error)throw error;
+    if(!data){setToast({type:"warning",message:"The original announcement is no longer available."});}
+    else setSelectedSource({kind:"announcement",title:String(data.title||"Announcement"),body:String(data.body||""),meta:[data.published_at?"Published "+new Date(data.published_at).toLocaleString():"Announcement"]});
+    await load();
+    return;
+   }
+   if(row.attendance_record_id){
+    const {data:attendance,error}=await supabase.from("attendance_records").select("id,training_session_id,attended_at,status,notes").eq("id",row.attendance_record_id).eq("user_id",uid).maybeSingle();
+    if(error)throw error;
+    if(!attendance){setToast({type:"warning",message:"The original attendance record is no longer available."});}
+    else{
+     let sessionTitle="Training session";
+     let sessionDate="";
+     if(attendance.training_session_id){
+      const {data:session,error:sessionError}=await supabase.from("training_sessions").select("title,session_date").eq("id",attendance.training_session_id).eq("user_id",uid).maybeSingle();
+      if(sessionError)throw sessionError;
+      if(session){sessionTitle=session.title||sessionTitle;sessionDate=session.session_date||"";}
+     }
+     setSelectedSource({kind:"attendance",title:sessionTitle,body:String(attendance.notes||"No additional attendance notes were recorded."),meta:[sessionDate?"Session date: "+sessionDate:"", "Attendance: "+String(attendance.status||"Updated"), attendance.attended_at?"Recorded: "+new Date(attendance.attended_at).toLocaleString():""].filter(Boolean)});
+    }
+    await load();
+    return;
+   }
+   const route=typeof row.action_route==="string"&&row.action_route.startsWith("/")&&!row.action_route.startsWith("//")?row.action_route:"/notifications";
+   if(route!=="/notifications"&&!route.startsWith("/notifications?")){
+    await load();
+    window.history.pushState({}, "", route);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    return;
+   }
+   if(String(row.notification_type||"").toLowerCase()==="training"){
+    setToast({type:"warning",message:"This older attendance alert has no saved attendance-record link, so AthleteN cannot open the exact original record. The notification itself can still be deleted."});
+   }else{
+    setToast({type:"warning",message:"This notification has no linked source record yet."});
+   }
+   await load();
+  }catch(error){
+   setToast({type:"error",message:error instanceof Error?error.message:"Notification could not be opened."});
+  }finally{setBusy(false)}
+ }
+
+ async function deleteOne(id:string){
+  if(!uid||busy)return;
+  setBusy(true);
+  const {error}=await supabase.from("notifications").delete().eq("id",id).eq("user_id",uid);
+  setBusy(false);
+  if(error)setToast({type:"error",message:error.message});
+  else{setRows(old=>old.filter(row=>row.id!==id));setToast({type:"success",message:"Notification deleted. Its original content was not changed."});}
+ }
+
+ async function readAll(){
+  if(!uid||busy)return;
+  setBusy(true);
+  const {error}=await supabase.from("notifications").update({read_at:new Date().toISOString()}).eq("user_id",uid).is("read_at",null);
+  setBusy(false);
+  if(error)setToast({type:"error",message:error.message});
+  else{await load();setToast({type:"success",message:"Notifications marked as read."});}
+ }
+
+ async function clearAll(){
+  if(!uid||busy||!rows.length)return;
+  if(!window.confirm("Delete all your notifications? Messages, announcements, attendance and other original content will not be deleted."))return;
+  setBusy(true);
+  const {error}=await supabase.from("notifications").delete().eq("user_id",uid);
+  setBusy(false);
+  if(error)setToast({type:"error",message:error.message});
+  else{setRows([]);setToast({type:"success",message:"All notifications cleared. Original content was not deleted."});}
+ }
+
+ if(selectedSource)return <><div className="page-head"><div><p className="eyebrow">Notification source</p><h2>{selectedSource.title}</h2><p className="messaging-help">Original {selectedSource.kind} record</p></div><button type="button" className="btn" onClick={()=>setSelectedSource(null)}>Back to notifications</button></div><section className="card panel notification-source-detail"><div className="inline-actions">{selectedSource.meta.map((item,index)=><span className="tag" key={index}>{item}</span>)}</div><p>{selectedSource.body}</p></section></>;
+
+ return <><div className="page-head"><div><p className="eyebrow">AthleteN</p><h2>Notifications</h2><p className="messaging-help">Competition, account, coach and platform updates.</p></div><div className="inline-actions"><button className="btn" onClick={()=>void load()} disabled={loading||busy}><RefreshCw size={15}/> Refresh</button><button className="btn primary" disabled={busy||!rows.some(x=>!x.read_at)} onClick={()=>void readAll()}><CheckCheck size={15}/> Mark all read</button><button className="btn" disabled={busy||!rows.length} onClick={()=>void clearAll()}><Trash2 size={15}/> Clear all</button></div></div><section className="card panel">{loading?<p>Loading notifications…</p>:rows.length?rows.map(x=><div className="notification-row" key={x.id}><span className={"notification-dot "+(x.read_at?"read":"new")}/><button type="button" className="notification-open" disabled={busy} onClick={()=>void openNotification(x)}><span className="notification-copy"><strong>{x.title||"AthleteN notification"}</strong>{x.body&&<span>{x.body}</span>}<small>{x.created_at?new Date(x.created_at).toLocaleString():"—"} · {x.read_at?"READ":"NEW"}</small></span><span className="notification-open-label"><ExternalLink size={14}/> Open</span></button><button type="button" className="plain danger notification-delete" aria-label={"Delete notification: "+(x.title||"AthleteN notification")} title="Delete notification" disabled={busy} onClick={()=>void deleteOne(x.id)}><Trash2 size={16}/></button></div>):<div className="empty"><strong>No notifications yet.</strong><p>Updates will appear here when AthleteN sends them to your account.</p></div>}</section></>;
 }
+
 export function NotificationSettingsPage({setToast}:{setToast:(toast:{type:"success"|"error"|"warning";message:string})=>void}){
  const uid=useAuth().user?.id;const [prefs,setPrefs]=useState<any>(defaults);const [busy,setBusy]=useState(false);const [error,setError]=useState("");
  const load=useCallback(async()=>{if(!uid)return;const {data,error}=await supabase.from("notification_preferences").select("*").eq("user_id",uid).maybeSingle();if(error){setError(error.message);return}if(data)setPrefs({...defaults,...data})},[uid]);

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { useNavigationScrollToTop } from '@/components/mobile-ui';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -15,7 +16,8 @@ import AthleteNLogo from '@/components/athleten-logo';
 const c = Colors.dark;
 
 function ScreenLikeProfile({router,profile,session,signOut}:{router:any;profile:any;session:any;signOut:()=>void}){
-  return <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+  const scrollRef=useNavigationScrollToTop();
+  return <ScrollView ref={scrollRef} style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
     <View style={s.brandRow}><Text style={s.brand}>ATHLETEN</Text><Text style={s.brandSub}>ACADEMY PROFILE</Text></View>
     <View style={s.card}>
       <Text style={s.name}>{String(profile?.full_name||'Academy Admin')}</Text>

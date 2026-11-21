@@ -2,7 +2,7 @@ name: AthleteN Android CI APK (debug-signed)
 
 on:
   push:
-    branches: [main]
+    branches: [main, qa/fix-nov-20-findings]
     paths:
       - 'AthleteN-Mobile/**'
       - 'netlify/functions/**'
