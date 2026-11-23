@@ -203,11 +203,20 @@ async function setExistingSubscriptionStatus(supabase, provider, providerSubscri
   if (error) throw error;
 }
 
-async function activateTrialFromOrder(supabase, order, providerPaymentId, eventType, metadata = {}) {
+async function activateTrialFromOrder(supabase, order, providerPaymentId, eventType, metadata = {}, paymentDetails = {}) {
   if (!order) return;
   if (order.status === "paid") return;
-  if (Number(order.amount_minor) !== 900) throw new Error("INVALID_TRIAL_AMOUNT");
-  if (order.metadata?.purpose !== "trial") return;
+  if (!["pending", "awaiting_payment"].includes(String(order.status || "").toLowerCase())) {
+    throw new Error("TRIAL_ORDER_NOT_ACTIVATABLE");
+  }
+  if (Number(order.amount_minor) !== 900 || String(order.currency || "").toUpperCase() !== "INR") {
+    throw new Error("INVALID_TRIAL_AMOUNT");
+  }
+  if (Number(paymentDetails.amountMinor) !== Number(order.amount_minor) ||
+      String(paymentDetails.currency || "").toUpperCase() !== String(order.currency || "").toUpperCase()) {
+    throw new Error("TRIAL_PAYMENT_AMOUNT_MISMATCH");
+  }
+  if (order.metadata?.purpose !== "trial") throw new Error("TRIAL_ORDER_PURPOSE_MISMATCH");
 
   const paymentReference = String(providerPaymentId || order.provider_order_id || "");
   if (!paymentReference) throw new Error("TRIAL_PAYMENT_REFERENCE_MISSING");
@@ -288,6 +297,9 @@ export default async function handler(request) {
         if (trialOrder?.metadata?.purpose === "trial") {
           await activateTrialFromOrder(supabase, trialOrder, String(payment.id || ""), event, {
             provider_event_id: identity.eventId, razorpay_payment_id: String(payment.id || "")
+          }, {
+            amountMinor: payment.amount,
+            currency: payment.currency
           });
         }
       }
@@ -363,8 +375,19 @@ export default async function handler(request) {
           if (orderError) throw orderError;
           if (order) {
             if (order.metadata?.purpose === "trial" || session.metadata?.purpose === "trial") {
+              if (
+                session.client_reference_id !== order.user_id ||
+                session.metadata?.user_id !== order.user_id ||
+                session.metadata?.plan_id !== order.plan_id ||
+                session.metadata?.purpose !== "trial"
+              ) {
+                throw new Error("STRIPE_TRIAL_ORDER_MISMATCH");
+              }
               await activateTrialFromOrder(supabase, order, session.payment_intent || session.id, event, {
                 provider_event_id: identity.eventId, stripe_session_id: session.id
+              }, {
+                amountMinor: session.amount_total,
+                currency: session.currency
               });
             } else {
               if (
@@ -426,7 +449,11 @@ export default async function handler(request) {
           await activateTrialFromOrder(
             supabase, order, String(providerPaymentId || providerOrderId || ""),
             String(event || "payment.success"),
-            { provider_event_id: identity.eventId, cashfree_order_id: providerOrderId }
+            { provider_event_id: identity.eventId, cashfree_order_id: providerOrderId },
+            {
+              amountMinor: Math.round(Number(payload.data?.payment?.payment_amount) * 100),
+              currency: payload.data?.payment?.payment_currency
+            }
           );
         } else if (order) {
           await logPaymentEvent(supabase, {
