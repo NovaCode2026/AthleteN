@@ -29,10 +29,10 @@ BEGIN
   IF auth.uid() IS NOT NULL AND auth.uid() IS DISTINCT FROM p_user_id THEN
     RAISE EXCEPTION 'TRIAL_USER_MISMATCH';
   END IF;
-  IF p_plan_id NOT IN ('student', 'pro', 'elite', 'coach', 'academy') THEN
+  IF p_plan_id IS NULL OR p_plan_id NOT IN ('student', 'pro', 'elite', 'coach', 'academy') THEN
     RAISE EXCEPTION 'INVALID_TRIAL_PLAN';
   END IF;
-  IF p_provider NOT IN ('razorpay', 'stripe', 'cashfree') THEN
+  IF p_provider IS NULL OR p_provider NOT IN ('razorpay', 'stripe', 'cashfree') THEN
     RAISE EXCEPTION 'INVALID_TRIAL_PROVIDER';
   END IF;
   IF p_amount_paise IS DISTINCT FROM 900 THEN
