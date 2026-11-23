@@ -46,3 +46,9 @@ test("trial webhook rejects payment amount, currency, status or purpose mismatch
   assert.ok(webhook.includes("TRIAL_ORDER_PURPOSE_MISMATCH"));
   assert.ok(webhook.includes("TRIAL_PAYMENT_AMOUNT_MISMATCH"));
 });
+
+test("trial order finalization accepts pending and awaiting-payment states and checks the updated row", () => {
+  assert.ok(webhook.includes('.in("status", ["pending", "awaiting_payment"])'));
+  assert.ok(webhook.includes('.select("id").maybeSingle()'));
+  assert.ok(webhook.includes("if (!updatedOrder) throw new Error(\"TRIAL_ORDER_NOT_ACTIVATABLE\")"));
+});
