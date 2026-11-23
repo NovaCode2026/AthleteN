@@ -10,7 +10,16 @@ function unixSecondsToIso(value) {
 async function scheduleStripeCancellation(subscriptionId) {
   const secret = env("STRIPE_SECRET_KEY");
   if (!secret) throw new Error("STRIPE_NOT_CONFIGURED");
-  const response = await fetch("https://api.stripe.com/v1/subscriptions/" + encodeURIComponent(subscriptionId), {
+  const stripeApiOrigin = "https://api.stripe.com";
+  const subscriptionUrl = new URL(
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    stripeApiOrigin
+  );
+  if (subscriptionUrl.origin !== stripeApiOrigin ||
+      !subscriptionUrl.pathname.startsWith("/v1/subscriptions/")) {
+    throw new Error("STRIPE_CANCELLATION_URL_INVALID");
+  }
+  const response = await fetch(subscriptionUrl, {
     method: "POST",
     headers: {
       Authorization: "Bearer " + secret,
@@ -29,7 +38,17 @@ async function scheduleRazorpayCancellation(subscriptionId) {
   const keyId = env("RAZORPAY_KEY_ID");
   const secret = env("RAZORPAY_KEY_SECRET");
   if (!keyId || !secret) throw new Error("RAZORPAY_NOT_CONFIGURED");
-  const response = await fetch("https://api.razorpay.com/v1/subscriptions/" + encodeURIComponent(subscriptionId) + "/cancel", {
+  const razorpayApiOrigin = "https://api.razorpay.com";
+  const subscriptionUrl = new URL(
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}/cancel`,
+    razorpayApiOrigin
+  );
+  if (subscriptionUrl.origin !== razorpayApiOrigin ||
+      !subscriptionUrl.pathname.startsWith("/v1/subscriptions/") ||
+      !subscriptionUrl.pathname.endsWith("/cancel")) {
+    throw new Error("RAZORPAY_CANCELLATION_URL_INVALID");
+  }
+  const response = await fetch(subscriptionUrl, {
     method: "POST",
     headers: {
       Authorization: "Basic " + Buffer.from(keyId + ":" + secret).toString("base64"),
