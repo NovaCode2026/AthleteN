@@ -42,3 +42,13 @@ test("failed and cancelled payment orders cannot reactivate a paid subscription"
   assert.ok(webhook.includes('["failed", "refunded", "cancelled", "canceled"]'));
   assert.ok(webhook.includes("PAYMENT_ORDER_NOT_ACTIVATABLE"));
 });
+
+test("failed one-time trial payment events release the pending trial status", () => {
+  assert.ok(webhook.includes('event === "payment.failed"'));
+  assert.ok(webhook.includes('event === "checkout.session.expired"'));
+  assert.ok(webhook.includes('event === "checkout.session.async_payment_failed"'));
+  assert.ok(webhook.includes('normalizedEvent.includes("user_dropped")'));
+  assert.ok(webhook.includes("markTrialOrderFailed(supabase"));
+  assert.ok(webhook.includes('trial_payment_status: "failed"'));
+  assert.ok(webhook.includes('status: "failed"'));
+});
