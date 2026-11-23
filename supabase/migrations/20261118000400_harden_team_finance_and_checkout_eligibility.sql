@@ -252,11 +252,13 @@ BEGIN
 
   IF p_plan_id = 'student' THEN
     RETURN v_role = 'athlete'
-      AND EXISTS (
-        SELECT 1 FROM public.student_verifications sv
+      AND (
+        SELECT sv.status
+          FROM public.student_verifications sv
          WHERE sv.user_id = p_user_id
-           AND sv.status = 'approved'
-      );
+         ORDER BY sv.created_at DESC, sv.id DESC
+         LIMIT 1
+      ) IS NOT DISTINCT FROM 'approved';
   ELSIF p_plan_id IN ('pro', 'elite') THEN
     RETURN v_role = 'athlete';
   ELSIF p_plan_id = 'coach' THEN
