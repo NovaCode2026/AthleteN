@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const checkout = readFileSync(new URL("../netlify/functions/create-trial-checkout.mjs", import.meta.url), "utf8");
+const paymentCommon = readFileSync(new URL("../netlify/payment-common.mjs", import.meta.url), "utf8");
 const webhook = readFileSync(new URL("../netlify/functions/payment-webhook.mjs", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20261118000700_harden_trial_activation.sql", import.meta.url), "utf8");
 
@@ -60,4 +61,6 @@ test("trial checkout blocks a second pending one-time payment", () => {
 
 test("Student verification ordering has a stable tie-breaker", () => {
   assert.ok(checkout.includes("requireApprovedStudent"));
+  assert.ok(paymentCommon.includes('.order("created_at", { ascending: false })'));
+  assert.ok(paymentCommon.includes('.order("id", { ascending: false })'));
 });
