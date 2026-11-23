@@ -6,6 +6,7 @@ DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object T
 DO $$ BEGIN CREATE ROLE service_role NOLOGIN BYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE SCHEMA IF NOT EXISTS auth;
+CREATE SCHEMA IF NOT EXISTS private;
 
 CREATE TABLE public.age_approval_state (
   user_id uuid PRIMARY KEY,
@@ -65,6 +66,7 @@ GRANT SELECT, UPDATE ON public.subscriptions TO service_role;
 
 \ir ../../supabase/migrations/20261118000300_harden_paid_subscription_activation.sql
 \ir ../../supabase/migrations/20261118000500_subscription_cancel_at_period_end.sql
+\ir ../../supabase/migrations/20261118000600_payment_webhook_event_receipts.sql
 
 -- The same provider event cannot be recorded twice; event IDs are provider-scoped.
 INSERT INTO public.payment_events(provider, provider_event_id) VALUES ('stripe', 'evt_unique_1');
@@ -128,14 +130,24 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.subscriptions WHERE id = v_sub.id AND cancel_at_period_end = true) THEN
     RAISE EXCEPTION 'Period-end cancellation flag was not persisted';
   END IF;
-  -- A later verified activation/renewal clears a pending cancellation.
+  -- A renewal for the same provider subscription preserves a user-requested cancellation.
   v_sub := public.activate_paid_subscription(
     '10000000-0000-0000-0000-000000000001',
     'pro', 'stripe', 'cus_test', 'sub_monthly',
     now() + interval '2 months'
   );
+  IF v_sub.cancel_at_period_end IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'Renewal cleared scheduled cancellation for the same provider subscription';
+  END IF;
+
+  -- A genuinely new provider subscription starts with no cancellation request.
+  v_sub := public.activate_paid_subscription(
+    '10000000-0000-0000-0000-000000000001',
+    'pro', 'stripe', 'cus_test', 'sub_replacement',
+    now() + interval '3 months'
+  );
   IF v_sub.cancel_at_period_end IS DISTINCT FROM false THEN
-    RAISE EXCEPTION 'Reactivation did not clear scheduled cancellation';
+    RAISE EXCEPTION 'A replacement provider subscription retained stale cancellation state';
   END IF;
 
   -- Idempotent provider retry updates the same user/plan row rather than duplicating it.
@@ -212,6 +224,8 @@ $test$;
 RESET ROLE;
 
 DO $acl$
+DECLARE
+  v_claim record;
 BEGIN
   IF has_function_privilege('anon', 'public.activate_paid_subscription(uuid,text,text,text,text,timestamptz)', 'EXECUTE')
      OR has_function_privilege('authenticated', 'public.activate_paid_subscription(uuid,text,text,text,text,timestamptz)', 'EXECUTE') THEN
@@ -220,5 +234,55 @@ BEGIN
   IF NOT has_function_privilege('service_role', 'public.activate_paid_subscription(uuid,text,text,text,text,timestamptz)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Service role cannot execute subscription activation';
   END IF;
+  IF has_function_privilege('anon', 'public.claim_payment_webhook_event(text,text,text)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.claim_payment_webhook_event(text,text,text)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.claim_payment_webhook_event(text,text,text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Webhook event claim RPC has incorrect permissions';
+  END IF;
+  IF has_function_privilege('anon', 'public.complete_payment_webhook_event(text,text)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.complete_payment_webhook_event(text,text)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.complete_payment_webhook_event(text,text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Webhook event completion RPC has incorrect permissions';
+  END IF;
+  IF has_function_privilege('anon', 'public.fail_payment_webhook_event(text,text,text)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.fail_payment_webhook_event(text,text,text)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.fail_payment_webhook_event(text,text,text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Webhook event failure RPC has incorrect permissions';
+  END IF;
 END
 $acl$;
+
+SET ROLE service_role;
+DO $receipt$
+DECLARE
+  v_claim record;
+BEGIN
+  SELECT * INTO v_claim
+    FROM public.claim_payment_webhook_event('stripe', 'evt_receipt_1', 'invoice.paid');
+  IF v_claim.claimed IS DISTINCT FROM true OR v_claim.already_processed IS DISTINCT FROM false THEN
+    RAISE EXCEPTION 'New webhook event was not claimed';
+  END IF;
+
+  SELECT * INTO v_claim
+    FROM public.claim_payment_webhook_event('stripe', 'evt_receipt_1', 'invoice.paid');
+  IF v_claim.claimed IS DISTINCT FROM false OR v_claim.already_processed IS DISTINCT FROM false
+     OR v_claim.retry_after IS NULL THEN
+    RAISE EXCEPTION 'Concurrent duplicate webhook event was not held';
+  END IF;
+
+  PERFORM public.fail_payment_webhook_event('stripe', 'evt_receipt_1', 'TEST_RETRY');
+  SELECT * INTO v_claim
+    FROM public.claim_payment_webhook_event('stripe', 'evt_receipt_1', 'invoice.paid');
+  IF v_claim.claimed IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'Failed webhook event could not be reclaimed for retry';
+  END IF;
+
+  PERFORM public.complete_payment_webhook_event('stripe', 'evt_receipt_1');
+  SELECT * INTO v_claim
+    FROM public.claim_payment_webhook_event('stripe', 'evt_receipt_1', 'invoice.paid');
+  IF v_claim.claimed IS DISTINCT FROM false OR v_claim.already_processed IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'Processed webhook duplicate was not acknowledged';
+  END IF;
+END
+$receipt$;
+RESET ROLE;
