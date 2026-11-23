@@ -63,6 +63,8 @@ PR #68 is based on an older `main` commit and is 70 commits ahead / 4 commits be
 - `supabase/migrations/20261118000300_harden_paid_subscription_activation.sql`
 - `supabase/migrations/20261118000400_harden_team_finance_and_checkout_eligibility.sql`
 - `supabase/migrations/20261118000500_subscription_cancel_at_period_end.sql`
+- `supabase/migrations/20261118000600_payment_webhook_event_receipts.sql` — private receipt/lease table and service-role-only claim/complete/fail RPCs for durable webhook deduplication and retry.
+- `supabase/migrations/20261118000700_harden_trial_activation.sql` — service-role-only trial activation with age/guardian, confirmed-email, product-role, latest Student-verification and Academy-owner/setup checks.
 
 These candidate migration versions are not an authorization to push them. Compare each SQL body with the live schema, functions, grants, RLS policies, and the later remote migration records before deciding whether it is already represented, superseded, or still needed. In particular, cancellation support remains absent from the live `subscriptions` table: `cancel_at_period_end` was not present in the read-only schema check on 23 November 2026.
 
