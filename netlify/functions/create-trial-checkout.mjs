@@ -211,6 +211,9 @@ export default async function handler(request) {
     if (entitlement?.trial_claimed_at) return json({ error: "Your one-time trial has already been used." }, 409);
     if (entitlement?.trial_ends_at && new Date(entitlement.trial_ends_at).getTime() > Date.now()) return json({ error: "Your trial is already active." }, 409);
     if (entitlement?.trial_payment_status === "paid") return json({ error: "Your trial payment is already confirmed. Refresh the account plan to continue." }, 409);
+    if (entitlement?.trial_payment_status === "pending") {
+      return json({ error: "A trial payment is already pending. Complete that checkout or wait for its failure/expiry confirmation before starting another." }, 409);
+    }
 
     const result = provider === "razorpay"
       ? await createRazorpayTrial(supabase, user, planId, verification?.id || null)
