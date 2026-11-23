@@ -86,7 +86,18 @@ function stripeSubscriptionPeriodEnd(subscription) {
 async function retrieveStripeSubscription(subscriptionId) {
   const secret = env("STRIPE_SECRET_KEY");
   if (!secret || !subscriptionId) throw new Error("STRIPE_SUBSCRIPTION_LOOKUP_UNAVAILABLE");
-  const response = await fetch("https://api.stripe.com/v1/subscriptions/" + encodeURIComponent(subscriptionId), {
+  const stripeApiOrigin = "https://api.stripe.com";
+  const subscriptionUrl = new URL(
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    stripeApiOrigin
+  );
+  if (
+    subscriptionUrl.origin !== stripeApiOrigin ||
+    !subscriptionUrl.pathname.startsWith("/v1/subscriptions/")
+  ) {
+    throw new Error("STRIPE_SUBSCRIPTION_LOOKUP_URL_INVALID");
+  }
+  const response = await fetch(subscriptionUrl, {
     method: "GET",
     headers: { Authorization: `Bearer ${secret}` }
   });
