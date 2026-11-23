@@ -127,7 +127,7 @@ AS $function$
 BEGIN
   UPDATE private.payment_webhook_receipts r
      SET status = 'failed',
-         last_error_code = pg_catalog.left(pg_catalog.coalesce(p_error_code, 'WEBHOOK_PROCESSING_FAILED'), 120),
+         last_error_code = pg_catalog.left(COALESCE(p_error_code, 'WEBHOOK_PROCESSING_FAILED'), 120),
          updated_at = pg_catalog.now(),
          locked_until = pg_catalog.now()
    WHERE r.provider = p_provider
