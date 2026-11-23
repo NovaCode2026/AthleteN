@@ -22,7 +22,10 @@ test("payment order is only marked paid after the activation RPC succeeds", () =
 test("Stripe period end supports current subscription-item API fields", () => {
   assert.ok(webhook.includes("subscription?.current_period_end"));
   assert.ok(webhook.includes("item?.current_period_end"));
-  assert.ok(webhook.includes('https://api.stripe.com/v1/subscriptions/'));
+  assert.ok(webhook.includes('const stripeApiOrigin = "https://api.stripe.com";'));
+  assert.ok(webhook.includes('subscriptionUrl.origin !== stripeApiOrigin'));
+  assert.ok(webhook.includes('subscriptionUrl.pathname.startsWith("/v1/subscriptions/")'));
+  assert.ok(webhook.includes('fetch(subscriptionUrl,'));
   assert.ok(webhook.includes('["active", "trialing"].includes(String(subscription.status))'));
 });
 
