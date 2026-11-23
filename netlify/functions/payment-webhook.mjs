@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { env, json, logPaymentEvent, serverSupabase } from "../payment-common.mjs";
 
 function safeEqual(a, b) {
@@ -16,11 +16,17 @@ function razorpayWebhookValid(raw, signature) {
 function stripeWebhookValid(raw, signature) {
   const secret = env("STRIPE_WEBHOOK_SECRET");
   if (!secret || !signature) return false;
-  const parts = Object.fromEntries(signature.split(",").map((part) => part.split("=", 2)));
-  if (!parts.t || !parts.v1) return false;
-  const age = Math.abs(Date.now() / 1000 - Number(parts.t));
+  const fields = signature.split(",").map((part) => {
+    const separator = part.indexOf("=");
+    return separator < 0 ? null : [part.slice(0, separator).trim(), part.slice(separator + 1).trim()];
+  }).filter(Boolean);
+  const timestamp = fields.find(([key]) => key === "t")?.[1];
+  const signatures = fields.filter(([key]) => key === "v1").map(([, value]) => value);
+  if (!timestamp || !/^\d+$/.test(timestamp) || signatures.length === 0) return false;
+  const age = Math.abs(Date.now() / 1000 - Number(timestamp));
   if (!Number.isFinite(age) || age > 300) return false;
-  return safeEqual(createHmac("sha256", secret).update(`${parts.t}.${raw}`).digest("hex"), parts.v1);
+  const expected = createHmac("sha256", secret).update(`${timestamp}.${raw}`).digest("hex");
+  return signatures.some((candidate) => safeEqual(expected, candidate));
 }
 
 function cashfreeWebhookValid(raw, request) {
@@ -31,15 +37,70 @@ function cashfreeWebhookValid(raw, request) {
   return safeEqual(createHmac("sha256", secret).update(`${timestamp}${raw}`).digest("base64"), signature);
 }
 
+function providerEventIdentity(provider, payload, request, raw) {
+  const eventType = String(payload?.type || payload?.event || "unknown").slice(0, 120);
+  let id = "";
+  if (provider === "razorpay") {
+    id = request.headers.get("x-razorpay-event-id") || payload?.id || "";
+  } else if (provider === "stripe") {
+    id = payload?.id || "";
+  } else {
+    const paymentId = payload?.data?.payment?.cf_payment_id || payload?.data?.cf_payment_id;
+    const refundId = payload?.data?.refund?.cf_refund_id || payload?.data?.cf_refund_id;
+    const orderId = payload?.data?.order?.order_id || payload?.data?.order_id || payload?.order_id;
+    id = payload?.id || payload?.event_id
+      || (paymentId ? `payment:${paymentId}` : "")
+      || (refundId ? `refund:${refundId}` : "")
+      || (orderId ? `${eventType}:${orderId}` : "");
+  }
+  if (!id && provider === "cashfree") {
+    id = `body-sha256:${createHash("sha256").update(raw).digest("hex")}`;
+  }
+  return { eventId: String(id).trim().slice(0, 255), eventType };
+}
+
+async function claimWebhookEvent(supabase, provider, eventId, eventType) {
+  const { data, error } = await supabase.rpc("claim_payment_webhook_event", {
+    p_provider: provider,
+    p_provider_event_id: eventId,
+    p_event_type: eventType
+  });
+  if (error) throw new Error("WEBHOOK_DEDUPE_UNAVAILABLE");
+  const result = Array.isArray(data) ? data[0] : data;
+  if (result?.already_processed === true) return { duplicate: true, inProgress: false };
+  if (result?.claimed === true) return { duplicate: false, inProgress: false };
+  return { duplicate: false, inProgress: true };
+}
+
+async function completeWebhookEvent(supabase, provider, eventId) {
+  const { error } = await supabase.rpc("complete_payment_webhook_event", {
+    p_provider: provider,
+    p_provider_event_id: eventId
+  });
+  if (error) throw new Error("WEBHOOK_RECEIPT_COMPLETION_FAILED");
+}
+
+async function failWebhookEvent(supabase, provider, eventId, error) {
+  const message = error instanceof Error ? error.message : "WEBHOOK_PROCESSING_FAILED";
+  const code = /^[A-Z0-9_:-]{1,120}$/.test(message) ? message : "WEBHOOK_PROCESSING_FAILED";
+  const result = await supabase.rpc("fail_payment_webhook_event", {
+    p_provider: provider,
+    p_provider_event_id: eventId,
+    p_error_code: code
+  });
+  if (result.error) console.error("payment webhook receipt could not be released");
+}
+
 async function activateFromOrder(supabase, order, providerPaymentId, providerCustomerId, providerSubscriptionId, periodEnd, eventType, metadata = {}) {
   if (!order) return;
   const periodEndDate = periodEnd ? new Date(periodEnd) : null;
   if (!periodEndDate || !Number.isFinite(periodEndDate.getTime()) || periodEndDate.getTime() <= Date.now()) {
     throw new Error("VALID_SUBSCRIPTION_PERIOD_REQUIRED");
   }
+  if (["failed", "refunded", "cancelled", "canceled"].includes(String(order.status || "").toLowerCase())) {
+    throw new Error("PAYMENT_ORDER_NOT_ACTIVATABLE");
+  }
 
-  // Activate first. If the database rejects role, age/guardian or billing-period
-  // checks, the order remains pending so a legitimate provider retry can recover.
   const { error } = await supabase.rpc("activate_paid_subscription", {
     p_user_id: order.user_id,
     p_plan_id: order.plan_id,
@@ -113,8 +174,22 @@ async function retrieveStripeSubscription(subscriptionId) {
   return {
     id: subscription.id,
     customerId: typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id || null,
-    periodEnd
+    periodEnd,
+    metadata: subscription.metadata || {},
+    priceIds: (subscription.items?.data || []).map((item) => item?.price?.id).filter(Boolean)
   };
+}
+
+function assertStripeSubscriptionMatchesOrder(subscription, order) {
+  const metadata = subscription.metadata || {};
+  const expectedPriceId = order.metadata?.provider_price_id;
+  const valid =
+    metadata.user_id === order.user_id &&
+    metadata.plan_id === order.plan_id &&
+    metadata.billing_period === order.metadata?.billing_period &&
+    expectedPriceId &&
+    subscription.priceIds.includes(expectedPriceId);
+  if (!valid) throw new Error("STRIPE_SUBSCRIPTION_ORDER_MISMATCH");
 }
 
 async function setExistingSubscriptionStatus(supabase, provider, providerSubscriptionId, status, periodEnd = null, cancelAtPeriodEnd = null) {
@@ -173,6 +248,8 @@ export default async function handler(request) {
   const raw = await request.text();
   if (!provider) return json({ error: "Payment provider is not configured." }, 503);
 
+  let supabase = null;
+  let claimedEvent = null;
   try {
     let payload;
     if (provider === "razorpay") {
@@ -184,46 +261,64 @@ export default async function handler(request) {
     } else if (provider === "cashfree") {
       if (!cashfreeWebhookValid(raw, request)) return json({ error: "Invalid webhook signature." }, 401);
       payload = JSON.parse(raw);
-    } else return json({ error: "Unsupported payment provider." }, 400);
+    } else {
+      return json({ error: "Unsupported payment provider." }, 400);
+    }
 
-    const supabase = serverSupabase();
+    supabase = serverSupabase();
+    const identity = providerEventIdentity(provider, payload, request, raw);
+    if (!identity.eventId) return json({ error: "Signed webhook did not include a stable event identifier." }, 400);
+
+    const claim = await claimWebhookEvent(supabase, provider, identity.eventId, identity.eventType);
+    if (claim.duplicate) return json({ received: true, duplicate: true });
+    if (claim.inProgress) {
+      return json({ error: "This webhook event is already being processed. Retry shortly." }, 503);
+    }
+    claimedEvent = { provider, eventId: identity.eventId };
+
     if (provider === "razorpay") {
       const event = payload.event;
       const subscription = payload.payload?.subscription?.entity;
       const payment = payload.payload?.payment?.entity;
-      const eventId = request.headers.get("x-razorpay-event-id") || payload.id || null;
 
       if (event === "payment.captured" && payment?.order_id) {
-        const { data: trialOrder } = await supabase.from("payment_orders").select("*")
+        const { data: trialOrder, error: trialOrderError } = await supabase.from("payment_orders").select("*")
           .eq("provider", "razorpay").eq("provider_order_id", payment.order_id).maybeSingle();
+        if (trialOrderError) throw trialOrderError;
         if (trialOrder?.metadata?.purpose === "trial") {
           await activateTrialFromOrder(supabase, trialOrder, String(payment.id || ""), event, {
-            provider_event_id: eventId, razorpay_payment_id: String(payment.id || "")
+            provider_event_id: identity.eventId, razorpay_payment_id: String(payment.id || "")
           });
-          return json({ received: true });
         }
       }
 
       if (event === "subscription.pending" || event === "subscription.halted" || event === "subscription.cancelled" || event === "subscription.completed") {
-        const id = subscription?.id;
-        if (id) await setExistingSubscriptionStatus(
-          supabase, "razorpay", id,
+        if (!subscription?.id) throw new Error("SUBSCRIPTION_REFERENCE_MISSING");
+        await setExistingSubscriptionStatus(
+          supabase, "razorpay", subscription.id,
           event === "subscription.cancelled" || event === "subscription.completed" ? "canceled" : "past_due"
         );
-        return json({ received: true });
       }
 
       if (event === "subscription.charged") {
-        if (!subscription?.id) return json({ error: "Subscription reference is missing." }, 400);
+        if (!subscription?.id) throw new Error("SUBSCRIPTION_REFERENCE_MISSING");
         const periodEnd = unixSecondsToIso(subscription.current_end);
         const { data: order, error: orderError } = await supabase.from("payment_orders").select("*")
           .eq("provider", "razorpay").eq("provider_subscription_id", subscription.id).maybeSingle();
         if (orderError) throw orderError;
         if (order) {
+          if (subscription.plan_id !== order.metadata?.provider_plan_id ||
+              subscription.notes?.athleten_user_id !== order.user_id ||
+              subscription.notes?.athleten_plan_id !== order.plan_id ||
+              subscription.notes?.billing_period !== order.metadata?.billing_period ||
+              String(payment?.currency || "").toUpperCase() !== "INR" ||
+              Number(payment?.amount) !== Number(order.amount_minor)) {
+            throw new Error("RAZORPAY_SUBSCRIPTION_ORDER_MISMATCH");
+          }
           await activateFromOrder(
             supabase, order, payment?.id || null, subscription.customer_id || null,
             subscription.id, periodEnd, event,
-            { provider_event_id: eventId, razorpay_payment_id: payment?.id || null }
+            { provider_event_id: identity.eventId, razorpay_payment_id: payment?.id || null }
           );
         }
       }
@@ -236,7 +331,6 @@ export default async function handler(request) {
           || object?.parent?.subscription_details?.subscription
           || null;
         if (subscriptionId) await setExistingSubscriptionStatus(supabase, "stripe", subscriptionId, "past_due");
-        return json({ received: true });
       }
 
       if (event === "customer.subscription.updated") {
@@ -251,41 +345,50 @@ export default async function handler(request) {
             object.cancel_at_period_end === true
           );
         }
-        return json({ received: true });
       }
 
       if (event === "customer.subscription.deleted") {
         if (object?.id) await setExistingSubscriptionStatus(supabase, "stripe", object.id, "canceled");
-        return json({ received: true });
       }
 
       if (event === "customer.subscription.paused") {
         if (object?.id) await setExistingSubscriptionStatus(supabase, "stripe", object.id, "past_due");
-        return json({ received: true });
       }
 
       if (event === "checkout.session.completed") {
         const session = object;
-        if (session?.payment_status !== "paid") return json({ received: true });
-        const { data: order, error: orderError } = await supabase.from("payment_orders").select("*")
-          .eq("provider", "stripe").eq("provider_order_id", session.id).maybeSingle();
-        if (orderError) throw orderError;
-        if (!order) return json({ received: true });
-        if (order.metadata?.purpose === "trial" || session.metadata?.purpose === "trial") {
-          await activateTrialFromOrder(supabase, order, session.payment_intent || session.id, event, {
-            provider_event_id: payload.id, stripe_session_id: session.id
-          });
-          return json({ received: true });
+        if (session?.payment_status === "paid") {
+          const { data: order, error: orderError } = await supabase.from("payment_orders").select("*")
+            .eq("provider", "stripe").eq("provider_order_id", session.id).maybeSingle();
+          if (orderError) throw orderError;
+          if (order) {
+            if (order.metadata?.purpose === "trial" || session.metadata?.purpose === "trial") {
+              await activateTrialFromOrder(supabase, order, session.payment_intent || session.id, event, {
+                provider_event_id: identity.eventId, stripe_session_id: session.id
+              });
+            } else {
+              if (
+                session.client_reference_id !== order.user_id ||
+                session.metadata?.user_id !== order.user_id ||
+                session.metadata?.plan_id !== order.plan_id ||
+                session.metadata?.billing_period !== order.metadata?.billing_period ||
+                String(session.currency || "").toUpperCase() !== "INR" ||
+                Number(session.amount_total) !== Number(order.amount_minor)
+              ) {
+                throw new Error("STRIPE_CHECKOUT_ORDER_MISMATCH");
+              }
+              const stripeSubscription = await retrieveStripeSubscription(
+                typeof session.subscription === "string" ? session.subscription : session.subscription?.id
+              );
+              assertStripeSubscriptionMatchesOrder(stripeSubscription, order);
+              await activateFromOrder(
+                supabase, order, session.payment_intent, stripeSubscription.customerId,
+                stripeSubscription.id, stripeSubscription.periodEnd, event,
+                { provider_event_id: identity.eventId, stripe_session_id: session.id }
+              );
+            }
+          }
         }
-        const stripeSubscription = await retrieveStripeSubscription(
-          typeof session.subscription === "string" ? session.subscription : session.subscription?.id
-        );
-        await activateFromOrder(
-          supabase, order, session.payment_intent, stripeSubscription.customerId,
-          stripeSubscription.id, stripeSubscription.periodEnd, event,
-          { provider_event_id: payload.id, stripe_session_id: session.id }
-        );
-        return json({ received: true });
       }
 
       if (event === "invoice.paid") {
@@ -293,43 +396,56 @@ export default async function handler(request) {
         const subscriptionId = invoice?.subscription
           || invoice?.parent?.subscription_details?.subscription
           || null;
-        if (!subscriptionId) return json({ received: true });
-        const { data: order, error: orderError } = await supabase.from("payment_orders").select("*")
-          .eq("provider", "stripe").eq("provider_subscription_id", subscriptionId).maybeSingle();
-        if (orderError) throw orderError;
-        if (!order) return json({ received: true });
-        const stripeSubscription = await retrieveStripeSubscription(subscriptionId);
-        await activateFromOrder(
-          supabase, order, invoice.payment_intent || null, stripeSubscription.customerId,
-          stripeSubscription.id, stripeSubscription.periodEnd, event,
-          { provider_event_id: payload.id, stripe_invoice_id: invoice.id }
-        );
+        if (subscriptionId) {
+          const { data: order, error: orderError } = await supabase.from("payment_orders").select("*")
+            .eq("provider", "stripe").eq("provider_subscription_id", subscriptionId).maybeSingle();
+          if (orderError) throw orderError;
+          if (order) {
+            const stripeSubscription = await retrieveStripeSubscription(subscriptionId);
+            assertStripeSubscriptionMatchesOrder(stripeSubscription, order);
+            await activateFromOrder(
+              supabase, order, invoice.payment_intent || null, stripeSubscription.customerId,
+              stripeSubscription.id, stripeSubscription.periodEnd, event,
+              { provider_event_id: identity.eventId, stripe_invoice_id: invoice.id }
+            );
+          }
+        }
       }
     } else {
       const event = payload.type || payload.event;
-      if (!String(event).toLowerCase().includes("success") && !String(event).toLowerCase().includes("paid") && event !== "PAYMENT_SUCCESS_WEBHOOK") return json({ received: true });
-      const providerOrderId = payload.data?.order?.order_id || payload.data?.order_id || payload.order_id;
-      const providerPaymentId = payload.data?.payment?.cf_payment_id || payload.data?.cf_payment_id || payload.cf_payment_id;
-      const { data: order } = await supabase.from("payment_orders").select("*").eq("provider", "cashfree").eq("provider_order_id", providerOrderId).maybeSingle();
-      if (order?.metadata?.purpose === "trial") {
-        await activateTrialFromOrder(
-          supabase, order, String(providerPaymentId || providerOrderId || ""),
-          String(event || "payment.success"),
-          { provider_event_id: String(providerPaymentId || providerOrderId || ""), cashfree_order_id: providerOrderId }
-        );
-      } else if (order) {
-        // Cashfree PG /pg/orders is a one-time payment API. A one-time payment
-        // must never activate a recurring AthleteN subscription.
-        await logPaymentEvent(supabase, {
-          user_id: order.user_id, provider: "cashfree", event_type: "one_time_payment_received_not_subscription",
-          provider_event_id: payload.data?.payment?.cf_payment_id || payload.cf_payment_id || null,
-          amount_minor: order.amount_minor, currency: order.currency, status: "paid",
-          metadata: { payment_order_id: order.id, provider_order_id: providerOrderId, subscription_activation: "not_supported" }
-        });
+      const isSuccess = String(event || "").toLowerCase().includes("success")
+        || String(event || "").toLowerCase().includes("paid")
+        || event === "PAYMENT_SUCCESS_WEBHOOK";
+      if (isSuccess) {
+        const providerOrderId = payload.data?.order?.order_id || payload.data?.order_id || payload.order_id;
+        const providerPaymentId = payload.data?.payment?.cf_payment_id || payload.data?.cf_payment_id || payload.cf_payment_id;
+        const { data: order, error: orderError } = await supabase.from("payment_orders").select("*")
+          .eq("provider", "cashfree").eq("provider_order_id", providerOrderId).maybeSingle();
+        if (orderError) throw orderError;
+        if (order?.metadata?.purpose === "trial") {
+          await activateTrialFromOrder(
+            supabase, order, String(providerPaymentId || providerOrderId || ""),
+            String(event || "payment.success"),
+            { provider_event_id: identity.eventId, cashfree_order_id: providerOrderId }
+          );
+        } else if (order) {
+          await logPaymentEvent(supabase, {
+            user_id: order.user_id, provider: "cashfree", event_type: "one_time_payment_received_not_subscription",
+            provider_event_id: identity.eventId, amount_minor: order.amount_minor,
+            currency: order.currency, status: "paid",
+            metadata: { payment_order_id: order.id, provider_order_id: providerOrderId, subscription_activation: "not_supported" }
+          });
+        }
       }
     }
+
+    await completeWebhookEvent(supabase, provider, identity.eventId);
+    claimedEvent = null;
     return json({ received: true });
   } catch (error) {
+    if (supabase && claimedEvent) {
+      await failWebhookEvent(supabase, claimedEvent.provider, claimedEvent.eventId, error);
+    }
     console.error("payment-webhook", error);
     return json({ error: "Webhook processing failed." }, 500);
   }
