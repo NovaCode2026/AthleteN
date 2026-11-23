@@ -6,6 +6,11 @@ DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object T
 DO $$ BEGIN CREATE ROLE service_role NOLOGIN BYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE SCHEMA IF NOT EXISTS auth;
+CREATE TABLE IF NOT EXISTS auth.users (
+  id uuid PRIMARY KEY,
+  email text,
+  email_confirmed_at timestamptz
+);
 CREATE SCHEMA IF NOT EXISTS private;
 
 CREATE TABLE public.age_approval_state (
@@ -54,6 +59,14 @@ CREATE TABLE public.subscriptions (
 CREATE TABLE public.account_entitlements (
   user_id uuid PRIMARY KEY,
   selected_plan_id text NOT NULL,
+  trial_fee_paise integer,
+  trial_payment_status text,
+  trial_payment_provider text,
+  trial_payment_reference text,
+  trial_claimed_at timestamptz,
+  trial_plan_id text,
+  trial_started_at timestamptz,
+  trial_ends_at timestamptz,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE public.payment_events (
@@ -67,6 +80,7 @@ GRANT SELECT, UPDATE ON public.subscriptions TO service_role;
 \ir ../../supabase/migrations/20261118000300_harden_paid_subscription_activation.sql
 \ir ../../supabase/migrations/20261118000500_subscription_cancel_at_period_end.sql
 \ir ../../supabase/migrations/20261118000600_payment_webhook_event_receipts.sql
+\ir ../../supabase/migrations/20261118000700_harden_trial_activation.sql
 
 -- The same provider event cannot be recorded twice; event IDs are provider-scoped.
 INSERT INTO public.payment_events(provider, provider_event_id) VALUES ('stripe', 'evt_unique_1');
@@ -85,17 +99,29 @@ END
 $dedupe$;
 
 
+INSERT INTO auth.users(id,email,email_confirmed_at) VALUES
+ ('10000000-0000-0000-0000-000000000001','one@athleten.test',now()),
+ ('10000000-0000-0000-0000-000000000002','two@athleten.test',now()),
+ ('10000000-0000-0000-0000-000000000003','three@athleten.test',now()),
+ ('10000000-0000-0000-0000-000000000004','four@athleten.test',now()),
+ ('10000000-0000-0000-0000-000000000005','five@athleten.test',now()),
+ ('10000000-0000-0000-0000-000000000006','six@athleten.test',NULL);
+
 INSERT INTO public.profiles(user_id, role) VALUES
  ('10000000-0000-0000-0000-000000000001','athlete'),
  ('10000000-0000-0000-0000-000000000002','athlete'),
  ('10000000-0000-0000-0000-000000000003','coach'),
- ('10000000-0000-0000-0000-000000000004','academy_admin');
+ ('10000000-0000-0000-0000-000000000004','academy_admin'),
+ ('10000000-0000-0000-0000-000000000005','athlete'),
+ ('10000000-0000-0000-0000-000000000006','athlete');
 
 INSERT INTO public.age_approval_state(user_id, approved) VALUES
  ('10000000-0000-0000-0000-000000000001',true),
  ('10000000-0000-0000-0000-000000000002',false),
  ('10000000-0000-0000-0000-000000000003',true),
- ('10000000-0000-0000-0000-000000000004',true);
+ ('10000000-0000-0000-0000-000000000004',true),
+ ('10000000-0000-0000-0000-000000000005',true),
+ ('10000000-0000-0000-0000-000000000006',true);
 
 INSERT INTO public.academies(id, owner_user_id, status, setup_completed, contact_email_verified_at)
 VALUES (
@@ -106,6 +132,10 @@ VALUES (
 UPDATE public.profiles
    SET academy_id = '20000000-0000-0000-0000-000000000004'
  WHERE user_id = '10000000-0000-0000-0000-000000000004';
+
+INSERT INTO public.student_verifications(user_id,status,created_at) VALUES
+ ('10000000-0000-0000-0000-000000000005','approved',now() - interval '2 days'),
+ ('10000000-0000-0000-0000-000000000005','pending',now() - interval '1 day');
 
 SET ROLE service_role;
 
@@ -223,6 +253,68 @@ $test$;
 
 RESET ROLE;
 
+SET ROLE service_role;
+DO $trial$
+DECLARE
+  v_blocked boolean;
+  v_ent public.account_entitlements;
+BEGIN
+  -- The latest Student verification controls eligibility; an old approval is insufficient.
+  v_blocked := false;
+  BEGIN
+    PERFORM public.activate_trial_after_payment(
+      '10000000-0000-0000-0000-000000000005',
+      'student', 'stripe', 'cs_student_trial_pending', 900
+    );
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE '%STUDENT_NOT_VERIFIED%' THEN v_blocked := true; ELSE RAISE; END IF;
+  END;
+  IF NOT v_blocked THEN RAISE EXCEPTION 'A Student with a newer pending verification was allowed to activate a trial'; END IF;
+
+  UPDATE public.student_verifications
+     SET status = 'approved'
+   WHERE user_id = '10000000-0000-0000-0000-000000000005'
+     AND created_at = (SELECT max(created_at) FROM public.student_verifications
+                       WHERE user_id = '10000000-0000-0000-0000-000000000005');
+
+  v_ent := public.activate_trial_after_payment(
+    '10000000-0000-0000-0000-000000000005',
+    'student', 'stripe', 'cs_student_trial_approved', 900
+  );
+  IF v_ent.trial_payment_status <> 'paid'
+     OR v_ent.trial_plan_id <> 'student'
+     OR v_ent.trial_ends_at <= now() THEN
+    RAISE EXCEPTION 'Approved Student trial did not activate correctly';
+  END IF;
+
+  -- Account email must be confirmed before the service-only trial activation RPC grants a trial.
+  v_blocked := false;
+  BEGIN
+    PERFORM public.activate_trial_after_payment(
+      '10000000-0000-0000-0000-000000000006',
+      'pro', 'stripe', 'cs_unconfirmed_trial', 900
+    );
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE '%EMAIL_VERIFICATION_REQUIRED%' THEN v_blocked := true; ELSE RAISE; END IF;
+  END;
+  IF NOT v_blocked THEN RAISE EXCEPTION 'Unconfirmed account email was allowed to activate a trial'; END IF;
+
+  -- A non-approved account cannot activate a trial even if its email is confirmed.
+  v_blocked := false;
+  BEGIN
+    PERFORM public.activate_trial_after_payment(
+      '10000000-0000-0000-0000-000000000002',
+      'pro', 'stripe', 'cs_unapproved_trial', 900
+    );
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE '%AGE_OR_GUARDIAN_APPROVAL_REQUIRED%' THEN v_blocked := true; ELSE RAISE; END IF;
+  END;
+  IF NOT v_blocked THEN RAISE EXCEPTION 'Unapproved account was allowed to activate a trial'; END IF;
+END
+$trial$;
+
+RESET ROLE;
+
 DO $acl$
 DECLARE
   v_claim record;
@@ -233,6 +325,11 @@ BEGIN
   END IF;
   IF NOT has_function_privilege('service_role', 'public.activate_paid_subscription(uuid,text,text,text,text,timestamptz)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Service role cannot execute subscription activation';
+  END IF;
+  IF has_function_privilege('anon', 'public.activate_trial_after_payment(uuid,text,text,text,integer)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.activate_trial_after_payment(uuid,text,text,text,integer)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.activate_trial_after_payment(uuid,text,text,text,integer)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Trial activation RPC has incorrect permissions';
   END IF;
   IF has_function_privilege('anon', 'public.claim_payment_webhook_event(text,text,text)', 'EXECUTE')
      OR has_function_privilege('authenticated', 'public.claim_payment_webhook_event(text,text,text)', 'EXECUTE')
