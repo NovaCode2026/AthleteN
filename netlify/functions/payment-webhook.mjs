@@ -492,7 +492,7 @@ export default async function handler(request) {
         await markTrialOrderFailed(supabase, failedTrialOrder, String(event || "payment.failed"), identity.eventId);
       }
 
-            const isSuccess = String(event || "").toLowerCase().includes("success")
+      const isSuccess = String(event || "").toLowerCase().includes("success")
         || String(event || "").toLowerCase().includes("paid")
         || event === "PAYMENT_SUCCESS_WEBHOOK";
       if (isSuccess) {
