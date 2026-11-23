@@ -41,3 +41,12 @@ test("web and mobile Plans pages expose period-end cancellation with confirmatio
   assert.ok(mobilePlans.includes("Alert.alert("));
   assert.ok(mobilePlans.includes("CANCEL AT PERIOD END"));
 });
+
+
+test("provider cancellation requests use fixed validated API origins", () => {
+  assert.ok(endpoint.includes('const stripeApiOrigin = "https://api.stripe.com"'));
+  assert.ok(endpoint.includes("subscriptionUrl.origin !== stripeApiOrigin"));
+  assert.ok(endpoint.includes('const razorpayApiOrigin = "https://api.razorpay.com"'));
+  assert.ok(endpoint.includes("subscriptionUrl.origin !== razorpayApiOrigin"));
+  assert.ok(endpoint.includes('subscriptionUrl.pathname.endsWith("/cancel")'));
+});
