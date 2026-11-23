@@ -230,14 +230,15 @@ async function activateTrialFromOrder(supabase, order, providerPaymentId, eventT
   });
   if (trialError) throw trialError;
 
-  const { error: updateError } = await supabase.from("payment_orders").update({
+  const { data: updatedOrder, error: updateError } = await supabase.from("payment_orders").update({
     status: "paid",
     provider_payment_id: providerPaymentId || order.provider_payment_id,
     paid_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     metadata: { ...order.metadata, ...metadata, purpose: "trial" }
-  }).eq("id", order.id).eq("status", "pending");
+  }).eq("id", order.id).in("status", ["pending", "awaiting_payment"]).select("id").maybeSingle();
   if (updateError) throw updateError;
+  if (!updatedOrder) throw new Error("TRIAL_ORDER_NOT_ACTIVATABLE");
 
   await logPaymentEvent(supabase, {
     user_id: order.user_id,
