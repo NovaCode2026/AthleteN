@@ -26,9 +26,6 @@ BEGIN
   IF p_user_id IS NULL THEN
     RAISE EXCEPTION 'USER_REQUIRED';
   END IF;
-  IF auth.uid() IS NOT NULL AND auth.uid() IS DISTINCT FROM p_user_id THEN
-    RAISE EXCEPTION 'TRIAL_USER_MISMATCH';
-  END IF;
   IF p_plan_id IS NULL OR p_plan_id NOT IN ('student', 'pro', 'elite', 'coach', 'academy') THEN
     RAISE EXCEPTION 'INVALID_TRIAL_PLAN';
   END IF;
