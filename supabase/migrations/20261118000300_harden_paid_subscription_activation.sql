@@ -1,4 +1,7 @@
 -- Payment activation must be re-authorized at the database boundary.
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS cancel_at_period_end boolean NOT NULL DEFAULT false;
+
 -- Apply only after local/remote Supabase migration history is reconciled and
 -- the complete schema has been validated on an isolated Supabase/PostgreSQL stack.
 
@@ -81,7 +84,7 @@ BEGIN
     RAISE EXCEPTION 'INVALID_PAID_PLAN';
   END IF;
 
-  INSERT INTO public.subscriptions (
+  INSERT INTO public.subscriptions AS current_subscription (
     user_id, plan_id, provider, provider_customer_id,
     provider_subscription_id, status, current_period_end
   )
@@ -95,7 +98,12 @@ BEGIN
         provider_subscription_id = EXCLUDED.provider_subscription_id,
         status = 'active',
         current_period_end = EXCLUDED.current_period_end,
-        cancel_at_period_end = false,
+        cancel_at_period_end = CASE
+          WHEN current_subscription.provider_subscription_id IS NOT NULL
+           AND current_subscription.provider_subscription_id IS NOT DISTINCT FROM EXCLUDED.provider_subscription_id
+            THEN current_subscription.cancel_at_period_end
+          ELSE false
+        END,
         updated_at = pg_catalog.now()
   RETURNING * INTO v_result;
 
