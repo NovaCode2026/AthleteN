@@ -45,6 +45,7 @@ jobs:
         shell: bash
         run: |
           set +e
+          npm install --package-lock-only --ignore-scripts
           npm audit fix
           status=$?
           set -e
