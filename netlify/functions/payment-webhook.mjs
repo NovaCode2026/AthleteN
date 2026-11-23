@@ -203,6 +203,35 @@ async function setExistingSubscriptionStatus(supabase, provider, providerSubscri
   if (error) throw error;
 }
 
+async function markTrialOrderFailed(supabase, order, eventType, eventId) {
+  if (!order || order.metadata?.purpose !== "trial") return;
+  const now = new Date().toISOString();
+  const { data: failedOrder, error: orderError } = await supabase.from("payment_orders").update({
+    status: "failed",
+    updated_at: now,
+    metadata: { ...order.metadata, last_payment_failure_event: eventType }
+  }).eq("id", order.id).in("status", ["pending", "awaiting_payment"]).select("id").maybeSingle();
+  if (orderError) throw orderError;
+  if (!failedOrder) return;
+
+  const { error: entitlementError } = await supabase.from("account_entitlements").update({
+    trial_payment_status: "failed",
+    updated_at: now
+  }).eq("user_id", order.user_id).eq("trial_payment_status", "pending").is("trial_claimed_at", null);
+  if (entitlementError) throw entitlementError;
+
+  await logPaymentEvent(supabase, {
+    user_id: order.user_id,
+    provider: order.provider,
+    event_type: eventType,
+    provider_event_id: eventId || null,
+    amount_minor: order.amount_minor,
+    currency: order.currency,
+    status: "failed",
+    metadata: { payment_order_id: order.id, plan_id: order.plan_id, purpose: "trial" }
+  });
+}
+
 async function activateTrialFromOrder(supabase, order, providerPaymentId, eventType, metadata = {}, paymentDetails = {}) {
   if (!order) return;
   if (order.status === "paid") return;
@@ -291,6 +320,13 @@ export default async function handler(request) {
       const subscription = payload.payload?.subscription?.entity;
       const payment = payload.payload?.payment?.entity;
 
+      if (event === "payment.failed" && payment?.order_id) {
+        const { data: failedTrialOrder, error: failedTrialOrderError } = await supabase.from("payment_orders").select("*")
+          .eq("provider", "razorpay").eq("provider_order_id", payment.order_id).maybeSingle();
+        if (failedTrialOrderError) throw failedTrialOrderError;
+        await markTrialOrderFailed(supabase, failedTrialOrder, event, identity.eventId);
+      }
+
       if (event === "payment.captured" && payment?.order_id) {
         const { data: trialOrder, error: trialOrderError } = await supabase.from("payment_orders").select("*")
           .eq("provider", "razorpay").eq("provider_order_id", payment.order_id).maybeSingle();
@@ -338,6 +374,13 @@ export default async function handler(request) {
     } else if (provider === "stripe") {
       const event = payload.type;
       const object = payload.data?.object;
+
+      if ((event === "checkout.session.expired" || event === "checkout.session.async_payment_failed") && object?.id) {
+        const { data: failedTrialOrder, error: failedTrialOrderError } = await supabase.from("payment_orders").select("*")
+          .eq("provider", "stripe").eq("provider_order_id", object.id).maybeSingle();
+        if (failedTrialOrderError) throw failedTrialOrderError;
+        await markTrialOrderFailed(supabase, failedTrialOrder, event, identity.eventId);
+      }
 
       if (event === "invoice.payment_failed") {
         const subscriptionId = object?.subscription
@@ -437,7 +480,19 @@ export default async function handler(request) {
       }
     } else {
       const event = payload.type || payload.event;
-      const isSuccess = String(event || "").toLowerCase().includes("success")
+      const normalizedEvent = String(event || "").toLowerCase();
+      const isFailure = normalizedEvent.includes("fail")
+        || normalizedEvent.includes("cancel")
+        || normalizedEvent.includes("user_dropped");
+      if (isFailure) {
+        const providerOrderId = payload.data?.order?.order_id || payload.data?.order_id || payload.order_id;
+        const { data: failedTrialOrder, error: failedTrialOrderError } = await supabase.from("payment_orders").select("*")
+          .eq("provider", "cashfree").eq("provider_order_id", providerOrderId).maybeSingle();
+        if (failedTrialOrderError) throw failedTrialOrderError;
+        await markTrialOrderFailed(supabase, failedTrialOrder, String(event || "payment.failed"), identity.eventId);
+      }
+
+            const isSuccess = String(event || "").toLowerCase().includes("success")
         || String(event || "").toLowerCase().includes("paid")
         || event === "PAYMENT_SUCCESS_WEBHOOK";
       if (isSuccess) {
