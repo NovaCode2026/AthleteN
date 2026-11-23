@@ -52,3 +52,12 @@ test("trial order finalization accepts pending and awaiting-payment states and c
   assert.ok(webhook.includes('.select("id").maybeSingle()'));
   assert.ok(webhook.includes("if (!updatedOrder) throw new Error(\"TRIAL_ORDER_NOT_ACTIVATABLE\")"));
 });
+
+test("trial checkout blocks a second pending one-time payment", () => {
+  assert.ok(checkout.includes('entitlement?.trial_payment_status === "pending"'));
+  assert.ok(checkout.includes("Complete that checkout or wait for its failure/expiry confirmation"));
+});
+
+test("Student verification ordering has a stable tie-breaker", () => {
+  assert.ok(checkout.includes("requireApprovedStudent"));
+});
