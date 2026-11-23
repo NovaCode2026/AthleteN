@@ -50,6 +50,7 @@ export async function requireApprovedStudent(supabase, userId) {
     .select("id,status,reviewed_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw error;
