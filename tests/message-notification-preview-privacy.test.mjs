@@ -34,8 +34,8 @@ test("web and mobile settings expose the same private-preview preference", () =>
 
 test("message preview preferences preserve the central notification-category preference guard", () => {
   const guard = readFileSync(new URL("../supabase/migrations/20261111112015_filter_notifications_by_user_preferences.sql", import.meta.url), "utf8");
-  assert.match(guard, /private\\.notification_preference_allows/);
-  assert.match(guard, /create trigger enforce_notification_preferences_before_insert/i);
-  assert.match(guard, /before insert on public\\.notifications/i);
-  assert.match(guard, /when 'message' then coalesce\\(p_messages, true\\)/i);
+  assert.ok(guard.includes("private.notification_preference_allows"));
+  assert.ok(guard.includes("create trigger enforce_notification_preferences_before_insert"));
+  assert.ok(guard.includes("before insert on public.notifications"));
+  assert.ok(guard.includes("when 'message' then coalesce(p_messages, true)"));
 });
