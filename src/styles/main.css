@@ -853,3 +853,36 @@ select:-webkit-autofill {
 .notification-source-detail{display:grid;gap:14px}
 .notification-source-detail .inline-actions{flex-wrap:wrap}
 .notification-source-detail .tag{max-width:100%;overflow-wrap:anywhere}
+
+
+.daily-leaderboard { display: grid; gap: 16px; }
+.daily-leaderboard-hero { display: flex; justify-content: space-between; align-items: center; gap: 20px; background: linear-gradient(115deg, rgba(16,63,113,.88), rgba(13,35,61,.76) 56%, rgba(7,17,31,.86)); }
+.daily-leaderboard-hero h2 { margin: 4px 0 8px; }
+.daily-leaderboard-hero p { max-width: 720px; margin: 0; }
+.daily-leaderboard-reset { min-width: 120px; padding: 13px; border-left: 1px solid var(--line); display: grid; text-align: center; gap: 4px; }
+.daily-leaderboard-reset strong { color: white; font-size: 20px; }
+.daily-leaderboard-reset span { color: var(--cyan); font-size: 9px; font-weight: 900; letter-spacing: 1px; }
+.daily-leaderboard-privacy { display: flex; align-items: flex-start; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(35,142,255,.08); color: #8bcaff; }
+.daily-leaderboard-privacy p { margin: 0; font-size: 12px; }
+.daily-leaderboard-settings { display: grid; gap: 15px; }
+.daily-leaderboard-settings h3 { margin: 0; }
+.daily-leaderboard-optin { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.daily-leaderboard-optin span { display: grid; gap: 5px; }
+.daily-leaderboard-optin strong { color: var(--text); font-size: 13px; }
+.daily-leaderboard-optin small, .daily-leaderboard-footnote, .daily-leaderboard-name small { color: var(--muted); font-size: 11px; }
+.daily-leaderboard-optin input { width: 20px; height: 20px; accent-color: var(--blue); }
+.leaderboard-success { color: var(--green); margin: 0; font-size: 12px; }
+.daily-leaderboard-categories { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.daily-leaderboard-categories button { border: 1px solid var(--line); border-radius: var(--radius); background: rgba(106,150,199,.10); color: #bdd0e6; padding: 9px 11px; font-size: 11px; font-weight: 800; }
+.daily-leaderboard-categories button.active { border-color: rgba(80,178,255,.55); background: rgba(35,142,255,.18); color: white; }
+.daily-leaderboard-categories button:disabled { opacity: .45; cursor: not-allowed; }
+.daily-leaderboard-list { display: grid; gap: 8px; margin-top: 16px; }
+.daily-leaderboard-row { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(9,21,38,.7); }
+.daily-leaderboard-row.is-you { border-color: rgba(80,178,255,.55); background: rgba(35,142,255,.11); }
+.daily-leaderboard-rank { display: grid; place-items: center; min-width: 38px; min-height: 38px; border-radius: var(--radius); background: rgba(35,142,255,.16); color: #8bcaff; font-size: 12px; font-weight: 900; }
+.daily-leaderboard-name { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.daily-leaderboard-name strong { color: var(--text); font-size: 12px; }
+.daily-leaderboard-points { color: white; font-size: 18px; }
+.daily-leaderboard-points small { color: var(--muted); font-size: 8px; }
+.daily-leaderboard-footnote { margin: 14px 0 0; line-height: 1.5; }
+@media (max-width: 650px) { .daily-leaderboard-hero { align-items: flex-start; } .daily-leaderboard-reset { min-width: 85px; padding: 8px; } .daily-leaderboard-reset strong { font-size: 15px; } .daily-leaderboard-stats { grid-template-columns: 1fr; } }
