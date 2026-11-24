@@ -67,6 +67,14 @@ export default function LeaderboardScreen() {
 
   useEffect(() => { void load(); }, [load]);
 
+  useEffect(() => {
+    if (!data?.resetsAt) return;
+    const resetAt = Date.parse(data.resetsAt);
+    if (!Number.isFinite(resetAt)) return;
+    const timeout = setTimeout(() => { void load(); }, Math.max(0, resetAt - Date.now()) + 1000);
+    return () => clearTimeout(timeout);
+  }, [data?.resetsAt, load]);
+
   const savePreferences = async () => {
     if (!session?.user.id || !supabase) {
       setError('Sign in again before updating leaderboard settings.');
