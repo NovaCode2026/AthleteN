@@ -70,7 +70,7 @@ SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002'
 SELECT public.set_conversation_disappearing_messages('20000000-0000-4000-8000-000000000002', 604800);
 SELECT public.remove_group_member('20000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000003');
 
-DO $$
+DO $
 BEGIN
   IF EXISTS (
     SELECT 1 FROM public.conversation_members
@@ -78,7 +78,47 @@ BEGIN
       AND user_id='10000000-0000-4000-8000-000000000003'
   ) THEN RAISE EXCEPTION 'Group admin could not remove ordinary member'; END IF;
 END
-$$;
+$;
+
+-- Creator leaves by transferring ownership to a current group admin.
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',false);
+SELECT public.leave_group_conversation(
+  '20000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000002'
+);
+RESET ROLE;
+DO $
+DECLARE v_creator uuid; v_creator_membership integer; v_new_owner_admin boolean;
+BEGIN
+  SELECT created_by INTO v_creator FROM public.conversations
+  WHERE id='20000000-0000-4000-8000-000000000002';
+  SELECT count(*) INTO v_creator_membership FROM public.conversation_members
+  WHERE conversation_id='20000000-0000-4000-8000-000000000002'
+    AND user_id='10000000-0000-4000-8000-000000000001';
+  SELECT is_admin INTO v_new_owner_admin FROM public.conversation_members
+  WHERE conversation_id='20000000-0000-4000-8000-000000000002'
+    AND user_id='10000000-0000-4000-8000-000000000002';
+  IF v_creator <> '10000000-0000-4000-8000-000000000002'
+     OR v_creator_membership <> 0
+     OR NOT coalesce(v_new_owner_admin,false) THEN
+    RAISE EXCEPTION 'Group creator could not transfer ownership safely';
+  END IF;
+END
+$;
+
+-- A final owner may leave and delete a group once it has no remaining members.
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002',false);
+SELECT public.leave_group_conversation('20000000-0000-4000-8000-000000000002',NULL);
+RESET ROLE;
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.conversations
+    WHERE id='20000000-0000-4000-8000-000000000002') THEN
+    RAISE EXCEPTION 'An empty group was not deleted when its final member left';
+  END IF;
+END
+$;
 
 RESET ROLE;
 
