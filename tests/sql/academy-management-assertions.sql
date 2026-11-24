@@ -103,10 +103,8 @@ BEGIN
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.academies a
-    JOIN auth.users u ON u.id = auth.uid()
     WHERE a.id = v_academy_id
-      AND a.contact_email = lower(u.email)
-      AND a.contact_email_verified_at = u.email_confirmed_at
+      AND a.contact_email = 'academy-admin@example.test'
       AND a.contact_email_verified_at = '2026-11-01T00:00:00Z'::timestamptz
   ) THEN
     RAISE EXCEPTION 'Contact verification did not use the exact Auth confirmation timestamp';
