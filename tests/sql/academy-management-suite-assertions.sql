@@ -54,9 +54,6 @@ BEGIN
     '00000000-0000-0000-0000-000000000012',
     'finance',ARRAY['fees.manage']::text[]
   );
-  IF NOT private.user_has_academy_permission(
-    '10000000-0000-0000-0000-000000000001','fees.manage'
-  ) THEN RAISE EXCEPTION 'Assigned finance permission is not effective'; END IF;
   IF (SELECT role FROM public.profiles WHERE user_id='00000000-0000-0000-0000-000000000012')<>'coach' THEN
     RAISE EXCEPTION 'Staff capability assignment promoted the Coach account role';
   END IF;
@@ -67,6 +64,9 @@ $staff$;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000012',false);
 DO $coach_ops$
 BEGIN
+  IF NOT private.user_has_academy_permission(
+    '10000000-0000-0000-0000-000000000001','fees.manage'
+  ) THEN RAISE EXCEPTION 'Assigned Coach finance permission is not effective'; END IF;
   INSERT INTO public.academy_coach_attendance(academy_id,coach_user_id,attendance_date,status,recorded_by)
   VALUES('10000000-0000-0000-0000-000000000001',auth.uid(),current_date,'present',auth.uid());
   INSERT INTO public.academy_coach_availability(academy_id,coach_user_id,weekday,starts_at,ends_at,availability_type)
