@@ -380,6 +380,85 @@ USING (
   )
 );
 
+-- A member can leave a group. A creator must transfer ownership to a
+-- current member when anyone else remains; an empty group is deleted.
+CREATE OR REPLACE FUNCTION public.leave_group_conversation(
+  p_conversation_id uuid,
+  p_transfer_to_user_id uuid DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_user uuid := auth.uid();
+  v_creator uuid;
+  v_kind text;
+  v_other_member_count integer;
+BEGIN
+  IF v_user IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT public.is_age_approved(v_user) THEN
+    RAISE EXCEPTION 'Age approval is required before leaving a group';
+  END IF;
+  IF p_conversation_id IS NULL THEN RAISE EXCEPTION 'Group is required'; END IF;
+
+  SELECT c.created_by, c.kind
+    INTO v_creator, v_kind
+  FROM public.conversations c
+  JOIN public.conversation_members cm
+    ON cm.conversation_id = c.id AND cm.user_id = v_user
+  WHERE c.id = p_conversation_id
+  FOR UPDATE OF c;
+
+  IF v_kind IS DISTINCT FROM 'group' THEN
+    RAISE EXCEPTION 'Group not found or membership access denied';
+  END IF;
+
+  IF v_creator = v_user THEN
+    SELECT count(*) INTO v_other_member_count
+    FROM public.conversation_members cm
+    WHERE cm.conversation_id = p_conversation_id
+      AND cm.user_id <> v_user;
+
+    IF v_other_member_count = 0 THEN
+      IF p_transfer_to_user_id IS NOT NULL THEN
+        RAISE EXCEPTION 'There is no other member to receive group ownership';
+      END IF;
+      DELETE FROM public.conversations WHERE id = p_conversation_id;
+      RETURN;
+    END IF;
+
+    IF p_transfer_to_user_id IS NULL OR p_transfer_to_user_id = v_user
+       OR NOT EXISTS (
+         SELECT 1 FROM public.conversation_members cm
+         WHERE cm.conversation_id = p_conversation_id
+           AND cm.user_id = p_transfer_to_user_id
+       ) THEN
+      RAISE EXCEPTION 'Choose a current group member to receive ownership before leaving';
+    END IF;
+
+    UPDATE public.conversations
+    SET created_by = p_transfer_to_user_id
+    WHERE id = p_conversation_id;
+
+    UPDATE public.conversation_members
+    SET is_admin = true
+    WHERE conversation_id = p_conversation_id
+      AND user_id = p_transfer_to_user_id;
+  ELSIF p_transfer_to_user_id IS NOT NULL THEN
+    RAISE EXCEPTION 'Only the group creator can transfer ownership';
+  END IF;
+
+  DELETE FROM public.conversation_members
+  WHERE conversation_id = p_conversation_id
+    AND user_id = v_user;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.leave_group_conversation(uuid, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.leave_group_conversation(uuid, uuid) TO authenticated;
+
 COMMENT ON COLUMN public.conversations.disappearing_messages_after_seconds IS
   'Expiry policy for newly inserted messages: 0, 86400, 604800, 2592000, or 7776000 seconds.';
 COMMENT ON COLUMN public.messages.expires_at IS
