@@ -5,6 +5,35 @@ import { useAuth } from "../../hooks/useAuth";
 const fields=[["training","Training"],["competitions","Competitions"],["messages","Messages"],["coach_academy","Coach / Academy"],["achievements","Achievements"],["system","System"]] as const;
 const defaults={training:true,competitions:true,messages:true,coach_academy:true,achievements:true,system:true,message_preview:false};
 type NotificationSource = { kind: "announcement" | "attendance"; title: string; body: string; meta: string[] };
+function notificationCategory(type:string|null|undefined){
+ const value=String(type||"").toLowerCase();
+ if(value==="message")return "Messages";
+ if(value==="training")return "Training";
+ if(["competition","competitions","tournament","tournament_update"].includes(value))return "Competitions";
+ if(["coach","academy","coach_academy","connection","connection_request","academy_invitation","coach_invitation"].includes(value))return "Coach & Academy";
+ if(["achievement","badge","milestone"].includes(value))return "Achievements";
+ return "System";
+}
+function groupMessageNotifications(rows:any[]){
+ const groups=new Map<string,any[]>();
+ const output:any[]=[];
+ for(const row of rows){
+  if(row.notification_type==="message"&&row.conversation_id){
+   const key=String(row.conversation_id);
+   const group=groups.get(key)||[];
+   group.push(row);
+   groups.set(key,group);
+  }else output.push({...row,notification_ids:[row.id],message_count:1,unread_message_count:row.read_at?0:1});
+ }
+ for(const [conversationId,group] of groups){
+  group.sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
+  const latest=group[0];
+  const unread=group.filter(row=>!row.read_at).length;
+  output.push({...latest,id:"message-group:"+conversationId,notification_ids:group.map(row=>row.id),message_count:group.length,unread_message_count:unread,read_at:unread?null:latest.read_at,title:group.length>1?"New messages":latest.title,body:group.length>1?group.length+" message notifications · "+unread+" unread":latest.body});
+ }
+ return output.sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
+}
+
 
 export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"error"|"warning";message:string})=>void}){
  const uid=useAuth().user?.id;
@@ -26,7 +55,18 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
    data=fallback.data;error=fallback.error;
   }
   if(error)setToast({type:"error",message:error.message});
-  else setRows(data||[]);
+  else {
+   let next=(data||[]) as any[];
+   const messageIds=next.filter(row=>row.notification_type==="message"&&row.message_id).map(row=>row.message_id);
+   if(messageIds.length){
+    const {data:messageRows,error:messageLookupError}=await supabase.from("messages").select("id,conversation_id").in("id",messageIds);
+    if(!messageLookupError){
+     const conversationByMessage=new Map((messageRows||[]).map((row:any)=>[String(row.id),String(row.conversation_id)]));
+     next=next.map(row=>({...row,conversation_id:row.message_id?conversationByMessage.get(String(row.message_id)):undefined}));
+    }
+   }
+   setRows(next);
+  }
   setLoading(false);
  },[uid,setToast]);
 
@@ -39,8 +79,9 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
   return()=>{void supabase.removeChannel(ch)};
  },[load,uid]);
 
- async function markRead(id:string){
-  const {error}=await supabase.from("notifications").update({read_at:new Date().toISOString()}).eq("id",id).eq("user_id",uid);
+ async function markRead(row:any){
+  const ids=Array.isArray(row.notification_ids)&&row.notification_ids.length?row.notification_ids:[row.id];
+  const {error}=await supabase.from("notifications").update({read_at:new Date().toISOString()}).in("id",ids).eq("user_id",uid);
   if(error)throw error;
  }
 
@@ -48,7 +89,7 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
   if(!uid||busy)return;
   setBusy(true);
   try{
-   await markRead(row.id);
+   await markRead(row);
    if(row.message_id){
     const {data,error}=await supabase.from("messages").select("conversation_id").eq("id",row.message_id).maybeSingle();
     if(error)throw error;
@@ -106,13 +147,14 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
   }finally{setBusy(false)}
  }
 
- async function deleteOne(id:string){
+ async function deleteOne(row:any){
   if(!uid||busy)return;
+  const ids=Array.isArray(row.notification_ids)&&row.notification_ids.length?row.notification_ids:[row.id];
   setBusy(true);
-  const {error}=await supabase.from("notifications").delete().eq("id",id).eq("user_id",uid);
+  const {error}=await supabase.from("notifications").delete().in("id",ids).eq("user_id",uid);
   setBusy(false);
   if(error)setToast({type:"error",message:error.message});
-  else{setRows(old=>old.filter(row=>row.id!==id));setToast({type:"success",message:"Notification deleted. Its original content was not changed."});}
+  else{setRows(old=>old.filter(item=>!ids.includes(item.id)));setToast({type:"success",message:ids.length>1?"Conversation notifications deleted.":"Notification deleted. Its original content was not changed."});}
  }
 
  async function readAll(){
@@ -134,9 +176,11 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
   else{setRows([]);setToast({type:"success",message:"All notifications cleared. Original content was not deleted."});}
  }
 
+ const displayRows=groupMessageNotifications(rows);
+
  if(selectedSource)return <><div className="page-head"><div><p className="eyebrow">Notification source</p><h2>{selectedSource.title}</h2><p className="messaging-help">Original {selectedSource.kind} record</p></div><button type="button" className="btn" onClick={()=>setSelectedSource(null)}>Back to notifications</button></div><section className="card panel notification-source-detail"><div className="inline-actions">{selectedSource.meta.map((item,index)=><span className="tag" key={index}>{item}</span>)}</div><p>{selectedSource.body}</p></section></>;
 
- return <><div className="page-head"><div><p className="eyebrow">AthleteN</p><h2>Notifications</h2><p className="messaging-help">Competition, account, coach and platform updates.</p></div><div className="inline-actions"><button className="btn" onClick={()=>void load()} disabled={loading||busy}><RefreshCw size={15}/> Refresh</button><button className="btn primary" disabled={busy||!rows.some(x=>!x.read_at)} onClick={()=>void readAll()}><CheckCheck size={15}/> Mark all read</button><button className="btn" disabled={busy||!rows.length} onClick={()=>void clearAll()}><Trash2 size={15}/> Clear all</button></div></div><section className="card panel">{loading?<p>Loading notifications…</p>:rows.length?rows.map(x=><div className="notification-row" key={x.id}><span className={"notification-dot "+(x.read_at?"read":"new")}/><button type="button" className="notification-open" disabled={busy} onClick={()=>void openNotification(x)}><span className="notification-copy"><strong>{x.title||"AthleteN notification"}</strong>{x.body&&<span>{x.body}</span>}<small>{x.created_at?new Date(x.created_at).toLocaleString():"—"} · {x.read_at?"READ":"NEW"}</small></span><span className="notification-open-label"><ExternalLink size={14}/> Open</span></button><button type="button" className="plain danger notification-delete" aria-label={"Delete notification: "+(x.title||"AthleteN notification")} title="Delete notification" disabled={busy} onClick={()=>void deleteOne(x.id)}><Trash2 size={16}/></button></div>):<div className="empty"><strong>No notifications yet.</strong><p>Updates will appear here when AthleteN sends them to your account.</p></div>}</section></>;
+ return <><div className="page-head"><div><p className="eyebrow">AthleteN</p><h2>Notifications</h2><p className="messaging-help">Competition, account, coach and platform updates.</p></div><div className="inline-actions"><button className="btn" onClick={()=>void load()} disabled={loading||busy}><RefreshCw size={15}/> Refresh</button><button className="btn primary" disabled={busy||!rows.some(x=>!x.read_at)} onClick={()=>void readAll()}><CheckCheck size={15}/> Mark all read</button><button className="btn" disabled={busy||!rows.length} onClick={()=>void clearAll()}><Trash2 size={15}/> Clear all</button></div></div><section className="card panel">{loading?<p>Loading notifications…</p>:displayRows.length?displayRows.map(x=><div className="notification-row" key={x.id}><span className={"notification-dot "+(x.read_at?"read":"new")}/><button type="button" className="notification-open" disabled={busy} onClick={()=>void openNotification(x)}><span className="notification-copy"><small className="tag">{notificationCategory(x.notification_type)}{x.message_count>1?" · "+x.message_count+" messages":""}</small><strong>{x.title||"AthleteN notification"}</strong>{x.body&&<span>{x.body}</span>}<small>{x.created_at?new Date(x.created_at).toLocaleString():"—"} · {x.read_at?"READ":"NEW"}</small></span><span className="notification-open-label"><ExternalLink size={14}/> Open</span></button><button type="button" className="plain danger notification-delete" aria-label={"Delete notification: "+(x.title||"AthleteN notification")} title="Delete notification" disabled={busy} onClick={()=>void deleteOne(x)}><Trash2 size={16}/></button></div>):<div className="empty"><strong>No notifications yet.</strong><p>Updates will appear here when AthleteN sends them to your account.</p></div>}</section></>;
 }
 
 export function NotificationSettingsPage({setToast}:{setToast:(toast:{type:"success"|"error"|"warning";message:string})=>void}){
