@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
@@ -9,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { getAiLimit } from '@/lib/entitlements';
 import PlanSection from '@/components/plan-section';
+import { ACADEMY_NAV_KEY, ACADEMY_NAV_DEFAULT, ACADEMY_NAV_AVAILABLE } from '@/lib/academy-navigation';
 
 type Tab='Dashboard'|'People'|'Coaches'|'Training'|'Attendance'|'Events'|'Calendar'|'Intelligence'|'Achievements'|'Approvals'|'Communication'|'Finance';
 type Member={user_id:string;role:string;status:string;full_name?:string|null;belt?:string|null;discipline?:string|null;username?:string|null;weight_kg?:number|null;competition_weight_category?:string|null};
@@ -18,23 +20,6 @@ type Event={id:string;user_id?:string;name:string;starts_at:string;location?:str
 const academyIconMap:any={athletes:'people',coaches:'coach',training:'training',events:'event',people:'people',finance:'finance',calendar:'calendar',ai:'ai',settings:'settings',code:'searchCircle',refresh:'refresh',chevron:'arrow'};
 function Icon({name,size=20,color=c.accentBright}:{name:string;size?:number;color?:string}){return <AppIcon name={academyIconMap[name]||name} size={size} color={color}/>} 
 
-export const ACADEMY_NAV_KEY='athleten.academy-navigation.v1';
-export const ACADEMY_NAV_DEFAULT=['Dashboard','People','Coaches','Training','Attendance','Events'] as const;
-export const ACADEMY_NAV_AVAILABLE=[
- {id:'Dashboard',label:'Dashboard',icon:'dashboard'},
- {id:'People',label:'People',icon:'people'},
- {id:'Coaches',label:'Coaches',icon:'coach'},
- {id:'Training',label:'Training',icon:'training'},
- {id:'Attendance',label:'Attendance',icon:'calendar'},
- {id:'Events',label:'Events',icon:'event'},
- {id:'Calendar',label:'Calendar',icon:'calendar'},
- {id:'Intelligence',label:'Intelligence',icon:'ai'},
- {id:'Achievements',label:'Achievements',icon:'trophy'},
- {id:'Approvals',label:'Approvals',icon:'shield'},
- {id:'Communication',label:'Communication',icon:'message'},
- {id:'Finance',label:'Finance',icon:'finance'},
- {id:'AI',label:'AI',icon:'ai'},
-] as const;
 
 function LineGraph({values,labels,suffix='' }:{values:number[];labels:string[];suffix?:string}){
  const [width,setWidth]=useState(0);
