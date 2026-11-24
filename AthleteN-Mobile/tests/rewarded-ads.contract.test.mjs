@@ -35,6 +35,8 @@ test('Rewards Centre obtains a server-issued session before presenting an ad', (
   assert.ok(showIndex > sessionIndex, 'the ad must not show before server session issuance');
   assert.ok(source.includes('Ad · Not endorsed'));
   assert.ok(source.includes('pending Google’s server-side verification'));
+  assert.ok(source.includes('No ad is available right now. You have not lost your reward opportunity'));
+  assert.ok(source.includes('const deliveryFailure = adPresentationStarted;'));
 });
 
 test('Rewards Centre hides the ad entry unless the feature flag and adult DOB check pass', () => {
