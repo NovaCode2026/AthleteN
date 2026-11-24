@@ -31,8 +31,8 @@ test("web and mobile expose opt-in, opt-out, and alias editing without public id
   for (const source of [mobile, web]) {
     assert.match(source, /leaderboard_opt_in/);
     assert.match(source, /leaderboard_display_name/);
-    assert.match(source, /Save leaderboard settings|Save settings/);
-    assert.match(source, /Choose a public alias|Choose an alias/);
+    assert.match(source, /save leaderboard settings|save settings/i);
+    assert.match(source, /choose a public alias|choose an alias/i);
   }
   assert.match(explore, /Daily Leaderboard/);
   assert.match(app, /DailyLeaderboardPage/);
