@@ -50,10 +50,11 @@ test("public leaderboard UI states the IST midnight reset and privacy model", ()
 
 
 test("leaderboard migration has complete, well-formed alias constraints and remains private by default", () => {
-  assert.match(migration, /do \\$\\$[\\s\\S]*?end\\s*\\$\\$;/i);
+  assert.equal((migration.match(/do \\$\\$/g) || []).length, 1);
+  assert.equal((migration.match(/\\$\\$;/g) || []).length, 1);
+  assert.ok(migration.includes("leaderboard_opt_in boolean not null default false"));
+  assert.ok(migration.includes("leaderboard_display_name = btrim(leaderboard_display_name)"));
+  assert.ok(migration.includes("leaderboard_display_name ~ '^[A-Za-z0-9][A-Za-z0-9 ._-]{1,23}$'"));
+  assert.ok(migration.includes("create unique index if not exists profiles_daily_leaderboard_alias_unique_idx"));
   assert.doesNotMatch(migration, /do \\$\\s/);
-  assert.match(migration, /leaderboard_opt_in boolean not null default false/i);
-  assert.match(migration, /leaderboard_display_name = btrim\\(leaderboard_display_name\\)/i);
-  assert.match(migration, /leaderboard_display_name ~ '\\^\[A-Za-z0-9\]\[A-Za-z0-9 \\._-\]\\{1,23\}\\$'/i);
-  assert.match(migration, /create unique index if not exists profiles_daily_leaderboard_alias_unique_idx/i);
 });
