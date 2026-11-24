@@ -241,6 +241,45 @@ $function$;
 REVOKE ALL ON FUNCTION public.complete_academy_setup(uuid, text, text, text, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.complete_academy_setup(uuid, text, text, text, text, text) TO authenticated;
 
+-- Re-link a legacy Academy only when the authenticated caller is an approved
+-- administrator of that exact active workspace.
+CREATE OR REPLACE FUNCTION public.link_owned_academy_workspace(
+  p_academy_id uuid
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_user_id uuid := (SELECT auth.uid());
+  v_updated integer;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+  IF NOT private.user_is_approved_academy_admin(p_academy_id)
+     OR NOT EXISTS (
+       SELECT 1 FROM public.academies a
+       WHERE a.id = p_academy_id AND a.status = 'active'
+     ) THEN
+    RAISE EXCEPTION 'Approved Academy Admin access required';
+  END IF;
+
+  UPDATE public.profiles
+     SET academy_id = p_academy_id, updated_at = now()
+   WHERE user_id = v_user_id;
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated <> 1 THEN
+    RAISE EXCEPTION 'Academy Admin profile was not found';
+  END IF;
+  RETURN true;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.link_owned_academy_workspace(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.link_owned_academy_workspace(uuid) TO authenticated;
+
 -- Keep the legacy RPC for older clients, with its original subscription gate.
 CREATE OR REPLACE FUNCTION public.create_academy(
   p_name text,
