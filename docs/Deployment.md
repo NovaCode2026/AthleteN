@@ -10,7 +10,21 @@ This guide applies to the **AthleteN** repository and its existing production Su
 - Production URL: `https://athleten.netlify.app`
 - Supabase project: `wjegokgtrewtoopbsiol` (Mumbai region)
 
-The current Supabase project already has the production schema and migrations applied. **Do not re-run the baseline schema/policy/storage SQL files against this live database.** Use the versioned migration files for future database changes and verify applied migrations before deploying code that depends on them.
+The connected production Supabase project is healthy and contains an existing production schema, but the Git-tracked migration directory is **not reconciled** with its live migration ledger. Do not infer that a candidate migration has been applied merely because later schema objects exist. **Do not re-run baseline schema/policy/storage SQL files, push the candidate migration set, reset the database, or edit the migration ledger** until the drift has been reconciled against trusted SQL sources and a restore/preview replay has passed.
+
+## Current release-candidate hold — 24 November 2026
+
+This dated snapshot is the controlling deployment warning until a newer, evidence-backed release review replaces it.
+
+- Netlify production deploy `6afacd1f1942bf308824382c` is ready but was published on 16 November 2026 from main commit `df01b18935811c1a93c3246f039f07454ff91f45`. The currently inspected `main` is five commits ahead of that deployed commit. The open release candidate is not deployed.
+- Supabase project `wjegokgtrewtoopbsiol` is `ACTIVE_HEALTHY` on PostgreSQL 17. Its live ledger contains 200 migration records through `20261119015503`.
+- The 23 November migration inventory records 157 remote-only versions, 77 local-only timestamp versions, two duplicate local timestamp groups, and 19 nonstandard SQL filenames. Filename/version comparison is not proof of equivalent SQL effects. See `docs/MIGRATION_HISTORY_DRIFT_2026-11-23.md`.
+- Read-only schema checks confirm the AI budget ledger tables and `activate_paid_subscription(uuid,text,text,text,text,timestamptz)` exist. They do **not** confirm the candidate webhook receipt objects: `private.payment_webhook_receipts` and the `claim_payment_webhook_event`, `complete_payment_webhook_event`, and `fail_payment_webhook_event` RPCs are absent. The `subscriptions.cancel_at_period_end` column is also absent.
+- The release-candidate webhook claims a durable receipt before processing provider events. Deploying that webhook before its table and RPC migration is verified would make signed webhook processing fail closed. Keep the webhook migration and code deployment behind the reconciled-schema gate.
+- Supabase Security Advisor still reports 60 authenticated-callable `SECURITY DEFINER` functions, `pg_net` in `public`, three RLS-enabled tables without policies (including intentionally backend-only tables), and leaked-password protection disabled. Review functions individually; do not bulk-revoke, and do not add broad RLS policies.
+- Paid checkout and subscription cancellation remain disabled. Provider sandbox evidence, adult-authorized merchant onboarding and customer/legal terms, Auth dashboard configuration, a production-signed Android artifact, and physical-device/two-account acceptance remain separate release gates.
+
+**Decision: do not merge or deploy PR #68 yet.** Reconcile the migration baseline and prove the preview/restore replay first. Then verify candidate schema effects and function privileges against production, complete the remaining operator/device gates, and rerun all checks on the final head.
 
 ## Netlify build settings
 
