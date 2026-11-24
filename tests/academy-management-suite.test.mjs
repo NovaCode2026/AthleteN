@@ -77,6 +77,11 @@ test("Academy announcements respect account and Academy notification preferences
   assert.match(migration, /coalesce\(np\.coach_academy,true\)=true/);
   assert.match(migration, /coalesce\(anp\.announcements,true\)=true/);
   assert.match(migration, /academy_publish_announcement/);
+  assert.match(migration, /private\.enqueue_academy_notification/);
+  assert.match(migration, /academy_management_notify_event/);
+  assert.match(migration, /academy_fee_invoice_notify/);
+  assert.match(migration, /academy_transfer_notify/);
+  assert.match(migration, /academy_seat_request_notify/);
   assert.match(mobile, /academy_publish_announcement/);
   assert.match(web, /academy_publish_announcement/);
 });
