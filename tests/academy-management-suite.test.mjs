@@ -99,6 +99,8 @@ test("Reports and Coach seats are logged and paid seats remain pending without p
   assert.match(migration, /verified payment-provider webhook/);
   assert.match(mobile, /Share\.share/);
   assert.match(web, /createObjectURL/);
+  assert.match(mobile, /finance_transactions/);
+  assert.match(web, /finance_transactions/);
 });
 
 test("Staff assignments are bounded and the audit table has no direct client write policy", () => {
