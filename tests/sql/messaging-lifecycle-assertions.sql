@@ -33,6 +33,21 @@ INSERT INTO public.messages(
   auth.uid(), '', '20000000-0000-4000-8000-000000000001/file.mp4',
   'file.mp4', 'video/mp4', 1234, now()
 );
+DO $
+DECLARE v_deleted integer; v_remaining integer;
+BEGIN
+  DELETE FROM storage.objects
+  WHERE bucket_id='message-attachments'
+    AND name='20000000-0000-4000-8000-000000000001/file.mp4';
+  GET DIAGNOSTICS v_deleted = ROW_COUNT;
+  SELECT count(*) INTO v_remaining FROM storage.objects
+  WHERE bucket_id='message-attachments'
+    AND name='20000000-0000-4000-8000-000000000001/file.mp4';
+  IF v_deleted <> 0 OR v_remaining <> 1 THEN
+    RAISE EXCEPTION 'Uploader directly deleted an attachment still referenced by a live message';
+  END IF;
+END
+$;
 SELECT public.delete_message_for_everyone('30000000-0000-4000-8000-000000000002');
 
 -- Inspect service-role-only cleanup queue as the database owner, not the client role.
@@ -141,6 +156,19 @@ BEGIN
   IF v_count <> 0 THEN RAISE EXCEPTION 'Expired message remained readable through RLS'; END IF;
 END
 $$;
+RESET ROLE;
+
+-- Even the legacy super-admin permissive policy cannot reveal expired messages.
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',false);
+DO $
+DECLARE v_count integer;
+BEGIN
+  SELECT count(*) INTO v_count FROM public.messages
+  WHERE id='30000000-0000-4000-8000-000000000001';
+  IF v_count <> 0 THEN RAISE EXCEPTION 'Restrictive expiry guard was bypassed by a permissive admin policy'; END IF;
+END
+$;
 RESET ROLE;
 
 SET ROLE service_role;
