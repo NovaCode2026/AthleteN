@@ -96,6 +96,8 @@ END
 $balance$;
 
 -- Simulate 30 credits earned earlier in this UTC month; the next callback must be rejected.
+-- This fixture-only historical data is inserted by the database owner, not service_role.
+RESET ROLE;
 INSERT INTO public.reward_ledger(
   user_id,provider,provider_transaction_id,reward_key,amount,event_type,expires_at,created_at
 )
@@ -110,6 +112,7 @@ SELECT
   now() - interval '1 day'
 FROM generate_series(1,15) AS g;
 
+SET ROLE service_role;
 INSERT INTO public.reward_ad_sessions(user_id,provider,custom_data_hash,expires_at)
 VALUES ('30000000-0000-0000-0000-000000000002','admob',repeat('b',63)||'1',now()+interval '10 minutes');
 
