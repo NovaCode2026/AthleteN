@@ -689,7 +689,7 @@ begin
     select * into v_invoice from public.academy_fee_invoices where id=(v_row->>'invoice_id')::uuid;
     select coalesce(sum(amount),0) into v_payment_total from public.academy_fee_payments where invoice_id=v_invoice.id;
     perform private.enqueue_academy_notification(v_invoice.academy_id,v_invoice.athlete_user_id,
-      'Academy fee payment recorded','Recorded '+('₹'||(v_row->>'amount'))||' · Total received ₹'||v_payment_total,'fees');
+      'Academy fee payment recorded','Recorded ₹'||coalesce(v_row->>'amount','0')||' · Total received ₹'||v_payment_total,'fees');
 
   elsif tg_table_name='academy_athlete_transfer_requests' then
     v_status:=v_row->>'status';
