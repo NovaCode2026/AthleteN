@@ -77,7 +77,7 @@ GRANT EXECUTE ON FUNCTION public.is_age_approved(uuid) TO authenticated, service
 GRANT EXECUTE ON FUNCTION public.is_conversation_member(uuid) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated, service_role;
 GRANT SELECT ON public.messages, public.conversation_members, public.conversations TO authenticated, service_role;
-GRANT DELETE ON storage.objects TO authenticated;
+GRANT SELECT, DELETE ON storage.objects TO authenticated;
 CREATE POLICY "message attachment delete by uploader"
   ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'message-attachments' AND owner_id = (SELECT auth.uid())::text);
