@@ -201,10 +201,10 @@ RESET ROLE;
 -- Simulate athlete/coach code-redemption RPCs inserting the selected memberships.
 INSERT INTO public.academy_memberships(academy_id, user_id, role, status)
 SELECT id, '00000000-0000-0000-0000-000000000011', 'athlete', 'active'
-FROM public.academies WHERE name = 'Approved Academy';
+FROM public.academies WHERE name = 'Verified Academy';
 INSERT INTO public.academy_memberships(academy_id, user_id, role, status)
 SELECT id, '00000000-0000-0000-0000-000000000015', 'coach', 'active'
-FROM public.academies WHERE name = 'Approved Academy';
+FROM public.academies WHERE name = 'Verified Academy';
 
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000013', false);
