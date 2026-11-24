@@ -131,6 +131,20 @@ Never put any of the following in mobile environment variables or the app bundle
 
 OAuth and password-reset redirects use the configured `athleten://auth/callback` app scheme. Keep the Supabase Site URL and mobile redirect allowlist correctly configured; do not replace the Site URL with a mobile deep link.
 
+
+### Rewarded-ad configuration (Android only)
+
+Development builds use Google's sample AdMob App IDs and the SDK's rewarded test unit. The native SDK does not run in Expo Go; use a development build for device testing.
+
+A production rewarded-ad unit ID is a public placement identifier, not a server secret, but it must not be copied into tracked source files. The responsible adult who owns the approved publisher account must configure the same unit ID in both places:
+
+- EAS build environment: EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID
+- Netlify server environment: ADMOB_REWARDED_AD_UNIT_ID
+
+The Android App ID must be supplied separately as ADMOB_ANDROID_APP_ID. The config plugin checks that its publisher number matches the rewarded ad unit's publisher number and delays app measurement until the UMP consent flow. A mismatch fails configuration rather than sending a request under the wrong app identity.
+
+Server-side flags ATHLETEN_REWARDED_ADS_ENABLED, ATHLETEN_REWARDED_ADS_LIVE_APPROVED, and ATHLETEN_REWARDED_ADS_MINOR_SAFETY_APPROVED must remain disabled until the adult publisher owner and the required policy/privacy reviewers approve the release. This release only permits server-verified adult accounts; every account under 18 is denied an ad session. The production ad unit ID supplied during setup is not a substitute for publisher ownership or approval.
+
 ## Related guides
 
 - [Main README](../README.md)
