@@ -15,7 +15,7 @@ type Wallet = {
 type Badge = { id: string; badge_key: string; badge_label: string; awarded_at: string; permanent: boolean };
 type BadgeDefinition = { badge_key: string; description?: string | null; icon?: string | null; rarity?: string | null };
 type WalletPayload = Partial<Wallet> & { error?: string };
-const API_BASE = (import.meta.env.VITE_ATHLETEN_API_URL as string | undefined)?.replace(/\\/$/, "") || "";
+const API_BASE = (import.meta.env.VITE_ATHLETEN_API_URL as string | undefined)?.replace(/\/$/, "") || "";
 
 function Stat({ label, value, detail }: { label: string; value: string | number; detail: string }) {
   return <article className="rewards-stat card panel"><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
