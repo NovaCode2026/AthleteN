@@ -583,6 +583,50 @@ create table if not exists public.academy_notification_preferences (
   primary key(academy_id,user_id)
 );
 
+-- Apply the per-Academy announcement preference at fan-out time. Missing
+-- preferences default to enabled; the account-wide coach_academy switch still
+-- remains respected.
+create or replace function public.academy_publish_announcement(
+  p_academy_id uuid,p_title text,p_body text,p_audience text default 'all',p_group_id uuid default null
+) returns uuid language plpgsql security definer set search_path=''
+as $function$
+declare v_id uuid;
+begin
+  if auth.uid() is null or not private.user_has_academy_permission(p_academy_id,'announcements.publish') then
+    raise exception 'Academy announcement permission required';
+  end if;
+  if p_title is null or length(btrim(p_title)) not between 2 and 120
+     or p_body is null or length(btrim(p_body)) not between 2 and 3000
+     or p_audience not in ('all','athletes','coaches') then
+    raise exception 'Invalid announcement content or audience';
+  end if;
+  if p_group_id is not null and not exists(
+    select 1 from public.training_groups g
+    join public.academy_memberships m on m.academy_id=p_academy_id and m.user_id=g.coach_user_id
+    where g.id=p_group_id and m.role='coach' and m.status='active'
+  ) then raise exception 'Group must belong to an active Academy Coach'; end if;
+  insert into public.academy_announcements(academy_id,group_id,audience,title,body,created_by,published_at)
+    values(p_academy_id,p_group_id,p_audience,btrim(p_title),btrim(p_body),auth.uid(),now())
+    returning id into v_id;
+  insert into public.notifications(user_id,title,body,notification_type,action_route,created_at,updated_at)
+  select m.user_id,btrim(p_title),left(btrim(p_body),240),'announcement','/notifications',now(),now()
+    from public.academy_memberships m
+    left join public.notification_preferences np on np.user_id=m.user_id
+    left join public.academy_notification_preferences anp on anp.academy_id=p_academy_id and anp.user_id=m.user_id
+    where m.academy_id=p_academy_id and m.status='active'
+      and coalesce(np.coach_academy,true)=true
+      and coalesce(anp.announcements,true)=true
+      and (p_audience='all' or (p_audience='athletes' and m.role='athlete') or (p_audience='coaches' and m.role='coach'))
+      and (
+        p_group_id is null
+        or exists(select 1 from public.training_group_members gm where gm.group_id=p_group_id and gm.athlete_user_id=m.user_id and gm.status='active')
+      );
+  return v_id;
+end;
+$function$;
+revoke all on function public.academy_publish_announcement(uuid,text,text,text,uuid) from public,anon;
+grant execute on function public.academy_publish_announcement(uuid,text,text,text,uuid) to authenticated;
+
 -- 9. Explicit Academy permissions and 10. append-only audit trail.
 create table if not exists public.academy_audit_log (
   id uuid primary key default gen_random_uuid(),
@@ -754,7 +798,12 @@ create policy academy_notification_preferences_read on public.academy_notificati
 using (user_id=auth.uid() or private.user_is_approved_academy_admin(academy_id));
 drop policy if exists academy_notification_preferences_write on public.academy_notification_preferences;
 create policy academy_notification_preferences_write on public.academy_notification_preferences for all to authenticated
-using (user_id=auth.uid()) with check (user_id=auth.uid());
+using (user_id=auth.uid() and exists(
+  select 1 from public.academy_memberships m where m.academy_id=academy_notification_preferences.academy_id and m.user_id=auth.uid() and m.status='active'
+))
+with check (user_id=auth.uid() and exists(
+  select 1 from public.academy_memberships m where m.academy_id=academy_notification_preferences.academy_id and m.user_id=auth.uid() and m.status='active'
+));
 drop policy if exists academy_audit_log_read on public.academy_audit_log;
 create policy academy_audit_log_read on public.academy_audit_log for select to authenticated
 using (private.user_has_academy_permission(academy_id,'audit.read'));
