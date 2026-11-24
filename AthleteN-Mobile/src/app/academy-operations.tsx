@@ -135,6 +135,7 @@ export default function AcademyOperations(){
     }catch(e:any){Alert.alert('Export unavailable',e?.message||'Check report permissions.');}finally{setBusy(false);}
   };
   const titleStyle:any={color:c.text,fontSize:22,fontWeight:'900'};const hintStyle:any={color:c.muted,fontSize:10,lineHeight:16};
+  const visibleSections=!academyId?sections.filter(x=>x.id==='guardians'):profile?.role==='athlete'?sections.filter(x=>['transfers','guardians','notifications'].includes(x.id)):sections;
 
   return <Screen>
     <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
@@ -143,7 +144,7 @@ export default function AcademyOperations(){
     </View>
     {error?<Card style={{borderColor:'#8b3a45'}}><Text style={{color:'#ff8f9f',fontSize:10,fontWeight:'900'}}>ACCESS / DATA NOTE</Text><Text style={{color:c.text,fontSize:9,marginTop:4}}>{error}</Text></Card>:null}
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom:12}} contentContainerStyle={{gap:7}}>
-      {sections.map(x=><Pressable key={x.id} onPress={()=>setSection(x.id)} style={{paddingHorizontal:13,paddingVertical:9,borderRadius:12,backgroundColor:section===x.id?c.accent:c.surface,borderWidth:1,borderColor:section===x.id?c.accent:c.border}}><Text style={{color:section===x.id?'#fff':c.text,fontSize:9,fontWeight:'900'}}>{x.label}</Text></Pressable>)}
+      {visibleSections.map(x=><Pressable key={x.id} onPress={()=>setSection(x.id)} style={{paddingHorizontal:13,paddingVertical:9,borderRadius:12,backgroundColor:section===x.id?c.accent:c.surface,borderWidth:1,borderColor:section===x.id?c.accent:c.border}}><Text style={{color:section===x.id?'#fff':c.text,fontSize:9,fontWeight:'900'}}>{x.label}</Text></Pressable>)}
     </ScrollView>
 
     {section==='fees'?<View style={{gap:9}}>
