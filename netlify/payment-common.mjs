@@ -15,8 +15,14 @@ export function serverSupabase() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
+export function extractBearerToken(authorization) {
+  if (typeof authorization !== "string") return null;
+  const match = authorization.match(/^Bearer\s+(\S+)\s*$/i);
+  return match?.[1] ?? null;
+}
+
 export async function authenticate(request) {
-  const token = request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "");
+  const token = extractBearerToken(request.headers.get("authorization"));
   if (!token) return null;
   const url = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const key = env("SUPABASE_ANON_KEY") || env("VITE_SUPABASE_ANON_KEY");
