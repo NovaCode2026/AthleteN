@@ -58,3 +58,9 @@ test('Rewards Centre exposes a user-controlled UMP privacy-options action', () =
   assert.ok(source.includes('MANAGE AD PRIVACY'));
   assert.ok(source.includes('openAdsPrivacyOptions'));
 });
+
+test('platform resolver re-exports the privacy-options action', () => {
+  const source = read('src/lib/rewarded-ads.ts');
+  assert.ok(source.includes('openAdsPrivacyOptions'));
+  assert.ok(source.includes('presentRewardedAd'));
+});
