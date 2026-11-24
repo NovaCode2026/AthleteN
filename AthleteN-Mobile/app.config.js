@@ -9,7 +9,10 @@ const TEST_IOS_APP_ID = 'ca-app-pub-3940256099942544~1458002511';
 function appId(value, fallback, platform) {
   const candidate = String(value || '').trim();
   if (!candidate) return fallback;
-  if (!/^ca-app-pub-\\d+~\\d+$/.test(candidate)) {
+  const [publisher, app] = candidate.split('~');
+  const isDigits = value => value.length > 0 && [...value].every(character => character >= '0' && character <= '9');
+  if (!candidate.startsWith('ca-app-pub-') || candidate.split('~').length !== 2 ||
+      !isDigits(publisher.slice('ca-app-pub-'.length)) || !isDigits(app)) {
     throw new Error('ADMOB_' + platform + '_APP_ID must be a valid AdMob application ID.');
   }
   return candidate;
