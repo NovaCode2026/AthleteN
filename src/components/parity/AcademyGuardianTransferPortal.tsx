@@ -30,7 +30,7 @@ export default function AcademyGuardianTransferPortal({setToast}:Props){
   const [targetCoach,setTargetCoach]=useState("");
   const [reason,setReason]=useState("");
   const [inviteAthlete,setInviteAthlete]=useState("");
-  const [inviteGuardian,setInviteGuardian]=useState("");
+  const [inviteGuardianId,setInviteGuardianId]=useState("");
   const [relationship,setRelationship]=useState("parent");
   const [scopes,setScopes]=useState<string[]>(["announcements","calendar"]);
   const [guardianSummary,setGuardianSummary]=useState<any>(null);
@@ -108,8 +108,8 @@ export default function AcademyGuardianTransferPortal({setToast}:Props){
     ()=>supabase.rpc("academy_review_athlete_transfer",{p_request_id:row.id,p_action:action}),
     "Transfer request updated."
   );
-  const inviteGuardian=()=>run(
-    ()=>supabase.rpc("academy_create_guardian_link",{p_academy_id:academyId,p_athlete_user_id:inviteAthlete.trim(),p_guardian_user_id:inviteGuardian.trim(),p_relationship:relationship}),
+  const sendGuardianInvitation=()=>run(
+    ()=>supabase.rpc("academy_create_guardian_link",{p_academy_id:academyId,p_athlete_user_id:inviteAthlete.trim(),p_guardian_user_id:inviteGuardianId.trim(),p_relationship:relationship}),
     "Guardian invitation created. Guardian acceptance and athlete approval are both required."
   );
   const acceptGuardian=(row:any)=>run(
@@ -152,10 +152,10 @@ export default function AcademyGuardianTransferPortal({setToast}:Props){
       <p className="messaging-help">Only invite an account after the Academy has confirmed an appropriate adult-authorized basis. This workflow does not independently verify legal identity or guardianship.</p>
       <div className="form-grid">
         <label className="field"><span>ATHLETE USER ID</span><input value={inviteAthlete} onChange={e=>setInviteAthlete(e.target.value)} placeholder="Active Academy athlete UUID"/></label>
-        <label className="field"><span>GUARDIAN ACCOUNT USER ID</span><input value={inviteGuardian} onChange={e=>setInviteGuardian(e.target.value)} placeholder="Existing guardian account UUID"/></label>
+        <label className="field"><span>GUARDIAN ACCOUNT USER ID</span><input value={inviteGuardianId} onChange={e=>setInviteGuardianId(e.target.value)} placeholder="Existing guardian account UUID"/></label>
         <label className="field"><span>RELATIONSHIP</span><select value={relationship} onChange={e=>setRelationship(e.target.value)}><option value="parent">Parent</option><option value="legal_guardian">Legal guardian</option><option value="caregiver">Caregiver</option></select></label>
       </div>
-      <button type="button" className="btn primary" disabled={busy||!inviteAthlete.trim()||!inviteGuardian.trim()} onClick={()=>void inviteGuardian()}>Create guardian invitation</button>
+      <button type="button" className="btn primary" disabled={busy||!inviteAthlete.trim()||!inviteGuardianId.trim()} onClick={()=>void sendGuardianInvitation()}>Create guardian invitation</button>
     </section>}
 
     <section className="academy-portal-subsection">
