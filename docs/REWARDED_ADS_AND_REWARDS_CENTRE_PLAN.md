@@ -137,6 +137,16 @@ Provider eligibility, app approval, consent, and ad inventory must be confirmed 
 
 The AI endpoint must compute available plan allowance and bonus allowance server-side. Ad-earned credits must not increase a paid subscription's entitlement, change plan status, or unlock premium features. A user with no plan allowance may use valid bonus messages if otherwise eligible. When a request fails before provider processing, quota handling must follow the existing AI budget ledger's reservation/settlement rules; do not invent a second unmetered AI path.
 
+### Mobile navigation and Rewards Centre placement
+
+The mobile Rewards Centre has three deliberate entry points:
+
+1. **Primary entry:** Explore → Account & Subscription → Rewards Centre. Keep this as the canonical navigation destination.
+2. **Profile shortcut:** Add a compact Rewards Centre card to the athlete Profile screen, below the profile identity header. This is a secondary shortcut; it must not expose sensitive athlete data to an ad provider.
+3. **AI quota fallback:** When the subscription AI allowance is exhausted or the plan has no included AI requests, show a contextual link to Rewards Centre from AI Coach. The AI endpoint remains authoritative: it may use a valid reward credit if available, and must return a clear quota response otherwise.
+
+Do not add automatic pop-ups, interstitial prompts, or ad prompts to Home, Training, or Competition screens. Do not interrupt a training or competition workflow to promote rewards. The user must navigate to Rewards Centre and explicitly opt in before any future ad can be requested.
+
 ### Web
 
 Web reward wallet/history may display and redeem rewards earned on Android after authentication. Do not assume AdMob's Android rewarded inventory can be embedded on web. Any web ad provider integration is a separate approval and policy review. Keep web ad playback disabled until a supported web provider is selected and verified.
