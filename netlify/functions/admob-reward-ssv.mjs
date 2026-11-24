@@ -10,16 +10,24 @@ function textResponse(message, status = 200) {
   return new Response(message, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
 }
 
+async function refreshPublicKeys() {
+  const response = await fetch(KEY_URL, { signal: AbortSignal.timeout(5000) });
+  if (!response.ok) throw new Error("AD_NETWORK_KEY_FETCH_FAILED");
+  const payload = await response.json();
+  if (!Array.isArray(payload?.keys) || payload.keys.length === 0) throw new Error("AD_NETWORK_KEYS_INVALID");
+  cachedKeys = new Map(payload.keys.map((key) => [String(key.keyId), key.pem]).filter((entry) => entry[0] && entry[1]));
+  cachedAt = Date.now();
+}
+
 async function getPublicKey(keyId) {
-  if (!cachedKeys || Date.now() - cachedAt > KEY_CACHE_MAX_AGE_MS) {
-    const response = await fetch(KEY_URL, { signal: AbortSignal.timeout(5000) });
-    if (!response.ok) throw new Error("AD_NETWORK_KEY_FETCH_FAILED");
-    const payload = await response.json();
-    if (!Array.isArray(payload?.keys) || payload.keys.length === 0) throw new Error("AD_NETWORK_KEYS_INVALID");
-    cachedKeys = new Map(payload.keys.map((key) => [String(key.keyId), key.pem]).filter((entry) => entry[0] && entry[1]));
-    cachedAt = Date.now();
+  if (!cachedKeys || Date.now() - cachedAt > KEY_CACHE_MAX_AGE_MS) await refreshPublicKeys();
+  let pem = cachedKeys.get(String(keyId));
+  // Refresh once on an unknown key so key rotations do not cause valid callbacks
+  // to fail until the full cache lifetime elapses.
+  if (!pem) {
+    await refreshPublicKeys();
+    pem = cachedKeys.get(String(keyId));
   }
-  const pem = cachedKeys.get(String(keyId));
   if (!pem) throw new Error("AD_NETWORK_KEY_NOT_FOUND");
   return createPublicKey(pem);
 }
