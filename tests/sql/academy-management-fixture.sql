@@ -4,6 +4,11 @@ DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL;
 DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 CREATE SCHEMA IF NOT EXISTS auth;
 CREATE SCHEMA IF NOT EXISTS private;
+CREATE TABLE auth.users (
+  id uuid PRIMARY KEY,
+  email text,
+  email_confirmed_at timestamptz
+);
 GRANT USAGE ON SCHEMA public, auth, private TO authenticated;
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid LANGUAGE sql STABLE
@@ -74,3 +79,10 @@ INSERT INTO public.profiles(user_id, role) VALUES
  ('00000000-0000-0000-0000-000000000013', 'academy_admin'),
  ('00000000-0000-0000-0000-000000000014', 'academy_admin'),
  ('00000000-0000-0000-0000-000000000015', 'coach');
+
+INSERT INTO auth.users(id, email, email_confirmed_at) VALUES
+ ('00000000-0000-0000-0000-000000000011', 'athlete@example.test', '2026-11-01T00:00:00Z'),
+ ('00000000-0000-0000-0000-000000000012', 'coach@example.test', '2026-11-01T00:00:00Z'),
+ ('00000000-0000-0000-0000-000000000013', 'academy-admin@example.test', '2026-11-01T00:00:00Z'),
+ ('00000000-0000-0000-0000-000000000014', 'unverified-admin@example.test', NULL),
+ ('00000000-0000-0000-0000-000000000015', 'ordinary-coach@example.test', '2026-11-01T00:00:00Z');
