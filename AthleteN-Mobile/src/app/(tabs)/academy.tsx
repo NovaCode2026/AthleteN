@@ -12,7 +12,7 @@ import { getAiLimit } from '@/lib/entitlements';
 import PlanSection from '@/components/plan-section';
 import { ACADEMY_NAV_KEY, ACADEMY_NAV_DEFAULT, ACADEMY_NAV_AVAILABLE } from '@/lib/academy-navigation';
 
-type Tab='Dashboard'|'People'|'Coaches'|'Training'|'Attendance'|'Events'|'Calendar'|'Intelligence'|'Achievements'|'Approvals'|'Communication'|'Finance';
+type Tab='Dashboard'|'People'|'Coaches'|'Training'|'Attendance'|'Events'|'Calendar'|'Intelligence'|'Achievements'|'Approvals'|'Communication'|'Documents'|'Finance';
 type Member={user_id:string;role:string;status:string;full_name?:string|null;belt?:string|null;discipline?:string|null;username?:string|null;weight_kg?:number|null;competition_weight_category?:string|null};
 type Session={id:string;session_date:string;start_time:string;title:string};
 type Event={id:string;user_id?:string;name:string;starts_at:string;location?:string|null;status?:string|null;result?:string|null;coach_user_id?:string|null;discipline?:string|null;verification_status?:string|null};
@@ -61,6 +61,8 @@ export default function Academy(){
  const [trainingLogs,setTrainingLogs]=useState<any[]>([]);
  const [medalRows,setMedalRows]=useState<any[]>([]);
  const [certificateRows,setCertificateRows]=useState<any[]>([]);
+ const [documentRows,setDocumentRows]=useState<any[]>([]);
+ const [calendarRows,setCalendarRows]=useState<any[]>([]);
  const [attendance,setAttendance]=useState<number[]>(Array(7).fill(0));
  const [savedCode,setSavedCode]=useState('');
  const [code,setCode]=useState('');
@@ -108,7 +110,7 @@ export default function Academy(){
   const activeAthleteIds=base.filter(x=>x.role==='athlete'&&x.status==='active').map(x=>x.user_id);
   const coachIds=base.filter(x=>x.role==='coach'&&x.status==='active').map(x=>x.user_id);
   const cutoff=new Date(Date.now()-90*86400000).toISOString().slice(0,10);
-  const [eventResult,groupResult,linkResult,approvalResult,seatResult,trainingResult,medalResult,certificateResult]=await Promise.all([
+  const [eventResult,groupResult,linkResult,approvalResult,seatResult,trainingResult,medalResult,certificateResult,documentResult,calendarResult]=await Promise.all([
    activeAthleteIds.length?supabase.from('tournaments').select('id,user_id,name,starts_at,location,status,result,coach_user_id,discipline,verification_status').in('user_id',activeAthleteIds).gte('starts_at',cutoff).order('starts_at',{ascending:false}).limit(100):Promise.resolve({data:[],error:null}),
    coachIds.length?supabase.from('training_groups').select('id,name,focus_area,coach_user_id,conversation_id,active,recurrence_days,start_time,duration_minutes,default_venue').in('coach_user_id',coachIds).eq('active',true).order('name'):Promise.resolve({data:[],error:null}),
    coachIds.length&&activeAthleteIds.length?supabase.from('coach_athlete_links').select('id,coach_user_id,athlete_user_id,academy_id,status,created_at').in('coach_user_id',coachIds).in('athlete_user_id',activeAthleteIds).eq('status','active'):Promise.resolve({data:[],error:null}),
@@ -116,7 +118,9 @@ export default function Academy(){
    supabase.from('academy_coach_seats').select('coach_user_id,seat_type,status,activation_fee,monthly_fee').eq('academy_id',profile.academy_id).order('created_at'),
    activeAthleteIds.length?supabase.from('training_sessions').select('id,user_id,title,session_date,minutes,intensity').in('user_id',activeAthleteIds).gte('session_date',cutoff).order('session_date',{ascending:false}).limit(400):Promise.resolve({data:[],error:null}),
    activeAthleteIds.length?supabase.from('medals').select('id,user_id,event_name,medal_type,category,awarded_at,result_notes,sport,discipline,verification_status').in('user_id',activeAthleteIds).order('awarded_at',{ascending:false}).limit(200):Promise.resolve({data:[],error:null}),
-   activeAthleteIds.length?supabase.from('certificates').select('id,user_id,title,issued_by,issued_at,verification_status').in('user_id',activeAthleteIds).order('issued_at',{ascending:false}).limit(200):Promise.resolve({data:[],error:null})
+   activeAthleteIds.length?supabase.from('certificates').select('id,user_id,title,issued_by,issued_at,verification_status').in('user_id',activeAthleteIds).order('issued_at',{ascending:false}).limit(200):Promise.resolve({data:[],error:null}),
+   activeAthleteIds.length?supabase.from('documents').select('id,user_id,title,document_type,expires_at,created_at').in('user_id',activeAthleteIds).order('created_at',{ascending:false}).limit(250):Promise.resolve({data:[],error:null}),
+   activeAthleteIds.length?supabase.from('calendar_events').select('id,user_id,title,event_type,event_date,reminder_at,notes').in('user_id',activeAthleteIds).gte('event_date',cutoff).order('event_date').limit(250):Promise.resolve({data:[],error:null})
   ]);
   setEvents((eventResult.data||[]) as Event[]);
   setGroupRows(groupResult.data||[]);
@@ -127,6 +131,8 @@ export default function Academy(){
   setTrainingLogs(trainingResult.data||[]);
   setMedalRows(medalResult.data||[]);
   setCertificateRows(certificateResult.data||[]);
+  setDocumentRows(documentResult.data||[]);
+  setCalendarRows(calendarResult.data||[]);
 
   const groupIds=(groupResult.data||[]).map((x:any)=>x.id);
   if(groupIds.length){
@@ -227,7 +233,8 @@ export default function Academy(){
  const coachName=(id:string)=>members.find((m:any)=>m.user_id===id)?.full_name||members.find((m:any)=>m.user_id===id)?.username||'Coach';
  const recentCalendar=[
   ...sessions.map((x:any)=>({...x,calendarKind:'Training'})),
-  ...events.map((x:any)=>({...x,calendarKind:'Competition',session_date:String(x.starts_at||'').slice(0,10),start_time:''}))
+  ...events.map((x:any)=>({...x,calendarKind:'Competition',session_date:String(x.starts_at||'').slice(0,10),start_time:''})),
+  ...calendarRows.map((x:any)=>({...x,calendarKind:'Athlete calendar',session_date:String(x.event_date||'').slice(0,10),start_time:''}))
  ].filter((x:any)=>x.session_date).sort((a:any,b:any)=>String(a.session_date).localeCompare(String(b.session_date)));
  const upcomingCompetitionCount=events.filter((x:any)=>String(x.starts_at).slice(0,10)>=new Date().toISOString().slice(0,10)).length;
  const financeIncome=financeTx.filter((x:any)=>x.type==='income').reduce((n:number,x:any)=>n+Number(x.amount||0),0);
@@ -295,7 +302,7 @@ export default function Academy(){
 
    <View><Text style={{color:c.text,fontSize:14,fontWeight:'900',marginBottom:8}}>Quick Actions</Text><View style={{gap:7}}>
     {[
-     ['athletes','Manage Athletes','People'],['coaches','Manage Coaches','Coaches'],['training','Manage Training Groups','Training'],['calendar','Open Academy Calendar','Calendar'],['events','Manage Competitions','Events'],['calendar','Attendance Overview','Attendance'],['shield','Review Coach Approvals','Approvals'],['ai','Academy Intelligence','Intelligence'],['trophy','Academy Achievements','Achievements'],['message','Academy Communication','Communication'],['finance','Open Finance','Finance']
+     ['athletes','Manage Athletes','People'],['coaches','Manage Coaches','Coaches'],['training','Manage Training Groups','Training'],['calendar','Open Academy Calendar','Calendar'],['events','Manage Competitions','Events'],['calendar','Attendance Overview','Attendance'],['shield','Review Coach Approvals','Approvals'],['ai','Academy Intelligence','Intelligence'],['trophy','Academy Achievements','Achievements'],['message','Academy Communication','Communication'],['documents','Academy Documents','Documents'],['finance','Open Finance','Finance']
     ].map(([icon,title,dest])=><Pressable key={title} onPress={()=>quick(dest as Tab)} style={{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:14,padding:13,flexDirection:'row',alignItems:'center',gap:11}}><Icon name={icon} size={18}/><Text style={{color:c.text,fontSize:11,fontWeight:'900',flex:1}}>{title}</Text><Icon name="chevron" size={15} color={c.muted}/></Pressable>)}
    </View></View>
 
@@ -416,14 +423,21 @@ export default function Academy(){
    {academyApprovals.length?academyApprovals.map((row:any)=><Card key={row.id} style={{padding:13}}>
     <View style={{flexDirection:'row',alignItems:'center',gap:8}}><View style={{flex:1}}><Text style={{color:c.text,fontSize:11,fontWeight:'900'}}>{athleteName(row.athlete_user_id)}</Text><Text style={{color:c.muted,fontSize:8,marginTop:3}}>{row.request_type==='belt_change'?'Belt change':'Competition category'} · {coachName(row.coach_user_id)}</Text></View><Text style={{color:row.status==='pending'?c.warning:row.status==='approved'?c.success:c.muted,fontSize:8,fontWeight:'900'}}>{String(row.status).toUpperCase()}</Text></View>
     <Text style={{color:c.text,fontSize:10,marginTop:8}}>{row.current_value||'Not set'} → <Text style={{fontWeight:'900'}}>{row.requested_value}</Text></Text>
-    {row.athlete_weight_kg!=null?<Text style={{color:c.muted,fontSize:8,marginTop:3}}>Athlete-submitted weight for category review: {row.athlete_weight_kg} kg</Text>:null}
     {row.status==='pending'&&row.coach_user_id===session?.user?.id?<View style={{flexDirection:'row',gap:8,marginTop:10}}><Button title="REJECT" secondary onPress={()=>void reviewAcademyApproval(row.id,'rejected')} busy={busy}/><Button title="APPROVE" onPress={()=>void reviewAcademyApproval(row.id,'approved')} busy={busy}/></View>:row.status==='pending'?<Text style={{color:c.muted,fontSize:8,marginTop:8}}>Assigned Coach must review this request from their Coach workspace.</Text>:null}
    </Card>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No approval requests yet</Text></Card>}
+  </View>:null}
+
+
+  {tab==='Documents'?<View style={{gap:10}}>
+   <Text style={{color:c.text,fontSize:23,fontWeight:'900'}}>Academy Documents</Text>
+   <Text style={{color:c.muted,fontSize:10}}>Document index for active Academy athletes. Open the athlete record for its full document and certificate history.</Text>
+   {documentRows.length?documentRows.map((row:any)=><Pressable key={row.id} onPress={()=>router.push({pathname:'/academy-athlete-detail',params:{athleteId:row.user_id}})}><Card style={{padding:12}}><View style={{flexDirection:'row',alignItems:'center',gap:10}}><Icon name="documents" size={20}/><View style={{flex:1}}><Text style={{color:c.text,fontSize:11,fontWeight:'900'}}>{row.title||'Athlete document'}</Text><Text style={{color:c.muted,fontSize:9,marginTop:3}}>{athleteName(row.user_id)} · {row.document_type||'Document'} · {row.expires_at?'Expires '+String(row.expires_at).slice(0,10):'No expiry recorded'}</Text></View><Icon name="chevron" size={16}/></View></Card></Pressable>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No Academy documents yet</Text><Text style={{color:c.muted,fontSize:10,marginTop:4}}>Documents uploaded by active Academy athletes will appear here.</Text></Card>}
   </View>:null}
 
   {tab==='Communication'?<View style={{gap:10}}>
    <Text style={{color:c.text,fontSize:23,fontWeight:'900'}}>Academy Communication</Text>
    <Text style={{color:c.muted,fontSize:10,lineHeight:16}}>Use existing private AthleteN conversations and training-group chats. Group access and membership permissions remain enforced by the messaging service.</Text>
+   <Pressable onPress={()=>router.push('/notifications')} style={{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:14,padding:14,flexDirection:'row',alignItems:'center',gap:10}}><Icon name="bell" size={20}/><View style={{flex:1}}><Text style={{color:c.text,fontSize:11,fontWeight:'900'}}>Open Notifications</Text><Text style={{color:c.muted,fontSize:8,marginTop:3}}>Academy and Coach alerts delivered to this account.</Text></View><Icon name="chevron" size={16}/></Pressable>
    <Pressable onPress={()=>router.push('/messages')} style={{backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep,borderRadius:14,padding:14,flexDirection:'row',alignItems:'center',gap:10}}><Icon name="message" size={20}/><View style={{flex:1}}><Text style={{color:c.text,fontSize:11,fontWeight:'900'}}>Open AthleteN Messages</Text><Text style={{color:c.muted,fontSize:8,marginTop:3}}>Direct conversations, group management, replies and notifications.</Text></View><Icon name="chevron" size={16}/></Pressable>
    {groupRows.length?groupRows.map((g:any)=><Card key={g.id} style={{padding:12}}><View style={{flexDirection:'row',alignItems:'center',gap:8}}><View style={{flex:1}}><Text style={{color:c.text,fontSize:11,fontWeight:'900'}}>{g.name}</Text><Text style={{color:c.muted,fontSize:8,marginTop:3}}>{coachName(g.coach_user_id)} · {g.focus_area||'Training group'}</Text></View>{g.conversation_id?<Pressable onPress={()=>router.push({pathname:'/messages',params:{conversationId:g.conversation_id}})} style={{backgroundColor:c.accent,borderRadius:10,paddingHorizontal:11,paddingVertical:8}}><Text style={{color:'#fff',fontSize:8,fontWeight:'900'}}>OPEN CHAT</Text></Pressable>:<Text style={{color:c.muted,fontSize:8}}>No group chat linked</Text>}</View></Card>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No training groups yet</Text></Card>}
    <Card><Text style={{color:c.text,fontSize:11,fontWeight:'900'}}>Announcements and guardian updates</Text><Text style={{color:c.muted,fontSize:9,lineHeight:15,marginTop:5}}>Use group conversations for now. A separate broadcast/announcement feature and parent/guardian delivery flow are not enabled in this release, to avoid sending messages without the right consent and notification controls.</Text></Card>
