@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS public.reward_ledger (
   reward_key text NOT NULL CHECK (reward_key IN ('ai_message')),
   amount integer NOT NULL CHECK (amount <> 0),
   event_type text NOT NULL CHECK (event_type IN ('earned', 'redeemed', 'expired', 'reversed')),
-  source_session_id uuid REFERENCES public.reward_ad_sessions(id) ON DELETE RESTRICT,
+  source_session_id uuid REFERENCES public.reward_ad_sessions(id) ON DELETE SET NULL,
   expires_at timestamptz,
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
