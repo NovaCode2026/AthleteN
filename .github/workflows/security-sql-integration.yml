@@ -62,3 +62,17 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h 127.0.0.1 -U postgres -d athleten_security_test -v ON_ERROR_STOP=1 -f tests/sql/security-authorization-integration.sql
+      - name: Create isolated messaging reactions database
+        env:
+          PGPASSWORD: postgres
+        run: createdb -h 127.0.0.1 -U postgres athleten_message_reactions_test
+      - name: Create messaging fixture and apply reaction migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d athleten_message_reactions_test -v ON_ERROR_STOP=1 -f tests/sql/message-reactions-integration.sql
+          psql -h 127.0.0.1 -U postgres -d athleten_message_reactions_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124140000_message_reactions.sql
+      - name: Verify reaction conversation membership, ownership and allowed values
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_message_reactions_test -v ON_ERROR_STOP=1 -f tests/sql/message-reactions-assertions.sql
