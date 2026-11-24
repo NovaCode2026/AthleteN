@@ -37,6 +37,9 @@ export default function ExploreScreen(){
    <FeatureRow title="Documents" text="Private athlete documents" badge={String(counts.docs)} onPress={()=>router.push({pathname:'/documents'})}/>
    <FeatureRow title="Verification" text="Athlete/student verification status" onPress={()=>router.push({pathname:'/verification'})}/>
   </Section>
+  <Section title="ATHLETEN COMMUNITY">
+   <FeatureRow title="Daily Leaderboard" text="Compare today's verified athlete activity; rankings reset at midnight IST." icon="trophy" onPress={()=>router.push('/leaderboard')}/>
+  </Section>
   <Section title="ATHLETE OPERATING SYSTEM">
    <FeatureRow title="Today's Command Center" text="See the next useful action across training, competition and missions." icon="dashboard" onPress={()=>router.push('/athlete-command')}/>
    <FeatureRow title="Training Session Mode" text="Run a timed session and save it to the same training history." icon="training" onPress={()=>router.push('/training-session')}/>
