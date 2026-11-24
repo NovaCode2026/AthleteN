@@ -1,14 +1,14 @@
 export const LEADERBOARD_TIME_ZONE = "Asia/Kolkata";
 
 export const LEADERBOARD_CATEGORIES = Object.freeze([
-  { key: "training_consistency", label: "Training & Consistency", status: "active", description: "One daily credit for logging a training day. Extra sessions do not add more points." },
-  { key: "performance_progress", label: "Performance & Progress", status: "active", description: "Coach-verified milestones achieved today." },
-  { key: "competition", label: "Competition", status: "active", description: "Coach-verified tournament results and verified medals recorded today." },
+  { key: "training_consistency", label: "Training & Consistency", status: "active", description: "10 points once per IST day when a training session is logged. Extra sessions and longer duration add no extra points." },
+  { key: "performance_progress", label: "Performance & Progress", status: "active", description: "10 points per coach-verified milestone; daily cap 20." },
+  { key: "competition", label: "Competition", status: "active", description: "5 points per verified tournament result or medal; daily cap 10." },
   { key: "fitness_conditioning", label: "Fitness & Conditioning", status: "coming_soon", description: "Will score coach-verified fitness benchmarks only. Training volume, body metrics and health data are not leaderboard points." },
-  { key: "learning_development", label: "Learning & Development", status: "active", description: "Newly verified certificates." },
-  { key: "goals_achievements", label: "Goals & Achievements", status: "active", description: "System-awarded AthleteN badges and achievements." },
+  { key: "learning_development", label: "Learning & Development", status: "active", description: "10 points per newly verified certificate; daily cap 20." },
+  { key: "goals_achievements", label: "Goals & Achievements", status: "active", description: "10 points per system-awarded AthleteN badge; daily cap 20." },
   { key: "community_teamwork", label: "Community & Teamwork", status: "coming_soon", description: "Waiting for a verified contribution source." },
-  { key: "coach_academy", label: "Coach & Academy", status: "active", description: "Attendance marked present or late by a coach." },
+  { key: "coach_academy", label: "Coach & Academy", status: "active", description: "5 points per coach-marked present/late session; daily cap 10." },
   { key: "athleten_engagement", label: "AthleteN Engagement", status: "coming_soon", description: "App opens, screen time and notification taps never earn points." }
 ]);
 
