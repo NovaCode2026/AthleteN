@@ -211,7 +211,7 @@ DECLARE changed integer;
 BEGIN
   UPDATE public.academy_memberships
      SET status = 'suspended', updated_at = now()
-   WHERE academy_id = (SELECT id FROM public.academies WHERE name = 'Approved Academy')
+   WHERE academy_id = (SELECT id FROM public.academies WHERE name = 'Verified Academy')
      AND user_id = '00000000-0000-0000-0000-000000000011';
   GET DIAGNOSTICS changed = ROW_COUNT;
   IF changed <> 1 THEN RAISE EXCEPTION 'Approved Academy Admin could not update member status'; END IF;
