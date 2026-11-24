@@ -101,6 +101,7 @@ AthleteN may be used by minors. Before any live advertising:
 - Configure age-appropriate ad treatment and child/teen privacy controls as required by provider policy and applicable law. Do not use personalised behavioural advertising for children or teens unless a qualified compliance review establishes a lawful and provider-permitted basis; safest initial posture is non-personalised/contextual age-appropriate inventory.
 - Do not collect extra personal data to improve ad targeting. Do not send athlete health, biometric, weight, injury, training, school, or competition data to ad networks.
 - Do not show ads that are unsuitable for minors or categories that could harm young users. Apply provider content ratings and block categories where supported.
+- Explicitly block gambling/betting, alcohol, tobacco/nicotine, weapons, adult content, dating, and other age-inappropriate or high-risk ad categories wherever the provider exposes category controls; verify the settings in the publisher console and test inventory rather than assuming a content rating alone is sufficient.
 - Do not create misleading buttons, fake close controls, forced viewing, or reward promises that cannot be fulfilled.
 - Provide a privacy notice and a clear explanation that the user is choosing to view an advertisement in exchange for a stated in-app reward.
 
