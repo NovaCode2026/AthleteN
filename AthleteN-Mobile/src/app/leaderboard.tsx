@@ -184,7 +184,7 @@ export default function LeaderboardScreen() {
               </Pressable>
             ))}
           </View>
-          {selectedCategory?.status === 'coming_soon' ? <Text style={s.meta}>{selectedCategory.description}</Text> : null}
+          {selectedCategory ? <Text style={s.meta}>{selectedCategory.description}</Text> : null}
         </View>
 
         <View style={s.sectionBlock}>
@@ -194,8 +194,8 @@ export default function LeaderboardScreen() {
           </View>
           {error ? <View style={s.empty}><Text style={s.settingTitle}>Leaderboard unavailable</Text><Text style={s.meta}>{error}</Text><Pressable onPress={() => void load()} style={s.retry}><Text style={s.retryText}>TRY AGAIN</Text></Pressable></View> : null}
           {!busy && !error && rankedRows.length === 0 ? <View style={s.empty}><Text style={s.settingTitle}>No ranked activity yet</Text><Text style={s.meta}>Verified activities will appear here. Unverified claims do not add points.</Text></View> : null}
-          {rankedRows.map((entry) => (
-            <View key={entry.displayName} style={[s.rankRow, entry.isYou && s.youRow]}>
+          {rankedRows.map((entry, index) => (
+            <View key={entry.displayName + '-' + index} style={[s.rankRow, entry.isYou && s.youRow]}>
               <View style={s.rankBadge}><Text style={s.rankText}>#{entry.visibleRank}</Text></View>
               <View style={{ flex: 1 }}>
                 <Text style={s.athleteName}>{entry.displayName}{entry.isYou ? ' · YOU' : ''}</Text>
