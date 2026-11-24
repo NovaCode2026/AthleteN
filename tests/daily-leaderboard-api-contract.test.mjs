@@ -26,7 +26,7 @@ test("leaderboard migration defaults to private opt-out and requires a unique sa
   assert.match(migration, /profiles_leaderboard_opt_in_requires_alias/i);
   assert.match(migration, /create unique index if not exists profiles_daily_leaderboard_alias_unique_idx/i);
   assert.match(migration, /lower\(leaderboard_display_name\)/i);
-  assert.match(migration, /char_length\(btrim\(leaderboard_display_name\)\) between 2 and 24/i);
+  assert.match(migration, /char_length\(leaderboard_display_name\) between 2 and 24/i);
 });
 
 test("web and mobile expose opt-in, opt-out, and alias editing without public identity fields", () => {
