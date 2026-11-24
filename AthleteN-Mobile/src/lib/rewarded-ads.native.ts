@@ -18,9 +18,11 @@ let sdkReady: Promise<void> | null = null;
 async function prepareGoogleMobileAds(): Promise<void> {
   if (!sdkReady) {
     sdkReady = (async () => {
-      // This function is called only after AthleteN's server has issued a
-      // short-lived session, which is restricted to independently verified
-      // adult accounts. DOB and athlete profile data are never sent to AdMob.
+      // The server checks the account's first-saved age-verification record
+      // before issuing this short-lived session. That DOB is not sent to AdMob.
+      // A recorded DOB is not independent identity proof; live serving stays
+      // disabled until adult-owned policy review and any required age assurance
+      // are complete.
       const consent = await AdsConsent.gatherConsent();
       if (!consent.canRequestAds) {
         throw new Error('Ad consent is not available. You can continue using AthleteN without watching an ad.');
