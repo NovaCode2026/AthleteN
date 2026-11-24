@@ -179,7 +179,7 @@ export default function AcademyGuardianTransferPortal({setToast}:Props){
           {row.guardian_user_id===userId&&row.status==="pending_guardian"&&<button type="button" className="btn primary" disabled={busy} onClick={()=>void acceptGuardian(row)}>Accept invitation</button>}
           {row.athlete_user_id===userId&&row.status==="pending_athlete"&&<div className="academy-portal-scopes">{allowedScopes.map(scope=><label key={scope}><input type="checkbox" checked={scopes.includes(scope)} onChange={()=>toggleScope(scope)}/>{scopeLabel[scope]}</label>)}<button type="button" className="btn primary" disabled={busy||scopes.length===0} onClick={()=>void approveGuardian(row)}>Approve selected scopes</button></div>}
           {row.guardian_user_id===userId&&row.status==="active"&&<button type="button" className="btn primary" disabled={busy} onClick={()=>void openSummary(row)}>Open approved summary</button>}
-          {row.athlete_user_id===userId&&row.status==="active"&&<button type="button" className="btn" disabled={busy} onClick={()=>void withdrawGuardian(row)}>Revoke access</button>}
+          {row.athlete_user_id===userId&&["pending_guardian","pending_athlete","active"].includes(row.status)&&<button type="button" className="btn" disabled={busy} onClick={()=>void withdrawGuardian(row)}>{row.status==="active"?"Revoke access":"Cancel invitation"}</button>}
         </div>
       </article>):<p className="empty-copy">No guardian invitations are visible to this account.</p>}
       {guardianSummary&&<article className="academy-portal-summary"><h4>Approved athlete summary</h4><pre>{JSON.stringify(guardianSummary,null,2)}</pre></article>}
