@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS public.push_delivery_attempts (
   receipt_last_checked_at timestamptz,
   receipt_received_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS push_delivery_attempts_notification_device_uidx
