@@ -20,6 +20,9 @@ test('native rewarded ads use consent, test inventory and server-side verificati
   assert.ok(source.includes('TestIds.REWARDED'));
   assert.ok(source.includes('serverSideVerificationOptions: { customData }'));
   assert.ok(source.includes('RewardedAdEventType.EARNED_REWARD'));
+  assert.ok(source.includes("finish(earned ? 'earned' : 'closed')"), 'closing before EARNED_REWARD must not count');
+  assert.ok(source.includes('Closing/skipping before that event is never a reward.'));
+
   assert.ok(source.includes("only AdMob's verified SSV callback"));
   assert.ok(!source.includes('grant_rewarded_ad_credit'));
 });
@@ -84,4 +87,16 @@ test('AdMob app configuration rejects a publisher ID mismatch and accepts a matc
   });
   assert.notEqual(mismatch.status, 0, 'mismatched publisher IDs must fail native config');
   assert.match(mismatch.stderr, /publisher ID must match ADMOB_ANDROID_APP_ID/);
+});
+
+test('only AdMob signed server-side verification can grant reward credits', () => {
+  const native = read('src/lib/rewarded-ads.native.ts');
+  const screen = read('src/app/rewards.tsx');
+  const callback = read('../netlify/functions/admob-reward-ssv.mjs');
+  assert.ok(native.includes("finish(earned ? 'earned' : 'closed')"));
+  assert.ok(screen.includes('pending Google’s server-side verification'));
+  assert.ok(callback.includes('verifySignature'));
+  assert.ok(callback.includes('grant_rewarded_ad_credit'));
+  assert.ok(!native.includes('grant_rewarded_ad_credit'));
+  assert.ok(!screen.includes('grant_rewarded_ad_credit'));
 });
