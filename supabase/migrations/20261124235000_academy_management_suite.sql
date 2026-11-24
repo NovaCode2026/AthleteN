@@ -740,12 +740,13 @@ revoke all on public.academy_staff_assignments,public.academy_fee_invoices,publi
   public.academy_coach_attendance,public.academy_coach_availability,
   public.academy_athlete_transfer_requests,public.academy_announcements,
   public.academy_guardian_links,public.academy_report_exports,public.academy_seat_requests,
-  public.academy_notification_preferences,public.academy_audit_log from anon;
+  public.academy_notification_preferences,public.academy_audit_log from public,anon,authenticated;
 grant select on public.academy_staff_assignments,public.academy_fee_invoices,public.academy_fee_payments,
   public.academy_coach_attendance,public.academy_coach_availability,
   public.academy_athlete_transfer_requests,public.academy_announcements,
   public.academy_guardian_links,public.academy_report_exports,public.academy_seat_requests,
   public.academy_notification_preferences,public.academy_audit_log to authenticated;
+grant insert,update on public.academy_coach_attendance,public.academy_coach_availability,public.academy_notification_preferences to authenticated;
 
 drop policy if exists academy_staff_assignments_read on public.academy_staff_assignments;
 create policy academy_staff_assignments_read on public.academy_staff_assignments for select to authenticated
@@ -762,12 +763,21 @@ create policy academy_coach_attendance_read on public.academy_coach_attendance f
 using (coach_user_id=auth.uid() or private.user_has_academy_permission(academy_id,'attendance.manage'));
 drop policy if exists academy_coach_attendance_insert on public.academy_coach_attendance;
 create policy academy_coach_attendance_insert on public.academy_coach_attendance for insert to authenticated
-with check ((coach_user_id=auth.uid() and exists(select 1 from public.academy_memberships m where m.academy_id=academy_coach_attendance.academy_id and m.user_id=auth.uid() and m.role='coach' and m.status='active') and recorded_by=auth.uid())
-  or (private.user_has_academy_permission(academy_id,'attendance.manage') and recorded_by=auth.uid()));
+with check (
+  recorded_by=auth.uid()
+  and exists(select 1 from public.academy_memberships m where m.academy_id=academy_coach_attendance.academy_id and m.user_id=academy_coach_attendance.coach_user_id and m.role='coach' and m.status='active')
+  and (
+    (coach_user_id=auth.uid() and recorded_by=auth.uid())
+    or private.user_has_academy_permission(academy_id,'attendance.manage')
+  )
+);
 drop policy if exists academy_coach_attendance_update on public.academy_coach_attendance;
 create policy academy_coach_attendance_update on public.academy_coach_attendance for update to authenticated
 using (coach_user_id=auth.uid() or private.user_has_academy_permission(academy_id,'attendance.manage'))
-with check (coach_user_id=auth.uid() or private.user_has_academy_permission(academy_id,'attendance.manage'));
+with check (
+  exists(select 1 from public.academy_memberships m where m.academy_id=academy_coach_attendance.academy_id and m.user_id=academy_coach_attendance.coach_user_id and m.role='coach' and m.status='active')
+  and (coach_user_id=auth.uid() or private.user_has_academy_permission(academy_id,'attendance.manage'))
+);
 drop policy if exists academy_coach_availability_read on public.academy_coach_availability;
 create policy academy_coach_availability_read on public.academy_coach_availability for select to authenticated
 using (coach_user_id=auth.uid() or private.user_has_academy_permission(academy_id,'coaches.manage'));
