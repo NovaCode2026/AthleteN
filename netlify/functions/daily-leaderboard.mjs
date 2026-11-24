@@ -32,6 +32,7 @@ export default async function handler(request) {
       profileResult,
       optedInProfiles,
       trainingSessions,
+      taekwondoTrainingLogs,
       verifiedMilestones,
       verifiedCompetitionResults,
       verifiedMedals,
@@ -51,12 +52,16 @@ export default async function handler(request) {
       readAll(() => admin.from("training_sessions")
         .select("user_id,created_at")
         .gte("created_at", startIso).lt("created_at", endIso)),
+      readAll(() => admin.from("taekwondo_training_logs")
+        .select("user_id,created_at,session_date")
+        .gte("created_at", startIso).lt("created_at", endIso)),
       readAll(() => admin.from("athlete_milestones")
         .select("user_id,achieved_at,verification_status")
         .eq("achieved_at", dayKey)
         .eq("verification_status", "verified")),
       readAll(() => admin.from("tournaments")
-        .select("user_id,starts_at,verification_status")
+        .select("user_id,starts_at,result,verification_status")
+        .not("result", "is", null)
         .eq("verification_status", "verified")
         .gte("starts_at", dayKey).lt("starts_at", period.nextDayKey)),
       readAll(() => admin.from("medals")
