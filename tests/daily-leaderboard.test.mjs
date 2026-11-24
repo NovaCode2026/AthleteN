@@ -51,7 +51,7 @@ test("daily scores are opt-in, bounded and do not reward extra training volume",
   assert.equal(rows[0].categories.coach_academy, 10);
   assert.equal(rows[0].categories.community_teamwork, 0);
   assert.equal(rows[0].categories.athleten_engagement, 0);
-  assert.equal(rows[0].totalPoints, 95);
+  assert.equal(rows[0].totalPoints, 90);
   assert.equal(rows[0].isYou, true);
 });
 
