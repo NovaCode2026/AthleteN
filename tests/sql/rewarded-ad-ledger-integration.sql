@@ -45,15 +45,18 @@ CREATE TABLE public.ai_usage_events (
 
 \ir ../../supabase/migrations/20261124090000_rewarded_ad_credit_ledger.sql
 \ir ../../supabase/migrations/20261124090100_rewarded_ai_credit_consumption.sql
+\ir ../../supabase/migrations/20261124200000_reward_wallet_summary_rpc.sql
 
 INSERT INTO auth.users(id, email) VALUES
  ('30000000-0000-0000-0000-000000000001','athlete-one@athleten.test'),
  ('30000000-0000-0000-0000-000000000002','athlete-two@athleten.test'),
- ('30000000-0000-0000-0000-000000000003','student@athleten.test');
+ ('30000000-0000-0000-0000-000000000003','student@athleten.test'),
+ ('30000000-0000-0000-0000-000000000004','long-ledger@athleten.test');
 INSERT INTO public.profiles(user_id, role, plan_id) VALUES
  ('30000000-0000-0000-0000-000000000001','athlete','pro'),
  ('30000000-0000-0000-0000-000000000002','athlete','free'),
- ('30000000-0000-0000-0000-000000000003','athlete','student');
+ ('30000000-0000-0000-0000-000000000003','athlete','student'),
+ ('30000000-0000-0000-0000-000000000004','athlete','free');
 INSERT INTO public.student_verifications(user_id,status)
 VALUES ('30000000-0000-0000-0000-000000000003','pending');
 
@@ -94,6 +97,37 @@ BEGIN
   IF v_balance <> 6 THEN RAISE EXCEPTION 'Expected six bonus AI credits, got %', v_balance; END IF;
 END
 $balance$;
+
+-- The wallet summary must include the complete ledger, not only the latest 500 entries.
+RESET ROLE;
+INSERT INTO public.reward_ledger(
+  user_id,provider,reward_key,amount,event_type,expires_at,created_at
+)
+SELECT
+  '30000000-0000-0000-0000-000000000004',
+  'achievement',
+  'ai_message',
+  1,
+  'earned',
+  now() + interval '30 days',
+  now() - (g || ' minutes')::interval
+FROM generate_series(1,550) AS g;
+SET ROLE service_role;
+DO $full_wallet$
+DECLARE
+  v_balance integer;
+  v_daily_ads integer;
+  v_monthly_ads integer;
+BEGIN
+  SELECT balance,daily_ads_used,monthly_ad_credits_earned
+    INTO v_balance,v_daily_ads,v_monthly_ads
+  FROM public.get_reward_wallet_summary('30000000-0000-0000-0000-000000000004');
+  IF v_balance <> 550 OR v_daily_ads <> 0 OR v_monthly_ads <> 0 THEN
+    RAISE EXCEPTION 'Full-ledger wallet aggregate is incorrect: balance %, daily %, monthly %',
+      v_balance,v_daily_ads,v_monthly_ads;
+  END IF;
+END
+$full_wallet$;
 
 -- Simulate 30 credits earned earlier in this UTC month; the next callback must be rejected.
 -- This fixture-only historical data is inserted by the database owner, not service_role.
@@ -200,6 +234,13 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN v_blocked := true;
   END;
   IF NOT v_blocked THEN RAISE EXCEPTION 'Authenticated role can execute privileged reward grant RPC'; END IF;
+
+  v_blocked := false;
+  BEGIN
+    PERFORM 1 FROM public.get_reward_wallet_summary('30000000-0000-0000-0000-000000000001');
+  EXCEPTION WHEN insufficient_privilege THEN v_blocked := true;
+  END;
+  IF NOT v_blocked THEN RAISE EXCEPTION 'Authenticated role can execute private wallet summary RPC'; END IF;
 END
 $acl$;
 RESET ROLE;

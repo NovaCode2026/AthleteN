@@ -23,6 +23,7 @@ type Wallet = {
   monthlyAdCreditsEarned: number;
   monthlyAdCreditsLimit: number;
   history: RewardEvent[];
+  nextCursor: string | null;
 };
 
 export default function RewardsScreen() {
@@ -31,6 +32,8 @@ export default function RewardsScreen() {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
+  const [historyError, setHistoryError] = useState('');
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const load = useCallback(async () => {
     if (!session?.access_token) {
@@ -53,7 +56,8 @@ export default function RewardsScreen() {
         dailyAdsLimit: Number(payload.dailyAdsLimit || 3),
         monthlyAdCreditsEarned: Number(payload.monthlyAdCreditsEarned || 0),
         monthlyAdCreditsLimit: Number(payload.monthlyAdCreditsLimit || 30),
-        history: Array.isArray(payload.history) ? payload.history : []
+        history: Array.isArray(payload.history) ? payload.history : [],
+        nextCursor: typeof payload.nextCursor === 'string' ? payload.nextCursor : null
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Rewards are temporarily unavailable.');
@@ -61,6 +65,30 @@ export default function RewardsScreen() {
       setBusy(false);
     }
   }, [session?.access_token]);
+
+  const loadMore = useCallback(async () => {
+    const cursor = wallet?.nextCursor;
+    if (!session?.access_token || !cursor || loadingMore) return;
+    setLoadingMore(true);
+    setHistoryError('');
+    try {
+      const base = (process.env.EXPO_PUBLIC_ATHLETEN_API_URL || 'https://athleten.netlify.app').replace(/\/$/, '');
+      const response = await fetch(base + '/.netlify/functions/reward-wallet?cursor=' + encodeURIComponent(cursor), {
+        headers: { Authorization: 'Bearer ' + session.access_token }
+      });
+      const payload = await response.json().catch(() => ({})) as Partial<Wallet> & { error?: string };
+      if (!response.ok) throw new Error(payload.error || 'Older reward history is temporarily unavailable.');
+      setWallet(current => current ? {
+        ...current,
+        history: [...current.history, ...(Array.isArray(payload.history) ? payload.history : [])],
+        nextCursor: typeof payload.nextCursor === 'string' ? payload.nextCursor : null
+      } : current);
+    } catch (e) {
+      setHistoryError(e instanceof Error ? e.message : 'Older reward history is temporarily unavailable.');
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [session?.access_token, wallet?.nextCursor, loadingMore]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -121,8 +149,14 @@ export default function RewardsScreen() {
 
         <View style={s.historyHeader}>
           <Text style={s.section}>REWARD HISTORY</Text>
-          {busy ? <ActivityIndicator color={c.accentBright} size="small" /> : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {wallet?.nextCursor ? <Pressable onPress={() => void loadMore()} disabled={loadingMore} accessibilityRole="button" accessibilityLabel="Load older reward history">
+              <Text style={s.loadMoreText}>{loadingMore ? 'LOADING…' : 'LOAD OLDER'}</Text>
+            </Pressable> : null}
+            {busy ? <ActivityIndicator color={c.accentBright} size="small" /> : null}
+          </View>
         </View>
+        {historyError ? <Text style={s.historyError}>{historyError}</Text> : null}
         {error ? <View style={s.empty}><Text style={s.emptyTitle}>Wallet unavailable</Text><Text style={s.meta}>{error}</Text><Pressable onPress={() => void load()} style={s.retry}><Text style={s.retryText}>TRY AGAIN</Text></Pressable></View> : null}
         {!error && !busy && wallet?.history.length === 0 ? <View style={s.empty}><Text style={s.emptyTitle}>No rewards yet</Text><Text style={s.meta}>When rewards become available, verified credits and their expiry dates will appear here.</Text></View> : null}
         {!error ? wallet?.history.map((event) => (
@@ -169,6 +203,8 @@ const s = StyleSheet.create({
   ruleTitle: { color: c.text, fontSize: 12, fontWeight: '900' },
   meta: { color: c.muted, fontSize: 10, lineHeight: 15, marginTop: 3 },
   historyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 5 },
+  loadMoreText: { color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: .7 },
+  historyError: { color: c.danger, fontSize: 10, lineHeight: 15 },
   empty: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderRadius: 17, padding: 16, gap: 5 },
   emptyTitle: { color: c.text, fontSize: 13, fontWeight: '900' },
   retry: { alignSelf: 'flex-start', marginTop: 8, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 10, backgroundColor: c.accentSoft },

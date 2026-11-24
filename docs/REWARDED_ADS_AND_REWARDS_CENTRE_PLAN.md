@@ -15,9 +15,10 @@ The following foundation has been committed on PR #76:
 - Authenticated wallet/history and short-lived ad-session endpoints, including session creation rate limiting.
 - AI Coach fallback to a separate bonus-credit reservation after subscription quota is exhausted; the existing platform AI spending reservation remains mandatory.
 - Mobile Rewards Centre wallet/history screen and Explore navigation entry.
+- Wallet balances and daily/monthly caps are calculated from the complete server-side ledger (not a truncated history sample); reward history uses stable cursor pagination.
 - Static security regression tests and an isolated PostgreSQL integration workflow for daily/monthly caps, duplicate events, expiry, credit reservation/refund, Student verification and client-role denial.
 
-**Not yet implemented:** native Android ad SDK dependency/configuration, consent and ad-request lifecycle, actual rewarded-ad presentation, production app/ad-unit IDs, and end-to-end physical-device verification. The wallet screen intentionally states that ads are not live. Session creation is fail-closed unless the global feature, live approval, minor-safety approval and ad-unit environment gates are all explicitly configured.
+**Not yet implemented:** native Android ad SDK dependency/configuration, consent and ad-request lifecycle, actual rewarded-ad presentation, production app/ad-unit IDs, and end-to-end physical-device verification. The wallet aggregate and paginated history are repository-backed; the new summary RPC is a candidate migration and must be replayed in staging before the endpoint is deployed. The wallet screen intentionally states that ads are not live. Session creation is fail-closed unless the global feature, live approval, minor-safety approval and ad-unit environment gates are all explicitly configured.
 
 The SQL files are candidate migrations only. They have not been applied to production. Do not enable the live environment gates or merge this PR until native SDK integration, consent and age-appropriate ad treatment, isolated SQL integration, mobile builds, and adult/legal/provider review are complete.
 

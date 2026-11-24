@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const ledger = readFileSync(new URL("../supabase/migrations/20261124090000_rewarded_ad_credit_ledger.sql", import.meta.url), "utf8");
+const walletSummaryMigration = readFileSync(new URL("../supabase/migrations/20261124200000_reward_wallet_summary_rpc.sql", import.meta.url), "utf8");
 const consumption = readFileSync(new URL("../supabase/migrations/20261124090100_rewarded_ai_credit_consumption.sql", import.meta.url), "utf8");
 const ssv = readFileSync(new URL("../netlify/functions/admob-reward-ssv.mjs", import.meta.url), "utf8");
 const session = readFileSync(new URL("../netlify/functions/create-reward-ad-session.mjs", import.meta.url), "utf8");
@@ -76,6 +77,26 @@ test("bonus AI reservations are server-only, expire with their source credits, a
   assert.match(consumption, /'reversed'/);
   assert.match(consumption, /GRANT EXECUTE ON FUNCTION public\.reserve_reward_ai_usage\(uuid,text\)\s+TO service_role/i);
   assert.match(consumption, /GRANT EXECUTE ON FUNCTION public\.cancel_reward_ai_usage\(uuid,uuid\)\s+TO service_role/i);
+});
+
+
+test("wallet endpoint uses a server aggregate and stable, bounded history pagination", () => {
+  assert.match(wallet, /rpc\("get_reward_wallet_summary"/);
+  assert.match(wallet, /PAGE_SIZE \+ 1/);
+  assert.match(wallet, /parseCursor/);
+  assert.match(wallet, /\.order\("id", \{ ascending: false \}\)/);
+  assert.match(wallet, /historyQuery\.or/);
+});
+
+test("wallet summary aggregates the full ledger and is service-role only", () => {
+  assert.match(walletSummaryMigration, /sum\(l\.amount\) FILTER/i);
+  assert.match(walletSummaryMigration, /GRANT EXECUTE ON FUNCTION public\.get_reward_wallet_summary\(uuid\)\s+TO service_role/i);
+  assert.match(walletSummaryMigration, /REVOKE ALL ON FUNCTION public\.get_reward_wallet_summary\(uuid\)\s+FROM PUBLIC, anon, authenticated/i);
+});
+
+test("mobile Rewards Centre supports loading older history pages", () => {
+  assert.match(mobileRewards, /LOAD OLDER/);
+  assert.match(mobileRewards, /reward-wallet\?cursor=/);
 });
 
 test("mobile Rewards Centre shows wallet history and clearly discloses that ads are not live", () => {
