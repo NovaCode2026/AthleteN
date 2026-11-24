@@ -60,16 +60,23 @@ test("Athlete transfers require athlete initiation, both Coach stages and Academ
   assert.match(migration, /update public\.coach_athlete_links set status='ended'/);
   assert.match(mobile, /academy_request_athlete_transfer/);
   assert.match(team, /Open Academy Portal/);
+  const guardianWeb = read("../src/components/parity/AcademyGuardianTransferPortal.tsx");
+  assert.match(guardianWeb, /academy_request_athlete_transfer/);
+  assert.match(guardianWeb, /academy_approve_guardian_link/);
+  assert.match(guardianWeb, /academy_revoke_guardian_link/);
 });
 
 test("Guardian access requires guardian acceptance and athlete-approved limited scopes", () => {
   assert.match(migration, /pending_guardian/);
   assert.match(migration, /guardian_accepted_at is not null/);
+  assert.match(migration, /academy_revoke_guardian_link/);
   assert.match(migration, /Only an active Academy athlete can request a transfer/);
   assert.match(migration, /array\['announcements','calendar','attendance_summary','fee_status'\]/);
   assert.match(migration, /e\.event_type not in \('medical','recovery'\)/);
   assert.match(mobile, /academy_accept_guardian_link/);
   assert.match(mobile, /academy_approve_guardian_link/);
+  assert.match(mobile, /academy_revoke_guardian_link/);
+  assert.match(mobile, /REVOKE GUARDIAN ACCESS/);
   assert.match(mobile, /adult-authorized consent review/);
 });
 
@@ -102,6 +109,7 @@ test("Staff assignments are bounded and the audit table has no direct client wri
   assert.match(migration, /There are intentionally no direct INSERT\/UPDATE\/DELETE policies for the audit log/);
   assert.match(mobile, /academy_set_staff_assignment/);
   assert.match(web, /academy_set_staff_assignment/);
+  assert.match(web, /academy_revoke_guardian_link/);
 });
 
 test("Mobile and web Academy workspaces expose the operations module", () => {
