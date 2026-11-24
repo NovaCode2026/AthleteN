@@ -65,10 +65,10 @@ export default function PrivateContactEditor({ contactUserId, originalName }: Pr
       <TextInput value={relationship} onChangeText={setRelationship} placeholder="Relationship" placeholderTextColor={c.muted} maxLength={60} style={input}/>
       <TextInput value={organization} onChangeText={setOrganization} placeholder="Academy or organization" placeholderTextColor={c.muted} maxLength={100} style={input}/>
       <TextInput value={labels} onChangeText={setLabels} placeholder="Private labels, comma separated" placeholderTextColor={c.muted} maxLength={500} style={input}/>
-      <Pressable onPress={() => void save()} disabled={busy} style={{ marginTop: 10, padding: 12, backgroundColor: c.primary, borderRadius: 10, opacity: busy ? 0.6 : 1 }}>
+      <Pressable onPress={() => void save()} disabled={busy} style={{ marginTop: 10, padding: 12, backgroundColor: c.accent, borderRadius: 10, opacity: busy ? 0.6 : 1 }}>
         <Text style={{ color: "#FFFFFF", fontWeight: "700", textAlign: "center" }}>{busy ? "Saving..." : "Save private details"}</Text>
       </Pressable>
-      {!!status && <Text accessibilityRole="status" style={{ color: c.muted, marginTop: 8 }}>{status}</Text>}
+      {!!status && <Text accessibilityLiveRegion="polite" style={{ color: c.muted, marginTop: 8 }}>{status}</Text>}
     </>}
   </View>;
 }
