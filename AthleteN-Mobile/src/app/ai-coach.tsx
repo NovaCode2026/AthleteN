@@ -40,8 +40,8 @@ export default function AICoachScreen(){
   const question=(value??prompt).trim();
   if(!question){setError('Enter a question first.');return}
   if(!session){setError('Sign in to use AI Coach.');return}
-  if(!usage.limit){setError('AI Coach is not included in the Free plan. View Plans & Usage for available allowances.');return}
-  if(remaining<=0){setError('You have reached this plan’s monthly AI request limit.');return}
+  // When the plan allowance is exhausted, the server may still authorize a
+  // separately issued reward credit. The server remains the source of truth.
   setBusy(true);setError('');setAnswer('');
   try{
    const baseUrl=(process.env.EXPO_PUBLIC_ATHLETEN_API_URL||'https://athleten.netlify.app').replace(/\/$/,'');
@@ -70,8 +70,9 @@ export default function AICoachScreen(){
   <View style={s.usageCard}>
    <View style={s.usageTop}><View><Text style={s.usageLabel}>MONTHLY AI REQUESTS</Text><Text style={s.usageValue}>{loadingUsage?'Checking…':usage.used+' / '+usage.limit+' used'}</Text></View><Text style={s.remaining}>{loadingUsage?'—':remaining+' left'}</Text></View>
    <View style={s.track}><View style={[s.fill,{width: `${usage.limit ? Math.min(100, (usage.used / usage.limit) * 100) : 0}%` as `${number}%`}]}/></View>
-   <Text style={s.hint}>Your current plan: {planId.replace('_',' ').toUpperCase()}. Free includes 0 AI requests.</Text>
+   <Text style={s.hint}>Your current plan: {planId.replace('_',' ').toUpperCase()}. If your plan allowance is used or does not include AI requests, valid bonus credits may still be used.</Text>
   </View>
+  {remaining<=0?<Pressable onPress={()=>router.push('/rewards')} style={s.rewardShortcut} accessibilityRole="button"><View style={{flex:1,gap:3}}><Text style={s.rewardShortcutTitle}>Need more AI messages?</Text><Text style={s.rewardShortcutText}>Open Rewards Centre to view bonus credits and reward limits.</Text></View><Text style={s.rewardShortcutArrow}>›</Text></Pressable>:null}
   <View style={s.card}>
    <Text style={s.section}>CHOOSE A COACHING TOPIC</Text>
    <View style={s.topicWrap}>{TOPICS.map(x=><Pressable key={x} onPress={()=>setTopic(x)} style={[s.topic,topic===x&&s.topicActive]}><Text style={[s.topicText,topic===x&&s.topicTextActive]}>{x}</Text></Pressable>)}</View>
@@ -79,7 +80,7 @@ export default function AICoachScreen(){
    <TextInput value={prompt} onChangeText={setPrompt} placeholder="Describe your training question, match situation or goal…" placeholderTextColor={c.muted} style={s.input} multiline maxLength={4000} textAlignVertical="top"/>
    <View style={s.quickHead}><Text style={s.section}>QUICK QUESTIONS</Text></View>
    {QUICK_QUESTIONS.map(q=><Pressable key={q} onPress={()=>{setPrompt(q);setError('')}} style={s.quick}><Text style={s.quickText}>{q}</Text></Pressable>)}
-   <Pressable onPress={()=>void ask()} disabled={busy||loadingUsage||usage.limit<=0||remaining<=0} style={[s.ask,(busy||loadingUsage||usage.limit<=0||remaining<=0)&&s.disabled]}>
+   <Pressable onPress={()=>void ask()} disabled={busy||loadingUsage} style={[s.ask,(busy||loadingUsage)&&s.disabled]}>
     {busy?<ActivityIndicator color="#fff"/>:<Text style={s.askText}>ASK AI COACH</Text>}
    </Pressable>
    {error?<View style={s.errorBox}><Text style={s.errorText}>{error}</Text></View>:null}
@@ -101,5 +102,6 @@ const s=StyleSheet.create({
  card:{backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:20,padding:15,gap:11},section:{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1.3},topicWrap:{flexDirection:'row',flexWrap:'wrap',gap:7},topic:{borderWidth:1,borderColor:c.border,borderRadius:999,paddingHorizontal:10,paddingVertical:8},topicActive:{backgroundColor:c.accentSoft,borderColor:c.accent},topicText:{color:c.muted,fontSize:9,fontWeight:'800'},topicTextActive:{color:c.text},
  input:{minHeight:116,backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,padding:12,fontSize:12,lineHeight:18},quickHead:{marginTop:2},quick:{borderWidth:1,borderColor:c.border,borderRadius:11,padding:10},quickText:{color:c.textSecondary,fontSize:10,fontWeight:'700'},ask:{minHeight:46,backgroundColor:c.accent,borderRadius:12,alignItems:'center',justifyContent:'center'},askText:{color:'#fff',fontSize:10,fontWeight:'900',letterSpacing:1},disabled:{opacity:.45},
  errorBox:{backgroundColor:'#321B22',borderWidth:1,borderColor:'#7A3545',borderRadius:12,padding:12},errorText:{color:c.danger,fontSize:10,fontWeight:'800',lineHeight:16},answer:{backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep,borderRadius:14,padding:14,gap:7},answerLabel:{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1},answerText:{color:c.text,fontSize:12,lineHeight:19},
+ rewardShortcut:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.borderStrong,borderRadius:15,padding:14},rewardShortcutTitle:{color:c.text,fontSize:12,fontWeight:'900'},rewardShortcutText:{color:c.muted,fontSize:10,lineHeight:15},rewardShortcutArrow:{color:c.accentBright,fontSize:26,fontWeight:'800'},
  distinction:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:16,padding:14,gap:7},distinctionTitle:{color:c.text,fontSize:9,fontWeight:'900',letterSpacing:1},distinctionText:{color:c.muted,fontSize:10,lineHeight:17},link:{color:c.accentBright,fontSize:9,fontWeight:'900',marginTop:4},disclaimer:{color:c.muted,fontSize:9,lineHeight:15}
 });
