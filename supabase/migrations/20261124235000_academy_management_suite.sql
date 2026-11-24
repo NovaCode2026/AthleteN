@@ -251,7 +251,7 @@ create or replace function public.academy_review_athlete_transfer(
   p_request_id uuid,p_action text
 ) returns text language plpgsql security definer set search_path=''
 as $function$
-declare v academy_athlete_transfer_requests%rowtype;
+declare v public.academy_athlete_transfer_requests%rowtype;
 begin
   select * into v from public.academy_athlete_transfer_requests where id=p_request_id for update;
   if not found then raise exception 'Transfer request not found'; end if;
@@ -431,7 +431,7 @@ grant execute on function public.academy_approve_guardian_link(uuid,text[]) to a
 create or replace function public.academy_guardian_portal_summary(p_link_id uuid)
 returns jsonb language plpgsql stable security definer set search_path=''
 as $function$
-declare v academy_guardian_links%rowtype; v_result jsonb:='{}'::jsonb;
+declare v public.academy_guardian_links%rowtype; v_result jsonb:='{}'::jsonb;
 begin
   select * into v from public.academy_guardian_links where id=p_link_id and guardian_user_id=auth.uid() and status='active';
   if not found then raise exception 'Active guardian approval required'; end if;
@@ -444,7 +444,7 @@ begin
   if 'calendar'=any(v.scopes) then
     v_result:=v_result||jsonb_build_object('calendar',coalesce((
       select jsonb_agg(jsonb_build_object('title',e.title,'event_type',e.event_type,'event_date',e.event_date) order by e.event_date)
-      from public.calendar_events e where e.user_id=v.athlete_user_id and e.event_date>=now()
+      from public.calendar_events e where e.user_id=v.athlete_user_id and e.event_date>=now() and e.event_type not in ('medical','recovery')
     ),'[]'::jsonb));
   end if;
   if 'attendance_summary'=any(v.scopes) then
@@ -537,7 +537,7 @@ grant execute on function public.academy_request_coach_seat(uuid,text) to authen
 create or replace function public.academy_review_coach_seat_request(p_request_id uuid,p_approve boolean)
 returns text language plpgsql security definer set search_path=''
 as $function$
-declare v academy_seat_requests%rowtype; v_included integer;
+declare v public.academy_seat_requests%rowtype; v_included integer;
 begin
   select * into v from public.academy_seat_requests where id=p_request_id for update;
   if not found or not private.user_has_academy_permission(v.academy_id,'seats.manage') then
