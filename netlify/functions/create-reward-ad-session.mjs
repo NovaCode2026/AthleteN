@@ -43,6 +43,17 @@ export default async function handler(request) {
   const { data, error } = await client.auth.getUser(accessToken);
   if (error || !data?.user) return json("Please sign in again.", 401);
 
+  // The admin emergency pause blocks new ad sessions without invalidating
+  // already-earned Google SSV callbacks for sessions issued before the pause.
+  const { data: adsPaused, error: pauseError } = await admin.rpc("is_rewarded_ads_paused");
+  if (pauseError) {
+    console.error("Rewarded ad pause state could not be checked:", pauseError);
+    return json("Rewarded ads are temporarily unavailable. Please try again later.", 503);
+  }
+  if (adsPaused === true) {
+    return json("Rewarded ads are temporarily paused by AthleteN administrators. Your existing access is not affected.", 503);
+  }
+
   // Rewarded ads are adult-only in this release. Parent-approved minor accounts
   // can use AthleteN normally but cannot request advertising inventory.
   // The DOB remains inside AthleteN and is never sent to the ad provider.
