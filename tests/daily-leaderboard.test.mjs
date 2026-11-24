@@ -10,11 +10,14 @@ test("IST leaderboard day is based on Asia/Kolkata midnight, not UTC midnight", 
   assert.equal(beforeMidnight.endIso, "2026-11-24T18:30:00.000Z");
   assert.equal(atMidnight.dayKey, "2026-11-25");
   assert.equal(atMidnight.startIso, "2026-11-24T18:30:00.000Z");
+  assert.equal(beforeMidnight.nextDayKey, "2026-11-25");
+  assert.equal(atMidnight.nextDayKey, "2026-11-26");
 });
 
 test("all nine approved categories are present and engagement does not reward app opens", () => {
   assert.equal(LEADERBOARD_CATEGORIES.length, 9);
-  assert.ok(LEADERBOARD_CATEGORIES.some((item) => item.key === "community_teamwork"));
+  assert.ok(LEADERBOARD_CATEGORIES.some((item) => item.key === "community_teamwork" && item.status === "coming_soon"));
+  assert.ok(LEADERBOARD_CATEGORIES.some((item) => item.key === "fitness_conditioning" && item.status === "coming_soon"));
   assert.ok(LEADERBOARD_CATEGORIES.some((item) => item.key === "athleten_engagement" && item.status === "coming_soon"));
   assert.match(LEADERBOARD_CATEGORIES.find((item) => item.key === "athleten_engagement").description, /never earn points/i);
 });
@@ -29,12 +32,11 @@ test("daily scores are opt-in, bounded and do not reward extra training volume",
     trainingSessions: [{ user_id: "a" }, { user_id: "a" }, { user_id: "a" }],
     taekwondoTrainingLogs: [{ user_id: "a" }],
     verifiedMilestones: [{ user_id: "a", verification_status: "verified" }, { user_id: "a", verification_status: "verified" }, { user_id: "a", verification_status: "verified" }],
-    kyorugiBouts: [{ user_id: "a", is_official: true }, { user_id: "a", is_official: true }, { user_id: "a", is_official: true }],
-    poomsaePerformances: [],
-    conditioningLogs: [{ user_id: "a", is_official: true, focus: "Stamina conditioning" }],
+    verifiedCompetitionResults: [{ user_id: "a", verification_status: "verified" }, { user_id: "a", verification_status: "verified" }, { user_id: "a", verification_status: "verified" }],
+    verifiedMedals: [{ user_id: "a", verification_status: "verified" }],
+    fitnessConditioning: [],
     verifiedCertificates: [{ user_id: "a", verification_status: "verified" }, { user_id: "a", verification_status: "verified" }, { user_id: "a", verification_status: "verified" }],
-    completedGoals: [{ user_id: "a", status: "completed" }],
-    badges: [{ user_id: "a" }, { user_id: "a" }],
+    badges: [{ user_id: "a", metadata: { system_assigned: true } }, { user_id: "a", metadata: { system_assigned: true } }],
     coachAttendance: [{ user_id: "a", status: "present" }, { user_id: "a", status: "late" }, { user_id: "a", status: "present" }]
   };
   const rows = buildDailyLeaderboard(profiles, events, "a");
@@ -43,7 +45,7 @@ test("daily scores are opt-in, bounded and do not reward extra training volume",
   assert.equal(rows[0].categories.training_consistency, 10);
   assert.equal(rows[0].categories.performance_progress, 20);
   assert.equal(rows[0].categories.competition, 10);
-  assert.equal(rows[0].categories.fitness_conditioning, 5);
+  assert.equal(rows[0].categories.fitness_conditioning, 0);
   assert.equal(rows[0].categories.learning_development, 20);
   assert.equal(rows[0].categories.goals_achievements, 20);
   assert.equal(rows[0].categories.coach_academy, 10);
@@ -59,12 +61,12 @@ test("unverified achievements and non-official competition results do not add po
     trainingSessions: [],
     taekwondoTrainingLogs: [],
     verifiedMilestones: [{ user_id: "x", verification_status: "pending" }],
-    kyorugiBouts: [{ user_id: "x", is_official: false }],
-    poomsaePerformances: [],
-    conditioningLogs: [],
+    verifiedCompetitionResults: [{ user_id: "x", verification_status: "pending" }],
+    verifiedMedals: [{ user_id: "x", verification_status: "pending" }],
+    fitnessConditioning: [],
     verifiedCertificates: [{ user_id: "x", verification_status: "pending" }],
     completedGoals: [],
-    badges: [],
+    badges: [{ user_id: "x", metadata: { system_assigned: false } }],
     coachAttendance: []
   });
   assert.equal(rows[0].totalPoints, 0);
