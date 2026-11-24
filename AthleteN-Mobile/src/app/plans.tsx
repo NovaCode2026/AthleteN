@@ -9,7 +9,8 @@ import { supabase } from '@/lib/supabase';
 import { AI_LIMITS, PLAN_NAMES, PLAN_PRICING, PlanId, getAiRemaining } from '@/lib/entitlements';
 
 const c = Colors.dark;
-const PAID_CHECKOUT_ENABLED = false;\nconst SUBSCRIPTION_CANCELLATION_ENABLED = false; // Enable only after production migration verification.
+const PAID_CHECKOUT_ENABLED = false;
+const SUBSCRIPTION_CANCELLATION_ENABLED = false; // Enable only after production migration verification.
 
 type BillingCycle = 'monthly' | 'yearly';
 
