@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Icon } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
-import { presentRewardedAd } from '@/lib/rewarded-ads';
+import { openAdsPrivacyOptions, presentRewardedAd } from '@/lib/rewarded-ads';
 
 const c = Colors.dark;
 type RewardEvent = {
@@ -48,6 +48,7 @@ export default function RewardsScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [adBusy, setAdBusy] = useState(false);
   const [adNotice, setAdNotice] = useState('');
+  const [privacyNotice, setPrivacyNotice] = useState('');
   const adsFeatureEnabled = __DEV__ || process.env.EXPO_PUBLIC_ATHLETEN_REWARDED_ADS_ENABLED === 'true';
   const adultAccount = isAdultDateOfBirth(profile?.date_of_birth);
 
@@ -143,6 +144,19 @@ export default function RewardsScreen() {
     }
   }, [session?.access_token, adBusy, load]);
 
+
+  const manageAdsPrivacy = useCallback(async () => {
+    setPrivacyNotice('');
+    try {
+      const shown = await openAdsPrivacyOptions();
+      setPrivacyNotice(shown
+        ? 'Your ad privacy choices were updated.'
+        : 'No additional ad privacy options are required for this account or region.');
+    } catch (e) {
+      setPrivacyNotice(e instanceof Error ? e.message : 'Ad privacy options are unavailable right now.');
+    }
+  }, []);
+
   useEffect(() => { void load(); }, [load]);
 
   const dateLabel = (value: string | null) => value
@@ -210,6 +224,15 @@ export default function RewardsScreen() {
             <View style={s.adDisclosure}>
               <Text style={s.adDisclosureText}>Ad · Not endorsed</Text>
             </View>
+            <Pressable
+              onPress={() => void manageAdsPrivacy()}
+              accessibilityRole="button"
+              accessibilityLabel="Manage advertising privacy choices"
+              style={s.privacyButton}
+            >
+              <Text style={s.privacyButtonText}>MANAGE AD PRIVACY</Text>
+            </Pressable>
+            {privacyNotice ? <Text style={s.adNotice}>{privacyNotice}</Text> : null}
             {adNotice ? <Text style={s.adNotice}>{adNotice}</Text> : null}
           </View>
         ) : null}
@@ -277,6 +300,8 @@ const s = StyleSheet.create({
   adButtonText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
   adDisclosure: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.035)', borderWidth: 1, borderColor: c.border, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 4 },
   adDisclosureText: { color: c.muted, fontSize: 8, fontWeight: '800', letterSpacing: 0.25 },
+  privacyButton: { alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 2 },
+  privacyButtonText: { color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 0.6 },
   adNotice: { color: c.muted, fontSize: 10, lineHeight: 15 },
   ruleCard: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderRadius: 19, padding: 15, gap: 14 },
   section: { color: c.muted, fontSize: 9, fontWeight: '900', letterSpacing: 1.3 },
