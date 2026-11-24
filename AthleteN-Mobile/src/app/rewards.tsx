@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Icon } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
+import { presentRewardedAd } from '@/lib/rewarded-ads';
 
 const c = Colors.dark;
 type RewardEvent = {
@@ -26,14 +27,29 @@ type Wallet = {
   nextCursor: string | null;
 };
 
+function isAdultDateOfBirth(value: unknown): boolean {
+  if (typeof value !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const birthDate = new Date(Date.UTC(year, month - 1, day));
+  if (!Number.isFinite(birthDate.getTime()) || birthDate.toISOString().slice(0, 10) !== value) return false;
+  const now = new Date();
+  let age = now.getUTCFullYear() - year;
+  if (now.getUTCMonth() < month - 1 || (now.getUTCMonth() === month - 1 && now.getUTCDate() < day)) age -= 1;
+  return age >= 18;
+}
+
 export default function RewardsScreen() {
   const router = useRouter();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
   const [historyError, setHistoryError] = useState('');
   const [loadingMore, setLoadingMore] = useState(false);
+  const [adBusy, setAdBusy] = useState(false);
+  const [adNotice, setAdNotice] = useState('');
+  const adsFeatureEnabled = __DEV__ || process.env.EXPO_PUBLIC_ATHLETEN_REWARDED_ADS_ENABLED === 'true';
+  const adultAccount = isAdultDateOfBirth(profile?.date_of_birth);
 
   const load = useCallback(async () => {
     if (!session?.access_token) {
@@ -90,6 +106,42 @@ export default function RewardsScreen() {
     }
   }, [session?.access_token, wallet?.nextCursor, loadingMore]);
 
+  const watchRewardedAd = useCallback(async () => {
+    if (!session?.access_token || adBusy) return;
+    setAdBusy(true);
+    setAdNotice('');
+    try {
+      const base = (process.env.EXPO_PUBLIC_ATHLETEN_API_URL || 'https://athleten.netlify.app').replace(/\\/$/, '');
+      const response = await fetch(base + '/.netlify/functions/create-reward-ad-session', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + session.access_token,
+          'Content-Type': 'application/json'
+        },
+        body: '{}'
+      });
+      const payload = await response.json().catch(() => ({})) as { customData?: string; error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error || 'Rewarded ads are unavailable for this account or environment.');
+      }
+      if (typeof payload.customData !== 'string' || payload.customData.length < 20) {
+        throw new Error('AthleteN could not create a secure ad session. Please try again later.');
+      }
+
+      const outcome = await presentRewardedAd(payload.customData);
+      if (outcome === 'earned') {
+        setAdNotice('Ad completed. Bonus credits are pending Google’s server-side verification. Credits appear only after verification.');
+        void load();
+      } else {
+        setAdNotice('The ad was closed before a reward was earned. No credits were added.');
+      }
+    } catch (e) {
+      setAdNotice(e instanceof Error ? e.message : 'The rewarded ad could not be shown. Your AthleteN access is unchanged.');
+    } finally {
+      setAdBusy(false);
+    }
+  }, [session?.access_token, adBusy, load]);
+
   useEffect(() => { void load(); }, [load]);
 
   const dateLabel = (value: string | null) => value
@@ -135,10 +187,31 @@ export default function RewardsScreen() {
         <View style={s.notice}>
           <View style={s.noticeIcon}><Icon name="shield" size={18} color={c.accentBright} /></View>
           <View style={{ flex: 1 }}>
-            <Text style={s.noticeTitle}>Rewarded ads are not live yet</Text>
-            <Text style={s.noticeText}>The feature is being integrated and reviewed. No ad will play until the provider, privacy, age-safety and release checks are approved. Your existing AthleteN access is not affected.</Text>
+            <Text style={s.noticeTitle}>Rewarded ads are approval-gated</Text>
+            <Text style={s.noticeText}>Ads are optional and require server-verified adult eligibility, consent and release approval. Nothing plays automatically, and your existing AthleteN access is not affected.</Text>
           </View>
         </View>
+
+        {adsFeatureEnabled && adultAccount ? (
+          <View style={s.adCard}>
+            <Text style={s.section}>OPTIONAL REWARDED AD</Text>
+            <Text style={s.adTitle}>Watch voluntarily · Earn 2 AI messages</Text>
+            <Text style={s.meta}>Credits are added only after Google verifies the completed ad on AthleteN’s server. Daily and monthly limits apply.</Text>
+            <Pressable
+              onPress={() => void watchRewardedAd()}
+              disabled={adBusy || !session?.access_token}
+              accessibilityRole="button"
+              accessibilityLabel="Watch an optional rewarded ad for two AI messages"
+              style={[s.adButton, (adBusy || !session?.access_token) && s.adButtonDisabled]}
+            >
+              {adBusy ? <ActivityIndicator color="#fff" /> : <Text style={s.adButtonText}>WATCH REWARDED AD</Text>}
+            </Pressable>
+            <View style={s.adDisclosure}>
+              <Text style={s.adDisclosureText}>Ad · Not endorsed</Text>
+            </View>
+            {adNotice ? <Text style={s.adNotice}>{adNotice}</Text> : null}
+          </View>
+        ) : null}
 
         <View style={s.ruleCard}>
           <Text style={s.section}>HOW REWARDS WILL WORK</Text>
@@ -196,6 +269,14 @@ const s = StyleSheet.create({
   noticeIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: c.surface },
   noticeTitle: { color: c.text, fontSize: 13, fontWeight: '900' },
   noticeText: { color: c.muted, fontSize: 10, lineHeight: 16, marginTop: 4 },
+  adCard: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.borderStrong, borderRadius: 19, padding: 15, gap: 10 },
+  adTitle: { color: c.text, fontSize: 14, fontWeight: '900' },
+  adButton: { backgroundColor: c.accent, borderRadius: 12, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15, paddingVertical: 12 },
+  adButtonDisabled: { opacity: 0.55 },
+  adButtonText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  adDisclosure: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.035)', borderWidth: 1, borderColor: c.border, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 4 },
+  adDisclosureText: { color: c.muted, fontSize: 8, fontWeight: '800', letterSpacing: 0.25 },
+  adNotice: { color: c.muted, fontSize: 10, lineHeight: 15 },
   ruleCard: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderRadius: 19, padding: 15, gap: 14 },
   section: { color: c.muted, fontSize: 9, fontWeight: '900', letterSpacing: 1.3 },
   ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
