@@ -196,7 +196,8 @@ async function setExistingSubscriptionStatus(supabase, provider, providerSubscri
   if (!providerSubscriptionId || !["active", "trialing", "past_due", "canceled"].includes(status)) return;
   const update = { status, updated_at: new Date().toISOString() };
   if (periodEnd) update.current_period_end = periodEnd;
-  if (typeof cancelAtPeriodEnd === "boolean") update.cancel_at_period_end = cancelAtPeriodEnd;
+  // Do not write the candidate-only cancellation column until its production migration is verified.
+  // Provider status and period end continue to synchronize without this optional field.
   const { error } = await supabase.from("subscriptions").update(update)
     .eq("provider", provider)
     .eq("provider_subscription_id", providerSubscriptionId);
