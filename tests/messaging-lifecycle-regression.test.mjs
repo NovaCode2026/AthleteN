@@ -33,6 +33,9 @@ test("message lifecycle RPCs remain authorization-scoped", () => {
   assert.match(migration, /Only group admins can change disappearing-message settings/);
   assert.match(migration, /Only the group creator can remove another group admin/);
   assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.remove_group_member\(uuid, uuid\) TO authenticated/);
+  assert.match(migration, /leave_group_conversation/);
+  assert.match(migration, /Choose a current group member to receive ownership before leaving/);
+  assert.match(migration, /Only the group creator can transfer ownership/);
 });
 
 test("cleanup worker is secret-gated and uses service-role Storage API", () => {
