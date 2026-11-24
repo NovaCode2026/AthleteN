@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 const cwd = process.cwd();
 const mobileRoot = existsSync(join(cwd, 'AthleteN-Mobile')) ? join(cwd, 'AthleteN-Mobile') : cwd;
@@ -63,4 +64,24 @@ test('platform resolver re-exports the privacy-options action', () => {
   const source = read('src/lib/rewarded-ads.ts');
   assert.ok(source.includes('openAdsPrivacyOptions'));
   assert.ok(source.includes('presentRewardedAd'));
+});
+
+test('AdMob app configuration rejects a publisher ID mismatch and accepts a matching publisher', () => {
+  const script = "require('./app.config.js')()";
+  const baseEnv = { ...process.env, ADMOB_ANDROID_APP_ID: 'ca-app-pub-1636984338555274~1234567890' };
+
+  const valid = spawnSync(process.execPath, ['-e', script], {
+    cwd: mobileRoot,
+    env: { ...baseEnv, EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID: 'ca-app-pub-1636984338555274/9124393468' },
+    encoding: 'utf8',
+  });
+  assert.equal(valid.status, 0, valid.stderr);
+
+  const mismatch = spawnSync(process.execPath, ['-e', script], {
+    cwd: mobileRoot,
+    env: { ...baseEnv, EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID: 'ca-app-pub-9999999999999999/9124393468' },
+    encoding: 'utf8',
+  });
+  assert.notEqual(mismatch.status, 0, 'mismatched publisher IDs must fail native config');
+  assert.match(mismatch.stderr, /publisher ID must match ADMOB_ANDROID_APP_ID/);
 });
