@@ -110,6 +110,7 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="rewards" options={{ headerShown: false }} />
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="academy-setup" options={{ headerShown: false }} />
             <Stack.Screen name="change-password" options={{ headerShown: false }} />
