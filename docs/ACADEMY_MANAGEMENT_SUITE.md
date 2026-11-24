@@ -7,7 +7,7 @@ The Academy Management Suite extends the existing Academy workspace with ten ope
 1. Fee management — issue an athlete invoice, record partial/full receipts manually, show outstanding status and due dates.
 2. Coach attendance & availability — Coaches can record their own daily status and weekly availability. Authorized Academy staff can oversee attendance.
 3. Athlete transfers — the athlete initiates; the current Coach releases; the target Coach accepts; Academy staff approve. Only after all stages succeed does the RPC end the old Coach link and activate the new one.
-4. Academy announcements — publish in-app notices to all active Academy members, athletes, or Coaches. Notifications respect both account-level and Academy-level preferences.
+4. Academy announcements — publish in-app notices to all active Academy members, athletes, or Coaches. Invoice, receipt, transfer, seat, staff-permission and report events also create in-app alerts. Notifications respect both account-level and Academy-level preferences.
 5. Parent/guardian access — invite an existing account. The guardian accepts first, then the athlete approves a limited set of scopes. The portal summary excludes medical and recovery calendar entries.
 6. Reports — CSV exports for athletes, Coaches, attendance, fees, competitions and achievements; export events are logged.
 7. Coach seats — Coach requests, Academy approval, included-seat allocation and payment-pending state for additional paid seats.
