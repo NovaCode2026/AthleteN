@@ -126,7 +126,7 @@ export default function Academy(){
   const [eventResult,groupResult,linkResult,approvalResult,seatResult,trainingResult,medalResult,certificateResult]=await Promise.all([
    activeAthleteIds.length?supabase.from('tournaments').select('id,user_id,name,starts_at,location,status,result,coach_user_id,discipline,verification_status').in('user_id',activeAthleteIds).gte('starts_at',cutoff).order('starts_at',{ascending:false}).limit(100):Promise.resolve({data:[],error:null}),
    coachIds.length?supabase.from('training_groups').select('id,name,focus_area,coach_user_id,conversation_id,active,recurrence_days,start_time,duration_minutes,default_venue').in('coach_user_id',coachIds).eq('active',true).order('name'):Promise.resolve({data:[],error:null}),
-   coachIds.length?supabase.from('coach_athlete_links').select('id,coach_user_id,athlete_user_id,academy_id,status,created_at').in('coach_user_id',coachIds).eq('status','active'):Promise.resolve({data:[],error:null}),
+   coachIds.length&&activeAthleteIds.length?supabase.from('coach_athlete_links').select('id,coach_user_id,athlete_user_id,academy_id,status,created_at').in('coach_user_id',coachIds).in('athlete_user_id',activeAthleteIds).eq('status','active'):Promise.resolve({data:[],error:null}),
    supabase.from('coach_approval_requests').select('id,athlete_user_id,coach_user_id,academy_id,request_type,current_value,requested_value,athlete_weight_kg,notes,status,created_at,reviewed_at').eq('academy_id',profile.academy_id).order('created_at',{ascending:false}).limit(100),
    supabase.from('academy_coach_seats').select('coach_user_id,seat_type,status,activation_fee,monthly_fee').eq('academy_id',profile.academy_id).order('created_at'),
    activeAthleteIds.length?supabase.from('training_sessions').select('id,user_id,title,session_date,minutes,intensity').in('user_id',activeAthleteIds).gte('session_date',cutoff).order('session_date',{ascending:false}).limit(400):Promise.resolve({data:[],error:null}),
@@ -148,7 +148,8 @@ export default function Academy(){
    const sessionResult=await supabase.from('training_group_sessions').select('id,group_id,session_date,start_time,title,status,venue,training_type,notes').in('group_id',groupIds).gte('session_date',cutoff).order('session_date',{ascending:false}).limit(400);
    const allSessions=sessionResult.data||[];
    const attendanceResult=allSessions.length?await supabase.from('training_group_attendance').select('session_id,athlete_user_id,status,marked_at,note').in('session_id',allSessions.map((x:any)=>x.id)):({data:[],error:null} as any);
-   setAttendanceRows(attendanceResult.data||[]);
+   const sessionById=new Map(allSessions.map((x:any)=>[x.id,x]));
+   setAttendanceRows((attendanceResult.data||[]).map((row:any)=>({...row,group_id:sessionById.get(row.session_id)?.group_id,session_date:sessionById.get(row.session_id)?.session_date,session_title:sessionById.get(row.session_id)?.title})));
    setSessions(allSessions.filter((x:any)=>x.session_date>=today&&x.status!=='cancelled').sort((x:any,y:any)=>String(x.session_date).localeCompare(String(y.session_date))).slice(0,40) as Session[]);
    const lastSeven=allSessions.filter((x:any)=>x.session_date>=start&&x.session_date<=today);
    const marks=attendanceResult.data||[];
@@ -372,14 +373,12 @@ export default function Academy(){
     <Stat icon="calendar" label="Absent" value={markedAttendance.filter((x:any)=>x.status==='absent').length} sub="Coach-recorded absence"/>
    </View>
    {groupRows.map((g:any)=>{
-    const groupSessions=attendanceRows.filter((a:any)=>a.session_id&&a.group_id===g.id);
     return null;
    })}
    {attendanceRows.length?attendanceRows.slice().sort((a:any,b:any)=>String(b.marked_at||'').localeCompare(String(a.marked_at||''))).slice(0,50).map((row:any)=>{
-    const groupSession=sessions.concat([]); 
     const linkedGroup=groupRows.find((g:any)=>g.id===row.group_id);
     return <View key={row.session_id+'-'+row.athlete_user_id} style={{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:12,padding:12}}>
-     <View style={{flexDirection:'row',alignItems:'center',gap:8}}><View style={{flex:1}}><Text style={{color:c.text,fontSize:10,fontWeight:'900'}}>{athleteName(row.athlete_user_id)}</Text><Text style={{color:c.muted,fontSize:8,marginTop:3}}>{linkedGroup?.name||'Academy training'} · {row.marked_at?new Date(row.marked_at).toLocaleDateString('en-IN'):'Attendance record'}</Text></View><Text style={{color:row.status==='present'?c.success:row.status==='late'?c.warning:row.status==='absent'?c.danger:c.muted,fontSize:9,fontWeight:'900'}}>{String(row.status).toUpperCase()}</Text></View>
+     <View style={{flexDirection:'row',alignItems:'center',gap:8}}><View style={{flex:1}}><Text style={{color:c.text,fontSize:10,fontWeight:'900'}}>{athleteName(row.athlete_user_id)}</Text><Text style={{color:c.muted,fontSize:8,marginTop:3}}>{linkedGroup?.name||row.session_title||'Academy training'} · {row.session_date?new Date(row.session_date+'T12:00:00').toLocaleDateString('en-IN'):row.marked_at?new Date(row.marked_at).toLocaleDateString('en-IN'):'Attendance record'}</Text></View><Text style={{color:row.status==='present'?c.success:row.status==='late'?c.warning:row.status==='absent'?c.danger:c.muted,fontSize:9,fontWeight:'900'}}>{String(row.status).toUpperCase()}</Text></View>
     </View>;
    }):<Card><Text style={{color:c.text,fontWeight:'900'}}>No attendance records yet</Text><Text style={{color:c.muted,fontSize:10,marginTop:4}}>Once coaches mark sessions, Academy attendance history and summaries appear here.</Text></Card>}
   </View>:null}
