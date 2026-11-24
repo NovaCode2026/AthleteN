@@ -66,7 +66,12 @@ export default async function handler(request) {
     const transactionId = params.get("transaction_id");
     const rewardItem = params.get("reward_item");
     const rewardAmount = Number(params.get("reward_amount"));
-    const timestamp = Number(params.get("timestamp"));
+    const rawTimestamp = Number(params.get("timestamp"));
+    // Google documents this field as epoch milliseconds, but its published
+    // example is microsecond-scaled. Normalize either representation safely.
+    const timestamp = Number.isSafeInteger(rawTimestamp) && rawTimestamp > 100000000000000
+      ? Math.floor(rawTimestamp / 1000)
+      : rawTimestamp;
 
     if (!expectedAdUnit || adUnit !== expectedAdUnit ||
         !customData || customData.length < 32 || customData.length > 256 ||
