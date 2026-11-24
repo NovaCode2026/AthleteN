@@ -189,7 +189,7 @@ export default function RewardsScreen() {
           <View style={s.noticeIcon}><Icon name="shield" size={18} color={c.accentBright} /></View>
           <View style={{ flex: 1 }}>
             <Text style={s.noticeTitle}>Rewarded ads are not live yet</Text>
-            <Text style={s.noticeText}>Ads are optional and require server-verified adult eligibility, consent and release approval. Nothing plays automatically, and your existing AthleteN access is not affected.</Text>
+            <Text style={s.noticeText}>Ads are optional and require server-verified adult eligibility, consent and release approval. No ad will play until those checks pass. Your existing AthleteN access is not affected.</Text>
           </View>
         </View>
 
