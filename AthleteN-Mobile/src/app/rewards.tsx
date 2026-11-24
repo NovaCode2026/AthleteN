@@ -28,7 +28,7 @@ type Wallet = {
 };
 
 function isAdultDateOfBirth(value: unknown): boolean {
-  if (typeof value !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+  if (typeof value !== 'string' || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value)) return false;
   const [year, month, day] = value.split('-').map(Number);
   const birthDate = new Date(Date.UTC(year, month - 1, day));
   if (!Number.isFinite(birthDate.getTime()) || birthDate.toISOString().slice(0, 10) !== value) return false;
