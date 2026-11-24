@@ -32,8 +32,8 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#05070B",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "image": "./assets/logo.webp",
+          "imageWidth": 220
         }
       ],
       "expo-notifications",
@@ -93,6 +93,11 @@
     },
     "ios": {
       "bundleIdentifier": "com.novacode.athleten"
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#05070B",
+      "barStyle": "light-content",
+      "enforceContrast": false
     }
   }
 }
