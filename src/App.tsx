@@ -238,7 +238,7 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
   const [studentLoading, setStudentLoading] = useState(false);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("yearly");
-  const [activeSubscriptions, setActiveSubscriptions] = useState<Array<{
+  const SUBSCRIPTION_CANCELLATION_ENABLED = false; // Enable only after production migration verification.\n  const [activeSubscriptions, setActiveSubscriptions] = useState<Array<{
     id: string; plan_id: string; provider?: string | null; status: string;
     current_period_end?: string | null; cancel_at_period_end?: boolean;
   }>>([]);
@@ -268,7 +268,7 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
     let alive = true;
     const loadSubscriptions = async () => {
       const { data, error } = await supabase.from("subscriptions")
-        .select("id,plan_id,provider,status,current_period_end,cancel_at_period_end")
+        .select("id,plan_id,provider,status,current_period_end")
         .eq("user_id", userId)
         .in("status", ["active", "trialing", "past_due"])
         .order("created_at", { ascending: false });
@@ -309,7 +309,7 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
         onToast({ type: "success", message: payload.message || "Cancellation scheduled at the end of your billing period." });
       }
       const { data, error } = await supabase.from("subscriptions")
-        .select("id,plan_id,provider,status,current_period_end,cancel_at_period_end")
+        .select("id,plan_id,provider,status,current_period_end")
         .eq("user_id", userId)
         .in("status", ["active", "trialing", "past_due"])
         .order("created_at", { ascending: false });
@@ -404,9 +404,9 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
               </div>
               <p>Provider: {subscription.provider || "manual"}</p>
               <p>Access through: {periodEnd}</p>
-              {subscription.cancel_at_period_end
+              {SUBSCRIPTION_CANCELLATION_ENABLED && subscription.cancel_at_period_end
                 ? <p className="notice" role="status">Cancellation is scheduled. Your access remains available through the current period.</p>
-                : providerManaged && subscription.current_period_end
+                : SUBSCRIPTION_CANCELLATION_ENABLED && providerManaged && subscription.current_period_end
                   ? <button className="btn danger" type="button" disabled={cancelBusy === subscription.id} onClick={() => void scheduleCancellation(subscription.id)}>
                     {cancelBusy === subscription.id ? "Scheduling…" : "Cancel at period end"}
                   </button>
