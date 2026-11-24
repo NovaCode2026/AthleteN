@@ -46,7 +46,7 @@ Message search after E2E rollout must run against locally decrypted content on t
 
 ## Encrypted backup model
 
-Backups are opt-in and client-side encrypted.
+Backups are opt-in and use client-side encryption; the ciphertext is uploaded only after local encryption.
 
 1. The client packages message ciphertext, protocol state required for restoration, device metadata and attachment references.
 2. Before upload, the client encrypts the backup using an authenticated encryption scheme from the approved crypto library.
