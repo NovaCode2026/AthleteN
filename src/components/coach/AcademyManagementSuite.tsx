@@ -31,7 +31,7 @@ export default function AcademyManagementSuite({profile,setToast}:Props){
   const [exports,setExports]=useState<any[]>([]);
   const [seats,setSeats]=useState<any[]>([]);
   const [staff,setStaff]=useState<any[]>([]);
-  const [prefs,setPrefs]=useState<any>({announcements:true,fees:true,transfers:true,seat_updates:true,reports:true});
+  const [prefs,setPrefs]=useState<any>({announcements:true,fees:true,transfers:true,seat_updates:true,reports:true,staff_updates:true});
   const [audit,setAudit]=useState<any[]>([]);
   const [fee,setFee]=useState<any>({athlete:"",title:"Monthly training fee",amount:"",due:"",description:""});
   const [coachRecord,setCoachRecord]=useState<any>({date:new Date().toISOString().slice(0,10),status:"present",weekday:"1",start:"16:00",end:"19:00",availability:"available"});
