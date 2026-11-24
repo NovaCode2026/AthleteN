@@ -211,7 +211,7 @@ export default function RewardsScreen() {
           <View style={s.adCard}>
             <Text style={s.section}>OPTIONAL REWARDED AD</Text>
             <Text style={s.adTitle}>Watch voluntarily · Earn 2 AI messages</Text>
-            <Text style={s.meta}>Credits are added only after Google verifies the completed ad on AthleteN’s server. Daily and monthly limits apply.</Text>
+            <Text style={s.meta}>You must finish the rewarded ad to qualify. Closing or skipping before Google marks it earned gives 0 credits. Credits are added only after Google verifies completion on AthleteN’s server. Daily and monthly limits apply.</Text>
             <Pressable
               onPress={() => void watchRewardedAd()}
               disabled={adBusy || !session?.access_token}
