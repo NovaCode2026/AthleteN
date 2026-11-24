@@ -57,8 +57,8 @@ BEGIN
   VALUES (
    '10000000-0000-4000-8000-000000000001',
    'Too many items',
-   (SELECT jsonb_agg(jsonb_build_object('id', n, 'label', 'item', 'packed', false))
-    FROM generate_series(1, 41) n)
+   (SELECT jsonb_agg(jsonb_build_object('id', item_no, 'label', 'item', 'packed', false))
+    FROM generate_series(1, 41) AS generated(item_no))
   );
   RAISE EXCEPTION 'Oversized packing list was unexpectedly accepted';
  EXCEPTION WHEN check_violation THEN NULL;
