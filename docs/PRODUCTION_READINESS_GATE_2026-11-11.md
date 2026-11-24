@@ -148,3 +148,59 @@ Links:
 - https://github.com/NovaCode2026/AthleteN/actions/runs/42987110360
 
 The mobile-check workflow is path-filtered to `AthleteN-Mobile/**` and was not triggered by the documentation-only commit. No claim is made that mobile CI passed on this SHA.
+
+
+
+## Engineering continuation — after PR #51 and PR #52
+
+### Coach / athlete consent path — completed and live
+- PR #51 merged as `a0b5a8715315af82886397dba61ef36cf935ded3`.
+- The missing source file for production-applied migration `20261111162744_require_opt_in_team_connections` was restored exactly.
+- Coach-side direct-add controls were removed from the mobile athlete roster and tournament manager. Coaches share their Coach connection code; athletes join from My Team by redeeming that code from their own authenticated account.
+- The mobile tournament manager now selects the username column it displays for already-linked athletes.
+- Added regression coverage for the live opt-in migration and both mobile entry points.
+- PR #51 CI, CodeQL and AthleteN Mobile Check all passed. Mobile check included contract tests, TypeScript, ESLint, Android bundle export and Expo Doctor.
+- Live production migration `20261111163731_revoke_coach_add_athlete_by_account_code` was applied after the code merge.
+- PR #52 merged as `b34da6ca8a7a5c6320dba347d4d8f5d0341534a6`, aligning the repository migration filename and its regression-test path with the exact live version.
+- Live ACL verification for `public.coach_add_athlete_by_account_code(text)`: anon EXECUTE = false; authenticated EXECUTE = false; service_role EXECUTE = true. Existing coach-athlete links were not modified.
+- Main CI and CodeQL passed on the post-PR #52 main SHA. Mobile Check passed on the app-code merge SHA `a0b5a871`; PR #52 changed only migration/test filenames and did not change mobile code.
+
+### Fresh production checks
+- Supabase migration ledger now contains 176 applied versions. Latest inspected entries include `20261111162744` and `20261111163731`, both aligned to repository files.
+- Security Advisor now reports 58 authenticated-callable SECURITY DEFINER functions (down from 61 in the preceding snapshot), one `pg_net` extension-in-public warning, and leaked-password protection disabled. The 58-function notice remains a review queue, not a count of proven vulnerabilities.
+- Read-only production counts: 10 notification rows, zero registered device push tokens, zero active coach-athlete links, and zero active academy memberships. Consequently real two-account academy/coach acceptance and real push delivery have not been demonstrated in production.
+- Push token code is present in mobile, but delivery in foreground/background/killed-app states still needs a physical-device run.
+
+### Messaging duplicate-thread preflight — do not wipe history
+- A read-only preflight found six direct threads for one user pair; five are duplicates.
+- The deterministic canonical thread is `fce68b66-ea29-46f8-8278-ababb695ee95`, which contains the single attachment and its one Storage object.
+- The five duplicate threads contain 9 messages, 10 hidden-state rows, 2 message receipt rows, zero attachment messages, and zero Storage objects.
+- No duplicate-thread references were found in message reports, support tickets or training groups.
+- The existing consolidation migration's attachment guard is expected to allow the merge because the attachment is in the canonical thread and no attachment object exists under a duplicate conversation ID.
+- The migration has **not** been applied. It deletes five redundant conversation metadata rows while moving their nine messages and preserving stable message IDs/receipts; this is not a global chat-history wipe. Obtain explicit owner approval before applying the data migration.
+
+### Migration-history drift remains unresolved
+- Current production ledger: 176 versions.
+- Repository migration directory: 113 SQL files, 94 with 14-digit timestamp prefixes (92 distinct filename slugs).
+- Only 56 remote migration names have direct slug matches among the locally timestamped files. The other 120 need exact mapping/recovery; some are likely renamed or differently timestamped local files, so this count is not proof that all 120 SQL bodies are absent.
+- 71 locally timestamped files are not exact-version matches in the remote ledger. This includes known renamed migrations and the pending direct-thread consolidation migration.
+- Do not run `supabase db push`, create placeholder files, or repair migration history blindly. Finish a version/name/SQL map and review data migrations before reconciling.
+
+### Current repository verification and build
+- Latest main SHA at this report update: `b34da6ca8a7a5c6320dba347d4d8f5d0341534a6`.
+- Main CI, CodeQL and mobile checks for the relevant app-code SHA are green.
+- Android APK workflow run `43061191233` on the latest main SHA is still building at report time; its scanner regression, dependency install, prebuild and Java setup steps have passed. No APK artifact is claimed until Gradle build and artifact upload complete.
+- Current Android package remains `com.anonymous.AthleteNMobile`, version `1.0.3`, versionCode `4`. Production signing credentials and permanent package-ID confirmation are not in place; a CI APK is for QA only, not a Play Store release.
+- No Netlify deployment was triggered. The owner has reserved the deployment and the available credit budget.
+
+### Remaining release gates
+1. Finish and verify the Android APK build, then inspect the artifact. Do not treat it as a signed Play Store release.
+2. Obtain explicit approval for the message-preserving duplicate-thread consolidation, then apply only after final preflight and verify message/receipt/attachment counts.
+3. Complete the migration-version map and schema reconciliation without production resets or fake migration history.
+4. Finish the function-by-function SECURITY DEFINER/RLS authorization review with negative cross-account tests.
+5. Confirm/enable Supabase Auth leaked-password protection in Auth settings; the current setting remains disabled and cannot be changed through the available DB migration interface.
+6. Complete real-device push, two-account messaging, role-based academy/coach/athlete tests, auth/OAuth/reset flows, and device accessibility/navigation.
+7. Confirm permanent Android application ID and protected production signing; build/test signed release.
+8. Owner deploys the reviewed main SHA to Netlify, then verifies the production source SHA and runs live smoke tests.
+
+**Current verdict remains NOT APPROVED for public production release.** The team-connection consent fix is merged and live; this does not close the remaining migration, database security, Android signing, deployment or physical-device gates.
