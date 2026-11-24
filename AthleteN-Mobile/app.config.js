@@ -18,6 +18,26 @@ function appId(value, fallback, platform) {
   return candidate;
 }
 
+
+function validateRewardedAdUnitId(value, androidAppId) {
+  const candidate = String(value || '').trim();
+  if (!candidate) return;
+
+  const match = candidate.match(/^ca-app-pub-(\\d+)\\/(\\d+)$/);
+  if (!match) {
+    throw new Error('EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID must be a valid AdMob ad unit ID.');
+  }
+
+  const appPublisherId = androidAppId.split('~')[0].slice('ca-app-pub-'.length);
+  if (match[1] !== appPublisherId) {
+    throw new Error('The rewarded ad unit publisher ID must match ADMOB_ANDROID_APP_ID.');
+  }
+}
+
+const ANDROID_APP_ID = appId(process.env.ADMOB_ANDROID_APP_ID, TEST_ANDROID_APP_ID, 'ANDROID');
+const IOS_APP_ID = appId(process.env.ADMOB_IOS_APP_ID, TEST_IOS_APP_ID, 'IOS');
+validateRewardedAdUnitId(process.env.EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID, ANDROID_APP_ID);
+
 module.exports = () => ({
   ...expoConfig,
   plugins: [
@@ -25,8 +45,10 @@ module.exports = () => ({
     [
       'react-native-google-mobile-ads',
       {
-        androidAppId: appId(process.env.ADMOB_ANDROID_APP_ID, TEST_ANDROID_APP_ID, 'ANDROID'),
-        iosAppId: appId(process.env.ADMOB_IOS_APP_ID, TEST_IOS_APP_ID, 'IOS'),
+        androidAppId: ANDROID_APP_ID,
+        iosAppId: IOS_APP_ID,
+        // Prevent app measurement before the UMP consent flow is completed.
+        delayAppMeasurementInit: true,
       },
     ],
   ],
