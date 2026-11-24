@@ -119,6 +119,16 @@ export default function AcademyOperations(){
       else if(reportType==='fees'){rows=invoices.map(x=>({athlete:memberName(x.athlete_user_id),title:x.title,amount:x.amount,due_date:x.due_date,status:x.status}));headers=['athlete','title','amount','due_date','status'];}
       else if(reportType==='achievements'){const q=await supabase.from('medals').select('user_id,event_name,medal_type,awarded_at').in('user_id',members.filter(x=>x.role==='athlete').map(x=>x.user_id));rows=q.data||[];headers=['user_id','event_name','medal_type','awarded_at'];}
       else if(reportType==='competitions'){const q=await supabase.from('tournaments').select('user_id,name,starts_at,location,status,result').in('user_id',members.filter(x=>x.role==='athlete').map(x=>x.user_id));rows=q.data||[];headers=['user_id','name','starts_at','location','status','result'];}
+      else if(reportType==='finance'){
+        const accounts=await supabase.from('finance_accounts').select('id,name,currency').eq('academy_id',academyId).eq('owner_type','academy');
+        if(accounts.error)throw accounts.error;
+        const accountIds=(accounts.data||[]).map((x:any)=>x.id);
+        headers=['account_id','type','amount','category','description','transaction_date'];
+        if(accountIds.length){
+          const q=await supabase.from('finance_transactions').select('account_id,type,amount,category,description,transaction_date').in('account_id',accountIds).order('transaction_date',{ascending:false});
+          if(q.error)throw q.error;rows=q.data||[];
+        }
+      }
       const csv=[headers.join(','),...rows.map(r=>headers.map(h=>csvCell(r[h])).join(','))].join('\n');
       const {error}=await rpc('academy_record_report_export',{p_academy_id:academyId,p_report_type:reportType,p_format:'csv',p_filters:{rows:rows.length}});
       if(error)throw error; await Share.share({title:'AthleteN '+reportType+' report',message:csv}); await load();
@@ -170,7 +180,7 @@ export default function AcademyOperations(){
 
     {section==='reports'?<View style={{gap:9}}>
       <Text style={titleStyle}>Academy reports</Text><Text style={hintStyle}>Share CSV reports using only data your current account can read. Each export is logged.</Text>
-      <Card><View style={{flexDirection:'row',gap:7,flexWrap:'wrap'}}>{['athletes','coaches','attendance','fees','competitions','achievements'].map(x=><Pressable key={x} onPress={()=>setReportType(x)} style={{padding:8,borderRadius:8,backgroundColor:reportType===x?c.accent:c.surface}}><Text style={{color:c.text,fontSize:9}}>{x}</Text></Pressable>)}</View><Button title="SHARE CSV REPORT" onPress={exportReport} busy={busy}/></Card>
+      <Card><View style={{flexDirection:'row',gap:7,flexWrap:'wrap'}}>{['athletes','coaches','attendance','fees','competitions','achievements','finance'].map(x=><Pressable key={x} onPress={()=>setReportType(x)} style={{padding:8,borderRadius:8,backgroundColor:reportType===x?c.accent:c.surface}}><Text style={{color:c.text,fontSize:9}}>{x}</Text></Pressable>)}</View><Button title="SHARE CSV REPORT" onPress={exportReport} busy={busy}/></Card>
       {reportExports.slice(0,20).map(x=><Card key={x.id}><Text style={{color:c.text,fontWeight:'900'}}>{x.report_type.toUpperCase()} · {x.format.toUpperCase()}</Text><Text style={hintStyle}>{new Date(x.created_at).toLocaleString('en-IN')}</Text></Card>)}
     </View>:null}
 
