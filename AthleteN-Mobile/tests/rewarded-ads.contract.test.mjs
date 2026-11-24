@@ -9,7 +9,11 @@ const read = (path) => readFileSync(join(mobileRoot, path), 'utf8');
 
 test('native rewarded ads use consent, test inventory and server-side verification data', () => {
   const source = read('src/lib/rewarded-ads.native.ts');
-  assert.ok(source.includes('AdsConsent.gatherConsent'));
+  assert.ok(source.includes('AdsConsent.gatherConsent()'));
+  assert.ok(source.includes('AgeRestrictedTreatment.UNSPECIFIED'));
+  assert.ok(source.includes('AdsConsent.requestInfoUpdate'));
+  assert.ok(source.includes('AdsConsentPrivacyOptionsRequirementStatus.REQUIRED'));
+  assert.ok(source.includes('AdsConsent.showPrivacyOptionsForm'));
   assert.ok(source.includes('consent.canRequestAds'));
   assert.ok(source.includes('MaxAdContentRating.PG'));
   assert.ok(source.includes('TestIds.REWARDED'));
@@ -39,4 +43,18 @@ test('web platform does not import or attempt to load the native ads SDK', () =>
   const source = read('src/lib/rewarded-ads.web.ts');
   assert.ok(!source.includes('react-native-google-mobile-ads'));
   assert.ok(source.includes('Android only'));
+});
+
+test('native build config delays measurement and validates app/ad-unit publisher identity', () => {
+  const source = read('app.config.js');
+  assert.ok(source.includes('delayAppMeasurementInit: true'));
+  assert.ok(source.includes('validateRewardedAdUnitId'));
+  assert.ok(source.includes('publisher ID must match ADMOB_ANDROID_APP_ID'));
+});
+
+test('Rewards Centre exposes a user-controlled UMP privacy-options action', () => {
+  const source = read('src/app/rewards.tsx');
+  assert.ok(source.includes('Manage advertising privacy choices'));
+  assert.ok(source.includes('MANAGE AD PRIVACY'));
+  assert.ok(source.includes('openAdsPrivacyOptions'));
 });
