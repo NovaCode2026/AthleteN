@@ -119,6 +119,22 @@ Provider eligibility, app approval, consent, and ad inventory must be confirmed 
 - Provide graceful no-fill/offline/error states and a clear cancel/decline path.
 - Do not show an ad automatically on app launch, during training, scoring, messaging, or AI generation.
 
+### Verified native SDK target and consent gate
+
+The current mobile app is on Expo SDK 57 / React Native 0.86.3. The maintained `react-native-google-mobile-ads` v17.4.0 package declares React Native `>=0.86.0`, so it is a compatible candidate for this project. Its Expo config plugin requires a native development build; Expo Go is not supported. Pin and validate the exact package version in the lockfile before adopting it, then run Expo prebuild, Android build, Expo Doctor, and physical-device QA.
+
+Required implementation order:
+
+1. Resolve the signed-in account's approved age band before any ad SDK initialization. Use Google's age-restricted treatment `teen` for teen accounts and `child` for child accounts. If age band is unknown or cannot be trusted, do not initialize or request ads. Do not send date of birth or identity documents to the ad provider.
+2. Set the global request configuration before SDK initialization. Use a conservative maximum ad content rating (initial candidate: `PG`) and the matching age-restricted treatment. Never default a minor account to `unspecified`. Google's teen treatment disables personalized ads and remarketing; this setting must be chosen under an adult-authorized compliance review, not merely as a code convenience.
+3. Run Google's User Messaging Platform consent update and any required consent form before initializing the Mobile Ads SDK. If the user cannot request ads after the consent flow, keep the ad placement unavailable. Consent must be revocable/manageable where required.
+4. Initialize the SDK only after the age and consent gates pass. Load only the rewarded format, only from the Rewards Centre after a clear user action. Do not preload from app launch or other screens.
+5. Use Google's test app/ad unit IDs in development. Production IDs must be injected through the approved build environment and must never be committed to source control. Production builds must fail closed if IDs or the release approval configuration are absent.
+6. Attach the short-lived server-issued `customData` token to the rewarded ad's SSV options before display. Treat the client reward callback as a UI signal only; wait for the verified AdMob SSV callback before showing the wallet credit as earned. A delayed callback must show a pending state, not mint client-side credit.
+7. Test load, no-fill, show failure, early close, completed reward, duplicate SSV, forged callback, expired session, offline behavior, and consent denial on a physical Android device. Verify that only the server ledger changes the wallet.
+
+The selected SDK's v17 API exposes `ageRestrictedTreatment` values `child`, `teen`, and `unspecified`, plus the UMP consent helper. This project must use the age-treatment API rather than relying on deprecated child/under-age booleans. The native SDK integration is not complete until the exact dependency and lockfile, config plugin, consent lifecycle, request configuration, SSV custom-data attachment, and device test evidence are committed.
+
 ### Backend and database
 
 - Add a server-owned reward ledger with immutable earning/redemption/expiry/reversal entries.
