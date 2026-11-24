@@ -98,5 +98,31 @@ ON public.messaging_saved_messages
 FOR DELETE TO authenticated
 USING (owner_user_id = (SELECT auth.uid()));
 
+-- A global tombstone must also retire private bookmarks so they cannot
+-- remain as inaccessible orphan rows after a user cannot view the source.
+CREATE OR REPLACE FUNCTION public.remove_saved_message_bookmarks_on_global_delete()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+BEGIN
+  IF OLD.deleted_for_everyone_at IS NULL
+     AND NEW.deleted_for_everyone_at IS NOT NULL THEN
+    DELETE FROM public.messaging_saved_messages
+    WHERE message_id = NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.remove_saved_message_bookmarks_on_global_delete() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS messages_remove_saved_bookmarks_after_global_delete ON public.messages;
+CREATE TRIGGER messages_remove_saved_bookmarks_after_global_delete
+AFTER UPDATE OF deleted_for_everyone_at ON public.messages
+FOR EACH ROW
+WHEN (OLD.deleted_for_everyone_at IS NULL AND NEW.deleted_for_everyone_at IS NOT NULL)
+EXECUTE FUNCTION public.remove_saved_message_bookmarks_on_global_delete();
+
 COMMENT ON TABLE public.messaging_saved_messages IS
   'Private per-user bookmarks and labels. It contains no message plaintext and is cascaded when its source message is deleted.';
