@@ -14,6 +14,8 @@ test("daily leaderboard endpoint requires an authenticated user and returns alia
   assert.match(endpoint, /\.eq\("leaderboard_opt_in", true\)/);
   assert.match(endpoint, /leaderboard: rows\.map\(\(\{ displayName, categories, totalPoints, rank, isYou \}\)/);
   assert.doesNotMatch(endpoint, /leaderboard: rows\.map\([\s\S]{0,500}full_name|username|avatar_url/);
+  assert.match(endpoint, /training_sessions[\s\S]*?\.eq\("session_date", dayKey\)/);
+  assert.match(endpoint, /taekwondo_training_logs[\s\S]*?\.eq\("session_date", dayKey\)/);
   assert.match(endpoint, /timeZone: LEADERBOARD_TIME_ZONE/);
   assert.match(endpoint, /resetsAt: period\.resetsAt/);
 });
