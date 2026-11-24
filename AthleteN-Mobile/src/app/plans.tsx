@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { AI_LIMITS, PLAN_NAMES, PLAN_PRICING, PlanId, getAiRemaining } from '@/lib/entitlements';
 
 const c = Colors.dark;
-const PAID_CHECKOUT_ENABLED = false;
+const PAID_CHECKOUT_ENABLED = false;\nconst SUBSCRIPTION_CANCELLATION_ENABLED = false; // Enable only after production migration verification.
 
 type BillingCycle = 'monthly' | 'yearly';
 
@@ -56,7 +56,7 @@ export default function PlansScreen() {
       if (!session) { if (alive) setLoading(false); return; }
       const [u, s] = await Promise.all([
         supabase.from('subscription_usage').select('ai_requests_used,ai_requests_limit').eq('user_id', session.user.id).order('usage_month', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('subscriptions').select('id,plan_id,status,current_period_end,provider,cancel_at_period_end').eq('user_id', session.user.id).in('status', ['active','trialing','past_due']).order('created_at', { ascending: false }),
+        supabase.from('subscriptions').select('id,plan_id,status,current_period_end,provider').eq('user_id', session.user.id).in('status', ['active','trialing','past_due']).order('created_at', { ascending: false }),
       ]);
       if (!alive) return;
       setUsage(u.data || null);
@@ -134,7 +134,7 @@ export default function PlansScreen() {
       if (!response.ok) throw new Error(payload.error || 'Cancellation could not be scheduled.');
       setMessage(payload.message || 'Cancellation is scheduled at the end of your current billing period.');
       const { data, error } = await supabase.from('subscriptions')
-        .select('id,plan_id,status,current_period_end,provider,cancel_at_period_end')
+        .select('id,plan_id,status,current_period_end,provider')
         .eq('user_id', session.user.id)
         .in('status', ['active','trialing','past_due'])
         .order('created_at', { ascending: false });
@@ -190,9 +190,9 @@ export default function PlansScreen() {
         <Text style={s.noteTitle}>{PLAN_NAMES[subscription.plan_id as PlanId] || subscription.plan_id} SUBSCRIPTION</Text>
         <Text style={s.meta}>Provider: {subscription.provider || 'manual'} · Status: {subscription.status}</Text>
         <Text style={s.meta}>Access through: {periodEnd}</Text>
-        {subscription.cancel_at_period_end
+        {SUBSCRIPTION_CANCELLATION_ENABLED && subscription.cancel_at_period_end
           ? <Text style={s.meta}>Cancellation is scheduled. Your access remains available through the current period.</Text>
-          : providerManaged && subscription.current_period_end
+          : SUBSCRIPTION_CANCELLATION_ENABLED && providerManaged && subscription.current_period_end
             ? <Pressable
                 disabled={cancelBusy === subscription.id}
                 style={[s.planButton, cancelBusy === subscription.id && s.planButtonBusy]}
