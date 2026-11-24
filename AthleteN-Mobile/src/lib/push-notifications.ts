@@ -143,9 +143,42 @@ export function attachNotificationListeners() {
   const response = Notifications.addNotificationResponseReceivedListener((event) => {
     const notificationData = event.notification.request.content.data;
     void acknowledgeMessageDelivery(notificationData);
+
+    // Message pushes carry the message ID, not a conversation ID. Resolve the
+    // conversation under the signed-in user's RLS context before deep-linking.
+    // This avoids dropping users on the generic inbox when they tap a message.
+    if (
+      notificationData?.notificationType === 'message' &&
+      typeof notificationData.messageId === 'string' &&
+      notificationData.messageId
+    ) {
+      void (async () => {
+        const { data, error } = await supabase
+          .from('messages')
+          .select('conversation_id')
+          .eq('id', notificationData.messageId)
+          .maybeSingle();
+
+        if (!error && data?.conversation_id) {
+          router.push({
+            pathname: '/messages',
+            params: { conversationId: String(data.conversation_id) },
+          } as never);
+          return;
+        }
+
+        // The message may have been removed or may not be readable anymore.
+        // Keep the notification available so the user gets a clear fallback.
+        router.push('/notifications' as never);
+      })();
+      return;
+    }
+
     const route = notificationData?.route;
-    if (typeof route === 'string' && route.startsWith('/')) {
+    if (typeof route === 'string' && route.startsWith('/') && !route.startsWith('//')) {
       router.push(route as never);
+    } else {
+      router.push('/notifications' as never);
     }
   });
 
