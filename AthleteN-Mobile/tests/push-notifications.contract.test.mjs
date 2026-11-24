@@ -79,3 +79,18 @@ test('mobile auth session installs notification registration and listener cleanu
   assert.match(authSource, /appStateSubscription\.remove\(\)/);
   assert.match(authSource, /removeNotificationListeners\?\.\(\)/);
 });
+
+test('message push taps resolve and open the exact conversation with a safe inbox fallback', () => {
+  const listener = between(
+    pushSource,
+    'export function attachNotificationListeners',
+    'return () => {'
+  );
+
+  assert.match(listener, /notificationData\?\.notificationType === 'message'/);
+  assert.match(listener, /typeof notificationData\.messageId === 'string'/);
+  assert.match(listener, /\.from\('messages'\)[\s\S]*?\.select\('conversation_id'\)[\s\S]*?\.eq\('id', notificationData\.messageId\)/);
+  assert.match(listener, /pathname: '\/messages'[\s\S]*?params: \{ conversationId: String\(data\.conversation_id\) \}/);
+  assert.match(listener, /router\.push\('\/notifications' as never\)/);
+  assert.match(listener, /!route\.startsWith\('\/\/'\)/);
+});
