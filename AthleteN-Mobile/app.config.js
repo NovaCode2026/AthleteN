@@ -1,5 +1,3 @@
-const expoConfig = require('./app.json').expo;
-
 // Google’s published sample app IDs keep development builds on test inventory.
 // The publisher’s real App IDs must be supplied through the adult-managed EAS
 // build environment after provider and privacy approval.
@@ -38,10 +36,10 @@ const ANDROID_APP_ID = appId(process.env.ADMOB_ANDROID_APP_ID, TEST_ANDROID_APP_
 const IOS_APP_ID = appId(process.env.ADMOB_IOS_APP_ID, TEST_IOS_APP_ID, 'IOS');
 validateRewardedAdUnitId(process.env.EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID, ANDROID_APP_ID);
 
-module.exports = () => ({
-  ...expoConfig,
+module.exports = ({ config }) => ({
+  ...config,
   plugins: [
-    ...(expoConfig.plugins || []),
+    ...(config.plugins || []),
     [
       'react-native-google-mobile-ads',
       {
