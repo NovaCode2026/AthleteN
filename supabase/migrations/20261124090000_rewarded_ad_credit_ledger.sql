@@ -43,6 +43,8 @@ ALTER TABLE public.reward_ledger ENABLE ROW LEVEL SECURITY;
 -- Netlify functions using the service role after resolving the caller's Auth identity.
 REVOKE ALL ON TABLE public.reward_ad_sessions FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON TABLE public.reward_ledger FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT, INSERT ON TABLE public.reward_ad_sessions TO service_role;
+GRANT SELECT ON TABLE public.reward_ledger TO service_role;
 
 CREATE OR REPLACE FUNCTION public.grant_rewarded_ad_credit(
   p_custom_data_hash text,
