@@ -47,3 +47,13 @@ test("public leaderboard UI states the IST midnight reset and privacy model", ()
   assert.match(web, /12:00 AM IST/);
   assert.match(web, /full name, username, photo and private athlete records are not displayed/i);
 });
+
+
+test("leaderboard migration has complete, well-formed alias constraints and remains private by default", () => {
+  assert.match(migration, /do \\$\\$[\\s\\S]*?end\\s*\\$\\$;/i);
+  assert.doesNotMatch(migration, /do \\$\\s/);
+  assert.match(migration, /leaderboard_opt_in boolean not null default false/i);
+  assert.match(migration, /leaderboard_display_name = btrim\\(leaderboard_display_name\\)/i);
+  assert.match(migration, /leaderboard_display_name ~ '\\^\[A-Za-z0-9\]\[A-Za-z0-9 \\._-\]\\{1,23\}\\$'/i);
+  assert.match(migration, /create unique index if not exists profiles_daily_leaderboard_alias_unique_idx/i);
+});
