@@ -20,7 +20,7 @@ test("message expiry is database-assigned and unreadable after the timestamp", (
 
 test("delete-for-everyone queues attachment objects and clears message references", () => {
   assert.match(migration, /messaging_attachment_cleanup_queue/);
-  assert.match(migration, /reason\\s*=\\s*'deleted_for_everyone'/);
+  assert.match(migration, /reason\s*=\s*'deleted_for_everyone'/);
   assert.match(migration, /attachment_path = NULL/);
   assert.match(migration, /queue_message_attachment_cleanup_before_delete/);
   assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.cleanup_expired_messages\(integer\) TO service_role/);
@@ -46,7 +46,7 @@ test("cleanup worker is secret-gated and uses service-role Storage API", () => {
 test("web and mobile expose the same disappearing-message choices and attachment deletion action", () => {
   for (const source of [web, mobile]) {
     assert.match(source, /set_conversation_disappearing_messages/);
-    assert.match(source, /DELETE FOR EVERYONE/);
+    assert.match(source, /DELETE FOR EVERYONE/i);
     assert.match(source, /24 hours/);
     assert.match(source, /7 days/);
     assert.match(source, /30 days/);
