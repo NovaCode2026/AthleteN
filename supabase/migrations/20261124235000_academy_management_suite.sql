@@ -428,6 +428,27 @@ $function$;
 revoke all on function public.academy_approve_guardian_link(uuid,text[]) from public,anon;
 grant execute on function public.academy_approve_guardian_link(uuid,text[]) to authenticated;
 
+create or replace function public.academy_revoke_guardian_link(p_link_id uuid)
+returns boolean language plpgsql security definer set search_path=''
+as $function$
+declare v public.academy_guardian_links%rowtype;
+begin
+  select * into v from public.academy_guardian_links where id=p_link_id for update;
+  if not found or v.athlete_user_id<>auth.uid() or v.status not in ('pending_athlete','active') then
+    raise exception 'Only the athlete can revoke an active or pending guardian link';
+  end if;
+  update public.academy_guardian_links
+    set status='revoked',scopes='{}',updated_at=now()
+    where id=p_link_id;
+  insert into public.notifications(user_id,title,body,notification_type,action_route,created_at,updated_at)
+  select v.guardian_user_id,'Guardian access revoked','The athlete has revoked this Academy data-sharing link.','coach_academy','/notifications',now(),now()
+    where coalesce((select coach_academy from public.notification_preferences where user_id=v.guardian_user_id),true)=true;
+  return true;
+end;
+$function$;
+revoke all on function public.academy_revoke_guardian_link(uuid) from public,anon;
+grant execute on function public.academy_revoke_guardian_link(uuid) to authenticated;
+
 create or replace function public.academy_guardian_portal_summary(p_link_id uuid)
 returns jsonb language plpgsql stable security definer set search_path=''
 as $function$
