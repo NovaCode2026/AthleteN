@@ -258,3 +258,13 @@ This is an aggressive engineering target, not a guarantee of production readines
 - This plan does not claim the two-day target overrides testing, privacy, provider, or release gates.
 
 **Release rule:** If any critical security, quota, provider, privacy, minor-safety, or acceptance gate is open, keep live ads and reward issuance disabled. A tested feature-flagged candidate is preferable to an unsafe live launch.
+
+
+## Integrated Rewards Centre update — 24 November 2026
+
+- Added a web Rewards Centre route with the same authenticated wallet API and cursor-paginated history as mobile.
+- Added a read-only summary of existing AthleteN achievement badges. Badge recognition is separate from redeemable credits; no training-volume, weight-loss, calorie, or competitive-advantage reward rules were introduced.
+- Hardened ad-session issuance with a user-bound `get_age_verification_status` check. Only accounts whose stored status is `not_required` and whose stored date of birth independently calculates to age 18+ can request an ad session. Parent-approved minor accounts, missing/invalid age records, and QA-only states are denied. The date of birth is not sent to AdMob.
+- Existing global feature, live-approval, minor-safety-approval and ad-unit configuration gates remain mandatory. An unavailable ad never blocks existing AthleteN access.
+- Native Android rewarded-ad presentation, app IDs, consent lifecycle and development-build/device verification remain separate release gates. No production ads are enabled.
+- All migrations remain candidate-only and must be reconciled/replayed in isolated staging before any rollout.
