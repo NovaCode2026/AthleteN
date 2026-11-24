@@ -42,6 +42,18 @@ test("web and mobile Academy setup share the same role-checked RPC", () => {
   assert.doesNotMatch(mobileSetup, /\.eq\('id', academyId\)\.eq\('owner_user_id'/);
 });
 
+test("Academy verification and setup completion are server-owned Auth-backed states", () => {
+  assert.match(migration, /create or replace function public\\.sync_verified_academy_contact_email[\\s\\S]*?auth\\.users[\\s\\S]*?email_confirmed_at/i);
+  assert.match(migration, /create or replace function public\\.complete_academy_setup[\\s\\S]*?auth\\.users[\\s\\S]*?setup_completed = true/i);
+  assert.match(migration, /grant update \\(\s*name, city, state, country, contact_phone\s*\) on public\\.academies/i);
+  assert.doesNotMatch(migration, /grant update \\([\\s\\S]{0,240}contact_email_verified_at/i);
+  assert.ok(mobileSetup.includes("rpc('sync_verified_academy_contact_email'"));
+  assert.ok(mobileSetup.includes("rpc('complete_academy_setup'"));
+  assert.equal(mobileSetup.includes("from('academies').update("), false);
+  assert.equal(mobileSetup.includes("contact_email_verified_at: new Date()"), false);
+  assert.equal(mobileSetup.includes("setup_completed: true"), false);
+});
+
 test("Academy web dashboard supports approved delegated admins and active athlete rosters", () => {
   assert.match(web, /from\("academy_memberships"\)[\s\S]*?eq\("role", "academy_admin"\)[\s\S]*?eq\("status", "active"\)/);
   assert.match(web, /accessibleResult[\s\S]*?in\("id", academyIds\)/);
