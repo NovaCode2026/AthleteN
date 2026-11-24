@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const root = process.cwd();
-const read = (path) => readFileSync(join(root, path), 'utf8');
+const cwd = process.cwd();
+const mobileRoot = existsSync(join(cwd, 'AthleteN-Mobile')) ? join(cwd, 'AthleteN-Mobile') : cwd;
+const read = (path) => readFileSync(join(mobileRoot, path), 'utf8');
 
 test('native rewarded ads use consent, test inventory and server-side verification data', () => {
   const source = read('src/lib/rewarded-ads.native.ts');
