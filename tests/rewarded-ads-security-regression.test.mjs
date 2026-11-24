@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 
 const ledger = readFileSync(new URL("../supabase/migrations/20261124090000_rewarded_ad_credit_ledger.sql", import.meta.url), "utf8");
 const walletSummaryMigration = readFileSync(new URL("../supabase/migrations/20261124200000_reward_wallet_summary_rpc.sql", import.meta.url), "utf8");
+const adminControlsMigration = readFileSync(new URL("../supabase/migrations/20261124210000_rewarded_ad_admin_controls.sql", import.meta.url), "utf8");
+const adminConsole = readFileSync(new URL("../src/components/admin/AdminControlCenter.tsx", import.meta.url), "utf8");
 const consumption = readFileSync(new URL("../supabase/migrations/20261124090100_rewarded_ai_credit_consumption.sql", import.meta.url), "utf8");
 const ssv = readFileSync(new URL("../netlify/functions/admob-reward-ssv.mjs", import.meta.url), "utf8");
 const session = readFileSync(new URL("../netlify/functions/create-reward-ad-session.mjs", import.meta.url), "utf8");
@@ -97,6 +99,27 @@ test("wallet summary aggregates the full ledger and is service-role only", () =>
   assert.match(walletSummaryMigration, /sum\(l\.amount\) FILTER/i);
   assert.match(walletSummaryMigration, /GRANT EXECUTE ON FUNCTION public\.get_reward_wallet_summary\(uuid\)\s+TO service_role/i);
   assert.match(walletSummaryMigration, /REVOKE ALL ON FUNCTION public\.get_reward_wallet_summary\(uuid\)\s+FROM PUBLIC, anon, authenticated/i);
+});
+
+
+test("rewarded-ad admin overview is role-gated and emergency pause is one-way", () => {
+  assert.match(adminControlsMigration, /p\.role IN \('admin', 'super_admin'\)/);
+  assert.match(adminControlsMigration, /CREATE OR REPLACE FUNCTION public\.pause_rewarded_ads/);
+  assert.match(adminControlsMigration, /CREATE OR REPLACE FUNCTION public\.get_reward_admin_overview/);
+  assert.match(adminControlsMigration, /CREATE OR REPLACE FUNCTION public\.is_rewarded_ads_paused/);
+  assert.match(adminControlsMigration, /REVOKE ALL ON TABLE public\.reward_ad_admin_audit FROM PUBLIC, anon, authenticated, service_role/i);
+  assert.match(adminControlsMigration, /GRANT EXECUTE ON FUNCTION public\.get_reward_admin_overview\(\) TO authenticated/i);
+  assert.doesNotMatch(adminControlsMigration, /CREATE OR REPLACE FUNCTION public\.(unpause|resume)_rewarded_ads/i);
+  assert.match(adminConsole, /get_reward_admin_overview/);
+  assert.match(adminConsole, /pause_rewarded_ads/);
+  assert.match(adminConsole, /Rewarded Ad Operations/);
+  assert.match(adminConsole, /cannot read or edit reward ledger tables directly/);
+});
+
+test("new rewarded-ad sessions fail closed when an administrator has paused ads", () => {
+  assert.match(session, /admin\.rpc\("is_rewarded_ads_paused"\)/);
+  assert.match(session, /if \(adsPaused === true\)/);
+  assert.match(session, /Already-earned|already-earned/);
 });
 
 test("mobile Rewards Centre supports loading older history pages", () => {
