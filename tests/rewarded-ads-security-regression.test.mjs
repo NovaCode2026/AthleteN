@@ -51,6 +51,10 @@ test("reward ad session creation fails closed pending adult and youth-safety app
   assert.match(session, /createHash\("sha256"\)/);
   assert.match(session, /custom_data_hash: customDataHash/);
   assert.doesNotMatch(session, /request\.json\(\).*user_id/s);
+  assert.match(session, /get_age_verification_status/);
+  assert.match(session, /ageRecord\\?\\.status !== "not_required"/);
+  assert.match(session, /ageYears < 18/);
+  assert.match(session, /Rewarded ads are not available for accounts under 18/);
 });
 
 test("wallet API derives its owner from the authenticated Supabase user", () => {
