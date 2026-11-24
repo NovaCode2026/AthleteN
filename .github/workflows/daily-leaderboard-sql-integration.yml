@@ -1,0 +1,58 @@
+name: Daily Leaderboard SQL Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/migrations/20261124120000_daily_athlete_leaderboard.sql"
+      - "tests/sql/daily-leaderboard-migration-integration.sql"
+      - ".github/workflows/daily-leaderboard-sql-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  leaderboard-schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: athleten_leaderboard_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d athleten_leaderboard_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Create minimal isolated schema fixture
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d athleten_leaderboard_test -v ON_ERROR_STOP=1 <<'SQL'
+          create schema auth;
+          create table auth.users (id uuid primary key);
+          create table public.profiles (
+            user_id uuid primary key references auth.users(id) on delete cascade,
+            role text not null default 'athlete'
+          );
+          SQL
+      - name: Apply candidate leaderboard migration
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_leaderboard_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124120000_daily_athlete_leaderboard.sql
+      - name: Verify privacy defaults and alias constraints
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_leaderboard_test -v ON_ERROR_STOP=1 -f tests/sql/daily-leaderboard-migration-integration.sql
