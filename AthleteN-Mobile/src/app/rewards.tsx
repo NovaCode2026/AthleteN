@@ -111,7 +111,8 @@ export default function RewardsScreen() {
     setAdBusy(true);
     setAdNotice('');
     try {
-      const base = (process.env.EXPO_PUBLIC_ATHLETEN_API_URL || 'https://athleten.netlify.app').replace(/\\/$/, '');
+      const baseValue = process.env.EXPO_PUBLIC_ATHLETEN_API_URL || 'https://athleten.netlify.app';
+      const base = baseValue.endsWith('/') ? baseValue.slice(0, -1) : baseValue;
       const response = await fetch(base + '/.netlify/functions/create-reward-ad-session', {
         method: 'POST',
         headers: {
@@ -187,7 +188,7 @@ export default function RewardsScreen() {
         <View style={s.notice}>
           <View style={s.noticeIcon}><Icon name="shield" size={18} color={c.accentBright} /></View>
           <View style={{ flex: 1 }}>
-            <Text style={s.noticeTitle}>Rewarded ads are approval-gated</Text>
+            <Text style={s.noticeTitle}>Rewarded ads are not live yet</Text>
             <Text style={s.noticeText}>Ads are optional and require server-verified adult eligibility, consent and release approval. Nothing plays automatically, and your existing AthleteN access is not affected.</Text>
           </View>
         </View>
