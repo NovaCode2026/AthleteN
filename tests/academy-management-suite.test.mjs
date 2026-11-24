@@ -89,6 +89,10 @@ test("Academy announcements respect account and Academy notification preferences
   assert.match(migration, /academy_fee_invoice_notify/);
   assert.match(migration, /academy_transfer_notify/);
   assert.match(migration, /academy_seat_request_notify/);
+  assert.match(migration, /academy_report_export_notify/);
+  assert.match(migration, /staff_updates boolean not null default true/);
+  assert.match(migration, /academy_transfer_one_open_per_athlete_idx/);
+  assert.match(migration, /Athlete and both Coach memberships must remain active before transfer approval/);
   assert.match(mobile, /academy_publish_announcement/);
   assert.match(web, /academy_publish_announcement/);
 });
@@ -100,7 +104,9 @@ test("Reports and Coach seats are logged and paid seats remain pending without p
   assert.match(mobile, /Share\.share/);
   assert.match(web, /createObjectURL/);
   assert.match(mobile, /finance_transactions/);
+  assert.match(mobile, /staff_updates/);
   assert.match(web, /finance_transactions/);
+  assert.match(web, /staff_updates/);
 });
 
 test("Staff assignments are bounded and the audit table has no direct client write policy", () => {
