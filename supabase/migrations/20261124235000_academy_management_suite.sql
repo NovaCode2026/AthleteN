@@ -474,7 +474,13 @@ begin
   if 'announcements'=any(v.scopes) then
     v_result:=v_result||jsonb_build_object('announcements',coalesce((
       select jsonb_agg(jsonb_build_object('title',a.title,'body',a.body,'published_at',a.published_at) order by a.published_at desc)
-      from public.academy_announcements a where a.academy_id=v.academy_id and a.published_at is not null
+      from public.academy_announcements a
+      where a.academy_id=v.academy_id and a.published_at is not null
+        and a.audience in ('all','athletes')
+        and (a.group_id is null or exists(
+          select 1 from public.training_group_members gm
+          where gm.group_id=a.group_id and gm.athlete_user_id=v.athlete_user_id and gm.status='active'
+        ))
     ),'[]'::jsonb));
   end if;
   if 'calendar'=any(v.scopes) then
@@ -990,9 +996,33 @@ using (athlete_user_id=auth.uid() or from_coach_user_id=auth.uid() or to_coach_u
   or private.user_has_academy_permission(academy_id,'transfers.review'));
 drop policy if exists academy_announcements_read on public.academy_announcements;
 create policy academy_announcements_read on public.academy_announcements for select to authenticated
-using (private.user_is_approved_academy_admin(academy_id)
-  or exists(select 1 from public.academy_memberships m where m.academy_id=academy_announcements.academy_id and m.user_id=auth.uid() and m.status='active')
-  or exists(select 1 from public.academy_guardian_links g where g.academy_id=academy_announcements.academy_id and g.guardian_user_id=auth.uid() and g.status='active' and 'announcements'=any(g.scopes)));
+using (
+  private.user_is_approved_academy_admin(academy_id)
+  or exists(
+    select 1 from public.academy_memberships m
+    where m.academy_id=academy_announcements.academy_id and m.user_id=auth.uid() and m.status='active'
+      and (
+        academy_announcements.audience='all'
+        or (academy_announcements.audience='athletes' and m.role='athlete')
+        or (academy_announcements.audience='coaches' and m.role='coach')
+      )
+      and (
+        academy_announcements.group_id is null
+        or (m.role='coach' and exists(select 1 from public.training_groups tg where tg.id=academy_announcements.group_id and tg.coach_user_id=auth.uid()))
+        or (m.role='athlete' and exists(select 1 from public.training_group_members gm where gm.group_id=academy_announcements.group_id and gm.athlete_user_id=auth.uid() and gm.status='active'))
+      )
+  )
+  or exists(
+    select 1 from public.academy_guardian_links g
+    where g.academy_id=academy_announcements.academy_id and g.guardian_user_id=auth.uid()
+      and g.status='active' and 'announcements'=any(g.scopes)
+      and academy_announcements.audience in ('all','athletes')
+      and (
+        academy_announcements.group_id is null
+        or exists(select 1 from public.training_group_members gm where gm.group_id=academy_announcements.group_id and gm.athlete_user_id=g.athlete_user_id and gm.status='active')
+      )
+  )
+);
 drop policy if exists academy_guardian_links_read on public.academy_guardian_links;
 create policy academy_guardian_links_read on public.academy_guardian_links for select to authenticated
 using (guardian_user_id=auth.uid() or athlete_user_id=auth.uid() or private.user_has_academy_permission(academy_id,'guardians.manage'));
