@@ -268,3 +268,21 @@ This is an aggressive engineering target, not a guarantee of production readines
 - Existing global feature, live-approval, minor-safety-approval and ad-unit configuration gates remain mandatory. An unavailable ad never blocks existing AthleteN access.
 - Native Android rewarded-ad presentation, app IDs, consent lifecycle and development-build/device verification remain separate release gates. No production ads are enabled.
 - All migrations remain candidate-only and must be reconciled/replayed in isolated staging before any rollout.
+
+## Native Android AdMob integration slice — 24 November 2026
+
+- Added and pinned `react-native-google-mobile-ads@17.4.0`, compatible with the app's React Native 0.86.3 baseline, plus the required Expo config plugin.
+- Dynamic Expo config uses Google's official sample App IDs by default. Real App IDs are read only from the adult-managed build environment; the ad unit ID is not committed to source.
+- Added Android-only rewarded presentation with UMP consent before SDK initialization, a PG content rating, non-personalized ad requests, and a server-issued SSV `customData` value attached to the request.
+- Development builds use Google's rewarded test unit. Production presentation requires a separately supplied ad-unit value and the existing server-side ad approval gates.
+- The client reward callback is presentation feedback only. It never adds credits; the wallet changes only after AdMob's signed SSV callback is verified by AthleteN's backend.
+- Added a platform-specific web fallback, a user-initiated Rewards Centre CTA, and the small `Ad · Not endorsed` disclosure label. The CTA is hidden unless the local profile has an adult DOB and the mobile feature flag is enabled (or the app is a development build); the backend independently verifies adult eligibility before issuing a session.
+- CI and native-device testing are pending on the resulting exact PR head. A development/EAS native build is required; Expo Go cannot load this native module.
+
+### Remaining release gates
+
+- Verify the publisher account and app IDs with the responsible adult and Google provider setup; review the ad unit and account ownership.
+- Complete the required child/teen privacy, policy and legal review. Accounts under 18 remain ineligible for rewarded ads in this release.
+- Verify the UMP privacy-options entry point and consent-denial, offline, no-fill, early-close, show-failure and completed-ad states on a physical Android device.
+- Confirm the exact production EAS environment and Netlify approval flags only after review. Keep production ad serving and reward issuance disabled until all evidence is recorded.
+- Reconcile and replay candidate Supabase migrations in isolated staging. No production migration, deployment or reward enablement is authorized by this implementation.
