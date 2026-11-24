@@ -26,7 +26,10 @@ async function prepareGoogleMobileAds(): Promise<void> {
 
       await mobileAds().setRequestConfiguration({
         maxAdContentRating: MaxAdContentRating.PG,
-        ageRestrictedTreatment: 'unspecified',
+        // The backend only issues sessions to independently verified adults.
+        // The SDK's default "unspecified" treatment is therefore the correct
+        // setting for this adult-only placement; minor accounts fail closed
+        // before SDK initialization and must use a separately reviewed flow.
       });
       await mobileAds().initialize();
     })().catch((error: unknown) => {
