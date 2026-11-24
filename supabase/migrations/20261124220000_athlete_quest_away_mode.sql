@@ -75,10 +75,14 @@ CREATE TABLE IF NOT EXISTS public.athlete_away_plans (
     departure_date IS NULL OR return_date IS NULL OR departure_date <= return_date
   ),
   CONSTRAINT athlete_away_plans_packing_array CHECK (
-    jsonb_typeof(packing_items) = 'array' AND jsonb_array_length(packing_items) <= 40
+    jsonb_typeof(packing_items) = 'array'
+    AND jsonb_array_length(packing_items) <= 40
+    AND octet_length(packing_items::text) <= 12000
   ),
   CONSTRAINT athlete_away_plans_itinerary_array CHECK (
-    jsonb_typeof(itinerary_items) = 'array' AND jsonb_array_length(itinerary_items) <= 40
+    jsonb_typeof(itinerary_items) = 'array'
+    AND jsonb_array_length(itinerary_items) <= 40
+    AND octet_length(itinerary_items::text) <= 12000
   ),
   CONSTRAINT athlete_away_plans_status_check CHECK (
     status IN ('planning', 'ready', 'completed')
@@ -121,3 +125,21 @@ COMMENT ON TABLE public.athlete_quest_completions IS
   'Private, non-monetary athlete quest check-ins. Missed quests do not modify training streaks or leaderboard scores.';
 COMMENT ON TABLE public.athlete_away_plans IS
   'Private athlete travel planning records with no live location tracking or coach/academy sharing.';
+
+CREATE OR REPLACE FUNCTION public.set_athlete_away_plan_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $function$
+BEGIN
+  NEW.updated_at := now();
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.set_athlete_away_plan_updated_at() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS athlete_away_plans_set_updated_at ON public.athlete_away_plans;
+CREATE TRIGGER athlete_away_plans_set_updated_at
+BEFORE UPDATE ON public.athlete_away_plans
+FOR EACH ROW
+EXECUTE FUNCTION public.set_athlete_away_plan_updated_at();

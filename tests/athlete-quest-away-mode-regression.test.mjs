@@ -9,6 +9,8 @@ const mobileAway = await readFile(new URL("../AthleteN-Mobile/src/app/away-mode.
 const webQuests = await readFile(new URL("../src/components/quests/AthleteQuestPanel.tsx", import.meta.url), "utf8");
 const webAway = await readFile(new URL("../src/components/away/AwayModePage.tsx", import.meta.url), "utf8");
 const webApp = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+const sqlIntegration = await readFile(new URL("./sql/athlete-quest-away-mode-integration.sql", import.meta.url), "utf8");
+const sqlWorkflow = await readFile(new URL("../.github/workflows/security-sql-integration.yml", import.meta.url), "utf8");
 
 test("quest completion records are private, unique, and non-monetary", () => {
   assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.athlete_quest_completions/i);
@@ -43,4 +45,12 @@ test("Away Mode is available as a separate feature on web and mobile", () => {
   assert.match(webAway, /athlete_away_plans/);
   assert.match(webApp, /"\/away-mode": "away-mode"/);
   assert.match(webApp, /<AwayModePage setToast=\{setToast\}\s*\/>/);
+});
+
+test("Quest and Away Mode receive isolated PostgreSQL RLS integration coverage", () => {
+  assert.match(sqlIntegration, /Athlete A should read their own quest completion/);
+  assert.match(sqlIntegration, /Quest completions leaked across athletes/);
+  assert.match(sqlIntegration, /Away Mode plans leaked across athletes/);
+  assert.match(sqlIntegration, /Cross-owner Away Mode update unexpectedly succeeded/);
+  assert.match(sqlWorkflow, /athlete-quest-away-mode-integration\.sql/);
 });

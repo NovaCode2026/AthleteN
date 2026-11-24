@@ -76,3 +76,11 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h 127.0.0.1 -U postgres -d athleten_message_reactions_test -v ON_ERROR_STOP=1 -f tests/sql/message-reactions-assertions.sql
+      - name: Create isolated athlete Quest and Away Mode database
+        env:
+          PGPASSWORD: postgres
+        run: createdb -h 127.0.0.1 -U postgres athleten_quest_away_test
+      - name: Apply Quest and Away Mode migration and verify owner isolation
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_quest_away_test -v ON_ERROR_STOP=1 -f tests/sql/athlete-quest-away-mode-integration.sql
