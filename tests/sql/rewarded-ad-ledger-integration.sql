@@ -62,10 +62,10 @@ SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false);
 
 -- Three rewards on the same UTC day are accepted; a fourth is rejected.
 INSERT INTO public.reward_ad_sessions(user_id,provider,custom_data_hash,expires_at)
-SELECT '30000000-0000-0000-0000-000000000001','admob',repeat('a',63)||'1',now()+interval '10 minutes'
-UNION ALL SELECT '30000000-0000-0000-0000-000000000001','admob',repeat('a',63)||'2',now()+interval '10 minutes'
-UNION ALL SELECT '30000000-0000-0000-0000-000000000001','admob',repeat('a',63)||'3',now()+interval '10 minutes'
-UNION ALL SELECT '30000000-0000-0000-0000-000000000001','admob',repeat('a',63)||'4',now()+interval '10 minutes';
+SELECT '30000000-0000-0000-0000-000000000001'::uuid,'admob',repeat('a',63)||'1',now()+interval '10 minutes'
+UNION ALL SELECT '30000000-0000-0000-0000-000000000001'::uuid,'admob',repeat('a',63)||'2',now()+interval '10 minutes'
+UNION ALL SELECT '30000000-0000-0000-0000-000000000001'::uuid,'admob',repeat('a',63)||'3',now()+interval '10 minutes'
+UNION ALL SELECT '30000000-0000-0000-0000-000000000001'::uuid,'admob',repeat('a',63)||'4',now()+interval '10 minutes';
 
 DO $daily$
 DECLARE
