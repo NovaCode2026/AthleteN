@@ -150,7 +150,7 @@ export default function DailyLeaderboardPage() {
         <button className={filter === "overall" ? "active" : ""} onClick={() => setFilter("overall")}>Overall</button>
         {data?.categories.map((category) => <button key={category.key} disabled={category.status !== "active"} className={(filter === category.key ? "active " : "") + (category.status !== "active" ? "coming-soon" : "")} onClick={() => setFilter(category.key)}>{category.label}{category.status !== "active" ? " · Soon" : ""}</button>)}
       </div>
-      {selectedCategory?.status === "coming_soon" && <p>{selectedCategory.description}</p>}
+      {selectedCategory && <p>{selectedCategory.description}</p>}
     </section>
 
     <section className="card panel">
