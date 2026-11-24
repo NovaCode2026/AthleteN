@@ -46,6 +46,9 @@ export default async function handler(request) {
   // Rewarded ads are adult-only in this release. Parent-approved minor accounts
   // can use AthleteN normally but cannot request advertising inventory.
   // The DOB remains inside AthleteN and is never sent to the ad provider.
+  // The stored DOB is user-entered and locked after initial submission; it is
+  // not independent identity proof. Keep live approval disabled until an
+  // adult-owned review and any required trusted age-assurance method are complete.
   const { data: ageRows, error: ageError } = await client.rpc("get_age_verification_status");
   if (ageError) {
     console.error("Rewarded ad age eligibility check failed:", ageError);
