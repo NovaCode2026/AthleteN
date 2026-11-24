@@ -12,8 +12,10 @@ VALUES (
   '20000000-0000-4000-8000-000000000001',
   auth.uid(), 'expires tomorrow', now()
 );
+INSERT INTO public.messaging_saved_messages(owner_user_id,message_id,label,note)
+VALUES (auth.uid(),'30000000-0000-4000-8000-000000000001','Tournament','Review before the next competition');
 
-DO $$
+DO $
 DECLARE v_expiry timestamptz;
 BEGIN
   SELECT expires_at INTO v_expiry
@@ -22,7 +24,29 @@ BEGIN
     RAISE EXCEPTION 'New message did not receive the server-assigned 24-hour expiry';
   END IF;
 END
-$$;
+$;
+
+-- Saved-message rows are private to their owner, even when another account
+-- belongs to the same direct conversation.
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002',false);
+DO $
+DECLARE v_count integer;
+BEGIN
+  SELECT count(*) INTO v_count FROM public.messaging_saved_messages;
+  IF v_count <> 0 THEN RAISE EXCEPTION 'Another participant can read a private saved-message row'; END IF;
+END
+$;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',false);
+DO $
+DECLARE v_label text; v_note text;
+BEGIN
+  SELECT label,note INTO v_label,v_note FROM public.messaging_saved_messages
+  WHERE message_id='30000000-0000-4000-8000-000000000001';
+  IF v_label <> 'Tournament' OR v_note <> 'Review before the next competition' THEN
+    RAISE EXCEPTION 'Owner cannot read saved-message organization metadata';
+  END IF;
+END
+$;
 
 -- Sender can delete attachment messages for everyone within the sender window.
 INSERT INTO public.messages(
@@ -185,3 +209,11 @@ BEGIN
 END
 $$;
 RESET ROLE;
+DO $$
+DECLARE v_saved_count integer;
+BEGIN
+  SELECT count(*) INTO v_saved_count FROM public.messaging_saved_messages
+  WHERE message_id='30000000-0000-4000-8000-000000000001';
+  IF v_saved_count <> 0 THEN RAISE EXCEPTION 'Saved-message metadata was not removed with its expired source message'; END IF;
+END
+$$;
