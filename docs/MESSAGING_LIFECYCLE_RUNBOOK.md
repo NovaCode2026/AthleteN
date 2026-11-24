@@ -10,6 +10,7 @@ Status: deployment instructions for the candidate workflows in PR #76. No produc
    - `20261124160000_messaging_lifecycle_and_disappearing_messages.sql`
    - `20261124170000_expo_push_ticket_and_receipt_tracking.sql`
    - `20261124180000_private_saved_messages.sql`
+   - `20261124190000_group_conversation_push_notifications.sql`
 3. Run the messaging rich-media, lifecycle and push-delivery SQL integration workflows.
 4. Run Supabase security and performance advisors. Review every result before proposing production rollout.
 5. Only after staging acceptance and adult/product approval should a migration owner prepare a separately reviewed production rollout plan.
@@ -52,3 +53,15 @@ Before release, validate on real Android devices and, where supported, iOS devic
 - message persistence, read/delivered receipts, search, reactions, report flow and group role restrictions.
 
 Keep PR #76 in draft until staging, CI and physical-device evidence is attached.
+
+
+## Conversation-level notification grouping
+
+- The web and mobile notification centers group message-alert rows by the authorized conversation, show the latest alert and an unread count, and mark/delete the grouped alert rows together.
+- Native Expo push payloads use a stable conversation-scoped `collapseId`, Android `tag`, and `threadId` while keeping message previews generic by default. These fields group or replace notifications; they do not change message retention or receipt records.
+- Expo ticket acceptance and provider handoff remain distinct from human receipt/read state. In-app message receipts are still the source of truth for delivered/read status.
+
+## Remaining platform gates
+
+- Browser background Push API delivery is not enabled in this PR. The current web desktop-notification helper supports foreground permission/display only; a production Web Push rollout still needs VAPID public/private key provisioning, a server-side sender, an authenticated subscription lifecycle, a trusted worker schedule, and HTTPS acceptance testing.
+- End-to-end encryption and encrypted backup remain architecture-only. Do not advertise either feature until the selected maintained protocol implementation, cross-platform interoperability, independent review, device/key lifecycle, and recovery tests are complete.
