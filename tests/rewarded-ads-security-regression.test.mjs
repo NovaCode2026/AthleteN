@@ -52,7 +52,8 @@ test("reward ad session creation fails closed pending adult and youth-safety app
   assert.match(session, /custom_data_hash: customDataHash/);
   assert.doesNotMatch(session, /request\.json\(\).*user_id/s);
   assert.match(session, /get_age_verification_status/);
-  assert.match(session, /ageRecord\\?\\.status !== "not_required"/);
+  assert.match(session, /ageRecord\?\.status !== "not_required"/);
+  assert.ok(session.includes('dob.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);'));
   assert.match(session, /ageYears < 18/);
   assert.match(session, /Rewarded ads are not available for accounts under 18/);
 });
