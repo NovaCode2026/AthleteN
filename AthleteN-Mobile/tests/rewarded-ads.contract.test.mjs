@@ -95,6 +95,7 @@ test('only AdMob signed server-side verification can grant reward credits', () =
   const callback = read('../netlify/functions/admob-reward-ssv.mjs');
   assert.ok(native.includes("finish(earned ? 'earned' : 'closed')"));
   assert.ok(screen.includes('pending Google’s server-side verification'));
+  assert.ok(screen.includes('Closing or skipping before Google marks it earned gives 0 credits.'));
   assert.ok(callback.includes('verifySignature'));
   assert.ok(callback.includes('grant_rewarded_ad_credit'));
   assert.ok(!native.includes('grant_rewarded_ad_credit'));
