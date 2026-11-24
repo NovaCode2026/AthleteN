@@ -3,6 +3,7 @@ import { Download, RefreshCw, Share2 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
 import AthleteQuestPanel from "../quests/AthleteQuestPanel";
+import AcademyGuardianTransferPortal from "./AcademyGuardianTransferPortal";
 type Toast = (toast: { type: "success" | "error" | "warning"; message: string }) => void;
 function Page({title,subtitle,actions,children}:{title:string;subtitle:string;actions?:React.ReactNode;children:React.ReactNode}){return <><div className="page-head"><div><p className="eyebrow">AthleteN</p><h2>{title}</h2><p className="messaging-help">{subtitle}</p></div><div className="inline-actions">{actions}</div></div>{children}</>}
 function Stat({label,value,note}:{label:string;value:string|number;note:string}){return <article className="metric card"><div><p>{label}</p><strong>{value}</strong><small>{note}</small></div></article>}
@@ -151,6 +152,7 @@ export function TeamConnectionPage({setToast}:{setToast:Toast}){
    <p>Once connected, use Messages to coordinate training and competition plans.</p>
    <a className="btn" href="/messages">Open messages</a>
   </section>
+  <AcademyGuardianTransferPortal setToast={setToast}/>
  </Page>;
 }
 
