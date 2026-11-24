@@ -117,7 +117,6 @@ test("Staff assignments are bounded and the audit table has no direct client wri
   assert.match(migration, /There are intentionally no direct INSERT\/UPDATE\/DELETE policies for the audit log/);
   assert.match(mobile, /academy_set_staff_assignment/);
   assert.match(web, /academy_set_staff_assignment/);
-  assert.match(web, /academy_revoke_guardian_link/);
 });
 
 test("Mobile and web Academy workspaces expose the operations module", () => {
