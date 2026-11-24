@@ -38,7 +38,7 @@ test("fee invoices validate Academy membership and partial payments cannot excee
   assert.match(migration, /academy_record_fee_payment/);
   assert.match(migration, /v_paid\+p_amount>v_invoice\.amount/);
   assert.match(mobile, /academy_create_fee_invoice/);
-  assert.match(web, /academy_record_fee_invoice/);
+  assert.match(web, /academy_record_fee_payment/);
   assert.match(mobile, /RECORD MANUAL PAYMENT/);
   assert.match(web, /Record payment/);
 });
@@ -84,7 +84,7 @@ test("Academy announcements respect account and Academy notification preferences
 test("Reports and Coach seats are logged and paid seats remain pending without provider confirmation", () => {
   assert.match(migration, /academy_record_report_export/);
   assert.match(migration, /payment_pending/);
-  assert.match(migration, /verified payment-provider flow/);
+  assert.match(migration, /verified payment-provider webhook/);
   assert.match(mobile, /Share\.share/);
   assert.match(web, /createObjectURL/);
 });
