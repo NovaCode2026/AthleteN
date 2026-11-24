@@ -31,8 +31,6 @@ CREATE TABLE IF NOT EXISTS public.push_delivery_attempts (
   receipt_received_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT push_delivery_attempts_device_required
-    CHECK (device_push_token_id IS NOT NULL OR delivery_status IN ('enqueue_error','request_error'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS push_delivery_attempts_notification_device_uidx
@@ -319,6 +317,7 @@ DECLARE
   v_result jsonb;
   v_code text;
   v_attempt_id uuid;
+  v_device_push_token_id uuid;
   v_changed integer := 0;
 BEGIN
   IF jsonb_typeof(p_results) <> 'array' THEN
@@ -343,13 +342,13 @@ BEGIN
         updated_at = now()
     WHERE expo_ticket_id = v_result->>'ticket_id'
       AND delivery_status = 'ticketed'
-    RETURNING id, device_push_token_id INTO v_attempt_id, v_result;
+    RETURNING id, device_push_token_id INTO v_attempt_id, v_device_push_token_id;
 
     IF FOUND THEN
       v_changed := v_changed + 1;
       IF v_code = 'DeviceNotRegistered' THEN
         DELETE FROM public.device_push_tokens
-        WHERE id = (SELECT device_push_token_id FROM public.push_delivery_attempts WHERE id = v_attempt_id);
+        WHERE id = v_device_push_token_id;
       END IF;
     END IF;
   END LOOP;
