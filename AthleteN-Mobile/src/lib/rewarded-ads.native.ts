@@ -121,10 +121,15 @@ export async function presentRewardedAd(customData: string): Promise<RewardedAdO
       showStarted = true;
       void ad.show().catch(fail);
     }));
+    // Google emits EARNED_REWARD only after its rewarded-ad eligibility
+    // condition is met. Closing/skipping before that event is never a reward.
+    // Even after this event, the wallet is credited only by the signed SSV
+    // callback handled on the server; this client event is presentation state.
     unsubscribe.push(ad.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => {
       earned = true;
     }));
     unsubscribe.push(ad.addAdEventListener(AdEventType.CLOSED, () => {
+      // A close without the earned event is an explicit no-reward outcome.
       finish(earned ? 'earned' : 'closed');
     }));
     unsubscribe.push(ad.addAdEventListener(AdEventType.ERROR, (error) => {
