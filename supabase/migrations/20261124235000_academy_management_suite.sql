@@ -213,6 +213,9 @@ create table if not exists public.academy_athlete_transfer_requests (
   check (from_coach_user_id<>to_coach_user_id)
 );
 create index if not exists academy_transfer_queue_idx on public.academy_athlete_transfer_requests(academy_id,status,created_at desc);
+create unique index if not exists academy_transfer_one_open_per_athlete_idx
+  on public.academy_athlete_transfer_requests(academy_id,athlete_user_id)
+  where status in ('pending_current_coach','pending_target_coach','pending_academy_review');
 
 create or replace function public.academy_request_athlete_transfer(
   p_academy_id uuid,p_to_coach_user_id uuid,p_reason text default null
@@ -274,6 +277,17 @@ begin
   elsif p_action='approve' then
     if not private.user_has_academy_permission(v.academy_id,'transfers.review') or v.status<>'pending_academy_review' then
       raise exception 'Academy transfer-review permission required';
+    end if;
+    if not exists(select 1 from public.academy_memberships m
+      where m.academy_id=v.academy_id and m.user_id=v.athlete_user_id and m.role='athlete' and m.status='active')
+      or not exists(select 1 from public.academy_memberships m
+      where m.academy_id=v.academy_id and m.user_id=v.from_coach_user_id and m.role='coach' and m.status='active')
+      or not exists(select 1 from public.academy_memberships m
+      where m.academy_id=v.academy_id and m.user_id=v.to_coach_user_id and m.role='coach' and m.status='active')
+      or not exists(select 1 from public.coach_athlete_links l
+      where l.academy_id=v.academy_id and l.athlete_user_id=v.athlete_user_id
+        and l.coach_user_id=v.from_coach_user_id and l.status='active') then
+      raise exception 'Athlete and both Coach memberships must remain active before transfer approval';
     end if;
     update public.coach_athlete_links set status='ended',updated_at=now()
       where academy_id=v.academy_id and athlete_user_id=v.athlete_user_id
@@ -637,6 +651,7 @@ create table if not exists public.academy_notification_preferences (
   transfers boolean not null default true,
   seat_updates boolean not null default true,
   reports boolean not null default true,
+  staff_updates boolean not null default true,
   updated_at timestamptz not null default now(),
   primary key(academy_id,user_id)
 );
@@ -659,6 +674,7 @@ begin
       when 'transfers' then coalesce(ap.transfers,true)
       when 'seat_updates' then coalesce(ap.seat_updates,true)
       when 'reports' then coalesce(ap.reports,true)
+      when 'staff_updates' then coalesce(ap.staff_updates,true)
       when 'announcements' then coalesce(ap.announcements,true)
       else true
     end,
@@ -758,7 +774,7 @@ begin
     v_user:=nullif(v_row->>'user_id','')::uuid;
     if v_user is not null then
       perform private.enqueue_academy_notification(v_academy,v_user,
-        'Academy staff permissions updated','Your Academy staff permissions were changed. Review your current access.','seat_updates');
+        'Academy staff permissions updated','Your Academy staff permissions were changed. Review your current access.','staff_updates');
     end if;
 
   elsif tg_table_name='academy_report_exports' and tg_op='INSERT' then
@@ -785,6 +801,9 @@ create trigger academy_seat_request_notify after insert or update of status on p
 for each row execute function public.academy_management_notify_event();
 drop trigger if exists academy_staff_assignment_notify on public.academy_staff_assignments;
 create trigger academy_staff_assignment_notify after insert or update or delete on public.academy_staff_assignments
+for each row execute function public.academy_management_notify_event();
+drop trigger if exists academy_report_export_notify on public.academy_report_exports;
+create trigger academy_report_export_notify after insert on public.academy_report_exports
 for each row execute function public.academy_management_notify_event();
 
 -- Apply the per-Academy announcement preference at fan-out time. Missing
