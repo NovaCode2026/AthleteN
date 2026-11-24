@@ -286,3 +286,13 @@ This is an aggressive engineering target, not a guarantee of production readines
 - Verify the UMP privacy-options entry point and consent-denial, offline, no-fill, early-close, show-failure and completed-ad states on a physical Android device.
 - Confirm the exact production EAS environment and Netlify approval flags only after review. Keep production ad serving and reward issuance disabled until all evidence is recorded.
 - Reconcile and replay candidate Supabase migrations in isolated staging. No production migration, deployment or reward enablement is authorized by this implementation.
+
+
+## Admin reward operations and emergency pause — 24 November 2026
+
+- Added an admin-only database read model for daily verified ads, monthly credits earned/redeemed, the latest 50 ledger events, and the latest 20 administrative safety actions.
+- The browser does not receive direct table access to reward sessions, reward ledger, controls, or audit rows. Admin access is enforced again inside the database functions using the authenticated profile role.
+- Added a one-way emergency pause for new rewarded-ad sessions. It records the administrator and reason, and the server checks it before creating a new session.
+- Previously issued sessions can still complete through Google's signed SSV callback; pausing does not discard a reward already earned with Google.
+- No browser-facing unpause or live-ad activation control exists. Resumption requires a separate adult-owned release review and server environment approval.
+- Added isolated PostgreSQL integration coverage for admin visibility, athlete denial, pause audit, and service-role enforcement. This is CI/staging evidence only, not proof that the candidate migration has been applied to a real staging project.
