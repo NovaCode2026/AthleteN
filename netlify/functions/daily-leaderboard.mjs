@@ -89,6 +89,7 @@ export default async function handler(request) {
     }));
     const rows = buildDailyLeaderboard(optedInProfiles, {
       trainingSessions,
+      taekwondoTrainingLogs,
       verifiedMilestones,
       verifiedCompetitionResults,
       verifiedMedals,
