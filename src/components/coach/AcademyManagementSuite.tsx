@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import type { Profile } from "../../types";
+import "./academy-management-suite.css";
 
 type Props = {
   profile: Profile;
