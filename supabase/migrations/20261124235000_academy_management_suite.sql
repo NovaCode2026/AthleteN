@@ -549,8 +549,16 @@ begin
     return 'rejected';
   end if;
   if v.request_type='remove' then
+    if exists(select 1 from public.coach_athlete_links
+      where academy_id=v.academy_id and coach_user_id=v.coach_user_id and status='active')
+      or exists(select 1 from public.training_groups
+      where coach_user_id=v.coach_user_id and active=true) then
+      raise exception 'Reassign active athletes and training groups before removing this Coach seat';
+    end if;
     update public.academy_coach_seats set status='canceled',deactivated_at=now(),updated_at=now()
       where academy_id=v.academy_id and coach_user_id=v.coach_user_id and status='active';
+    update public.academy_memberships set status='suspended',updated_at=now()
+      where academy_id=v.academy_id and user_id=v.coach_user_id and role='coach' and status='active';
     update public.academy_seat_requests set status='cancelled',decided_by=auth.uid(),decided_at=now(),updated_at=now() where id=v.id;
     return 'cancelled';
   end if;
