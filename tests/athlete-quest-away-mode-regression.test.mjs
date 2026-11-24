@@ -32,7 +32,7 @@ test("Quest is integrated with the existing streak surface on mobile", () => {
   assert.match(mobileHome, /ATHLETEN QUEST/);
   assert.match(mobileHome, /router\.push\('\/missions'\)/);
   assert.match(mobileMissions, /ATHLETE_QUESTS/);
-  assert.match(mobileMissions, /Missed quests never break or reset your training streak/i);
+  assert.match(mobileMissions, /Missing a quest never breaks or resets your training streak/i);
   assert.match(webQuests, /athlete_quest_completions/);
 });
 
@@ -42,5 +42,5 @@ test("Away Mode is available as a separate feature on web and mobile", () => {
   assert.match(mobileAway, /PERSONAL ITINERARY/);
   assert.match(webAway, /athlete_away_plans/);
   assert.match(webApp, /"\/away-mode": "away-mode"/);
-  assert.match(webApp, /<AwayModePage setToast=\{setToast\} \/>/);
+  assert.match(webApp, /<AwayModePage setToast=\{setToast\}\s*\/>/);
 });
