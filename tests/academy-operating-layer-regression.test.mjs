@@ -51,10 +51,10 @@ test("Academy approval oversight never lets an administrator review another Coac
 });
 
 test("Academy document and calendar indexes stay scoped to active athlete accounts", () => {
-  assert.match(mobile, /from\\('documents'\\)[\\s\\S]*?in\\('user_id',activeAthleteIds\\)/);
-  assert.match(mobile, /from\\('calendar_events'\\)[\\s\\S]*?in\\('user_id',activeAthleteIds\\)/);
+  assert.match(mobile, /from\('documents'\)[\s\S]*?in\('user_id',activeAthleteIds\)/);
+  assert.match(mobile, /from\('calendar_events'\)[\s\S]*?in\('user_id',activeAthleteIds\)/);
   assert.match(mobile, /tab==='Documents'/);
-  assert.match(mobile, /calendarRows\\.map/);
+  assert.match(mobile, /calendarRows\.map/);
 });
 
 test("Academy communication opens existing group conversations without inventing a broadcast pipeline", () => {
