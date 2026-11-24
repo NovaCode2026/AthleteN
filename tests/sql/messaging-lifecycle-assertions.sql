@@ -15,7 +15,7 @@ VALUES (
 INSERT INTO public.messaging_saved_messages(owner_user_id,message_id,label,note)
 VALUES (auth.uid(),'30000000-0000-4000-8000-000000000001','Tournament','Review before the next competition');
 
-DO $
+DO $$
 DECLARE v_expiry timestamptz;
 BEGIN
   SELECT expires_at INTO v_expiry
@@ -24,20 +24,20 @@ BEGIN
     RAISE EXCEPTION 'New message did not receive the server-assigned 24-hour expiry';
   END IF;
 END
-$;
+$$;
 
 -- Saved-message rows are private to their owner, even when another account
 -- belongs to the same direct conversation.
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002',false);
-DO $
+DO $$
 DECLARE v_count integer;
 BEGIN
   SELECT count(*) INTO v_count FROM public.messaging_saved_messages;
   IF v_count <> 0 THEN RAISE EXCEPTION 'Another participant can read a private saved-message row'; END IF;
 END
-$;
+$$;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',false);
-DO $
+DO $$
 DECLARE v_label text; v_note text;
 BEGIN
   SELECT label,note INTO v_label,v_note FROM public.messaging_saved_messages
@@ -46,7 +46,7 @@ BEGIN
     RAISE EXCEPTION 'Owner cannot read saved-message organization metadata';
   END IF;
 END
-$;
+$$;
 
 -- Sender can delete attachment messages for everyone within the sender window.
 INSERT INTO public.messages(
@@ -57,6 +57,8 @@ INSERT INTO public.messages(
   auth.uid(), '', '20000000-0000-4000-8000-000000000001/file.mp4',
   'file.mp4', 'video/mp4', 1234, now()
 );
+INSERT INTO public.messaging_saved_messages(owner_user_id,message_id,label)
+VALUES (auth.uid(),'30000000-0000-4000-8000-000000000002','Video reference');
 DO $
 DECLARE v_deleted integer; v_remaining integer;
 BEGIN
@@ -71,7 +73,7 @@ BEGIN
     RAISE EXCEPTION 'Uploader directly deleted an attachment still referenced by a live message';
   END IF;
 END
-$;
+$$;
 SELECT public.delete_message_for_everyone('30000000-0000-4000-8000-000000000002');
 
 -- Inspect service-role-only cleanup queue as the database owner, not the client role.
@@ -81,6 +83,10 @@ DECLARE v_path text; v_deleted timestamptz; v_queued integer;
 BEGIN
   SELECT attachment_path, deleted_for_everyone_at INTO v_path, v_deleted
   FROM public.messages WHERE id='30000000-0000-4000-8000-000000000002';
+  IF EXISTS (SELECT 1 FROM public.messaging_saved_messages
+    WHERE message_id='30000000-0000-4000-8000-000000000002') THEN
+    RAISE EXCEPTION 'Global deletion did not remove private bookmarks for the message';
+  END IF;
   SELECT count(*) INTO v_queued
   FROM public.messaging_attachment_cleanup_queue
   WHERE object_path='20000000-0000-4000-8000-000000000001/file.mp4'
@@ -109,7 +115,7 @@ SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002'
 SELECT public.set_conversation_disappearing_messages('20000000-0000-4000-8000-000000000002', 604800);
 SELECT public.remove_group_member('20000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000003');
 
-DO $
+DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM public.conversation_members
@@ -117,7 +123,7 @@ BEGIN
       AND user_id='10000000-0000-4000-8000-000000000003'
   ) THEN RAISE EXCEPTION 'Group admin could not remove ordinary member'; END IF;
 END
-$;
+$$;
 
 -- Creator leaves by transferring ownership to a current group admin.
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',false);
@@ -126,7 +132,7 @@ SELECT public.leave_group_conversation(
   '10000000-0000-4000-8000-000000000002'
 );
 RESET ROLE;
-DO $
+DO $$
 DECLARE v_creator uuid; v_creator_membership integer; v_new_owner_admin boolean;
 BEGIN
   SELECT created_by INTO v_creator FROM public.conversations
@@ -143,21 +149,21 @@ BEGIN
     RAISE EXCEPTION 'Group creator could not transfer ownership safely';
   END IF;
 END
-$;
+$$;
 
 -- A final owner may leave and delete a group once it has no remaining members.
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002',false);
 SELECT public.leave_group_conversation('20000000-0000-4000-8000-000000000002',NULL);
 RESET ROLE;
-DO $
+DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM public.conversations
     WHERE id='20000000-0000-4000-8000-000000000002') THEN
     RAISE EXCEPTION 'An empty group was not deleted when its final member left';
   END IF;
 END
-$;
+$$;
 
 RESET ROLE;
 
@@ -185,14 +191,14 @@ RESET ROLE;
 -- Even the legacy super-admin permissive policy cannot reveal expired messages.
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',false);
-DO $
+DO $$
 DECLARE v_count integer;
 BEGIN
   SELECT count(*) INTO v_count FROM public.messages
   WHERE id='30000000-0000-4000-8000-000000000001';
   IF v_count <> 0 THEN RAISE EXCEPTION 'Restrictive expiry guard was bypassed by a permissive admin policy'; END IF;
 END
-$;
+$$;
 RESET ROLE;
 
 SET ROLE service_role;
