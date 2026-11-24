@@ -238,7 +238,8 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
   const [studentLoading, setStudentLoading] = useState(false);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("yearly");
-  const SUBSCRIPTION_CANCELLATION_ENABLED = false; // Enable only after production migration verification.\n  const [activeSubscriptions, setActiveSubscriptions] = useState<Array<{
+  const SUBSCRIPTION_CANCELLATION_ENABLED = false; // Enable only after production migration verification.
+  const [activeSubscriptions, setActiveSubscriptions] = useState<Array<{
     id: string; plan_id: string; provider?: string | null; status: string;
     current_period_end?: string | null; cancel_at_period_end?: boolean;
   }>>([]);
