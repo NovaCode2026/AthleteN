@@ -23,7 +23,7 @@ test("mobile picker exposes supported audio and video MIME types", () => {
 
 test("private Storage bucket enforces the 10 MB limit and MIME allowlist", () => {
   assert.match(migration, /file_size_limit\s*=\s*10485760/);
-  assert.match(migration, /allowed_mime_types\s*=\s*array\\[/);
+  assert.match(migration, /allowed_mime_types\s*=\s*array\[/);
   for (const mime of ["video/mp4", "audio/mpeg", "audio/mp4", "audio/aac", "audio/wav"]) {
     assert.ok(migration.includes(`'${mime}'`), `Storage allowlist is missing ${mime}`);
   }
