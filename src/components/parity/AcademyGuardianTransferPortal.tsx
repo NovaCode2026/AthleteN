@@ -3,7 +3,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
 import "./academy-guardian-transfer-portal.css";
 
-type ToastState = { type: "success" | "error" | "warning"; message: string } | null;
+type ToastState = { type: "success" | "error" | "warning"; message: string };
 type Props = { setToast: (toast: ToastState) => void };
 
 const allowedScopes = ["announcements","calendar","attendance_summary","fee_status"] as const;
