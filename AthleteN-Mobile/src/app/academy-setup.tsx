@@ -35,6 +35,25 @@ export default function AcademySetupScreen() {
       let id = String(profile?.academy_id || '') || null;
 
       if (!id) {
+        const { data: adminMembership, error: membershipError } = await supabase
+          .from('academy_memberships')
+          .select('academy_id')
+          .eq('user_id', session.user.id)
+          .eq('role', 'academy_admin')
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle();
+        if (membershipError) {
+          if (alive) { setMessage(membershipError.message); setLoading(false); }
+          return;
+        }
+        if (adminMembership?.academy_id) {
+          id = String(adminMembership.academy_id);
+          if (alive) setAcademyId(id);
+        }
+      }
+
+      if (!id) {
         const { data, error } = await supabase
           .from('academies')
           .select('id')
@@ -107,7 +126,7 @@ export default function AcademySetupScreen() {
     if (!nextEmail || !nextEmail.includes('@')) { setMessage('Enter a valid academy email address.'); return; }
     if (nextEmail === String(session.user.email || '').toLowerCase() && session.user.email_confirmed_at) {
       setEmailVerified(true);
-      if (academyId) await supabase.from('academies').update({ contact_email: nextEmail, contact_email_verified_at: new Date().toISOString() }).eq('id', academyId).eq('owner_user_id', session.user.id);
+      if (academyId) await supabase.from('academies').update({ contact_email: nextEmail, contact_email_verified_at: new Date().toISOString() }).eq('id', academyId);
       setMessage('Your email is already verified.');
       return;
     }
@@ -127,7 +146,7 @@ export default function AcademySetupScreen() {
     const verified = String(data.user?.email || '').toLowerCase() === email.trim().toLowerCase() && Boolean(data.user?.email_confirmed_at);
     setEmailVerified(verified);
     if (verified && academyId) {
-      await supabase.from('academies').update({ contact_email: email.trim().toLowerCase(), contact_email_verified_at: new Date().toISOString() }).eq('id', academyId).eq('owner_user_id', session?.user.id || '');
+      await supabase.from('academies').update({ contact_email: email.trim().toLowerCase(), contact_email_verified_at: new Date().toISOString() }).eq('id', academyId);
       setMessage('Email verified and account email updated successfully.');
     } else if (!verified) setMessage('The new email is not verified yet. Open the verification email, then try again.');
     setBusy(false);
@@ -171,8 +190,7 @@ export default function AcademySetupScreen() {
         setup_completed: true,
         setup_completed_at: new Date().toISOString(),
       })
-      .eq('id', academyId)
-      .eq('owner_user_id', session.user.id);
+      .eq('id', academyId);
 
     if (error) {
       setBusy(false);

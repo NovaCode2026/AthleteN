@@ -165,7 +165,8 @@ CREATE POLICY "academies owner update"
 
 REVOKE INSERT ON public.academies FROM PUBLIC, anon, authenticated;
 REVOKE UPDATE ON public.academies FROM PUBLIC, anon, authenticated;
-GRANT SELECT, DELETE ON public.academies TO authenticated;
+REVOKE DELETE ON public.academies FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.academies TO authenticated;
 GRANT UPDATE (
   name, city, state, country, contact_email, contact_phone,
   contact_email_verified_at, setup_completed, setup_completed_at
@@ -200,5 +201,6 @@ CREATE POLICY "academy memberships admin delete"
 
 REVOKE INSERT ON public.academy_memberships FROM PUBLIC, anon, authenticated;
 REVOKE UPDATE ON public.academy_memberships FROM PUBLIC, anon, authenticated;
-GRANT SELECT, DELETE ON public.academy_memberships TO authenticated;
+REVOKE DELETE ON public.academy_memberships FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.academy_memberships TO authenticated;
 GRANT UPDATE (status, updated_at) ON public.academy_memberships TO authenticated;

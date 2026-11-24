@@ -8,6 +8,12 @@ BEGIN
   IF has_table_privilege('authenticated', 'public.academy_memberships', 'INSERT') THEN
     RAISE EXCEPTION 'Authenticated role can directly insert an Academy membership';
   END IF;
+  IF has_table_privilege('authenticated', 'public.academies', 'DELETE') THEN
+    RAISE EXCEPTION 'Authenticated role can directly delete an Academy workspace';
+  END IF;
+  IF has_table_privilege('authenticated', 'public.academy_memberships', 'DELETE') THEN
+    RAISE EXCEPTION 'Authenticated role can erase Academy membership history';
+  END IF;
   IF has_column_privilege('authenticated', 'public.academies', 'owner_user_id', 'UPDATE') THEN
     RAISE EXCEPTION 'Authenticated role can transfer Academy ownership';
   END IF;

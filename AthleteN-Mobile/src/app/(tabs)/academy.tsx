@@ -85,7 +85,7 @@ export default function Academy(){
   setDataError('');
   const [a,m,t,cc,usage]=await Promise.all([
    supabase.from('academies').select('id,name,city,state,country,status').eq('id',profile.academy_id).maybeSingle(),
-   supabase.from('academy_memberships').select('user_id,role,status').eq('academy_id',profile.academy_id).eq('status','active'),
+   supabase.from('academy_memberships').select('user_id,role,status').eq('academy_id',profile.academy_id).order('created_at',{ascending:false}),
    supabase.from('tournaments').select('id,name,starts_at,location,status').eq('sport','Taekwondo').gte('starts_at',today).order('starts_at').limit(6),
    supabase.rpc('get_my_connection_code'),
    supabase.from('subscription_usage').select('ai_requests_used,ai_requests_limit').eq('user_id',session?.user?.id||'').eq('usage_month',monthStart.toISOString().slice(0,10)).maybeSingle()
@@ -107,7 +107,7 @@ export default function Academy(){
   const fa=await supabase.from('finance_accounts').select('id,name,currency').eq('academy_id',profile.academy_id).eq('owner_type','academy').maybeSingle();
   if(fa.data){setFinanceAccount(fa.data); const tx=await supabase.from('finance_transactions').select('id,type,amount,category,description,transaction_date').eq('account_id',fa.data.id).order('transaction_date',{ascending:false}).limit(20); setFinanceTx(tx.data||[]);} else setFinanceTx([]);
 
-  const coachIds=base.filter(x=>x.role==='coach').map(x=>x.user_id);
+  const coachIds=base.filter(x=>x.role==='coach'&&x.status==='active').map(x=>x.user_id);
   if(coachIds.length){
    const g=await supabase.from('training_groups').select('id').in('coach_user_id',coachIds).eq('active',true);
    const groupIds=(g.data||[]).map((x:any)=>x.id); setActiveGroupCount(groupIds.length);
@@ -133,8 +133,8 @@ export default function Academy(){
   }
  },[profile,isAcademyRole,router]);
 
- const athletes=members.filter(x=>x.role==='athlete').length;
- const coaches=members.filter(x=>x.role==='coach').length;
+ const athletes=members.filter(x=>x.role==='athlete'&&x.status==='active').length;
+ const coaches=members.filter(x=>x.role==='coach'&&x.status==='active').length;
  const activeGroups=activeGroupCount;
  const maxAttendance=Math.max(1,...attendance);
  const avgAttendance=athletes?Math.min(100,Math.round((attendance.reduce((a,b)=>a+b,0)/(7*athletes))*100)):0;
@@ -144,11 +144,17 @@ export default function Academy(){
   setBusy(true); const {data,error}=await supabase.rpc('set_connection_code',{p_code:value}); setBusy(false);
   if(error){alert(error.message);return} setSavedCode(String(data?.code||value));setCode('');
  }
- async function removeMember(userId:string){
-  setBusy(true); const {error}=await supabase.from('academy_memberships').delete().eq('academy_id',profile?.academy_id).eq('user_id',userId); setBusy(false); if(error){alert(error.message);return} await load();
+ async function setMemberStatus(userId:string,status:'active'|'suspended'){
+  const target=members.find(member=>member.user_id===userId);
+  if(!target||target.role==='academy_admin'||userId===session?.user?.id)return;
+  setBusy(true);
+  const {error}=await supabase.from('academy_memberships').update({status,updated_at:new Date().toISOString()}).eq('academy_id',profile?.academy_id).eq('user_id',userId).eq('role',target.role);
+  setBusy(false);
+  if(error){alert(error.message);return}
+  await load();
  }
 
- async function createTrainingGroup(){ const name=groupName.trim(); const coachText=groupCoach.trim(); if(!name||!coachText)return alert('Enter a group name and coach username.'); const coach=members.find(m=>m.role==='coach'&&(m.user_id===coachText||m.username?.toLowerCase()===coachText.toLowerCase()||m.full_name?.toLowerCase()===coachText.toLowerCase())); if(!coach)return alert('Choose an active academy coach.'); const days=groupDays.split(',').map(x=>x.trim().toLowerCase()).filter(Boolean); const valid=['sun','mon','tue','wed','thu','fri','sat']; if(!days.length||days.some(d=>!valid.includes(d)))return alert('Days must be comma-separated, for example Mon,Wed,Fri.'); if(!/^\d{2}:\d{2}$/.test(groupTime.trim()))return alert('Start time must use HH:MM.'); const duration=Number(groupDuration); if(!Number.isFinite(duration)||duration<15)return alert('Duration must be at least 15 minutes.'); const selected=groupAthletes.trim()?groupAthletes.split(',').map(x=>x.trim()).filter(Boolean):[]; const ids=selected.map(value=>members.find(m=>m.role==='athlete'&&(m.user_id===value||m.username?.toLowerCase()===value.toLowerCase()||m.full_name?.toLowerCase()===value.toLowerCase()))?.user_id).filter(Boolean) as string[]; if(ids.length!==selected.length)return alert('One or more athletes could not be found in this academy.'); setBusy(true); const {error}=await supabase.rpc('academy_create_training_group',{p_name:name,p_focus:groupFocus.trim(),p_recurrence_days:days,p_start_time:groupTime.trim(),p_duration_minutes:duration,p_coach_user_id:coach.user_id,p_athlete_ids:ids}); setBusy(false); if(error){alert(error.message);return} setGroupName('');setGroupFocus('');setGroupCoach('');setGroupAthletes('');await load(); }
+ async function createTrainingGroup(){ const name=groupName.trim(); const coachText=groupCoach.trim(); if(!name||!coachText)return alert('Enter a group name and coach username.'); const coach=members.find(m=>m.role==='coach'&&m.status==='active'&&(m.user_id===coachText||m.username?.toLowerCase()===coachText.toLowerCase()||m.full_name?.toLowerCase()===coachText.toLowerCase())); if(!coach)return alert('Choose an active academy coach.'); const days=groupDays.split(',').map(x=>x.trim().toLowerCase()).filter(Boolean); const valid=['sun','mon','tue','wed','thu','fri','sat']; if(!days.length||days.some(d=>!valid.includes(d)))return alert('Days must be comma-separated, for example Mon,Wed,Fri.'); if(!/^\d{2}:\d{2}$/.test(groupTime.trim()))return alert('Start time must use HH:MM.'); const duration=Number(groupDuration); if(!Number.isFinite(duration)||duration<15)return alert('Duration must be at least 15 minutes.'); const selected=groupAthletes.trim()?groupAthletes.split(',').map(x=>x.trim()).filter(Boolean):[]; const ids=selected.map(value=>members.find(m=>m.role==='athlete'&&m.status==='active'&&(m.user_id===value||m.username?.toLowerCase()===value.toLowerCase()||m.full_name?.toLowerCase()===value.toLowerCase()))?.user_id).filter(Boolean) as string[]; if(ids.length!==selected.length)return alert('One or more athletes could not be found in this academy.'); setBusy(true); const {error}=await supabase.rpc('academy_create_training_group',{p_name:name,p_focus:groupFocus.trim(),p_recurrence_days:days,p_start_time:groupTime.trim(),p_duration_minutes:duration,p_coach_user_id:coach.user_id,p_athlete_ids:ids}); setBusy(false); if(error){alert(error.message);return} setGroupName('');setGroupFocus('');setGroupCoach('');setGroupAthletes('');await load(); }
  async function createFinanceAccount(){
   if(financeAccount||!profile?.academy_id)return; setBusy(true); const {data,error}=await supabase.from('finance_accounts').insert({owner_user_id:session?.user?.id,academy_id:profile.academy_id,owner_type:'academy',name:(academy?.name||'AthleteN Academy')+' Finance',currency:'INR'}).select('id,name,currency').single(); setBusy(false); if(error){alert(error.message);return} setFinanceAccount(data); setFinanceTx([]);
  }
@@ -157,7 +163,7 @@ export default function Academy(){
  }
  async function createEvent(){
   if(!eventName.trim()||!eventDate.trim()||!eventAthlete.trim())return alert('Enter competition name, date and athlete account code/username.');
-  const athlete=members.find(m=>m.user_id===eventAthlete.trim()||m.username?.toLowerCase()===eventAthlete.trim().toLowerCase()||m.full_name?.toLowerCase()===eventAthlete.trim().toLowerCase()); if(!athlete||athlete.role!=='athlete')return alert('Choose an active academy athlete.');
+  const athlete=members.find(m=>m.status==='active'&&(m.user_id===eventAthlete.trim()||m.username?.toLowerCase()===eventAthlete.trim().toLowerCase()||m.full_name?.toLowerCase()===eventAthlete.trim().toLowerCase())); if(!athlete||athlete.role!=='athlete')return alert('Choose an active academy athlete.');
   const coach=eventCoach.trim()?members.find(m=>m.role==='coach'&&(m.user_id===eventCoach.trim()||m.username?.toLowerCase()===eventCoach.trim().toLowerCase()||m.full_name?.toLowerCase()===eventCoach.trim().toLowerCase())):undefined; if(eventCoach.trim()&&!coach)return alert('Choose an active academy coach.');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(eventDate.trim()))return alert('Date must use YYYY-MM-DD.');
   setBusy(true); const {error}=await supabase.rpc('academy_create_tournament',{p_name:eventName.trim(),p_starts_at:eventDate.trim(),p_location:eventLocation.trim(),p_athlete_user_id:athlete.user_id,p_discipline:athlete.discipline||null,p_coach_user_id:coach?.user_id||null}); setBusy(false); if(error){alert(error.message);return} setEventName('');setEventDate('');setEventLocation('');setEventAthlete('');setEventCoach('');await load();
@@ -260,10 +266,10 @@ export default function Academy(){
    {members.length?members.map(m=><Card key={m.user_id} style={{padding:13}}><View style={{flexDirection:'row',alignItems:'center',gap:10}}>
     <Pressable disabled={m.role!=='athlete'} onPress={()=>router.push({pathname:'/academy-athlete-detail',params:{athleteId:m.user_id}})} style={{flex:1,minWidth:0,flexDirection:'row',alignItems:'center',gap:10}}>
      <View style={{width:40,height:40,borderRadius:12,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'}}><Icon name={m.role==='coach'?'coaches':'athletes'} size={18}/></View>
-     <View style={{flex:1,minWidth:0}}><Text style={{color:c.text,fontSize:12,fontWeight:'900'}}>{m.full_name||m.username||'Member'}</Text><Text style={{color:c.muted,fontSize:9,marginTop:3}}>{m.role.toUpperCase()} · {m.discipline||'Taekwondo'}{m.belt?' · '+m.belt:''}</Text>{m.role==='athlete'?<Text style={{color:c.accentBright,fontSize:8,fontWeight:'900',marginTop:4}}>{m.weight_kg?Number(m.weight_kg).toFixed(1)+' kg':'Weight not set'} · {m.competition_weight_category||'Category not set'} · VIEW PROFILE ›</Text>:null}</View>
+     <View style={{flex:1,minWidth:0}}><Text style={{color:c.text,fontSize:12,fontWeight:'900'}}>{m.full_name||m.username||'Member'}</Text><Text style={{color:c.muted,fontSize:9,marginTop:3}}>{m.role.toUpperCase()} · {m.status.toUpperCase()} · {m.discipline||'Taekwondo'}{m.belt?' · '+m.belt:''}</Text>{m.role==='athlete'?<Text style={{color:c.accentBright,fontSize:8,fontWeight:'900',marginTop:4}}>{m.weight_kg?Number(m.weight_kg).toFixed(1)+' kg':'Weight not set'} · {m.competition_weight_category||'Category not set'} · VIEW PROFILE ›</Text>:null}</View>
      {m.role==='athlete'?<Icon name="arrow" size={17} color={c.accentBright}/>:null}
     </Pressable>
-    {m.role==='academy_admin'?<Text style={{color:c.muted,fontSize:7,fontWeight:'900'}}>ADMIN</Text>:<Pressable disabled={busy} onPress={()=>void removeMember(m.user_id)} style={{borderWidth:1,borderColor:'#8b3a45',borderRadius:9,paddingHorizontal:8,paddingVertical:6}}><Text style={{color:'#ff8f9f',fontSize:7,fontWeight:'900'}}>REMOVE</Text></Pressable>}
+    {m.role==='academy_admin'?<Text style={{color:c.muted,fontSize:7,fontWeight:'900'}}>ADMIN</Text>:m.status==='active'||m.status==='suspended'?<Pressable disabled={busy} onPress={()=>void setMemberStatus(m.user_id,m.status==='active'?'suspended':'active')} style={{borderWidth:1,borderColor:m.status==='active'?'#8b3a45':c.accent,borderRadius:9,paddingHorizontal:8,paddingVertical:6}}><Text style={{color:m.status==='active'?'#ff8f9f':c.accentBright,fontSize:7,fontWeight:'900'}}>{m.status==='active'?'SUSPEND':'REACTIVATE'}</Text></Pressable>:null}
    </View></Card>):<Card><Text style={{color:c.text,fontWeight:'900'}}>No connected people yet</Text><Text style={{color:c.muted,fontSize:10,marginTop:4}}>Share the academy code so coaches and athletes can join from their own accounts.</Text></Card>}
   </View>:null}
 
