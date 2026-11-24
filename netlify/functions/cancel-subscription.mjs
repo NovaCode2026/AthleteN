@@ -65,6 +65,9 @@ async function scheduleRazorpayCancellation(subscriptionId) {
 
 export default async function handler(request) {
   if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
+  // Production schema is not yet verified to contain cancel_at_period_end.
+  // Keep this endpoint closed until the migration is safely applied and verified.
+  return json({ error: "Subscription self-service cancellation is temporarily unavailable while billing schema verification is pending." }, 503);
 
   try {
     const user = await authenticate(request);
