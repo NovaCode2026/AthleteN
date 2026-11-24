@@ -108,3 +108,4 @@ VALUES
 
 INSERT INTO public.notification_preferences(user_id)
 SELECT id FROM auth.users;
+GRANT SELECT ON public.notifications TO authenticated;
