@@ -1,6 +1,8 @@
 import {
   AdEventType,
   AdsConsent,
+  AdsConsentPrivacyOptionsRequirementStatus,
+  AgeRestrictedTreatment,
   MaxAdContentRating,
   RewardedAd,
   RewardedAdEventType,
@@ -19,17 +21,16 @@ async function prepareGoogleMobileAds(): Promise<void> {
       // This function is called only after AthleteN's server has issued a
       // short-lived session, which is restricted to independently verified
       // adult accounts. DOB and athlete profile data are never sent to AdMob.
-      const consent = await AdsConsent.gatherConsent({ tagForUnderAgeOfConsent: false });
+      const consent = await AdsConsent.gatherConsent();
       if (!consent.canRequestAds) {
         throw new Error('Ad consent is not available. You can continue using AthleteN without watching an ad.');
       }
 
       await mobileAds().setRequestConfiguration({
         maxAdContentRating: MaxAdContentRating.PG,
-        // The backend only issues sessions to independently verified adults.
-        // The SDK's default "unspecified" treatment is therefore the correct
-        // setting for this adult-only placement; minor accounts fail closed
-        // before SDK initialization and must use a separately reviewed flow.
+        // The server issues sessions only to independently verified adults.
+        // All accounts under 18 are denied before an ad session is created.
+        ageRestrictedTreatment: AgeRestrictedTreatment.UNSPECIFIED,
       });
       await mobileAds().initialize();
     })().catch((error: unknown) => {
@@ -38,6 +39,26 @@ async function prepareGoogleMobileAds(): Promise<void> {
     });
   }
   await sdkReady;
+}
+
+
+/**
+ * Opens Google's UMP privacy-options form when the current consent configuration
+ * requires one. This is an explicit user action and does not load an ad.
+ */
+export async function openAdsPrivacyOptions(): Promise<boolean> {
+  if (Platform.OS !== 'android') {
+    throw new Error('Ad privacy options are currently available on Android only.');
+  }
+
+  await AdsConsent.requestInfoUpdate();
+  const info = await AdsConsent.getConsentInfo();
+  if (info.privacyOptionsRequirementStatus !== AdsConsentPrivacyOptionsRequirementStatus.REQUIRED) {
+    return false;
+  }
+
+  await AdsConsent.showPrivacyOptionsForm();
+  return true;
 }
 
 /**
