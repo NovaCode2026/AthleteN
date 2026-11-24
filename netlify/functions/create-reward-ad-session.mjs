@@ -53,7 +53,7 @@ export default async function handler(request) {
   }
   const ageRecord = Array.isArray(ageRows) ? ageRows[0] : ageRows;
   const dob = typeof ageRecord?.date_of_birth === "string" ? ageRecord.date_of_birth : "";
-  const match = dob.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  const match = dob.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (ageRecord?.status !== "not_required" || !match) {
     return json("Rewarded ads are unavailable for this account. Your existing AthleteN access is not affected.", 403);
   }
