@@ -59,6 +59,14 @@ export default function DailyLeaderboardPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  useEffect(() => {
+    if (!data?.resetsAt) return;
+    const resetAt = Date.parse(data.resetsAt);
+    if (!Number.isFinite(resetAt)) return;
+    const timeout = window.setTimeout(() => { void load(); }, Math.max(0, resetAt - Date.now()) + 1000);
+    return () => window.clearTimeout(timeout);
+  }, [data?.resetsAt, load]);
+
   async function savePreferences() {
     if (!auth.user?.id) {
       setError("Sign in again before updating leaderboard settings.");
