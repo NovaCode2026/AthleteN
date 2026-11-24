@@ -43,6 +43,17 @@ export default async function handler(request) {
   const { data, error } = await client.auth.getUser(accessToken);
   if (error || !data?.user) return json("Please sign in again.", 401);
 
+  const windowStart = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count, error: rateLimitError } = await admin.from("reward_ad_sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", data.user.id)
+    .gte("created_at", windowStart);
+  if (rateLimitError) {
+    console.error("Reward ad session rate check failed:", rateLimitError);
+    return json("Unable to prepare a rewarded ad. Please try again later.", 503);
+  }
+  if ((count || 0) >= 5) return json("Too many ad sessions were requested. Try again later.", 429);
+
   const customData = randomBytes(32).toString("base64url");
   const customDataHash = createHash("sha256").update(customData).digest("hex");
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
