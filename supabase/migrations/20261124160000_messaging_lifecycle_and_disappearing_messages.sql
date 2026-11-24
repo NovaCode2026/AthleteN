@@ -126,7 +126,7 @@ BEGIN
     RAISE EXCEPTION 'Age approval is required before changing message expiry settings';
   END IF;
   IF p_conversation_id IS NULL THEN RAISE EXCEPTION 'Conversation is required'; END IF;
-  IF p_after_seconds NOT IN (0, 86400, 604800, 2592000, 7776000) THEN
+  IF p_after_seconds IS NULL OR p_after_seconds NOT IN (0, 86400, 604800, 2592000, 7776000) THEN
     RAISE EXCEPTION 'Choose Never, 24 hours, 7 days, 30 days, or 90 days';
   END IF;
 
