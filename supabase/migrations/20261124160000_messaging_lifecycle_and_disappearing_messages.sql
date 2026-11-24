@@ -343,6 +343,20 @@ USING (
   )
 );
 
+-- Message edits and global deletes must pass through the server RPCs. The
+-- legacy row DELETE policy would otherwise bypass the 15-minute tombstone flow.
+DROP POLICY IF EXISTS "senders can delete their own messages" ON public.messages;
+REVOKE DELETE ON public.messages FROM PUBLIC, anon, authenticated;
+
+-- Restrictive SELECT guard also applies when another permissive policy (such as
+-- the generic super-admin access policy) would otherwise grant visibility.
+DROP POLICY IF EXISTS "messages expiry visibility guard" ON public.messages;
+CREATE POLICY "messages expiry visibility guard"
+ON public.messages
+AS RESTRICTIVE
+FOR SELECT TO authenticated
+USING (expires_at IS NULL OR expires_at > now());
+
 DROP POLICY IF EXISTS "support-linked admin message read" ON public.messages;
 CREATE POLICY "support-linked admin message read"
 ON public.messages
@@ -458,6 +472,23 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.leave_group_conversation(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.leave_group_conversation(uuid, uuid) TO authenticated;
+
+-- An uploader may clean up an orphaned upload, but cannot remove an object
+-- while any message row still references it. Message lifecycle RPCs queue the
+-- removal and clear the reference first.
+DROP POLICY IF EXISTS "message attachment delete by uploader" ON storage.objects;
+CREATE POLICY "message attachment delete by uploader when unreferenced"
+ON storage.objects
+FOR DELETE TO authenticated
+USING (
+  bucket_id = 'message-attachments'
+  AND owner_id = (SELECT auth.uid())::text
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.messages m
+    WHERE m.attachment_path = objects.name
+  )
+);
 
 COMMENT ON COLUMN public.conversations.disappearing_messages_after_seconds IS
   'Expiry policy for newly inserted messages: 0, 86400, 604800, 2592000, or 7776000 seconds.';
