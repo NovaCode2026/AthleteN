@@ -43,6 +43,34 @@ export default async function handler(request) {
   const { data, error } = await client.auth.getUser(accessToken);
   if (error || !data?.user) return json("Please sign in again.", 401);
 
+  // Rewarded ads are adult-only in this release. Parent-approved minor accounts
+  // can use AthleteN normally but cannot request advertising inventory.
+  // The DOB remains inside AthleteN and is never sent to the ad provider.
+  const { data: ageRows, error: ageError } = await client.rpc("get_age_verification_status");
+  if (ageError) {
+    console.error("Rewarded ad age eligibility check failed:", ageError);
+    return json("Age eligibility could not be verified. Rewarded ads are unavailable.", 503);
+  }
+  const ageRecord = Array.isArray(ageRows) ? ageRows[0] : ageRows;
+  const dob = typeof ageRecord?.date_of_birth === "string" ? ageRecord.date_of_birth : "";
+  const match = dob.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  if (ageRecord?.status !== "not_required" || !match) {
+    return json("Rewarded ads are unavailable for this account. Your existing AthleteN access is not affected.", 403);
+  }
+  const birthDate = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  if (!Number.isFinite(birthDate.getTime()) || birthDate.toISOString().slice(0, 10) !== dob) {
+    return json("Age eligibility could not be verified. Rewarded ads are unavailable.", 403);
+  }
+  const now = new Date();
+  let ageYears = now.getUTCFullYear() - birthDate.getUTCFullYear();
+  if (now.getUTCMonth() < birthDate.getUTCMonth() ||
+      (now.getUTCMonth() === birthDate.getUTCMonth() && now.getUTCDate() < birthDate.getUTCDate())) {
+    ageYears -= 1;
+  }
+  if (ageYears < 18) {
+    return json("Rewarded ads are not available for accounts under 18. Your existing AthleteN access is not affected.", 403);
+  }
+
   const windowStart = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count, error: rateLimitError } = await admin.from("reward_ad_sessions")
     .select("id", { count: "exact", head: true })
