@@ -13,6 +13,8 @@ CREATE TABLE public.coach_athlete_links (
   UNIQUE (coach_user_id,athlete_user_id,academy_id)
 );
 
+GRANT SELECT ON public.coach_athlete_links TO authenticated;
+
 CREATE TABLE public.training_groups (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   coach_user_id uuid NOT NULL REFERENCES auth.users(id),
