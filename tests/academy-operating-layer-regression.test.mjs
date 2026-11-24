@@ -9,7 +9,7 @@ const navigationConfig = read("../AthleteN-Mobile/src/lib/academy-navigation.ts"
 const web = read("../src/components/coach/CoachAcademyDashboard.tsx");
 
 test("Academy navigation exposes the complete operations workspace without changing athlete shortcuts", () => {
-  for (const section of ["Dashboard", "People", "Coaches", "Training", "Attendance", "Events", "Calendar", "Intelligence", "Achievements", "Approvals", "Communication", "Finance", "AI"]) {
+  for (const section of ["Dashboard", "People", "Coaches", "Training", "Attendance", "Events", "Calendar", "Intelligence", "Achievements", "Approvals", "Communication", "Documents", "Finance", "AI"]) {
     assert.match(navigationConfig, new RegExp(`id:'${section}'`));
   }
   assert.match(navigation, /mode.*academy/);
@@ -48,6 +48,13 @@ test("Academy approval oversight never lets an administrator review another Coac
   assert.match(web, /r\.coach_user_id===userId/);
   assert.match(web, /Assigned Coach review/);
   assert.match(mobile, /rpc\('review_coach_approval'/);
+});
+
+test("Academy document and calendar indexes stay scoped to active athlete accounts", () => {
+  assert.match(mobile, /from\\('documents'\\)[\\s\\S]*?in\\('user_id',activeAthleteIds\\)/);
+  assert.match(mobile, /from\\('calendar_events'\\)[\\s\\S]*?in\\('user_id',activeAthleteIds\\)/);
+  assert.match(mobile, /tab==='Documents'/);
+  assert.match(mobile, /calendarRows\\.map/);
 });
 
 test("Academy communication opens existing group conversations without inventing a broadcast pipeline", () => {
