@@ -12,6 +12,7 @@ export const ACADEMY_NAV_AVAILABLE=[
  {id:'Achievements',label:'Achievements',icon:'medal'},
  {id:'Approvals',label:'Approvals',icon:'shield'},
  {id:'Communication',label:'Communication',icon:'message'},
+ {id:'Documents',label:'Documents',icon:'file-document-outline'},
  {id:'Finance',label:'Finance',icon:'finance'},
  {id:'AI',label:'AI',icon:'ai'},
 ] as const;
