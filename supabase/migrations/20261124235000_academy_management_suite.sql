@@ -591,6 +591,148 @@ create table if not exists public.academy_notification_preferences (
   primary key(academy_id,user_id)
 );
 
+-- Central in-app alert fan-out. Each event checks Academy membership, the
+-- per-Academy preference and AthleteN's existing Coach/Academy notification toggle.
+create or replace function private.enqueue_academy_notification(
+  p_academy_id uuid,p_user_id uuid,p_title text,p_body text,p_category text
+) returns void language plpgsql security definer set search_path=''
+as $function$
+declare v_category_enabled boolean; v_global_enabled boolean;
+begin
+  if p_academy_id is null or p_user_id is null or not exists(
+    select 1 from public.academy_memberships m
+    where m.academy_id=p_academy_id and m.user_id=p_user_id and m.status='active'
+  ) then return; end if;
+  select
+    case p_category
+      when 'fees' then coalesce(ap.fees,true)
+      when 'transfers' then coalesce(ap.transfers,true)
+      when 'seat_updates' then coalesce(ap.seat_updates,true)
+      when 'reports' then coalesce(ap.reports,true)
+      when 'announcements' then coalesce(ap.announcements,true)
+      else true
+    end,
+    coalesce(np.coach_academy,true)
+  into v_category_enabled,v_global_enabled
+  from (select 1) seed
+  left join public.academy_notification_preferences ap
+    on ap.academy_id=p_academy_id and ap.user_id=p_user_id
+  left join public.notification_preferences np on np.user_id=p_user_id;
+  if coalesce(v_category_enabled,true) and coalesce(v_global_enabled,true) then
+    insert into public.notifications(user_id,title,body,notification_type,action_route,created_at,updated_at)
+    values(p_user_id,left(coalesce(p_title,'Academy update'),120),left(coalesce(p_body,''),240),
+      'coach_academy','/notifications',now(),now());
+  end if;
+end;
+$function$;
+revoke all on function private.enqueue_academy_notification(uuid,uuid,text,text,text) from public,anon,authenticated;
+
+create or replace function public.academy_management_notify_event()
+returns trigger language plpgsql security definer set search_path=''
+as $function$
+declare
+  v_row jsonb;
+  v_old jsonb;
+  v_academy uuid;
+  v_status text;
+  v_old_status text;
+  v_user uuid;
+  v_invoice public.academy_fee_invoices%rowtype;
+  v_payment_total numeric(12,2);
+  r record;
+begin
+  if tg_op='DELETE' then v_row:=to_jsonb(old); else v_row:=to_jsonb(new); end if;
+  v_academy:=nullif(v_row->>'academy_id','')::uuid;
+
+  if tg_table_name='academy_fee_invoices' and tg_op='INSERT' then
+    perform private.enqueue_academy_notification(v_academy,(v_row->>'athlete_user_id')::uuid,
+      'New Academy fee invoice',coalesce(v_row->>'title','Academy fee')||' · ₹'||coalesce(v_row->>'amount','0')||
+      case when v_row->>'due_date' is not null then ' · Due '||v_row->>'due_date' else '' end,'fees');
+
+  elsif tg_table_name='academy_fee_payments' and tg_op='INSERT' then
+    select * into v_invoice from public.academy_fee_invoices where id=(v_row->>'invoice_id')::uuid;
+    select coalesce(sum(amount),0) into v_payment_total from public.academy_fee_payments where invoice_id=v_invoice.id;
+    perform private.enqueue_academy_notification(v_invoice.academy_id,v_invoice.athlete_user_id,
+      'Academy fee payment recorded','Recorded '+('₹'||(v_row->>'amount'))||' · Total received ₹'||v_payment_total,'fees');
+
+  elsif tg_table_name='academy_athlete_transfer_requests' then
+    v_status:=v_row->>'status';
+    if tg_op='UPDATE' then v_old:=to_jsonb(old); v_old_status:=v_old->>'status'; end if;
+    if tg_op='INSERT' or v_status is distinct from v_old_status then
+      if v_status='pending_current_coach' then
+        perform private.enqueue_academy_notification(v_academy,(v_row->>'from_coach_user_id')::uuid,
+          'Athlete Coach transfer requested','An athlete requested a change of Coach. Review the transfer request.','transfers');
+      elsif v_status='pending_target_coach' then
+        perform private.enqueue_academy_notification(v_academy,(v_row->>'to_coach_user_id')::uuid,
+          'Coach transfer awaiting acceptance','An athlete transfer has been released by the current Coach.','transfers');
+      elsif v_status='pending_academy_review' then
+        for r in select m.user_id from public.academy_memberships m
+          where m.academy_id=v_academy and m.role='academy_admin' and m.status='active'
+        loop
+          perform private.enqueue_academy_notification(v_academy,r.user_id,
+            'Athlete transfer needs Academy review','Both Coaches have reviewed the transfer. Academy review is next.','transfers');
+        end loop;
+        for r in select a.user_id from public.academy_staff_assignments a
+          join public.academy_memberships m on m.academy_id=a.academy_id and m.user_id=a.user_id and m.status='active'
+          where a.academy_id=v_academy and a.permissions @> array['transfers.review']::text[]
+        loop
+          perform private.enqueue_academy_notification(v_academy,r.user_id,
+            'Athlete transfer needs Academy review','Both Coaches have reviewed the transfer. Academy review is next.','transfers');
+        end loop;
+      elsif v_status in ('approved','rejected','withdrawn') then
+        perform private.enqueue_academy_notification(v_academy,(v_row->>'athlete_user_id')::uuid,
+          'Athlete transfer updated','Your Coach transfer request is now '||replace(v_status,'_',' ')||'.','transfers');
+        perform private.enqueue_academy_notification(v_academy,(v_row->>'from_coach_user_id')::uuid,
+          'Athlete transfer updated','A Coach transfer request is now '||replace(v_status,'_',' ')||'.','transfers');
+        perform private.enqueue_academy_notification(v_academy,(v_row->>'to_coach_user_id')::uuid,
+          'Athlete transfer updated','A Coach transfer request is now '||replace(v_status,'_',' ')||'.','transfers');
+      end if;
+    end if;
+
+  elsif tg_table_name='academy_seat_requests' then
+    v_status:=v_row->>'status';
+    if tg_op='UPDATE' then v_old:=to_jsonb(old); v_old_status:=v_old->>'status'; end if;
+    if tg_op='INSERT' then
+      for r in select m.user_id from public.academy_memberships m
+        where m.academy_id=v_academy and m.role='academy_admin' and m.status='active'
+      loop
+        perform private.enqueue_academy_notification(v_academy,r.user_id,
+          'Coach seat request','A Coach submitted a seat request for Academy review.','seat_updates');
+      end loop;
+    elsif v_status is distinct from v_old_status then
+      perform private.enqueue_academy_notification(v_academy,(v_row->>'coach_user_id')::uuid,
+        'Coach seat request updated','Your Coach seat request is now '||replace(v_status,'_',' ')||'.','seat_updates');
+    end if;
+
+  elsif tg_table_name='academy_staff_assignments' then
+    v_user:=coalesce(nullif(v_row->>'user_id','')::uuid,nullif(to_jsonb(old)->>'user_id','')::uuid);
+    if v_user is not null then
+      perform private.enqueue_academy_notification(v_academy,v_user,
+        'Academy staff permissions updated','Your Academy staff permissions were changed. Review your current access.','seat_updates');
+    end if;
+  end if;
+
+  if tg_op='DELETE' then return old; else return new; end if;
+end;
+$function$;
+revoke all on function public.academy_management_notify_event() from public,anon,authenticated;
+
+drop trigger if exists academy_fee_invoice_notify on public.academy_fee_invoices;
+create trigger academy_fee_invoice_notify after insert on public.academy_fee_invoices
+for each row execute function public.academy_management_notify_event();
+drop trigger if exists academy_fee_payment_notify on public.academy_fee_payments;
+create trigger academy_fee_payment_notify after insert on public.academy_fee_payments
+for each row execute function public.academy_management_notify_event();
+drop trigger if exists academy_transfer_notify on public.academy_athlete_transfer_requests;
+create trigger academy_transfer_notify after insert or update of status on public.academy_athlete_transfer_requests
+for each row execute function public.academy_management_notify_event();
+drop trigger if exists academy_seat_request_notify on public.academy_seat_requests;
+create trigger academy_seat_request_notify after insert or update of status on public.academy_seat_requests
+for each row execute function public.academy_management_notify_event();
+drop trigger if exists academy_staff_assignment_notify on public.academy_staff_assignments;
+create trigger academy_staff_assignment_notify after insert or update or delete on public.academy_staff_assignments
+for each row execute function public.academy_management_notify_event();
+
 -- Apply the per-Academy announcement preference at fan-out time. Missing
 -- preferences default to enabled; the account-wide coach_academy switch still
 -- remains respected.
