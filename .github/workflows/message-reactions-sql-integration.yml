@@ -1,0 +1,51 @@
+name: Messaging Reactions SQL Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/migrations/20261124140000_message_reactions.sql"
+      - "tests/sql/message-reactions-integration.sql"
+      - "tests/sql/message-reactions-assertions.sql"
+      - ".github/workflows/message-reactions-sql-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  message-reactions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: athleten_message_reactions_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d athleten_message_reactions_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Create isolated conversation fixture
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_message_reactions_test -v ON_ERROR_STOP=1 -f tests/sql/message-reactions-integration.sql
+      - name: Apply candidate message reactions migration
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_message_reactions_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124140000_message_reactions.sql
+      - name: Verify reaction RLS and allowed values
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_message_reactions_test -v ON_ERROR_STOP=1 -f tests/sql/message-reactions-assertions.sql
