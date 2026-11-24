@@ -50,11 +50,11 @@ export default async function handler(request) {
         .eq("leaderboard_opt_in", true)
         .order("user_id")),
       readAll(() => admin.from("training_sessions")
-        .select("user_id,created_at")
-        .gte("created_at", startIso).lt("created_at", endIso)),
+        .select("user_id,session_date")
+        .eq("session_date", dayKey)),
       readAll(() => admin.from("taekwondo_training_logs")
-        .select("user_id,created_at,session_date")
-        .gte("created_at", startIso).lt("created_at", endIso)),
+        .select("user_id,session_date")
+        .eq("session_date", dayKey)),
       readAll(() => admin.from("athlete_milestones")
         .select("user_id,achieved_at,verification_status")
         .eq("achieved_at", dayKey)
