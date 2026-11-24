@@ -14,6 +14,8 @@ test("saved-message table contains only private owner metadata and cascades with
   assert.match(migration, /note text/);
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
   assert.match(migration, /REVOKE ALL ON TABLE public\.messaging_saved_messages FROM PUBLIC, anon/);
+  assert.match(migration, /remove_saved_message_bookmarks_on_global_delete/);
+  assert.match(migration, /messages_remove_saved_bookmarks_after_global_delete/);
 });
 
 test("only the owner can read or change saved messages for their own conversations", () => {
