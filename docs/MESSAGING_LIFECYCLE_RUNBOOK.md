@@ -8,6 +8,7 @@ Status: deployment instructions for the candidate workflows in PR #76. No produc
 2. Replay candidate migrations in an isolated staging database:
    - `20261124150000_rich_media_attachment_limits.sql`
    - `20261124160000_messaging_lifecycle_and_disappearing_messages.sql`
+   - `20261124180000_private_saved_messages.sql`
    - `20261124170000_expo_push_ticket_and_receipt_tracking.sql`
 3. Run the messaging rich-media, lifecycle and push-delivery SQL integration workflows.
 4. Run Supabase security and performance advisors. Review every result before proposing production rollout.
