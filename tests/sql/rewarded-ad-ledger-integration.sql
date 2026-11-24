@@ -16,8 +16,15 @@ LANGUAGE sql STABLE
 AS $function$
   SELECT COALESCE(NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', '')
 $function$;
+CREATE OR REPLACE FUNCTION auth.uid()
+RETURNS uuid
+LANGUAGE sql STABLE
+AS $function$
+  SELECT NULLIF(current_setting('request.jwt.claims', true)::jsonb ->> 'sub', '')::uuid
+$function$;
 GRANT USAGE ON SCHEMA auth TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION auth.role() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated, service_role;
 
 CREATE TABLE public.profiles (
   user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -46,17 +53,20 @@ CREATE TABLE public.ai_usage_events (
 \ir ../../supabase/migrations/20261124090000_rewarded_ad_credit_ledger.sql
 \ir ../../supabase/migrations/20261124090100_rewarded_ai_credit_consumption.sql
 \ir ../../supabase/migrations/20261124200000_reward_wallet_summary_rpc.sql
+\ir ../../supabase/migrations/20261124210000_rewarded_ad_admin_controls.sql
 
 INSERT INTO auth.users(id, email) VALUES
  ('30000000-0000-0000-0000-000000000001','athlete-one@athleten.test'),
  ('30000000-0000-0000-0000-000000000002','athlete-two@athleten.test'),
  ('30000000-0000-0000-0000-000000000003','student@athleten.test'),
- ('30000000-0000-0000-0000-000000000004','long-ledger@athleten.test');
+ ('30000000-0000-0000-0000-000000000004','long-ledger@athleten.test'),
+ ('30000000-0000-0000-0000-000000000005','admin@athleten.test');
 INSERT INTO public.profiles(user_id, role, plan_id) VALUES
  ('30000000-0000-0000-0000-000000000001','athlete','pro'),
  ('30000000-0000-0000-0000-000000000002','athlete','free'),
  ('30000000-0000-0000-0000-000000000003','athlete','student'),
- ('30000000-0000-0000-0000-000000000004','athlete','free');
+ ('30000000-0000-0000-0000-000000000004','athlete','free'),
+ ('30000000-0000-0000-0000-000000000005','admin','free');
 INSERT INTO public.student_verifications(user_id,status)
 VALUES ('30000000-0000-0000-0000-000000000003','pending');
 
@@ -243,4 +253,64 @@ BEGIN
   IF NOT v_blocked THEN RAISE EXCEPTION 'Authenticated role can execute private wallet summary RPC'; END IF;
 END
 $acl$;
+RESET ROLE;
+
+-- Admin console can inspect reward aggregates and recent audit events, and can
+-- invoke only the one-way emergency pause. Ordinary athletes cannot do either.
+SELECT set_config('request.jwt.claims',
+  '{"role":"authenticated","sub":"30000000-0000-0000-0000-000000000005"}', false);
+SET ROLE authenticated;
+DO $admin_reward_ops$
+DECLARE
+  v_overview jsonb;
+  v_result jsonb;
+BEGIN
+  v_overview := public.get_reward_admin_overview();
+  IF v_overview->>'paused' <> 'false' THEN
+    RAISE EXCEPTION 'Reward ads should start unpaused in the isolated test database';
+  END IF;
+  v_result := public.pause_rewarded_ads('Staging safety test');
+  IF v_result->>'paused' <> 'true' THEN
+    RAISE EXCEPTION 'Admin emergency pause did not activate';
+  END IF;
+  v_overview := public.get_reward_admin_overview();
+  IF v_overview->>'paused' <> 'true'
+     OR jsonb_array_length(v_overview->'recentAdminActions') <> 1 THEN
+    RAISE EXCEPTION 'Admin overview did not expose pause state and audit event';
+  END IF;
+END
+$admin_reward_ops$;
+RESET ROLE;
+
+SELECT set_config('request.jwt.claims',
+  '{"role":"authenticated","sub":"30000000-0000-0000-0000-000000000001"}', false);
+SET ROLE authenticated;
+DO $athlete_reward_ops$
+DECLARE v_denied boolean := false;
+BEGIN
+  BEGIN
+    PERFORM public.get_reward_admin_overview();
+  EXCEPTION WHEN OTHERS THEN v_denied := true;
+  END;
+  IF NOT v_denied THEN RAISE EXCEPTION 'Ordinary athlete accessed admin reward overview'; END IF;
+
+  v_denied := false;
+  BEGIN
+    PERFORM public.pause_rewarded_ads('Athlete pause attempt');
+  EXCEPTION WHEN OTHERS THEN v_denied := true;
+  END;
+  IF NOT v_denied THEN RAISE EXCEPTION 'Ordinary athlete paused rewarded ads'; END IF;
+END
+$athlete_reward_ops$;
+RESET ROLE;
+
+SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false);
+SET ROLE service_role;
+DO $server_pause_check$
+BEGIN
+  IF public.is_rewarded_ads_paused() IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'Service-role pause-state check did not return true';
+  END IF;
+END
+$server_pause_check$;
 RESET ROLE;
