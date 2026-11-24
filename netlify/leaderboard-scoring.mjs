@@ -6,7 +6,7 @@ export const LEADERBOARD_CATEGORIES = Object.freeze([
   { key: "competition", label: "Competition", status: "active", description: "Coach-verified tournament results and verified medals recorded today." },
   { key: "fitness_conditioning", label: "Fitness & Conditioning", status: "coming_soon", description: "Will score coach-verified fitness benchmarks only. Training volume, body metrics and health data are not leaderboard points." },
   { key: "learning_development", label: "Learning & Development", status: "active", description: "Newly verified certificates." },
-  { key: "goals_achievements", label: "Goals & Achievements", status: "active", description: "System-awarded AthleteN badges and completed goals." },
+  { key: "goals_achievements", label: "Goals & Achievements", status: "active", description: "System-awarded AthleteN badges and achievements." },
   { key: "community_teamwork", label: "Community & Teamwork", status: "coming_soon", description: "Waiting for a verified contribution source." },
   { key: "coach_academy", label: "Coach & Academy", status: "active", description: "Attendance marked present or late by a coach." },
   { key: "athleten_engagement", label: "AthleteN Engagement", status: "coming_soon", description: "App opens, screen time and notification taps never earn points." }
