@@ -21,7 +21,8 @@ CREATE TABLE storage.buckets (
 CREATE TABLE storage.objects (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   bucket_id text NOT NULL,
-  name text NOT NULL
+  name text NOT NULL,
+  owner_id text
 );
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
@@ -76,6 +77,12 @@ GRANT EXECUTE ON FUNCTION public.is_age_approved(uuid) TO authenticated, service
 GRANT EXECUTE ON FUNCTION public.is_conversation_member(uuid) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated, service_role;
 GRANT SELECT ON public.messages, public.conversation_members, public.conversations TO authenticated, service_role;
+GRANT DELETE ON storage.objects TO authenticated;
+CREATE POLICY "message attachment delete by uploader"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'message-attachments' AND owner_id = (SELECT auth.uid())::text);
+CREATE POLICY "super admin full access"
+  ON public.messages FOR SELECT TO authenticated USING (true);
 GRANT INSERT ON public.messages TO authenticated;
 CREATE POLICY "members can send their own messages"
   ON public.messages
