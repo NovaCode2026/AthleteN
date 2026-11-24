@@ -347,7 +347,7 @@ begin
       and (p_audience='all' or (p_audience='athletes' and m.role='athlete') or (p_audience='coaches' and m.role='coach'))
       and (
         p_group_id is null
-        or exists(select 1 from public.training_group_members gm where gm.group_id=p_group_id and gm.user_id=m.user_id)
+        or exists(select 1 from public.training_group_members gm where gm.group_id=p_group_id and gm.athlete_user_id=m.user_id)
       );
   return v_id;
 end;
@@ -729,8 +729,8 @@ create policy academy_coach_availability_read on public.academy_coach_availabili
 using (coach_user_id=auth.uid() or private.user_has_academy_permission(academy_id,'coaches.manage'));
 drop policy if exists academy_coach_availability_write on public.academy_coach_availability;
 create policy academy_coach_availability_write on public.academy_coach_availability for all to authenticated
-using (coach_user_id=auth.uid() or private.user_has_academy_permission(academy_id,'coaches.manage'))
-with check (coach_user_id=auth.uid() or private.user_has_academy_permission(academy_id,'coaches.manage'));
+using ((coach_user_id=auth.uid() and exists(select 1 from public.academy_memberships m where m.academy_id=academy_coach_availability.academy_id and m.user_id=auth.uid() and m.role='coach' and m.status='active')) or private.user_has_academy_permission(academy_id,'coaches.manage'))
+with check ((coach_user_id=auth.uid() and exists(select 1 from public.academy_memberships m where m.academy_id=academy_coach_availability.academy_id and m.user_id=auth.uid() and m.role='coach' and m.status='active')) or private.user_has_academy_permission(academy_id,'coaches.manage'));
 drop policy if exists academy_transfers_read on public.academy_athlete_transfer_requests;
 create policy academy_transfers_read on public.academy_athlete_transfer_requests for select to authenticated
 using (athlete_user_id=auth.uid() or from_coach_user_id=auth.uid() or to_coach_user_id=auth.uid()
@@ -758,4 +758,6 @@ using (user_id=auth.uid()) with check (user_id=auth.uid());
 drop policy if exists academy_audit_log_read on public.academy_audit_log;
 create policy academy_audit_log_read on public.academy_audit_log for select to authenticated
 using (private.user_has_academy_permission(academy_id,'audit.read'));
+grant insert,update on public.academy_coach_attendance,public.academy_coach_availability,public.academy_notification_preferences to authenticated;
+
 -- There are intentionally no direct INSERT/UPDATE/DELETE policies for the audit log.
