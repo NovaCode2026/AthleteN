@@ -20,6 +20,7 @@ export default function ExploreScreen(){
    <FeatureRow title="Customize Navigation" text="Choose and reorder five shortcuts. More stays pinned as the sixth item." onPress={()=>router.push({pathname:'/navigation-settings'})}/>
   </Section>
   <Section title="ACCOUNT & SUBSCRIPTION">
+   <FeatureRow title="Rewards Centre" text="View bonus AI credits, reward limits and reward history" icon="gift" onPress={()=>router.push('/rewards')}/>
    <FeatureRow title="Plans & Usage" text="Review your plan, feature access and AI usage" icon="credit-card" onPress={()=>router.push('/plans')}/>
    <FeatureRow title="Notifications & Settings" text="Manage account preferences and notifications" icon="settings" onPress={()=>router.push('/settings')}/>
    <FeatureRow title="Support & Safety" text="Get help, review policies, or report a safety concern" icon="shield" onPress={()=>router.push('/support')}/>
