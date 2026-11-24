@@ -32,14 +32,11 @@ export default async function handler(request) {
       profileResult,
       optedInProfiles,
       trainingSessions,
-      taekwondoTrainingLogs,
       verifiedMilestones,
-      kyorugiBouts,
-      poomsaePerformances,
-      conditioningLogs,
+      verifiedCompetitionResults,
+      verifiedMedals,
       verifiedCertificates,
-      completedGoals,
-      badges,
+      systemBadges,
       coachAttendance
     ] = await Promise.all([
       admin.from("profiles")
@@ -54,35 +51,24 @@ export default async function handler(request) {
       readAll(() => admin.from("training_sessions")
         .select("user_id,created_at")
         .gte("created_at", startIso).lt("created_at", endIso)),
-      readAll(() => admin.from("taekwondo_training_logs")
-        .select("user_id,created_at,focus,is_official")
-        .gte("created_at", startIso).lt("created_at", endIso)),
       readAll(() => admin.from("athlete_milestones")
         .select("user_id,achieved_at,verification_status")
         .eq("achieved_at", dayKey)
         .eq("verification_status", "verified")),
-      readAll(() => admin.from("taekwondo_kyorugi_bouts")
-        .select("user_id,created_at,is_official")
-        .eq("is_official", true)
-        .gte("created_at", startIso).lt("created_at", endIso)),
-      readAll(() => admin.from("taekwondo_poomsae_performances")
-        .select("user_id,created_at,is_official")
-        .eq("is_official", true)
-        .gte("created_at", startIso).lt("created_at", endIso)),
-      readAll(() => admin.from("taekwondo_training_logs")
-        .select("user_id,created_at,focus,is_official")
-        .eq("is_official", true)
-        .gte("created_at", startIso).lt("created_at", endIso)),
+      readAll(() => admin.from("tournaments")
+        .select("user_id,starts_at,verification_status")
+        .eq("verification_status", "verified")
+        .gte("starts_at", dayKey).lt("starts_at", period.nextDayKey)),
+      readAll(() => admin.from("medals")
+        .select("user_id,awarded_at,verification_status")
+        .eq("verification_status", "verified")
+        .gte("awarded_at", dayKey).lt("awarded_at", period.nextDayKey)),
       readAll(() => admin.from("certificates")
         .select("user_id,created_at,verification_status")
         .eq("verification_status", "verified")
         .gte("created_at", startIso).lt("created_at", endIso)),
-      readAll(() => admin.from("goals")
-        .select("user_id,status,updated_at")
-        .eq("status", "completed")
-        .gte("updated_at", startIso).lt("updated_at", endIso)),
       readAll(() => admin.from("athlete_badges")
-        .select("user_id,awarded_at")
+        .select("user_id,awarded_at,metadata")
         .gte("awarded_at", startIso).lt("awarded_at", endIso)),
       readAll(() => admin.from("training_group_attendance")
         .select("athlete_user_id,status,marked_at")
@@ -98,14 +84,11 @@ export default async function handler(request) {
     }));
     const rows = buildDailyLeaderboard(optedInProfiles, {
       trainingSessions,
-      taekwondoTrainingLogs,
       verifiedMilestones,
-      kyorugiBouts,
-      poomsaePerformances,
-      conditioningLogs,
+      verifiedCompetitionResults,
+      verifiedMedals,
       verifiedCertificates,
-      completedGoals,
-      badges,
+      badges: systemBadges,
       coachAttendance: adaptedCoachAttendance
     }, user.id);
 
