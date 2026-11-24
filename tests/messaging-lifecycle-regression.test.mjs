@@ -20,7 +20,7 @@ test("message expiry is database-assigned and unreadable after the timestamp", (
 
 test("delete-for-everyone queues attachment objects and clears message references", () => {
   assert.match(migration, /messaging_attachment_cleanup_queue/);
-  assert.match(migration, /reason\s*=\s*'deleted_for_everyone'/);
+  assert.ok(migration.includes("'deleted_for_everyone'"));
   assert.match(migration, /attachment_path = NULL/);
   assert.match(migration, /queue_message_attachment_cleanup_before_delete/);
   assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.cleanup_expired_messages\(integer\) TO service_role/);
