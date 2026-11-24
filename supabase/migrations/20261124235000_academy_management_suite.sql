@@ -565,6 +565,14 @@ begin
        and m.user_id=auth.uid() and m.role='coach' and m.status='active') then
     raise exception 'Active Academy Coach required';
   end if;
+  if p_request_type='additional' and exists(
+    select 1 from public.academy_coach_seats s
+    where s.academy_id=p_academy_id and s.coach_user_id=auth.uid() and s.status='active'
+  ) then raise exception 'This Coach already has an active Academy seat'; end if;
+  if p_request_type='remove' and not exists(
+    select 1 from public.academy_coach_seats s
+    where s.academy_id=p_academy_id and s.coach_user_id=auth.uid() and s.status='active'
+  ) then raise exception 'There is no active Academy seat to remove'; end if;
   if exists(select 1 from public.academy_seat_requests r where r.academy_id=p_academy_id and r.coach_user_id=auth.uid() and r.status in ('pending','payment_pending')) then
     raise exception 'A seat request is already open';
   end if;
