@@ -28,7 +28,7 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [links, setLinks] = useState<LinkRow[]>([]);
   const [plans, setPlans] = useState<PlanRow[]>([]);
-  const [athleteCode, setAthleteCode] = useState("");
+  const [coachConnectionCode, setCoachConnectionCode] = useState("");
   const [selectedAthlete, setSelectedAthlete] = useState("");
   const [title, setTitle] = useState("");
   const [focus, setFocus] = useState("Kyorugi performance");
@@ -47,23 +47,29 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   async function load() {
     if (!supabase || !userId) return;
     setLoading(true); setError("");
-    const [profileResult, linkResult, planResult, nutritionResult] = await Promise.all([
-      supabase.from("profiles").select("user_id,full_name,username,belt,discipline,academy_id,coach_user_id,role").eq("coach_user_id", userId).order("full_name"),
-      supabase.from("coach_athlete_links").select("id,coach_user_id,athlete_user_id,academy_id,status").eq("coach_user_id", userId).order("created_at", { ascending: false }),
+    const [linkResult, planResult, codeResult] = await Promise.all([
+      supabase.from("coach_athlete_links").select("id,coach_user_id,athlete_user_id,academy_id,status").eq("coach_user_id", userId).eq("status", "active").order("created_at", { ascending: false }),
       supabase.from("training_plans").select("id,user_id,coach_user_id,title,focus_area,starts_at,ends_at,status,notes").eq("coach_user_id", userId).order("created_at", { ascending: false }).limit(50),
-      supabase.from("athlete_feature_controls").select("athlete_user_id,enabled").eq("feature_key", "nutrition")
+      supabase.rpc("get_my_connection_code")
     ]);
-    const firstError = profileResult.error || linkResult.error || planResult.error || nutritionResult.error;
+    const firstError = linkResult.error || planResult.error;
     if (firstError) setError(firstError.message);
     setLinks((linkResult.data || []) as LinkRow[]);
     setPlans((planResult.data || []) as PlanRow[]);
-    setNutritionEnabled(Object.fromEntries(((nutritionResult.data || []) as any[]).map((row) => [row.athlete_user_id, row.enabled === true])));
-    const athleteIds=Array.from(new Set([...(profileResult.data||[]).map((a:any)=>a.user_id),...(linkResult.data||[]).filter((x:any)=>x.status==="active").map((x:any)=>x.athlete_user_id)].filter(Boolean)));
+    const codeData = codeResult.error ? null : codeResult.data;
+    setCoachConnectionCode(codeData?.type === "coach" ? String(codeData.code || "") : "");
+    const athleteIds = Array.from(new Set((linkResult.data || []).map((link: any) => link.athlete_user_id).filter(Boolean)));
     const rosterResult = athleteIds.length
       ? await supabase.from("profiles").select("user_id,full_name,username,belt,discipline,academy_id,coach_user_id,role").in("user_id", athleteIds)
       : { data: [], error: null };
     if (rosterResult.error) setError(rosterResult.error.message);
     setAthletes((rosterResult.data || []) as Athlete[]);
+    setSelectedAthlete((current) => athleteIds.includes(current) ? current : athleteIds[0] || "");
+    const nutritionResult = athleteIds.length
+      ? await supabase.from("athlete_feature_controls").select("athlete_user_id,enabled").eq("feature_key", "nutrition").in("athlete_user_id", athleteIds)
+      : { data: [], error: null };
+    if (nutritionResult.error) setError(nutritionResult.error.message);
+    setNutritionEnabled(Object.fromEntries(((nutritionResult.data || []) as any[]).map((row) => [row.athlete_user_id, row.enabled === true])));
     if(athleteIds.length){
       const start=new Date();start.setDate(1);start.setMonth(start.getMonth()-(rangeMonths-1));
       const startDate=[start.getFullYear(),String(start.getMonth()+1).padStart(2,"0"),"01"].join("-");
@@ -84,24 +90,6 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
   }
   useEffect(() => { void load(); }, [userId, rangeMonths]);
 
-
-  async function connectAthleteByCode() {
-    if (!supabase || !userId || !athleteCode.trim()) return;
-    setBusy(true); setError("");
-    try {
-      const { data, error: e } = await supabase.rpc("coach_add_athlete_by_account_code", {
-        p_code: athleteCode.trim().toUpperCase()
-      });
-      if (e) throw e;
-      setAthleteCode("");
-      setToast({ type: "success", message: `${data?.full_name || "Athlete"} connected using their shared account code.` });
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Athlete could not be connected.");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function createPlan() {
     if (!supabase || !userId || !selectedAthlete || !title.trim()) return;
@@ -163,7 +151,7 @@ export function CoachDashboard({ profile, userId, setToast }: Props) {
       <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Competition outcomes</span><h3>Recorded results</h3><p className="muted">Only outcomes explicitly saved in athlete records</p></div><Award/></div>{competitionBreakdown.length?<ResponsiveContainer width="100%" height={190}><BarChart data={competitionBreakdown}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="name" tick={{fill:"#91a8c1",fontSize:10}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="count" name="Competition records" fill="#7c8cff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No recorded outcomes yet</strong><span>Competition result summaries will appear here when athletes save results.</span></div>}</article>
     </section>
     <div className="grid two">
-      <Card><div className="panel-head"><div><p className="eyebrow">Roster</p><h3>Connect an athlete</h3><p className="muted">Ask the athlete to share their AthleteN account code. A link is created only when a coach redeems that athlete-specific code.</p></div><UserPlus size={20}/></div><div className="inline-form"><input value={athleteCode} onChange={(e) => setAthleteCode(e.target.value.toUpperCase())} placeholder="Athlete account code" autoCapitalize="characters" autoCorrect="off" maxLength={30}/><button className="btn primary" onClick={() => void connectAthleteByCode()} disabled={busy || !athleteCode.trim()}><UserPlus size={15}/> Connect</button></div>{athletes.length ? <DataList rows={athletes} empty="No athletes linked yet." render={(athlete) => <div><strong>{athlete.full_name || athlete.username || athlete.user_id}</strong><small>{athlete.discipline ? athlete.discipline.toUpperCase() : "Taekwondo"} · {athlete.belt || "Belt not set"}</small></div>}/> : <p className="muted">No athletes connected yet. Share your coach code with athletes, or enter an athlete's shared account code above.</p>}</Card>
+      <Card><div className="panel-head"><div><p className="eyebrow">Roster connections</p><h3>Share your Coach code</h3><p className="muted">Athletes create the connection from their own AthleteN account. This keeps team membership opt-in and under the athlete's control.</p></div><UserPlus size={20}/></div><div className="academy-invite-code"><strong>{coachConnectionCode || "No Coach code available"}</strong><p className="muted">{coachConnectionCode ? "Share this code with an athlete. They can enter it in My Team to approve the connection." : "Open Coach Profile to review your connection code. If one is not available, contact AthleteN Support."}</p></div>{athletes.length ? <DataList rows={athletes} empty="No athletes linked yet." render={(athlete) => <div><strong>{athlete.full_name || athlete.username || athlete.user_id}</strong><small>{athlete.discipline ? athlete.discipline.toUpperCase() : "Taekwondo"} · {athlete.belt || "Belt not set"}</small></div>}/> : <p className="muted">Your roster will populate after athletes redeem your Coach code from their own accounts.</p>}</Card>
       <Card><div className="panel-head"><div><p className="eyebrow">Training plans</p><h3>Assign a plan</h3></div><ClipboardList size={20}/></div><label className="field"><span>Athlete</span><select value={selectedAthlete} onChange={(e) => setSelectedAthlete(e.target.value)}><option value="">Choose athlete</option>{athletes.map((athlete) => <option key={athlete.user_id} value={athlete.user_id}>{athlete.full_name || athlete.username || athlete.user_id}</option>)}</select></label><label className="field"><span>Plan title</span><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Competition preparation"/></label><label className="field"><span>Focus</span><input value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="Kyorugi performance"/></label><label className="field"><span>Coach notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}/></label><button className="btn primary" onClick={() => void createPlan()} disabled={busy || !selectedAthlete || !title.trim()}><Plus size={15}/> Assign plan</button></Card>
     </div>
     <Card><div className="panel-head"><div><p className="eyebrow">Nutrition</p><h3>Coach-controlled nutrition</h3><p className="muted">Enable nutrition, hydration and optional calorie logging only for athletes you choose.</p></div></div>{athletes.length ? <DataList rows={athletes} empty="No athletes linked yet." render={(athlete) => <div className="membership-row"><div><strong>{athlete.full_name || athlete.username || athlete.user_id}</strong><small>{nutritionEnabled[athlete.user_id] ? "Nutrition enabled" : "Nutrition not enabled"}</small></div><button className="btn" onClick={() => void toggleNutrition(athlete.user_id)} disabled={busy}>{nutritionEnabled[athlete.user_id] ? "Disable" : "Enable"}</button></div>}/> : <p className="muted">Link athletes first.</p>}</Card>
@@ -228,15 +216,23 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
   }
   useEffect(() => { void load(); }, [userId, rangeMonths]);
 
+  const hasApprovedAcademyRole = profile.role === "academy_admin" || profile.role === "academy";
   async function createAcademy() {
     if (!supabase || !userId || !academyName.trim()) return;
+    if (!hasApprovedAcademyRole) {
+      setError("An approved Academy Admin role is required. Request a role review through the private Support Center.");
+      return;
+    }
     setBusy(true); setError("");
     try {
-      const { data, error: e } = await supabase.from("academies").insert({ owner_user_id: userId, name: academyName.trim(), status: "active" }).select("id").single();
+      const { data, error: e } = await supabase.rpc("create_academy_workspace", {
+        p_name: academyName.trim(), p_city: null, p_state: null, p_country: "India"
+      });
       if (e) throw e;
-      const { error: me } = await supabase.from("academy_memberships").insert({ academy_id: data.id, user_id: userId, role: "academy_admin", status: "active", joined_at: new Date().toISOString() });
-      if (me) throw me;
-      setAcademyName(""); setToast({ type: "success", message: "Academy created and your admin membership is active." }); await load();
+      if (!data) throw new Error("The Academy workspace was not created.");
+      setAcademyName("");
+      setToast({ type: "success", message: "Academy workspace created. Complete its contact verification in Academy Setup." });
+      await load();
     } catch (e) { setError(e instanceof Error ? e.message : "Academy could not be created."); }
     finally { setBusy(false); }
   }
@@ -272,7 +268,7 @@ export function AcademyDashboard({ profile, userId, setToast }: Props) {
   return <div className="role-dashboard">
     <div className="page-head"><div><p className="eyebrow">Academy</p><h2>Academy Command Center</h2><p>Run the academy workspace separately from individual athlete accounts: membership, coaches, athletes, and academy operations.</p></div><div className="role-dashboard-actions"><label className="role-range-picker"><span>Analytics range</span><select value={rangeMonths} onChange={e=>setRangeMonths(Number(e.target.value))}><option value={3}>Last 3 months</option><option value={6}>Last 6 months</option><option value={12}>Last 12 months</option></select></label><button type="button" className="btn" onClick={()=>window.print()}>Print / Save PDF</button><button className="btn" onClick={() => void load()} disabled={loading}><RefreshCw size={15}/> {loading ? "Refreshing…" : "Refresh"}</button></div></div>
     {error && <ErrorText>{error}</ErrorText>}
-    {!academies.length ? <Card><div className="panel-head"><div><p className="eyebrow">First setup</p><h3>Create your academy</h3><p className="muted">This creates the academy record and makes your account its academy administrator.</p></div><Building2 size={22}/></div><div className="inline-form"><input value={academyName} onChange={(e) => setAcademyName(e.target.value)} placeholder="Academy name"/><button className="btn primary" onClick={() => void createAcademy()} disabled={busy || !academyName.trim()}><Plus size={15}/> Create academy</button></div></Card> : <>
+    {!academies.length ? <Card><div className="panel-head"><div><p className="eyebrow">First setup</p><h3>Create your academy</h3><p className="muted">This creates the academy record and makes your account its academy administrator.</p></div><Building2 size={22}/></div><div className="inline-form"><input value={academyName} onChange={(e) => setAcademyName(e.target.value)} placeholder="Academy name"/><button className="btn primary" onClick={() => void createAcademy()} disabled={busy || !academyName.trim() || !hasApprovedAcademyRole}><Plus size={15}/> Create academy</button>{!hasApprovedAcademyRole && <p className="muted">An approved Academy Admin role is required before creating a workspace. Request role review through Support Center.</p>}</div></Card> : <>
       <section className="metrics"><article className="metric card"><div className="metric-icon"><Building2 size={18}/></div><div><p>Academy</p><strong>{selectedAcademy?.name || "—"}</strong><small>{selectedAcademy?.status || "active"}</small></div></article><article className="metric card"><div className="metric-icon"><Users size={18}/></div><div><p>Active members</p><strong>{members.filter(member=>member.status==="active").length}</strong><small>{members.filter(member=>member.status==="pending").length} pending · {members.length} total</small></div></article><article className="metric card"><div className="metric-icon"><ShieldCheck size={18}/></div><div><p>Athletes</p><strong>{memberProfiles.length}</strong><small>Profiles connected to academy</small></div></article></section>
       <section className="role-analytics-grid">
         <article className="card panel role-analytics-card"><div className="panel-head"><div><span className="eyebrow">Academy intelligence</span><h3>Training activity</h3><p className="muted">Monthly athlete sessions · latest {rangeMonths} months</p></div><button className="btn" type="button" onClick={exportAcademyReport}>Export CSV</button><BarChart3/></div>{filteredAcademyTraining.length?<ResponsiveContainer width="100%" height={220}><BarChart data={academyTrainingByMonth}><CartesianGrid strokeDasharray="3 3" stroke="#25405f"/><XAxis dataKey="month" tick={{fill:"#91a8c1",fontSize:11}}/><YAxis allowDecimals={false} tick={{fill:"#91a8c1",fontSize:11}}/><Tooltip contentStyle={{background:"#0c1d32",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="sessions" name="Training sessions" fill="#49d7ff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<div className="empty"><strong>No training data yet</strong><span>Academy athlete training records will appear here when available.</span></div>}</article>

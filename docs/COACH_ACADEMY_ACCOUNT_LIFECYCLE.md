@@ -62,3 +62,14 @@ The repository contains `supabase/security/role_and_finance_authorization_harden
 The current `supabase/policies.sql` definition for `academies owner insert` checks only that the authenticated user matches `owner_user_id`; it does not independently require the caller's profile role to be `academy_admin`. The new Academy Setup screen guard improves the normal UI path, but a client-side guard is not a database authorization boundary. This policy therefore needs a separately reviewed, role-aware RLS hardening change and negative direct-PostgREST/RPC tests after migration-history reconciliation. No such production policy change is claimed here.
 
 The app must not enable public Coach/Academy self-enrolment or paid checkout until this backend gate is resolved and the negative authorization tests pass.
+
+
+## Coach and Academy management hardening — 24 November 2026
+
+- Coach workspaces display the Coach connection code. Athletes create team links by redeeming that code from their own signed-in My Team screen. Coach dashboards list only active `coach_athlete_links`, not profiles inferred from the legacy `coach_user_id` field.
+- Web and mobile Academy Setup use the same `create_academy_workspace` SECURITY DEFINER RPC. It requires an already-assigned `academy_admin` role, creates the Academy record, owner membership, included owner Coach seat, and profile link in one database transaction, and leaves contact verification and subscription checks as separate gates.
+- Direct authenticated inserts into `academies` and `academy_memberships` are revoked. Membership changes are limited to status updates; authenticated clients cannot directly promote membership roles or transfer Academy ownership.
+- Academy reads, updates, and membership administration require the current approved Academy Admin profile role plus ownership or an active Academy Admin membership. A stale membership no longer preserves admin powers after the profile role is downgraded.
+- The older `create_academy` RPC remains for compatible clients and still requires an active Academy subscription before delegating to the role-checked workspace creation function.
+
+The migration and isolated SQL assertions are candidate-only. They are not applied to production. Migration-history reconciliation, staging replay, web/mobile acceptance, and a human security review remain required before release.

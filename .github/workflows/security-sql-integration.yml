@@ -84,3 +84,17 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h 127.0.0.1 -U postgres -d athleten_quest_away_test -v ON_ERROR_STOP=1 -f tests/sql/athlete-quest-away-mode-integration.sql
+      - name: Create isolated Coach and Academy management database
+        env:
+          PGPASSWORD: postgres
+        run: createdb -h 127.0.0.1 -U postgres athleten_academy_management_test
+      - name: Create Coach and Academy fixture and apply hardening migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d athleten_academy_management_test -v ON_ERROR_STOP=1 -f tests/sql/academy-management-fixture.sql
+          psql -h 127.0.0.1 -U postgres -d athleten_academy_management_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124233000_harden_academy_workspace_management.sql
+      - name: Verify Coach consent, Academy Admin role and membership permissions
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_academy_management_test -v ON_ERROR_STOP=1 -f tests/sql/academy-management-assertions.sql

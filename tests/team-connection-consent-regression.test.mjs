@@ -15,16 +15,18 @@ test("team connection migration removes direct membership creation paths", () =>
   assert.ok(sql.includes("private.is_platform_admin()"));
 });
 
-test("web coach roster connects only by an athlete-shared account code", () => {
+test("web Coach workspaces share codes; athletes initiate roster connections", () => {
   const source = read("../src/components/roles/RoleDashboards.tsx");
   const coachAcademy = read("../src/components/coach/CoachAcademyDashboard.tsx");
-  assert.ok(source.includes("coach_add_athlete_by_account_code"));
-  assert.ok(source.includes("AthleteN account code"));
-  assert.equal(source.includes("find_athlete_by_username"), false);
+  assert.equal(source.includes("coach_add_athlete_by_account_code"), false);
+  assert.equal(coachAcademy.includes("coach_add_athlete_by_account_code"), false);
+  assert.equal(source.includes("coach_connect_athlete"), false);
+  assert.ok(source.includes('rpc("get_my_connection_code")'));
+  assert.ok(source.includes("Share your Coach code"));
+  assert.ok(coachAcademy.includes('rpc("get_my_connection_code")'));
+  assert.ok(coachAcademy.includes("Each athlete must redeem it from their own My Team screen"));
   assert.equal(source.includes('from("coach_athlete_links").insert'), false);
-  assert.ok(coachAcademy.includes("coach_add_athlete_by_account_code"));
-  assert.equal(coachAcademy.includes("coach_connect_athlete"), false);
-  assert.equal(coachAcademy.includes("Athlete username"), false);
+  assert.equal(source.includes("find_athlete_by_username"), false);
 });
 
 test("academy workspaces no longer add people by username", () => {

@@ -1,6 +1,33 @@
 alter table public.profiles enable row level security;
 alter table public.academies enable row level security;
 alter table public.academy_memberships enable row level security;
+
+CREATE OR REPLACE FUNCTION private.user_is_approved_academy_admin(p_academy_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $function$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles p
+    WHERE p.user_id = (SELECT auth.uid())
+      AND p.role IN ('academy_admin', 'academy')
+      AND (
+        EXISTS (SELECT 1 FROM public.academies a
+                WHERE a.id = p_academy_id AND a.owner_user_id = (SELECT auth.uid()))
+        OR EXISTS (SELECT 1 FROM public.academy_memberships m
+                   WHERE m.academy_id = p_academy_id AND m.user_id = (SELECT auth.uid())
+                     AND m.role = 'academy_admin' AND m.status = 'active')
+      )
+  );
+$function$;
+REVOKE ALL ON FUNCTION private.user_is_approved_academy_admin(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION private.user_is_approved_academy_admin(uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION private.user_is_academy_admin(p_academy_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $function$ SELECT private.user_is_approved_academy_admin(p_academy_id) $function$;
+REVOKE ALL ON FUNCTION private.user_is_academy_admin(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION private.user_is_academy_admin(uuid) TO authenticated;
 alter table public.training_sessions enable row level security;
 alter table public.training_plans enable row level security;
 alter table public.attendance_records enable row level security;
@@ -123,38 +150,41 @@ for insert to authenticated with check (public.owns_row(user_id));
 drop policy if exists "academies owner read" on public.academies;
 drop policy if exists "academies owner insert" on public.academies;
 drop policy if exists "academies owner update" on public.academies;
-create policy "academies owner read" on public.academies for select to authenticated using ((select auth.uid()) = owner_user_id or public.is_platform_admin());
-create policy "academies owner insert" on public.academies for insert to authenticated with check ((select auth.uid()) = owner_user_id);
-create policy "academies owner update" on public.academies for update to authenticated using ((select auth.uid()) = owner_user_id or public.is_platform_admin()) with check ((select auth.uid()) = owner_user_id or public.is_platform_admin());
+create policy "academies owner read" on public.academies for select to authenticated
+using (private.user_is_approved_academy_admin(id) or public.is_platform_admin());
+create policy "academies owner update" on public.academies for update to authenticated
+using (private.user_is_approved_academy_admin(id) or public.is_platform_admin())
+with check (private.user_is_approved_academy_admin(id) or public.is_platform_admin());
 
 drop policy if exists "academy memberships participant read" on public.academy_memberships;
 drop policy if exists "academy memberships admin write" on public.academy_memberships;
+drop policy if exists "Academy admins can create memberships" on public.academy_memberships;
+drop policy if exists "Academy owners can bootstrap admin membership" on public.academy_memberships;
+drop policy if exists "Academy owners can bootstrap own admin membership" on public.academy_memberships;
+drop policy if exists "academy memberships admin update" on public.academy_memberships;
+drop policy if exists "academy memberships admin delete" on public.academy_memberships;
 create policy "academy memberships participant read" on public.academy_memberships
 for select to authenticated using (
   (select auth.uid()) = user_id
+  or private.user_is_approved_academy_admin(academy_id)
   or public.is_platform_admin()
-  or exists (
-    select 1 from public.academies
-    where academies.id = academy_memberships.academy_id
-      and academies.owner_user_id = (select auth.uid())
-  )
 );
-create policy "academy memberships admin write" on public.academy_memberships
-for all to authenticated using (
-  public.is_platform_admin()
-  or exists (
-    select 1 from public.academies
-    where academies.id = academy_memberships.academy_id
-      and academies.owner_user_id = (select auth.uid())
-  )
-) with check (
-  public.is_platform_admin()
-  or exists (
-    select 1 from public.academies
-    where academies.id = academy_memberships.academy_id
-      and academies.owner_user_id = (select auth.uid())
-  )
-);
+create policy "academy memberships admin update" on public.academy_memberships
+for update to authenticated
+using (private.user_is_approved_academy_admin(academy_id) or public.is_platform_admin())
+with check (private.user_is_approved_academy_admin(academy_id) or public.is_platform_admin());
+create policy "academy memberships admin delete" on public.academy_memberships
+for delete to authenticated
+using (private.user_is_approved_academy_admin(academy_id) or public.is_platform_admin());
+
+REVOKE INSERT ON public.academies FROM PUBLIC, anon, authenticated;
+REVOKE UPDATE ON public.academies FROM PUBLIC, anon, authenticated;
+GRANT UPDATE (name, city, state, country, contact_email, contact_phone,
+  contact_email_verified_at, setup_completed, setup_completed_at)
+  ON public.academies TO authenticated;
+REVOKE INSERT ON public.academy_memberships FROM PUBLIC, anon, authenticated;
+REVOKE UPDATE ON public.academy_memberships FROM PUBLIC, anon, authenticated;
+GRANT UPDATE (status, updated_at) ON public.academy_memberships TO authenticated;
 
 drop policy if exists "roadmap public read" on public.roadmap_items;
 drop policy if exists "roadmap authenticated insert" on public.roadmap_items;
@@ -236,8 +266,8 @@ grant select, insert, update, delete on public.referrals to authenticated;
 grant select, insert, update, delete on public.athlete_badges to authenticated;
 grant select, insert, update, delete on public.support_tickets to authenticated;
 grant select, insert, update, delete on public.payment_events to authenticated;
-grant select, insert, update, delete on public.academies to authenticated;
-grant select, insert, update, delete on public.academy_memberships to authenticated;
+grant select on public.academies to authenticated;
+grant select, delete on public.academy_memberships to authenticated;
 grant select, insert, update, delete on public.announcements to authenticated;
 grant select, insert, update, delete on public.feature_flags to authenticated;
 grant select, insert on public.audit_logs to authenticated;

@@ -55,25 +55,22 @@ export default function AcademySetupScreen() {
       }
 
       if (!id) {
-        const created = await supabase
-          .from('academies')
-          .insert({
-            owner_user_id: session.user.id,
-            name: 'New AthleteN Academy',
-            country: 'India',
-            status: 'active',
-            setup_completed: false,
-          })
-          .select('id,name,city,state,country,contact_email,contact_phone,contact_email_verified_at,setup_completed')
-          .single();
+        const created = await supabase.rpc('create_academy_workspace', {
+          p_name: 'New AthleteN Academy',
+          p_city: null,
+          p_state: null,
+          p_country: 'India',
+        });
 
-        if (created.error) {
-          if (alive) { setMessage(created.error.message); setLoading(false); }
+        if (created.error || !created.data) {
+          if (alive) {
+            setMessage(created.error?.message || 'The Academy workspace could not be created.');
+            setLoading(false);
+          }
           return;
         }
 
-        id = created.data.id;
-        await supabase.from('profiles').update({ academy_id: id }).eq('user_id', session.user.id);
+        id = String(created.data);
         if (alive) setAcademyId(id);
       }
 
