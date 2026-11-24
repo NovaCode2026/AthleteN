@@ -72,7 +72,7 @@ test('platform resolver re-exports the privacy-options action', () => {
 });
 
 test('AdMob app configuration rejects a publisher ID mismatch and accepts a matching publisher', () => {
-  const script = "require('./app.config.js')()";
+  const script = "require('./app.config.js')({ config: require('./app.json').expo })";
   const baseEnv = { ...process.env, ADMOB_ANDROID_APP_ID: 'ca-app-pub-1234567890123456~1234567890' };
 
   const valid = spawnSync(process.execPath, ['-e', script], {
