@@ -111,6 +111,14 @@ export default function AcademyManagementSuite({profile,setToast}:Props){
       }else if(reportType==="achievements"){
         const q=await supabase.from("medals").select("user_id,event_name,medal_type,awarded_at").in("user_id",members.filter(x=>x.role==="athlete").map(x=>x.user_id));
         if(q.error)throw q.error;rows=q.data||[];headers=["user_id","event_name","medal_type","awarded_at"];
+      }else if(reportType==="finance"){
+        const accounts=await supabase.from("finance_accounts").select("id,name,currency").eq("academy_id",academyId).eq("owner_type","academy");
+        if(accounts.error)throw accounts.error;
+        const accountIds=(accounts.data||[]).map((x:any)=>x.id);
+        if(accountIds.length){
+          const q=await supabase.from("finance_transactions").select("account_id,type,amount,category,description,transaction_date").in("account_id",accountIds).order("transaction_date",{ascending:false});
+          if(q.error)throw q.error;rows=q.data||[];headers=["account_id","type","amount","category","description","transaction_date"];
+        }else headers=["account_id","type","amount","category","description","transaction_date"];
       }
       const quote=(v:any)=>'"'+String(v??"").replace(/"/g,'""')+'"';
       const csv=[headers.join(","),...rows.map(row=>headers.map(key=>quote(row[key])).join(","))].join("\r\n");
@@ -159,7 +167,7 @@ export default function AcademyManagementSuite({profile,setToast}:Props){
       <article className="card panel"><h3>Guardian consent queue</h3>{guardians.map(x=><div className="academy-suite-row" key={x.id}><strong>{memberName(x.athlete_user_id)} · {x.relationship}</strong><span>{x.guardian_user_id} · {x.status}</span>{x.guardian_user_id===userId&&x.status==="pending_guardian"&&button("Accept invitation",()=>acceptGuardian(x))}{x.athlete_user_id===userId&&x.status==="pending_athlete"&&<div><div className="academy-suite-checks">{["announcements","calendar","attendance_summary","fee_status"].map(scope=><label key={scope}><input type="checkbox" checked={guardian.scopes.includes(scope)} onChange={()=>toggleScope(scope)}/>{scope.replace("_"," ")}</label>)}</div>{button("Approve selected scopes",()=>approveGuardian(x))}</div>}{x.guardian_user_id===userId&&x.status==="active"&&<button type="button" className="btn" onClick={async()=>{const r=await rpc("academy_guardian_portal_summary",{p_link_id:x.id});if(r.error)setToast({type:"error",message:r.error.message});else setToast({type:"success",message:JSON.stringify(r.data)});}}>View guardian summary</button>}</div>)}</article>
     </div>}
 
-    {section==="reports"&&<div className="card panel"><h3>Academy reports</h3><p>Generate a CSV download from records your signed-in account is already allowed to read. Exports are audit-logged.</p><select value={reportType} onChange={e=>setReportType(e.target.value)}>{["athletes","coaches","attendance","fees","competitions","achievements"].map(x=><option key={x}>{x}</option>)}</select>{button("Download CSV report",()=>void exportCsv())}<div className="academy-suite-row">{exports.map(x=><p key={x.id}>{x.report_type} · {x.format} · {new Date(x.created_at).toLocaleString()}</p>)}</div></div>}
+    {section==="reports"&&<div className="card panel"><h3>Academy reports</h3><p>Generate a CSV download from records your signed-in account is already allowed to read. Exports are audit-logged.</p><select value={reportType} onChange={e=>setReportType(e.target.value)}>{["athletes","coaches","attendance","fees","competitions","achievements","finance"].map(x=><option key={x}>{x}</option>)}</select>{button("Download CSV report",()=>void exportCsv())}<div className="academy-suite-row">{exports.map(x=><p key={x.id}>{x.report_type} · {x.format} · {new Date(x.created_at).toLocaleString()}</p>)}</div></div>}
 
     {section==="seats"&&<div className="grid two">
       <article className="card panel"><h3>Coach seat lifecycle</h3><p>Approve requests for included seats. Additional paid seats remain pending until a payment provider confirms settlement.</p>{button("Request an additional seat",()=>requestSeat("additional"))}{button("Request seat removal",()=>requestSeat("remove"),true)}</article>
