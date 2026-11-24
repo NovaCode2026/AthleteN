@@ -48,6 +48,13 @@ test("Academy web dashboard supports approved delegated admins and active athlet
   assert.match(web, /membership\.role==="athlete"[\s\S]*?membership\.status==="active"/);
 });
 
+test("Coach dashboard uses the canonical monthly Coach plan price", () => {
+  const catalogue = read("../docs/COACH_ACADEMY_ACCOUNT_LIFECYCLE.md");
+  assert.match(catalogue, /Coach \| ₹499 \| ₹4,999/);
+  assert.ok(coachDashboard.includes('isAcademy?coachCount:"₹499"'));
+  assert.equal(coachDashboard.includes('"₹149"'), false);
+});
+
 test("Academy mobile member lifecycle preserves history through suspend and reactivate", () => {
   assert.match(mobileAcademy, /from\('academy_memberships'\)\.update\(\{status,updated_at:/);
   assert.match(mobileAcademy, /m\.status==='active'\?'suspended':'active'/);
