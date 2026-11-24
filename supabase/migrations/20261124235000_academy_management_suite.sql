@@ -937,8 +937,17 @@ create policy academy_coach_availability_read on public.academy_coach_availabili
 using (coach_user_id=auth.uid() or private.user_has_academy_permission(academy_id,'coaches.manage'));
 drop policy if exists academy_coach_availability_write on public.academy_coach_availability;
 create policy academy_coach_availability_write on public.academy_coach_availability for all to authenticated
-using ((coach_user_id=auth.uid() and exists(select 1 from public.academy_memberships m where m.academy_id=academy_coach_availability.academy_id and m.user_id=auth.uid() and m.role='coach' and m.status='active')) or private.user_has_academy_permission(academy_id,'coaches.manage'))
-with check ((coach_user_id=auth.uid() and exists(select 1 from public.academy_memberships m where m.academy_id=academy_coach_availability.academy_id and m.user_id=auth.uid() and m.role='coach' and m.status='active')) or private.user_has_academy_permission(academy_id,'coaches.manage'));
+using (
+  (coach_user_id=auth.uid() and exists(select 1 from public.academy_memberships m where m.academy_id=academy_coach_availability.academy_id and m.user_id=auth.uid() and m.role='coach' and m.status='active'))
+  or (private.user_has_academy_permission(academy_id,'coaches.manage') and exists(select 1 from public.academy_memberships m where m.academy_id=academy_coach_availability.academy_id and m.user_id=academy_coach_availability.coach_user_id and m.role='coach' and m.status='active'))
+)
+with check (
+  exists(select 1 from public.academy_memberships m where m.academy_id=academy_coach_availability.academy_id and m.user_id=academy_coach_availability.coach_user_id and m.role='coach' and m.status='active')
+  and (
+    (coach_user_id=auth.uid() and exists(select 1 from public.academy_memberships m where m.academy_id=academy_coach_availability.academy_id and m.user_id=auth.uid() and m.role='coach' and m.status='active'))
+    or private.user_has_academy_permission(academy_id,'coaches.manage')
+  )
+);
 drop policy if exists academy_transfers_read on public.academy_athlete_transfer_requests;
 create policy academy_transfers_read on public.academy_athlete_transfer_requests for select to authenticated
 using (athlete_user_id=auth.uid() or from_coach_user_id=auth.uid() or to_coach_user_id=auth.uid()
