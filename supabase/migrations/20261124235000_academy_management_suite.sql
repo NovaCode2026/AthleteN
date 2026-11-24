@@ -394,6 +394,12 @@ begin
   on conflict(academy_id,athlete_user_id,guardian_user_id)
   do update set status='pending_guardian',scopes='{}',guardian_accepted_at=null,athlete_approved_at=null,updated_at=now()
   returning id into v_id;
+  insert into public.notifications(user_id,title,body,notification_type,action_route,created_at,updated_at)
+  select p_guardian_user_id,'Academy guardian invitation','An Academy requested that you review a parent/guardian access invitation.','coach_academy','/notifications',now(),now()
+  where coalesce((select coach_academy from public.notification_preferences where user_id=p_guardian_user_id),true)=true;
+  insert into public.notifications(user_id,title,body,notification_type,action_route,created_at,updated_at)
+  select p_athlete_user_id,'Guardian access requested','An Academy has invited a guardian account. No athlete data is shared until you approve the selected scopes.','coach_academy','/notifications',now(),now()
+  where coalesce((select coach_academy from public.notification_preferences where user_id=p_athlete_user_id),true)=true;
   return v_id;
 end;
 $function$;
@@ -403,10 +409,15 @@ grant execute on function public.academy_create_guardian_link(uuid,uuid,uuid,tex
 create or replace function public.academy_accept_guardian_link(p_link_id uuid)
 returns boolean language plpgsql security definer set search_path=''
 as $function$
+declare v public.academy_guardian_links%rowtype;
 begin
   update public.academy_guardian_links set status='pending_athlete',guardian_accepted_at=now(),updated_at=now()
-    where id=p_link_id and guardian_user_id=auth.uid() and status='pending_guardian';
+    where id=p_link_id and guardian_user_id=auth.uid() and status='pending_guardian'
+    returning * into v;
   if not found then raise exception 'Guardian invitation is unavailable'; end if;
+  insert into public.notifications(user_id,title,body,notification_type,action_route,created_at,updated_at)
+  select v.athlete_user_id,'Guardian invitation accepted','The invited guardian has accepted. Review and approve only the data scopes you choose.','coach_academy','/notifications',now(),now()
+  where coalesce((select coach_academy from public.notification_preferences where user_id=v.athlete_user_id),true)=true;
   return true;
 end;
 $function$;
@@ -416,12 +427,16 @@ grant execute on function public.academy_accept_guardian_link(uuid) to authentic
 create or replace function public.academy_approve_guardian_link(p_link_id uuid,p_scopes text[])
 returns boolean language plpgsql security definer set search_path=''
 as $function$
-declare v_allowed text[]:=array['announcements','calendar','attendance_summary','fee_status']::text[];
+declare v_allowed text[]:=array['announcements','calendar','attendance_summary','fee_status']::text[]; v public.academy_guardian_links%rowtype;
 begin
   if p_scopes is null or not (p_scopes <@ v_allowed) then raise exception 'Invalid guardian access scopes'; end if;
   update public.academy_guardian_links set status='active',scopes=p_scopes,athlete_approved_at=now(),updated_at=now()
-    where id=p_link_id and athlete_user_id=auth.uid() and status='pending_athlete' and guardian_accepted_at is not null;
+    where id=p_link_id and athlete_user_id=auth.uid() and status='pending_athlete' and guardian_accepted_at is not null
+    returning * into v;
   if not found then raise exception 'Athlete approval is unavailable'; end if;
+  insert into public.notifications(user_id,title,body,notification_type,action_route,created_at,updated_at)
+  select v.guardian_user_id,'Guardian access approved','The athlete approved your access to: '||array_to_string(p_scopes,', '),'coach_academy','/notifications',now(),now()
+  where coalesce((select coach_academy from public.notification_preferences where user_id=v.guardian_user_id),true)=true;
   return true;
 end;
 $function$;
@@ -434,8 +449,8 @@ as $function$
 declare v public.academy_guardian_links%rowtype;
 begin
   select * into v from public.academy_guardian_links where id=p_link_id for update;
-  if not found or v.athlete_user_id<>auth.uid() or v.status not in ('pending_athlete','active') then
-    raise exception 'Only the athlete can revoke an active or pending guardian link';
+  if not found or v.athlete_user_id<>auth.uid() or v.status not in ('pending_guardian','pending_athlete','active') then
+    raise exception 'Only the athlete can revoke a pending or active guardian link';
   end if;
   update public.academy_guardian_links
     set status='revoked',scopes='{}',updated_at=now()
