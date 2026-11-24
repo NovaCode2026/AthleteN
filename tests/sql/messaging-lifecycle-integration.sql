@@ -76,6 +76,15 @@ GRANT EXECUTE ON FUNCTION public.is_age_approved(uuid) TO authenticated, service
 GRANT EXECUTE ON FUNCTION public.is_conversation_member(uuid) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated, service_role;
 GRANT SELECT ON public.messages, public.conversation_members, public.conversations TO authenticated;
+GRANT INSERT ON public.messages TO authenticated;
+CREATE POLICY "members can send their own messages"
+  ON public.messages
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    sender_id = (SELECT auth.uid())
+    AND public.is_age_approved((SELECT auth.uid()))
+    AND public.is_conversation_member(conversation_id)
+  );
 
 INSERT INTO auth.users (id) VALUES
   ('10000000-0000-4000-8000-000000000001'),
