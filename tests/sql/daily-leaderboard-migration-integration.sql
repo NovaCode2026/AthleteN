@@ -1,4 +1,4 @@
-\\set ON_ERROR_STOP on
+\set ON_ERROR_STOP on
 
 insert into auth.users (id) values
   ('10000000-0000-4000-8000-000000000001'),
