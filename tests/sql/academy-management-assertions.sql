@@ -20,6 +20,12 @@ BEGIN
   IF has_column_privilege('authenticated', 'public.academy_memberships', 'role', 'UPDATE') THEN
     RAISE EXCEPTION 'Authenticated role can promote Academy membership roles';
   END IF;
+  IF has_column_privilege('authenticated', 'public.academies', 'contact_email', 'UPDATE')
+     OR has_column_privilege('authenticated', 'public.academies', 'contact_email_verified_at', 'UPDATE')
+     OR has_column_privilege('authenticated', 'public.academies', 'setup_completed', 'UPDATE')
+     OR has_column_privilege('authenticated', 'public.academies', 'setup_completed_at', 'UPDATE') THEN
+    RAISE EXCEPTION 'Authenticated role can forge Academy verification or setup completion';
+  END IF;
 END
 $privileges$;
 
@@ -91,8 +97,71 @@ BEGIN
   IF v_linked_academy IS DISTINCT FROM v_academy_id THEN
     RAISE EXCEPTION 'Owner profile was not linked to the new Academy';
   END IF;
+
+  IF NOT public.sync_verified_academy_contact_email(v_academy_id) THEN
+    RAISE EXCEPTION 'Verified contact email synchronization did not return success';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.academies a
+    JOIN auth.users u ON u.id = auth.uid()
+    WHERE a.id = v_academy_id
+      AND a.contact_email = lower(u.email)
+      AND a.contact_email_verified_at = u.email_confirmed_at
+      AND a.contact_email_verified_at = '2026-11-01T00:00:00Z'::timestamptz
+  ) THEN
+    RAISE EXCEPTION 'Contact verification did not use the exact Auth confirmation timestamp';
+  END IF;
+
+  IF NOT public.complete_academy_setup(
+    v_academy_id, 'Verified Academy', 'Noida', 'Uttar Pradesh', 'India', '+91 9876543210'
+  ) THEN
+    RAISE EXCEPTION 'Server-verified Academy setup did not return success';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.academies
+    WHERE id = v_academy_id
+      AND setup_completed = true
+      AND setup_completed_at IS NOT NULL
+      AND contact_email_verified_at = '2026-11-01T00:00:00Z'::timestamptz
+      AND name = 'Verified Academy'
+      AND contact_phone = '+91 9876543210'
+  ) THEN
+    RAISE EXCEPTION 'Academy setup was not completed with server-owned verification state';
+  END IF;
 END
 $create$;
+
+
+-- An Academy Admin without a confirmed Auth email may create a workspace,
+-- but cannot mark the contact verified or complete setup.
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000014', false);
+DO $unverified$
+DECLARE
+  v_academy_id uuid;
+  v_sync_blocked boolean := false;
+  v_setup_blocked boolean := false;
+BEGIN
+  v_academy_id := public.create_academy_workspace('Pending Verification Academy', 'Noida', 'Uttar Pradesh', 'India');
+  BEGIN
+    PERFORM public.sync_verified_academy_contact_email(v_academy_id);
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM = 'Academy contact email must be verified in Auth' THEN v_sync_blocked := true; ELSE RAISE; END IF;
+  END;
+  IF NOT v_sync_blocked THEN RAISE EXCEPTION 'Unverified Auth email was synchronized as verified'; END IF;
+
+  BEGIN
+    PERFORM public.complete_academy_setup(
+      v_academy_id, 'Pending Verification Academy', 'Noida', 'Uttar Pradesh', 'India', '+91 9876543210'
+    );
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM = 'Academy contact email must be verified in Auth' THEN v_setup_blocked := true; ELSE RAISE; END IF;
+  END;
+  IF NOT v_setup_blocked THEN RAISE EXCEPTION 'Unverified Auth email completed Academy setup'; END IF;
+  IF EXISTS (SELECT 1 FROM public.academies WHERE id = v_academy_id AND setup_completed) THEN
+    RAISE EXCEPTION 'Unverified Academy workspace was marked complete';
+  END IF;
+END
+$unverified$;
 
 DO $legacy$
 DECLARE blocked boolean := false;
