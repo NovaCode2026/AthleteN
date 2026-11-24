@@ -75,7 +75,7 @@ GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.is_age_approved(uuid) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.is_conversation_member(uuid) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated, service_role;
-GRANT SELECT ON public.messages, public.conversation_members, public.conversations TO authenticated;
+GRANT SELECT ON public.messages, public.conversation_members, public.conversations TO authenticated, service_role;
 GRANT INSERT ON public.messages TO authenticated;
 CREATE POLICY "members can send their own messages"
   ON public.messages
