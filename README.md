@@ -12,18 +12,18 @@
   <img src="https://img.shields.io/badge/PRODUCT-ATHLETE%20PLATFORM-0B1F3A?style=for-the-badge" alt="Athlete platform">
   <img src="https://img.shields.io/badge/SPORT-TAEKWONDO-00AEEF?style=for-the-badge" alt="Taekwondo">
   <img src="https://img.shields.io/badge/CLIENTS-WEB%20%2B%20ANDROID-6C5CE7?style=for-the-badge" alt="Web and Android">
-  <img src="https://img.shields.io/badge/RELEASE-CANDIDATE-E09B32?style=for-the-badge" alt="Release candidate only">
+  <img src="https://img.shields.io/badge/RELEASE-REVIEW-0B84A5?style=for-the-badge" alt="Release candidate only">
 </p>
 
 **Built by Nova Code**
 
-[Open AthleteN](https://athleten.netlify.app) · [Documentation](./docs/README.md) · [Mobile Guide](./AthleteN-Mobile/README.md) · [Release Candidate #59](https://github.com/NovaCode2026/AthleteN/pull/59)
+[Open AthleteN](https://athleten.netlify.app) · [Documentation](./docs/README.md) · [Mobile Guide](./AthleteN-Mobile/README.md) · [Merged Free Launch PR #68](https://github.com/NovaCode2026/AthleteN/pull/68)
 
 </div>
 
 ---
 
-> **Release status — candidate, not production-approved:** PR #59 remains unmerged and undeployed. Database reconciliation, security review, AI budget setup, signed Android distribution, billing validation and real-device acceptance are still required. Paid checkout remains disabled. See the [release-readiness report](./docs/RELEASE_READINESS_2026-11-12.md).
+> **Release status — post-merge candidate, not production-approved:** PR #68 is merged into `main`. This does not by itself verify the Netlify deployment or complete production acceptance. Database migration reconciliation, function/RLS security review, signed Android distribution, billing validation and real-device acceptance remain release gates. Paid checkout and cancellation remain disabled. Track evidence in [the final production-readiness register](./docs/FINAL_PRODUCTION_READINESS_2026-11-24.md).
 
 ## What is AthleteN?
 
