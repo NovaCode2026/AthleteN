@@ -58,3 +58,12 @@ test("leaderboard migration has complete, well-formed alias constraints and rema
   assert.ok(migration.includes("create unique index if not exists profiles_daily_leaderboard_alias_unique_idx"));
   assert.equal(migration.includes("do $\n"), false);
 });
+
+
+test("open leaderboard screens refresh just after the IST reset", () => {
+  for (const source of [mobile, web]) {
+    assert.ok(source.includes("Date.parse(data.resetsAt)"));
+    assert.ok(source.includes("Math.max(0, resetAt - Date.now()) + 1000"));
+    assert.ok(source.includes("clearTimeout(timeout)"));
+  }
+});
