@@ -14,12 +14,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.novacode.athleten",
-      "versionCode": 5,
-      "androidNavigationBar": {
-        "backgroundColor": "#05070B",
-        "barStyle": "light-content",
-        "enforceContrast": false
-      }
+      "versionCode": 5
     },
     "web": {
       "output": "static",
