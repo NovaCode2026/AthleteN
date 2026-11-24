@@ -25,6 +25,9 @@ export default function ExploreScreen(){
    <FeatureRow title="Notifications & Settings" text="Manage account preferences and notifications" icon="settings" onPress={()=>router.push('/settings')}/>
    <FeatureRow title="Support & Safety" text="Get help, review policies, or report a safety concern" icon="shield" onPress={()=>router.push('/support')}/>
   </Section>
+  <Section title="TRAVEL & COMPETITION">
+   <FeatureRow title="Away Mode" text="Plan competition travel, packing tasks and your personal itinerary." icon="calendar" onPress={()=>router.push('/away-mode')}/>
+  </Section>
   <Section title="TAEKWONDO">
    <FeatureRow title="Taekwondo Hub" text={profile?.discipline?profile.discipline+' performance, bouts and training':'Kyorugi & Poomsae performance'} onPress={()=>router.push({pathname:'/taekwondo'})}/>
    <FeatureRow title="Competition Checklist" text="Gear, documents and pre-event preparation" badge={String(counts.check)} onPress={()=>router.push({pathname:'/checklist'})}/>
@@ -45,7 +48,7 @@ export default function ExploreScreen(){
    <FeatureRow title="Training Session Mode" text="Run a timed session and save it to the same training history." icon="training" onPress={()=>router.push('/training-session')}/>
    <FeatureRow title="Competition Mode" text="Preparation, checklist, intelligence and post-event review." icon="event" onPress={()=>router.push('/competition-mode')}/>
    <FeatureRow title="Athlete Passport" text="A compact share-ready identity and achievement record." icon="shield" onPress={()=>router.push('/athlete-passport')}/>
-   <FeatureRow title="Mission Center" text="Create and complete healthy performance missions." icon="check" onPress={()=>router.push('/missions')}/>
+   <FeatureRow title="AthleteN Quest & Missions" text="Complete optional daily, weekly and monthly check-ins, and manage personal missions." icon="check" onPress={()=>router.push('/missions')}/>
    <FeatureRow title="Athlete Journey" text="Seasons, Fight IQ, techniques, challenges, records and milestones." icon="chart" onPress={()=>router.push('/athlete-journey')}/>
   </Section>
   {['admin','super_admin','support_admin'].includes(String(profile?.role||''))?<Section title="ADMINISTRATION"><FeatureRow title="Admin Control Center" text="Users, roles, plans, feature flags, badges and audit activity." icon="shield" onPress={()=>router.push('/admin-panel')}/></Section>:null}

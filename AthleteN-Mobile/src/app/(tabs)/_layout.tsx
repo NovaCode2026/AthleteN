@@ -47,6 +47,7 @@ export const NAV_ITEMS = [
  {id:'notifications-panel',label:'Alerts',icon:'bell',feature:null,route:'/notifications'},
  {id:'medals-panel',label:'Medals',icon:'trophy',feature:null,route:'/medals'},
  {id:'checklist-panel',label:'Checklist',icon:'check',feature:null,route:'/checklist'},
+ {id:'away-mode-panel',label:'Away Mode',icon:'calendar',feature:null,route:'/away-mode'},
  {id:'nutrition-panel',label:'Nutrition',icon:'heart',feature:null,route:'/nutrition'},
  {id:'missions-panel',label:'Missions',icon:'target',feature:null,route:'/missions'},
  {id:'passport-panel',label:'Passport',icon:'shield',feature:null,route:'/athlete-passport'},
