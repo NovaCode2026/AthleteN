@@ -185,6 +185,15 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN blocked := true;
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'Academy Admin directly inserted a membership'; END IF;
+
+  blocked := false;
+  BEGIN
+    UPDATE public.academies
+       SET contact_email_verified_at = now(), setup_completed = true
+     WHERE name = 'Verified Academy';
+  EXCEPTION WHEN insufficient_privilege THEN blocked := true;
+  END;
+  IF NOT blocked THEN RAISE EXCEPTION 'Academy Admin directly forged verified or completed state'; END IF;
 END
 $direct$;
 RESET ROLE;
@@ -211,7 +220,7 @@ BEGIN
 
   UPDATE public.academies
      SET name = 'Approved Academy Updated'
-   WHERE id = (SELECT id FROM public.academies WHERE name = 'Approved Academy');
+   WHERE id = (SELECT id FROM public.academies WHERE name = 'Verified Academy');
   GET DIAGNOSTICS changed = ROW_COUNT;
   IF changed <> 1 THEN RAISE EXCEPTION 'Approved Academy Admin could not update Academy profile'; END IF;
 END
