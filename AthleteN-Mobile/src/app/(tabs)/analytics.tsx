@@ -149,13 +149,13 @@ export default function AnalyticsScreen() {
   const now = new Date();
   const currentStart = rangeStart(now, range);
   const previousStart = rangeStart(now, range, true);
-  const currentTraining = useMemo(() => training.filter(row => inRange(row.session_date, currentStart, new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1))), [training, range, syncVersion]);
-  const previousTraining = useMemo(() => training.filter(row => inRange(row.session_date, previousStart, currentStart)), [training, range, syncVersion]);
+  const currentTraining = training.filter(row => inRange(row.session_date, currentStart, new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)));
+  const previousTraining = training.filter(row => inRange(row.session_date, previousStart, currentStart));
   const currentMinutes = currentTraining.reduce((sum, row) => sum + validMinutes(row.minutes), 0);
   const previousMinutes = previousTraining.reduce((sum, row) => sum + validMinutes(row.minutes), 0);
   const currentCompetitions = competitions.filter(row => inRange(row.starts_at, currentStart, new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1))).length;
   const completedGoals = goals.filter(goal => String(goal.status || '').toLowerCase() === 'completed' || Number(goal.progress || 0) >= 100).length;
-  const chart = useMemo(() => buildTrainingChart(training, range, now), [training, range, syncVersion]);
+  const chart = buildTrainingChart(training, range, now);
   const medalBreakdown = useMemo(() => [
     { label: 'Gold', value: medals.filter(x => String(x.medal_type || '').toLowerCase().includes('gold')).length },
     { label: 'Silver', value: medals.filter(x => String(x.medal_type || '').toLowerCase().includes('silver')).length },
