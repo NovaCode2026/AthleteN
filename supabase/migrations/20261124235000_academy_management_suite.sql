@@ -713,7 +713,7 @@ begin
   if tg_table_name='academy_fee_invoices' and tg_op='INSERT' then
     perform private.enqueue_academy_notification(v_academy,(v_row->>'athlete_user_id')::uuid,
       'New Academy fee invoice',coalesce(v_row->>'title','Academy fee')||' · ₹'||coalesce(v_row->>'amount','0')||
-      case when v_row->>'due_date' is not null then ' · Due '||v_row->>'due_date' else '' end,'fees');
+      case when v_row->>'due_date' is not null then ' · Due '||(v_row->>'due_date') else '' end,'fees');
 
   elsif tg_table_name='academy_fee_payments' and tg_op='INSERT' then
     select * into v_invoice from public.academy_fee_invoices where id=(v_row->>'invoice_id')::uuid;
