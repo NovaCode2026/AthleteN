@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
+import "./academy-guardian-transfer-portal.css";
 
 type ToastState = { type: "success" | "error" | "warning"; message: string } | null;
 type Props = { setToast: (toast: ToastState) => void };
@@ -21,6 +22,7 @@ export default function AcademyGuardianTransferPortal({setToast}:Props){
   const isAdmin=role==="academy_admin"||role==="academy";
   const [members,setMembers]=useState<any[]>([]);
   const [coaches,setCoaches]=useState<any[]>([]);
+  const [currentCoachId,setCurrentCoachId]=useState<string|null>(null);
   const [transfers,setTransfers]=useState<any[]>([]);
   const [guardians,setGuardians]=useState<any[]>([]);
   const [busy,setBusy]=useState(false);
@@ -50,8 +52,11 @@ export default function AcademyGuardianTransferPortal({setToast}:Props){
           .select("user_id,role,status").eq("academy_id",academyId).eq("status","active");
         if(membership.error)throw membership.error;
         memberRows=membership.data||[];
-        const coachIds=memberRows.filter(x=>x.role==="coach").map(x=>x.user_id);
         const profileIds=memberRows.map(x=>x.user_id);
+        if(role==="athlete"){
+          const current=await supabase.from("coach_athlete_links").select("coach_user_id").eq("academy_id",academyId).eq("athlete_user_id",userId).eq("status","active").limit(1).maybeSingle();
+          setCurrentCoachId(current.data?.coach_user_id||null);
+        }else setCurrentCoachId(null);
         const [profiles,transferResult,guardianResult,inboundResult]=await Promise.all([
           profileIds.length?supabase.from("profiles").select("user_id,full_name,username").in("user_id",profileIds):Promise.resolve({data:[],error:null}),
           supabase.from("academy_athlete_transfer_requests").select("*").eq("academy_id",academyId).order("created_at",{ascending:false}).limit(100),
@@ -138,7 +143,7 @@ export default function AcademyGuardianTransferPortal({setToast}:Props){
     {role==="athlete"&&academyId&&<section className="academy-portal-subsection">
       <h4>Request a Coach change</h4>
       <p className="messaging-help">You start the request. Your current Coach, selected Coach and Academy must each review it before the connection changes.</p>
-      <label className="field"><span>NEW COACH</span><select value={targetCoach} onChange={e=>setTargetCoach(e.target.value)}><option value="">Select an active Academy Coach</option>{coaches.filter(x=>x.user_id!==auth.profile?.coach_user_id).map(x=><option key={x.user_id} value={x.user_id}>{x.full_name||x.username||x.user_id}</option>)}</select></label>
+      <label className="field"><span>NEW COACH</span><select value={targetCoach} onChange={e=>setTargetCoach(e.target.value)}><option value="">Select an active Academy Coach</option>{coaches.filter(x=>x.user_id!==currentCoachId).map(x=><option key={x.user_id} value={x.user_id}>{x.full_name||x.username||x.user_id}</option>)}</select></label>
       <label className="field"><span>REASON (OPTIONAL)</span><textarea rows={2} maxLength={500} value={reason} onChange={e=>setReason(e.target.value)} placeholder="Add a short note for the review."/></label>
       <button type="button" className="btn primary" disabled={busy||!targetCoach} onClick={()=>void requestTransfer()}>Request transfer</button>
     </section>}
