@@ -1,0 +1,217 @@
+# AthleteN Rewarded Ads & Rewards Centre — Product and Engineering Plan
+
+**Status:** Proposed specification / implementation plan  
+**Created:** 24 November 2026  
+**Target delivery window:** Two days from approval (aspirational; not a release guarantee)  
+**Initial platform:** Android rewarded ads; web reward redemption and provider support to follow only where the chosen network and policies permit  
+**Release posture:** Feature-flagged and disabled by default. No production ads, reward issuance, or ad-network payments until account approval, privacy review, implementation, and acceptance tests are complete.
+
+## 1. Product objective
+
+Offer athletes an optional way to earn small in-app benefits by choosing to watch a rewarded advertisement. Ads must never interrupt a user, block core functionality, or be required to use AthleteN. Users choose whether to watch an ad and, where supported, which available reward to redeem.
+
+This feature is intended to supplement—not replace—subscription allowances and must not make AthleteN financially dependent on unverified advertising revenue.
+
+## 2. Confirmed product decisions
+
+| Decision | Specification |
+|---|---|
+| Eligibility | All AthleteN plans: Free, Student (where an account has a valid Student entitlement), Pro, Elite, Coach, and Academy |
+| Participation | Entirely optional; explicit user opt-in for each ad |
+| Reward for one successfully completed rewarded ad | 2 bonus AI messages |
+| Daily ad limit | At most 3 successfully rewarded ads per user per calendar day |
+| Monthly AI bonus cap | At most 30 ad-earned bonus AI messages per user per calendar month |
+| Verification | Server-side verification (SSV) or equivalent trusted provider verification; never trust a client callback alone |
+| Subscription allowance | Keep subscription AI allowance and ad-earned bonus credits in separate ledgers |
+| Incomplete, skipped, unavailable, or invalid ad | No reward |
+| User choice | Users may decline and continue using the app with their existing entitlements |
+| Expiry | Show an explicit expiry date; proposed ad-earned AI credits expire at the end of the calendar month in which they are earned and do not roll over |
+| Initial rollout | Android first, using test ad units during development; production ad serving stays disabled until approval and release gates pass |
+
+The monthly bonus cap is a cap on **ad-earned AI messages**, not a promise that users can always receive 30. Actual availability depends on valid completed ads and remaining limits.
+
+## 3. Rewards Centre
+
+Create a dedicated Rewards Centre with:
+
+- Available rewards and the credit/ad cost for each reward.
+- Clear explanation of what the user receives before opting into an ad.
+- Current reward-credit balance and remaining daily/monthly earning limits.
+- Reward history: earned, redeemed, expired, reversed, and the timestamp/reason.
+- Expiry dates and a clear explanation of monthly expiry.
+- A visible way to decline or leave without watching.
+- Accessible loading, no-fill, network-error, and retry states.
+
+### Proposed reward catalogue (costs require product and cost approval)
+
+| Reward | Proposed earning/redemption rule | Notes |
+|---|---|---|
+| AI Coach messages | 1 completed ad = 2 bonus messages | Confirmed reward |
+| Training analysis | Redeem a separately defined credit cost | Do not imply clinical or medical analysis |
+| Competition preparation report | Redeem a separately defined credit cost | Must be grounded in user-provided records |
+| Temporary premium theme | Redeem a separately defined credit cost | Cosmetic only; no paid entitlement |
+| Profile themes / cosmetic customisation | Redeem a separately defined credit cost | No competitive advantage |
+
+No conversion rate for non-AI rewards is approved yet. Do not ship these redemptions until their credit costs, expiry treatment, eligibility, and server-side cost controls are explicitly approved.
+
+## 4. Non-ad achievement rewards
+
+The Rewards Centre may also recognise safe, non-ad engagement:
+
+- Completing an athlete profile.
+- Recording a training session.
+- Completing a user-defined monthly goal.
+- Adding a verified competition result or certificate.
+
+Achievement rules must not encourage excessive training, unsafe weight changes, overtraining, or unnecessary competition participation. Do not reward training volume, calories burned, weight loss, or training through pain. Use one-time or sensible cadence limits and prevent duplicate claims. Achievement rewards should be separately identified from ad-earned credits.
+
+## 5. Advertising provider and revenue model
+
+### Initial provider
+
+Evaluate Google AdMob Rewarded Ads for the Android application. Use Google's official SDK, test ad unit IDs in development, and server-side verification for reward callbacks. Do not ship production ad unit IDs or enable live requests before the publisher account and app are approved.
+
+AdMob connects advertiser demand to eligible app inventory. Advertisers pay the advertising network; the network reports publisher earnings and pays the approved publisher account subject to its terms, thresholds, invalid-traffic controls, tax and payment requirements. Revenue is variable, not a guaranteed payment per view. Do not forecast revenue from assumed CPMs.
+
+### Direct sponsorships (later phase)
+
+A separate, later commercial channel may allow approved sports-equipment brands, academies, and tournament organisers to sponsor clearly labelled placements. Direct sponsorships require advertiser due diligence, written agreements, creative review, age-appropriate content, conflict checks, invoicing/tax review, and a manual approval workflow. Do not mix direct sponsorship billing with AdMob reward verification.
+
+## 6. Minor safety, privacy, and account ownership
+
+AthleteN may be used by minors. Before any live advertising:
+
+- A parent or guardian must handle publisher-account creation, agreements, tax/payment details, and any required business authorisations where the platform/provider requires an adult account holder.
+- Complete a documented review of applicable Indian law, Google Play requirements, AdMob policies, privacy notices, consent requirements, and child/teen restrictions with an appropriately qualified adult/legal adviser.
+- Configure age-appropriate ad treatment and child/teen privacy controls as required by provider policy and applicable law. Do not use personalised behavioural advertising for children or teens unless a qualified compliance review establishes a lawful and provider-permitted basis; safest initial posture is non-personalised/contextual age-appropriate inventory.
+- Do not collect extra personal data to improve ad targeting. Do not send athlete health, biometric, weight, injury, training, school, or competition data to ad networks.
+- Do not show ads that are unsuitable for minors or categories that could harm young users. Apply provider content ratings and block categories where supported.
+- Do not create misleading buttons, fake close controls, forced viewing, or reward promises that cannot be fulfilled.
+- Provide a privacy notice and a clear explanation that the user is choosing to view an advertisement in exchange for a stated in-app reward.
+
+Provider eligibility, app approval, consent, and ad inventory must be confirmed before production activation. If policy or legal eligibility is uncertain, keep the feature disabled.
+
+## 7. Technical architecture
+
+### Android client
+
+- Integrate the current supported Google Mobile Ads SDK version for the app's Expo / React Native architecture; confirm compatibility with the project's Expo SDK before selecting a native module or config plugin.
+- Load rewarded ads only after explicit user intent or a suitable user-initiated screen entry.
+- Use test ad units in development and test builds.
+- Present the exact reward (2 bonus AI messages), daily limit, monthly cap, and any applicable expiry before the user opts in.
+- Treat client completion callbacks as UI signals only; never mint credits locally.
+- Provide graceful no-fill/offline/error states and a clear cancel/decline path.
+- Do not show an ad automatically on app launch, during training, scoring, messaging, or AI generation.
+
+### Backend and database
+
+- Add a server-owned reward ledger with immutable earning/redemption/expiry/reversal entries.
+- Persist provider, provider transaction/event identifier, user ID, reward type, amount, status, timestamps, and safe audit metadata. Never store ad network secrets in client code.
+- Verify provider SSV signatures and expected ad unit / reward / transaction fields on the server.
+- Enforce unique provider transaction IDs and idempotent event processing.
+- Enforce daily and monthly caps using server time and a transaction/locking strategy that prevents concurrent duplicate claims.
+- Issue the 2 AI bonus messages atomically only after a verified eligible event.
+- Keep bonus balance separate from plan allowance. Define and test the order in which the AI endpoint consumes subscription quota versus bonus quota; never silently decrement both.
+- Enforce expiry server-side and show it to the user. Prevent client-side balance edits.
+- Ensure RLS and server authorization prevent users from reading or changing another user's wallet or history.
+- Add an admin-controlled kill switch and feature flags. Default all live ad/reward flags to off.
+- Add rate limits, abuse detection, reconciliation logs, and a support-safe reversal path for provider-invalidated events.
+
+### AI quota integration
+
+The AI endpoint must compute available plan allowance and bonus allowance server-side. Ad-earned credits must not increase a paid subscription's entitlement, change plan status, or unlock premium features. A user with no plan allowance may use valid bonus messages if otherwise eligible. When a request fails before provider processing, quota handling must follow the existing AI budget ledger's reservation/settlement rules; do not invent a second unmetered AI path.
+
+### Web
+
+Web reward wallet/history may display and redeem rewards earned on Android after authentication. Do not assume AdMob's Android rewarded inventory can be embedded on web. Any web ad provider integration is a separate approval and policy review. Keep web ad playback disabled until a supported web provider is selected and verified.
+
+## 8. Security and abuse controls
+
+- Server-side provider SSV signature verification.
+- Unique event ID / transaction ID constraint.
+- Idempotent processing under retries and concurrent callbacks.
+- Per-user daily and monthly caps enforced in the database transaction.
+- Server-derived user identity; never accept user ID, reward quantity, or credit balance as trusted client input.
+- Validate ad unit, reward type, amount, provider app identity, and timestamp.
+- Reject replayed, malformed, stale, or mismatched events.
+- Separate admin audit events from user-visible reward history.
+- Feature kill switch must stop new ad requests and reward issuance without affecting authentication, athlete records, or existing subscription entitlements.
+
+## 9. Admin controls and observability
+
+Admin controls should support:
+
+- Global enable/disable for ad requests and reward issuance.
+- Separate test/live environment status.
+- Provider and ad-unit configuration status without exposing secrets.
+- Approved reward catalogue and credit costs.
+- Daily/monthly caps.
+- Reward-event and reconciliation views.
+- Invalid/reversed event counts and no-fill/error rates.
+- Estimated ad revenue and provider-reported payout data, clearly distinguished from cash received.
+- AI cost attributable to bonus messages.
+- Audit trail for every configuration change.
+
+Do not provide an admin feature that can silently alter an individual user's reward history or subscription allowance.
+
+## 10. Two-day implementation plan
+
+This is an aggressive engineering target, not a guarantee of production readiness. The two-day goal is to produce a reviewed, tested, feature-flagged implementation candidate—not to bypass provider approval or production safety gates.
+
+### Day 1 — Specification, backend, and Android foundation
+
+- Confirm Expo SDK compatibility and select the maintained AdMob integration.
+- Implement schema/ledger design and isolated database tests.
+- Implement SSV verification endpoint, idempotency, daily/monthly caps, and atomic reward issuance.
+- Add AI quota integration with separate subscription and bonus balances.
+- Add feature flags defaulting to disabled.
+- Add Android Rewards Centre UI and test-ad integration.
+- Add tests for duplicate callbacks, forged callbacks, cap races, expiry, and cross-user access.
+
+### Day 2 — Integration, QA, and review
+
+- Complete Android ad lifecycle and no-fill/offline/decline states.
+- Complete wallet, history, expiry display, and approved reward catalogue UI.
+- Complete achievement reward rules only if they are safe, bounded, and covered by tests.
+- Add admin controls and audit visibility.
+- Add web read-only wallet/history if the API and parity tests are ready; do not add unsupported web ad playback.
+- Run web/mobile tests, lint, TypeScript, Expo Doctor, database integration tests, and production builds.
+- Review privacy, child/teen policy, provider account eligibility, and release configuration.
+- Attach exact test evidence and unresolved blockers to the PR.
+
+## 11. Acceptance criteria
+
+- [ ] All plans can access the optional Rewards Centre when the feature is enabled.
+- [ ] User must explicitly choose to watch each ad.
+- [ ] User can decline and continue with existing app access.
+- [ ] One valid completed rewarded ad grants exactly 2 bonus AI messages.
+- [ ] Incomplete, skipped, no-fill, invalid, forged, or replayed events grant zero.
+- [ ] Maximum 3 successful rewarded ads per user per day.
+- [ ] Maximum 30 ad-earned AI messages per user per calendar month.
+- [ ] Caps remain correct under simultaneous requests and callback retries.
+- [ ] Subscription AI quota and bonus quota remain separate and auditable.
+- [ ] Monthly expiry is enforced and visible; credits do not roll over.
+- [ ] Reward wallet and history are isolated by user and protected by RLS/server authorization.
+- [ ] Non-AI reward costs are explicitly approved before those redemptions are enabled.
+- [ ] Achievement rewards cannot encourage unsafe training or duplicate claims.
+- [ ] No ad appears automatically or in critical training/competition flows.
+- [ ] Ad network receives no athlete health, biometric, weight, injury, or training data.
+- [ ] Feature flags default to disabled and kill switch is tested.
+- [ ] Android test ads are used in development; no production ad request is made before provider approval.
+- [ ] Web does not attempt to play Android AdMob inventory.
+- [ ] Provider account, privacy, minor safety, legal/tax, and payment eligibility reviews are documented.
+- [ ] CI passes on the exact PR head and all unresolved risks are documented.
+
+## 12. Explicit non-goals and release boundaries
+
+- This plan does not create or approve an AdMob publisher account.
+- This plan does not establish guaranteed ad revenue or a fixed payout per view.
+- This plan does not enable production advertisements, payment collection, or production reward issuance.
+- This plan does not change plan pricing, subscription entitlements, or paid checkout.
+- This plan does not make Student available for new purchases or alter legacy Student subscriptions.
+- This plan does not apply Supabase production migrations or modify production data.
+- This plan does not add behavioural ad targeting.
+- This plan does not make web rewarded ads available without a separately approved provider.
+- This plan does not claim the two-day target overrides testing, privacy, provider, or release gates.
+
+**Release rule:** If any critical security, quota, provider, privacy, minor-safety, or acceptance gate is open, keep live ads and reward issuance disabled. A tested feature-flagged candidate is preferable to an unsafe live launch.
