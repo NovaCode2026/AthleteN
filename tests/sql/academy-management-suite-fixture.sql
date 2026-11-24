@@ -97,6 +97,7 @@ VALUES ('00000000-0000-0000-0000-000000000012','Kyorugi Group',true);
 INSERT INTO public.training_group_members(group_id,athlete_user_id,status)
 SELECT id,'00000000-0000-0000-0000-000000000011','active'
 FROM public.training_groups WHERE name='Kyorugi Group';
+GRANT SELECT ON public.training_groups,public.training_group_members TO authenticated;
 
 INSERT INTO public.attendance_records(user_id,academy_id,status,attended_at)
 VALUES ('00000000-0000-0000-0000-000000000011',
