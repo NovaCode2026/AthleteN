@@ -5,7 +5,15 @@ import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 import AthleteNLogo from '@/components/athleten-logo';
 
-function formatDobInput(value: string) { const digits = value.replace(/\D/g, '').slice(0, 8); if (digits.length <= 4) return digits; if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`; return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`; }
+function formatDobInput(value: string) {
+  const raw = value.trim();
+  const dmy = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+}
 function isValidDob(value: string) { if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false; const [year, month, day] = value.split('-').map(Number); const date = new Date(Date.UTC(year, month - 1, day)); const today = new Date(); return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day && date <= new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())); }
 
 export default function OnboardingScreen({ userId, onComplete }: { userId: string; onComplete: () => void }) {
@@ -49,7 +57,7 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
       {label:'Gender',value:gender,set:setGender,required:true},
       {label:'Club / Academy name (optional)',value:club,set:setClub,required:false},
       {label:'Coach name (optional)',value:coach,set:setCoach,required:false},
-    ] as const).map(field=><View key={field.label} style={styles.field}><Text style={styles.label}>{field.label}{field.required?' *':''}</Text><TextInput value={field.value} onChangeText={field.label.startsWith('Date of birth')?value=>setDob(formatDobInput(value)):field.set} placeholder={field.label} placeholderTextColor={Colors.dark.muted} style={styles.input} keyboardType={field.label.startsWith('Date of birth')?'numeric':'default'} autoCapitalize={field.label==='Full name'?'words':'sentences'} />{field.label.startsWith('Date of birth')&&<Text style={styles.hint}>Type YYYYMMDD or YYYY-MM-DD; AthleteN formats and validates the date.</Text>}</View>)}
+    ] as const).map(field=><View key={field.label} style={styles.field}><Text style={styles.label}>{field.label}{field.required?' *':''}</Text><TextInput value={field.value} onChangeText={field.label.startsWith('Date of birth')?value=>setDob(formatDobInput(value)):field.set} placeholder={field.label} placeholderTextColor={Colors.dark.muted} style={styles.input} keyboardType={field.label.startsWith('Date of birth')?'numeric':'default'} autoCapitalize={field.label==='Full name'?'words':'sentences'} />{field.label.startsWith('Date of birth')&&<Text style={styles.hint}>Enter YYYYMMDD, YYYY-MM-DD or DD-MM-YYYY; AthleteN normalizes and validates the date.</Text>}</View>)}
     <View style={styles.field}><Text style={styles.label}>Academy or Coach connection code (optional)</Text><Text style={styles.hint}>Enter the code shared by your academy or coach to connect your account. You can skip this and connect later.</Text><TextInput value={connectionCode} onChangeText={setConnectionCode} autoCapitalize="characters" autoCorrect={false} placeholder="e.g. SRTAEKWONDO" placeholderTextColor={Colors.dark.muted} style={styles.input}/></View>
     <View style={styles.field}>
       <Text style={styles.label}>1 · SPORT *</Text>

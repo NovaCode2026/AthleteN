@@ -1,3 +1,4 @@
+import { useNavigationScrollToTop } from '@/components/mobile-ui';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Colors } from '@/constants/theme';
@@ -9,6 +10,7 @@ import { Icon } from '@/components/mobile-ui';
 const c = Colors.dark;
 
 export default function CompeteScreen() {
+ const scrollRef=useNavigationScrollToTop();
  const { session, profile, syncVersion } = useAuth();
  const [tournaments,setTournaments]=useState<any[]>([]); const [selected,setSelected]=useState<string|null>(null); const [matches,setMatches]=useState<any[]>([]); const [medals,setMedals]=useState<any[]>([]); const [checklist,setChecklist]=useState<any[]>([]);
  const [name,setName]=useState(''); const [date,setDate]=useState(''); const [location,setLocation]=useState('');
@@ -31,7 +33,7 @@ export default function CompeteScreen() {
  async function toggleCheck(x:any){const {error}=await supabase.from('competition_checklists').update({completed:!x.completed}).eq('id',x.id).eq('user_id',session?.user.id);if(error)setMessage(error.message);else await load()}
  function remove(table:string,id:string,label:string){Alert.alert('Are you sure?',`Delete ${label}? This cannot be undone.`,[{text:'Cancel',style:'cancel'},{text:'Delete',style:'destructive',onPress:async()=>{setBusy(true);const {error}=await supabase.from(table).delete().eq('id',id).eq('user_id',session?.user.id);setBusy(false);if(error)setMessage(error.message);else await load()}}])}
 
- return <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+ return <ScrollView ref={scrollRef} style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
   <View><Text style={s.kicker}>ATHLETEN PERFORMANCE</Text><Text style={s.title}>Compete</Text><Text style={s.sub}>Events, matches, medals and your competition checklist.</Text></View>
   <View style={s.summary}><View><Text style={s.summaryKicker}>ATHLETE</Text><Text style={s.summaryTitle}>{profile?.discipline||'Taekwondo'} competitor</Text></View><Icon name="event" size={30} color={c.accentBright}/></View>
   <Section title="ADD TOURNAMENT"><Field label="TOURNAMENT NAME *" value={name} onChangeText={setName} placeholder="State / National Championship"/><View style={s.row}><View style={s.half}><Field label="DATE" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD"/></View><View style={s.half}><Field label="LOCATION" value={location} onChangeText={setLocation} placeholder="Venue"/></View></View><Button title="SAVE TOURNAMENT" onPress={addTournament} busy={busy}/></Section>

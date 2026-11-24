@@ -1,7 +1,8 @@
 // @ts-nocheck
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, DeviceEventEmitter, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useRef } from 'react';
 import { Colors } from '@/constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AthleteNLogo from '@/components/athleten-logo';
@@ -22,10 +23,21 @@ export function SupportContact(){
   <Text style={{color:c.muted,fontSize:8}}>Support: novacode.create@gmail.com</Text>
  </View>;
 }
+export function useNavigationScrollToTop() {
+ const ref = useRef<any>(null);
+ useEffect(() => {
+  const subscription = DeviceEventEmitter.addListener('athleten-scroll-to-top', () => {
+   ref.current?.scrollTo?.({ y: 0, animated: false });
+  });
+  return () => subscription.remove();
+ }, []);
+ return ref;
+}
 export function Screen({children,scroll=true,bottomBar}:{children:React.ReactNode;scroll?:boolean;bottomBar?:React.ReactNode}){
+ const scrollRef=useNavigationScrollToTop();
  const body=<View style={s.wrap}>{children}</View>;
  const footer=<SupportContact />;
- return <SafeAreaView style={s.screen} edges={['top','bottom']}>{scroll?<View style={{flex:1}}><ScrollView contentContainerStyle={bottomBar ? [s.content,{paddingBottom:190}] : [s.content]} showsVerticalScrollIndicator={false}>{body}{footer}</ScrollView>{bottomBar}</View>:<View style={{flex:1}}>{body}{footer}{bottomBar}</View>}</SafeAreaView>;
+ return <SafeAreaView style={s.screen} edges={['top','bottom']}>{scroll?<View style={{flex:1}}><ScrollView ref={scrollRef} contentContainerStyle={bottomBar ? [s.content,{paddingBottom:190}] : [s.content]} showsVerticalScrollIndicator={false}>{body}{footer}</ScrollView>{bottomBar}</View>:<View style={{flex:1}}>{body}{footer}{bottomBar}</View>}</SafeAreaView>;
 }
 export function RefreshButton({onPress,busy=false}:{onPress:()=>void;busy?:boolean}){return <Pressable accessibilityRole="button" accessibilityLabel="Refresh dashboard" onPress={onPress} disabled={busy} hitSlop={8} style={({pressed})=>({width:42,height:42,borderRadius:13,borderWidth:1,borderColor:c.borderStrong,backgroundColor:c.surface,alignItems:'center',justifyContent:'center',opacity:pressed?.7:busy?.55:1})}>{busy?<ActivityIndicator size="small" color={c.accentBright}/>:<Icon name="refresh" size={19} color={c.accentBright}/>}</Pressable>}
 export function Header({eyebrow,title,subtitle,right,back=false,onRefresh,refreshing=false}:{eyebrow:string;title:string;subtitle?:string;right?:React.ReactNode;back?:boolean;onRefresh?:()=>void;refreshing?:boolean}){const router=useRouter();return <View style={s.header}>{back?<Pressable onPress={()=>router.back()} style={s.back}><View style={s.backText}><Icon name="back" size={14} color={c.accentBright}/><Text style={{color:c.accentBright,fontSize:10,fontWeight:'900',letterSpacing:.7,marginLeft:5}}>BACK</Text></View></Pressable>:null}<View style={s.headerRow}><View style={s.headerIdentity}><AthleteNLogo width={104} height={58} style={s.headerLogo}/><View style={{flex:1,gap:4}}><Text style={s.eyebrow}>{eyebrow}</Text><Text style={s.title}>{title}</Text>{subtitle?<Text style={s.subtitle}>{subtitle}</Text>:null}</View></View><View style={{flexDirection:'row',alignItems:'center',gap:8}}>{onRefresh?<RefreshButton onPress={onRefresh} busy={refreshing}/>:null}{right}</View></View></View>}

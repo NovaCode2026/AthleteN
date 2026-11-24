@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useNavigationScrollToTop } from '@/components/mobile-ui';
 import { Colors } from '@/constants/theme';
 import { Icon } from '@/components/mobile-ui';
 import { useAuth } from '@/context/AuthContext';
@@ -37,6 +38,7 @@ const productPlans = {
 export default function PlansScreen() {
   const { profile, session } = useAuth();
   const router = useRouter();
+  const scrollRef = useNavigationScrollToTop();
   const [billing, setBilling] = useState<BillingCycle>('yearly');
   const [usage, setUsage] = useState<{ ai_requests_used: number; ai_requests_limit: number } | null>(null);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
@@ -161,7 +163,7 @@ export default function PlansScreen() {
   const limit = AI_LIMITS[current] ?? 0;
   const activeProducts = new Set(subscriptions.map((s) => String(s.plan_id)));
 
-  return <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+  return <ScrollView ref={scrollRef} style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
     <View>
       <Text style={s.kicker}>ATHLETEN • SUBSCRIPTION</Text>
       <Text style={s.title}>Choose your plan.</Text>
@@ -331,12 +333,12 @@ const s = StyleSheet.create({
   usageValue:{color:c.text,fontSize:18,fontWeight:'900',marginTop:3},
   plan:{backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:18,padding:15,gap:9},
   planActive:{borderColor:c.accent,backgroundColor:c.accentSoft},
-  planTop:{flexDirection:'row',justifyContent:'space-between',gap:8},
+  planTop:{flexDirection:'row',flexWrap:'wrap',alignItems:'flex-start',justifyContent:'space-between',gap:10},
   planName:{color:c.text,fontSize:17,fontWeight:'900'},
   audience:{color:c.muted,fontSize:10,marginTop:2},
-  priceBox:{alignItems:'flex-end'},
-  price:{color:c.accentBright,fontSize:15,fontWeight:'900',textAlign:'right'},
-  priceAlt:{color:c.muted,fontSize:8,fontWeight:'800',textAlign:'right',marginTop:3},
+  priceBox:{alignItems:'flex-start',maxWidth:'100%',flexShrink:0},
+  price:{color:c.accentBright,fontSize:15,fontWeight:'900',textAlign:'left'},
+  priceAlt:{color:c.muted,fontSize:8,fontWeight:'800',textAlign:'left',marginTop:3,flexWrap:'wrap'},
   period:{color:c.muted,fontSize:9,marginTop:1},
   saving:{color:c.success,fontSize:10,fontWeight:'900'},
   aiPill:{alignSelf:'flex-start',backgroundColor:c.background,borderRadius:999,paddingHorizontal:9,paddingVertical:6},

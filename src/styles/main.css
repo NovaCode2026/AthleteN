@@ -820,3 +820,36 @@ select:-webkit-autofill {
     padding: 20px 16px;
   }
 }
+
+
+/* AthleteN QA: responsive plans and actionable notification rows */
+.plan-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));align-items:stretch}
+.plan-card{min-width:0;overflow-wrap:anywhere}
+.plan-card-head{min-width:0}
+.notification-row{align-items:center;gap:10px}
+.notification-open{display:flex;align-items:center;justify-content:space-between;gap:14px;flex:1;min-width:0;padding:0;border:0;background:transparent;color:inherit;text-align:left}
+.notification-open:disabled{opacity:.65;cursor:wait}
+.notification-open-label{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;color:#9fcfff;font-size:.78rem;font-weight:800}
+.notification-delete{flex:0 0 auto}
+@media(max-width:560px){.notification-open{align-items:flex-start;flex-direction:column;gap:7px}.notification-row{padding:13px 4px}}
+
+
+/* AthleteN QA: scanner grouping and source table */
+.scanner-merge-bar{display:grid;grid-template-columns:minmax(180px,1fr) minmax(0,2fr);gap:14px;align-items:center;margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:rgba(4,16,32,.32)}
+.scanner-merge-bar>div:first-child{display:grid;gap:5px;min-width:0}
+.scanner-merge-bar>div:first-child span{color:var(--muted);font-size:12px;line-height:1.5}
+.scanner-group-actions{display:grid;grid-template-columns:minmax(180px,1fr) auto auto;gap:8px;min-width:0}
+.scanner-group-actions input{width:100%;min-width:0;min-height:40px;padding:9px 11px;border:1px solid var(--line);border-radius:var(--radius);background:rgba(255,255,255,.04);color:var(--text)}
+.scan-table-wrap{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+.scan-table-wrap table{width:100%;min-width:900px;border-collapse:collapse}
+.scan-table-wrap th,.scan-table-wrap td{padding:11px 9px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+.scan-table-wrap th{white-space:nowrap}
+.scan-table-wrap .source-cell{max-width:150px;word-break:break-all}
+.scan-missing{color:var(--muted);font-size:12px;font-style:italic}
+.status.review-required{border-color:rgba(247,199,106,.45);color:#f7d28a}
+.notification-row{min-width:0}
+@media(max-width:760px){.scanner-merge-bar{grid-template-columns:1fr}.scanner-group-actions{grid-template-columns:1fr}.scanner-group-actions .btn{width:100%}}
+
+.notification-source-detail{display:grid;gap:14px}
+.notification-source-detail .inline-actions{flex-wrap:wrap}
+.notification-source-detail .tag{max-width:100%;overflow-wrap:anywhere}

@@ -123,8 +123,10 @@ test("all profile editors lock DOB after first submission", () => {
   const mobileGate = read("../AthleteN-Mobile/src/components/age-verification-screen.tsx");
   assert.ok(mobileGate.includes("setDobLocked(true)"));
   assert.ok(mobileGate.includes("editable={!dobLocked}"));
-  assert.ok(mobileGate.includes("!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)"));
-  assert.ok(mobileGate.includes("d.getFullYear()!==year||d.getMonth()!==month-1||d.getDate()!==day"));
+  assert.ok(mobileGate.includes("const iso=raw.match"));
+  assert.ok(mobileGate.includes("const dmy=raw.match"));
+  assert.ok(mobileGate.includes("date.getUTCFullYear()!==year||date.getUTCMonth()!==month-1||date.getUTCDate()!==day"));
+  assert.ok(mobileGate.includes("date_of_birth:normalizedDob"));
 
   const web = read("../src/App.tsx");
   assert.ok(web.includes("values.date_of_birth!==undefined && String(values.date_of_birth)!==String(data.profile.date_of_birth)"));
