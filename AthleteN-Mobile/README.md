@@ -145,6 +145,9 @@ The Android App ID must be supplied separately as ADMOB_ANDROID_APP_ID. The conf
 
 Server-side flags ATHLETEN_REWARDED_ADS_ENABLED, ATHLETEN_REWARDED_ADS_LIVE_APPROVED, and ATHLETEN_REWARDED_ADS_MINOR_SAFETY_APPROVED must remain disabled until the adult publisher owner and the required policy/privacy reviewers approve the release. This release only permits server-verified adult accounts; every account under 18 is denied an ad session. The production ad unit ID supplied during setup is not a substitute for publisher ownership or approval.
 
+**Age-assurance limitation:** the current server checks the account's first-saved DOB record and rejects records below 18, but that DOB is supplied by the account holder; it is not independent identity proof. This code must not be treated as a complete age-assurance system. Keep all live-ad approval flags off until the responsible adult and policy/privacy reviewers approve the age-assurance method required for the intended audience and that method is implemented and tested. Users under 18 must continue to use AthleteN without rewarded ads.
+
+
 ## Related guides
 
 - [Main README](../README.md)
