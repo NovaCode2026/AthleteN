@@ -20,7 +20,7 @@ test("message expiry is database-assigned and unreadable after the timestamp", (
 
 test("delete-for-everyone queues attachment objects and clears message references", () => {
   assert.match(migration, /messaging_attachment_cleanup_queue/);
-  assert.match(migration, /reason='deleted_for_everyone'/);
+  assert.match(migration, /reason\\s*=\\s*'deleted_for_everyone'/);
   assert.match(migration, /attachment_path = NULL/);
   assert.match(migration, /queue_message_attachment_cleanup_before_delete/);
   assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.cleanup_expired_messages\(integer\) TO service_role/);
@@ -59,5 +59,5 @@ test("E2E design requires vetted protocol implementations and encrypted client-s
   assert.match(cryptoDesign, /Double Ratchet/);
   assert.match(cryptoDesign, /client-side encryption/i);
   assert.match(cryptoDesign, /No custom cryptography/i);
-  assert.match(cryptoDesign, /production rollout gate/i);
+  assert.match(cryptoDesign, /Rollout gates/i);
 });
