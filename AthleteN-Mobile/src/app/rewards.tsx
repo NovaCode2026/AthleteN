@@ -69,7 +69,7 @@ export default function RewardsScreen() {
     : 'No expiry';
 
   return (
-    <SafeAreaView style={s.screen} edges={['top']}>
+    <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         <View style={s.header}>
           <Pressable onPress={() => router.back()} style={s.back} accessibilityRole="button" accessibilityLabel="Go back">
@@ -142,7 +142,7 @@ export default function RewardsScreen() {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.background },
-  content: { padding: 18, paddingBottom: 50, gap: 13 },
+  content: { padding: 18, paddingBottom: 28, gap: 13 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   back: { width: 42, height: 42, borderRadius: 14, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '180deg' }] },
   kicker: { color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
