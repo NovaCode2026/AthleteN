@@ -149,8 +149,58 @@ export default async function handler(request) {
     if (!providers.has(provider)) return json({ error: "Unsupported payment provider." }, 400);
 
     const supabase = serverSupabase();
+    if (!user.email_confirmed_at) {
+      return json({ error: "Verify your AthleteN account email before starting a trial." }, 403);
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role,academy_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (profileError || !profile) {
+      return json({ error: "Unable to verify this account for the selected trial." }, 503);
+    }
+
+    const roleAllowed =
+      (["student", "pro", "elite"].includes(planId) && profile.role === "athlete") ||
+      (planId === "coach" && profile.role === "coach") ||
+      (planId === "academy" && profile.role === "academy_admin");
+    if (!roleAllowed) {
+      return json({ error: "This trial is only available to the matching account type." }, 403);
+    }
+
+    const { data: ageApproved, error: ageApprovalError } = await supabase.rpc("is_age_approved", {
+      p_user_id: user.id
+    });
+    if (ageApprovalError) {
+      console.error("trial age-approval verification failed:", ageApprovalError);
+      return json({ error: "Unable to verify the account's age/guardian approval." }, 503);
+    }
+    if (ageApproved !== true) {
+      return json({ error: "Complete the required age and parent/guardian approval before starting a trial." }, 403);
+    }
+
     const verification = planId === "student" ? await requireApprovedStudent(supabase, user.id) : null;
-    if (planId === "student" && !verification) return json({ error: "Student ID approval is required before trial payment." }, 403);
+    if (planId === "student" && !verification) {
+      return json({ error: "The latest Student ID verification must be approved before trial payment." }, 403);
+    }
+
+    if (planId === "academy") {
+      let academyQuery = supabase
+        .from("academies")
+        .select("id")
+        .eq("owner_user_id", user.id)
+        .eq("status", "active")
+        .eq("setup_completed", true)
+        .not("contact_email_verified_at", "is", null);
+      if (profile.academy_id) academyQuery = academyQuery.eq("id", profile.academy_id);
+      const { data: academy, error: academyError } = await academyQuery.limit(1).maybeSingle();
+      if (academyError) return json({ error: "Unable to verify Academy setup." }, 503);
+      if (!academy) {
+        return json({ error: "Complete the existing Academy owner setup and contact-email verification before starting a trial." }, 403);
+      }
+    }
 
     const { data: entitlement, error: entitlementError } = await supabase
       .from("account_entitlements")
@@ -161,6 +211,9 @@ export default async function handler(request) {
     if (entitlement?.trial_claimed_at) return json({ error: "Your one-time trial has already been used." }, 409);
     if (entitlement?.trial_ends_at && new Date(entitlement.trial_ends_at).getTime() > Date.now()) return json({ error: "Your trial is already active." }, 409);
     if (entitlement?.trial_payment_status === "paid") return json({ error: "Your trial payment is already confirmed. Refresh the account plan to continue." }, 409);
+    if (entitlement?.trial_payment_status === "pending") {
+      return json({ error: "A trial payment is already pending. Complete that checkout or wait for its failure/expiry confirmation before starting another." }, 409);
+    }
 
     const result = provider === "razorpay"
       ? await createRazorpayTrial(supabase, user, planId, verification?.id || null)

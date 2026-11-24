@@ -237,6 +237,13 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
   const [studentStatus, setStudentStatus] = useState<string>("not_submitted");
   const [studentLoading, setStudentLoading] = useState(false);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("yearly");
+  const SUBSCRIPTION_CANCELLATION_ENABLED = false; // Enable only after production migration verification.
+  const [activeSubscriptions, setActiveSubscriptions] = useState<Array<{
+    id: string; plan_id: string; provider?: string | null; status: string;
+    current_period_end?: string | null; cancel_at_period_end?: boolean;
+  }>>([]);
+  const [cancelBusy, setCancelBusy] = useState<string | null>(null);
   const role = String(profile.role || "athlete");
   const currentPlan = String(profile.plan_id || "free");
   useEffect(() => {
@@ -257,6 +264,64 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
       .subscribe();
     return () => { alive = false; void supabase.removeChannel(channel); };
   }, [role, userId]);
+  useEffect(() => {
+    if (!supabase || !userId) return;
+    let alive = true;
+    const loadSubscriptions = async () => {
+      const { data, error } = await supabase.from("subscriptions")
+        .select("id,plan_id,provider,status,current_period_end")
+        .eq("user_id", userId)
+        .in("status", ["active", "trialing", "past_due"])
+        .order("created_at", { ascending: false });
+      if (!alive) return;
+      if (error) {
+        onToast({ type: "warning", message: "Subscription information could not be loaded." });
+        return;
+      }
+      setActiveSubscriptions(data || []);
+    };
+    void loadSubscriptions();
+    const channel = supabase.channel("plan-subscriptions-" + userId)
+      .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions", filter: "user_id=eq." + userId }, () => {
+        void loadSubscriptions();
+      })
+      .subscribe();
+    return () => { alive = false; void supabase.removeChannel(channel); };
+  }, [userId]);
+
+  async function scheduleCancellation(subscriptionId: string) {
+    if (!supabase || !userId) return;
+    if (!window.confirm("Schedule cancellation at the end of the current billing period? Your paid access remains active until that date.")) return;
+    setCancelBusy(subscriptionId);
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (sessionError || !token) throw new Error("Your session expired. Sign in again.");
+      const response = await fetch("/.netlify/functions/cancel-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ subscriptionId })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Cancellation could not be scheduled.");
+      if (payload.syncPending) {
+        onToast({ type: "warning", message: payload.message || "The provider accepted the cancellation. AthleteN is waiting for its webhook to synchronize the status." });
+      } else {
+        onToast({ type: "success", message: payload.message || "Cancellation scheduled at the end of your billing period." });
+      }
+      const { data, error } = await supabase.from("subscriptions")
+        .select("id,plan_id,provider,status,current_period_end")
+        .eq("user_id", userId)
+        .in("status", ["active", "trialing", "past_due"])
+        .order("created_at", { ascending: false });
+      if (!error) setActiveSubscriptions(data || []);
+    } catch (error) {
+      onToast({ type: "error", message: error instanceof Error ? error.message : "Cancellation could not be scheduled." });
+    } finally {
+      setCancelBusy(null);
+    }
+  }
+
   function openPage(path: string) {
     window.history.pushState(null, "", path);
     window.dispatchEvent(new PopStateEvent("popstate"));
@@ -301,13 +366,12 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
       }
       const response = await fetch("/.netlify/functions/create-checkout", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: JSON.stringify({ planId })
+        body: JSON.stringify({ planId, billingPeriod })
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Checkout could not be started.");
       if (payload.checkoutUrl) window.location.assign(payload.checkoutUrl);
-      else if (payload.paymentSessionId) onToast({ type: "warning", message: "Checkout session created. Cashfree checkout needs its configured mobile/web payment component." });
-      else throw new Error("The payment provider did not return a checkout link.");
+      else throw new Error("The recurring subscription provider did not return a checkout link.");
     } catch (error) {
       onToast({ type: "error", message: error instanceof Error ? error.message : "Checkout could not be started." });
     } finally { setBusyPlan(null); }
@@ -324,6 +388,42 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
       </div>
       <span className="status-chip success">{currentPlan === "free" ? "Free plan" : "Current plan"}</span>
     </section>
+    <section className="card panel" aria-label="Active subscriptions">
+      <h3>Active subscriptions</h3>
+      {activeSubscriptions.length === 0
+        ? <p>No active paid subscriptions are recorded for this account.</p>
+        : <div className="grid">
+          {activeSubscriptions.map((subscription) => {
+            const providerManaged = ["stripe", "razorpay"].includes(String(subscription.provider || ""));
+            const periodEnd = subscription.current_period_end
+              ? new Date(subscription.current_period_end).toLocaleDateString("en-IN")
+              : "Not available";
+            return <article className="card panel" key={subscription.id}>
+              <div className="plan-card-head">
+                <strong>{getPlan(subscription.plan_id).name}</strong>
+                <span className="status-chip">{subscription.status}</span>
+              </div>
+              <p>Provider: {subscription.provider || "manual"}</p>
+              <p>Access through: {periodEnd}</p>
+              {SUBSCRIPTION_CANCELLATION_ENABLED && subscription.cancel_at_period_end
+                ? <p className="notice" role="status">Cancellation is scheduled. Your access remains available through the current period.</p>
+                : SUBSCRIPTION_CANCELLATION_ENABLED && providerManaged && subscription.current_period_end
+                  ? <button className="btn danger" type="button" disabled={cancelBusy === subscription.id} onClick={() => void scheduleCancellation(subscription.id)}>
+                    {cancelBusy === subscription.id ? "Scheduling…" : "Cancel at period end"}
+                  </button>
+                  : <p className="notice">Self-service cancellation is unavailable for this subscription. Contact AthleteN support.</p>}
+            </article>;
+          })}
+        </div>}
+    </section>
+    <section className="card panel" aria-label="Billing period">
+      <p className="eyebrow">Billing period</p>
+      <div className="inline-actions" role="group" aria-label="Choose monthly or yearly billing">
+        <button className={billingPeriod === "monthly" ? "btn primary" : "btn"} type="button" aria-pressed={billingPeriod === "monthly"} onClick={() => setBillingPeriod("monthly")}>Monthly</button>
+        <button className={billingPeriod === "yearly" ? "btn primary" : "btn"} type="button" aria-pressed={billingPeriod === "yearly"} onClick={() => setBillingPeriod("yearly")}>Yearly</button>
+      </div>
+      <p className="notice">Yearly plans are billed once per year. Paid checkout is still disabled while release gates are open.</p>
+    </section>
     <section className="plan-grid" aria-label="AthleteN plans">
       {visiblePlans.map((plan) => {
         const isFree = plan.id === "free";
@@ -335,7 +435,9 @@ function PlansPage({ profile, userId, onToast }: { profile: Profile; userId: str
             {isCurrent && <span className="status-chip success">Current plan</span>}
           </div>
           <h3>{plan.name}</h3>
-          <div className="plan-price"><strong>{plan.price}</strong></div>
+          <div className="plan-price"><strong>{plan.monthlyPrice == null || plan.yearlyPrice == null
+            ? plan.price
+            : `₹${(billingPeriod === "yearly" ? plan.yearlyPrice : plan.monthlyPrice).toLocaleString("en-IN")}/${billingPeriod === "yearly" ? "year" : "month"}`}</strong></div>
           <p className="plan-ai">{plan.aiLimit.toLocaleString("en-IN")} AI Coach requests per month</p>
           <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
           {plan.id === "student" && <p className="notice" role="status">{studentLoading ? "Checking verification…" : statusLabel}</p>}

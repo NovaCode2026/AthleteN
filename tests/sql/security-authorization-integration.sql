@@ -18,6 +18,44 @@ VALUES
  ('00000000-0000-0000-0000-000000000005','1997-01-01',NULL,'approved','hash-academy-5',now()+interval '1 day'),
  ('00000000-0000-0000-0000-000000000006','2005-04-05',NULL,'approved','hash-athlete-6',now()+interval '1 day');
 
+-- Checkout preflight is an eligibility check only; age and product role both matter.
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
+DO $checkout$
+BEGIN
+  IF NOT public.can_start_paid_checkout(auth.uid(),'pro') THEN
+    RAISE EXCEPTION 'Approved athlete cannot start Pro checkout';
+  END IF;
+  IF public.can_start_paid_checkout(auth.uid(),'coach') THEN
+    RAISE EXCEPTION 'Athlete can start Coach checkout';
+  END IF;
+END
+$checkout$;
+RESET ROLE;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
+DO $checkout$
+BEGIN
+  IF NOT public.can_start_paid_checkout(auth.uid(),'coach') THEN
+    RAISE EXCEPTION 'Approved Coach cannot start Coach checkout';
+  END IF;
+  IF public.can_start_paid_checkout(auth.uid(),'pro') THEN
+    RAISE EXCEPTION 'Coach can start Athlete Pro checkout';
+  END IF;
+END
+$checkout$;
+RESET ROLE;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
+DO $checkout$
+BEGIN
+  IF public.can_start_paid_checkout(auth.uid(),'coach') THEN
+    RAISE EXCEPTION 'Age-pending minor can start paid Coach checkout';
+  END IF;
+END
+$checkout$;
+RESET ROLE;
+
 INSERT INTO public.coach_athlete_links(coach_user_id,athlete_user_id,status)
 VALUES
  ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','active'),
@@ -298,6 +336,32 @@ VALUES
  ('20000000-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000005','Authorized Academy','active');
 INSERT INTO public.academy_memberships(academy_id,user_id,role,status)
 VALUES('20000000-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000005','academy_admin','active');
+UPDATE public.profiles SET academy_id='20000000-0000-0000-0000-000000000004'
+ WHERE user_id='00000000-0000-0000-0000-000000000004';
+UPDATE public.profiles SET academy_id='20000000-0000-0000-0000-000000000005'
+ WHERE user_id='00000000-0000-0000-0000-000000000005';
+
+-- Academy checkout eligibility also requires a verified, completed owner account.
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000005',false);
+DO $checkout$
+BEGIN
+  IF NOT public.can_start_paid_checkout(auth.uid(),'academy') THEN
+    RAISE EXCEPTION 'Verified Academy Admin cannot start Academy checkout';
+  END IF;
+END
+$checkout$;
+RESET ROLE;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
+DO $checkout$
+BEGIN
+  IF public.can_start_paid_checkout(auth.uid(),'academy') THEN
+    RAISE EXCEPTION 'Coach can start Academy checkout';
+  END IF;
+END
+$checkout$;
+RESET ROLE;
 INSERT INTO public.finance_accounts(id,owner_user_id,academy_id,owner_type,name,currency)
 VALUES
  ('20000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000004','20000000-0000-0000-0000-000000000004','academy','Unauthorized Academy Finance','INR');
@@ -452,6 +516,9 @@ DO $block$
 BEGIN
   IF has_function_privilege('authenticated','public.switch_my_product_role(text)','EXECUTE') THEN
     RAISE EXCEPTION 'Authenticated role can still call switch_my_product_role';
+  END IF;
+  IF has_function_privilege('authenticated','public.choose_account_plan(text,boolean)','EXECUTE') THEN
+    RAISE EXCEPTION 'Authenticated role can still call legacy choose_account_plan';
   END IF;
   IF has_function_privilege('authenticated','public.prepare_parent_approval(text)','EXECUTE') THEN
     RAISE EXCEPTION 'Authenticated role can still call raw guardian-token RPC';

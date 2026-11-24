@@ -10,7 +10,21 @@ This guide applies to the **AthleteN** repository and its existing production Su
 - Production URL: `https://athleten.netlify.app`
 - Supabase project: `wjegokgtrewtoopbsiol` (Mumbai region)
 
-The current Supabase project already has the production schema and migrations applied. **Do not re-run the baseline schema/policy/storage SQL files against this live database.** Use the versioned migration files for future database changes and verify applied migrations before deploying code that depends on them.
+The connected production Supabase project is healthy and contains an existing production schema, but the Git-tracked migration directory is **not reconciled** with its live migration ledger. Do not infer that a candidate migration has been applied merely because later schema objects exist. **Do not re-run baseline schema/policy/storage SQL files, push the candidate migration set, reset the database, or edit the migration ledger** until the drift has been reconciled against trusted SQL sources and a restore/preview replay has passed.
+
+## Current release-candidate hold — 24 November 2026
+
+This dated snapshot is the controlling deployment warning until a newer, evidence-backed release review replaces it.
+
+- Netlify production deploy `6afacd1f1942bf308824382c` is ready but was published on 16 November 2026 from main commit `df01b18935811c1a93c3246f039f07454ff91f45`. The currently inspected `main` is five commits ahead of that deployed commit. The open release candidate is not deployed.
+- Supabase project `wjegokgtrewtoopbsiol` is `ACTIVE_HEALTHY` on PostgreSQL 17. Its live ledger contains 200 migration records through `20261119015503`.
+- The 23 November migration inventory records 157 remote-only versions, 77 local-only timestamp versions, two duplicate local timestamp groups, and 19 nonstandard SQL filenames. Filename/version comparison is not proof of equivalent SQL effects. See `docs/MIGRATION_HISTORY_DRIFT_2026-11-23.md`.
+- Read-only schema checks confirm the AI budget ledger tables and `activate_paid_subscription(uuid,text,text,text,text,timestamptz)` exist. They do **not** confirm the candidate webhook receipt objects: `private.payment_webhook_receipts` and the `claim_payment_webhook_event`, `complete_payment_webhook_event`, and `fail_payment_webhook_event` RPCs are absent. The `subscriptions.cancel_at_period_end` column is also absent.
+- The release-candidate webhook claims a durable receipt before processing provider events. Deploying that webhook before its table and RPC migration is verified would make signed webhook processing fail closed. Keep the webhook migration and code deployment behind the reconciled-schema gate.
+- Supabase Security Advisor still reports 60 authenticated-callable `SECURITY DEFINER` functions, `pg_net` in `public`, three RLS-enabled tables without policies (including intentionally backend-only tables), and leaked-password protection disabled. Review functions individually; do not bulk-revoke, and do not add broad RLS policies.
+- Paid checkout and subscription cancellation remain disabled. Provider sandbox evidence, adult-authorized merchant onboarding and customer/legal terms, Auth dashboard configuration, a production-signed Android artifact, and physical-device/two-account acceptance remain separate release gates.
+
+**Decision: do not merge or deploy PR #68 yet.** Reconcile the migration baseline and prove the preview/restore replay first. Then verify candidate schema effects and function privileges against production, complete the remaining operator/device gates, and rerun all checks on the final head.
 
 ## Netlify build settings
 
@@ -96,7 +110,11 @@ The checkout Netlify Function currently has a server-side `FREE_LAUNCH = true` g
 
 Set `PAYMENT_PROVIDER` only after the server secrets and plan IDs are configured and tested. Never expose payment secrets to the browser.
 
-**Billing-cycle blocker:** the current checkout API does not accept a monthly/yearly selector. The mobile UI displays both cycles, but paid checkout is globally disabled in both client and server. New monthly provider IDs are versioned as `RAZORPAY_PLAN_V2_<PLAN>_MONTHLY` or `STRIPE_PLAN_V2_<PLAN>_MONTHLY`; do not reuse legacy provider IDs. Annual provider plan IDs, amounts, renewal periods and selected-cycle persistence must be implemented and verified end to end before enabling checkout. Cashfree is excluded from recurring subscription checkout because its current code path creates one-time orders.
+**Release-candidate billing contract:** the web and mobile Plans screens send `planId` plus `billingPeriod` (`monthly` or `yearly`). The server calculates the amount in paise from `netlify/payment-common.mjs`; never accept a client-supplied amount. The new amounts are Pro ₹99 / ₹999, Elite ₹199 / ₹1,999, Coach ₹499 / ₹4,999 and Academy ₹799 / ₹7,999 (monthly / yearly). Configure period-specific Razorpay or Stripe recurring plan IDs using `RAZORPAY_PLAN_V2_<PLAN>_MONTHLY`, `RAZORPAY_PLAN_V2_<PLAN>_YEARLY`, `STRIPE_PLAN_V2_<PLAN>_MONTHLY` and `STRIPE_PLAN_V2_<PLAN>_YEARLY`. Verify each provider product has the matching INR amount and recurring interval. The webhook now requires a confirmed provider subscription period end and rechecks account age/guardian approval and product role before granting access.
+
+Cashfree Payment Gateway `/pg/orders` creates a one-time payment order and is intentionally not exposed as a recurring subscription adapter. Cashfree Subscriptions API, renewals and cancellation require a separate implementation and sandbox acceptance.
+
+**Paid checkout remains disabled:** `FREE_LAUNCH = true` in the server and client paid-checkout flags remain off. This PR does not configure provider credentials, execute sandbox charges or enable live collection. Do not remove the gate until provider monthly/yearly sandbox flows, webhook replay/idempotency, failures, renewal, cancellation/refund, tax/legal and device acceptance all pass.
 
 ## Supabase Auth URLs
 
@@ -145,3 +163,25 @@ Use a test account for each role; do not use a real athlete's private data for a
 A successful Netlify build is not proof of full production acceptance. Android push must be tested on a physical device with notification permission granted. Two-account messaging and offline/background delivery must be tested separately. Web notifications while the browser is fully closed require a configured browser push subscription and are not covered by the current active-session desktop notifications.
 
 Do not mark the release as production-ready until the device, security, and post-deploy acceptance checks are complete.
+
+
+### Subscription cancellation release gate
+
+**Cancellation is disabled in this Free Launch candidate.** The cancellation endpoint returns HTTP 503, and web/mobile Plans screens do not expose an active cancellation action. No provider cancellation request is sent.
+
+The future cancellation implementation depends on `subscriptions.cancel_at_period_end` from migration `20261118000500_subscription_cancel_at_period_end.sql`. Enable it only after the migration baseline is reconciled, the column and endpoint are verified in production, provider sandbox scheduling/webhooks pass, and both web and physical Android flows pass. Do not test by creating real charges or canceling a real customer subscription.
+
+### Free Launch merge gate — verified 24 November 2026
+
+This section records the narrow conditions under which this PR may be merged as a **code-only Free Launch deployment**. It does not declare paid billing or the full public launch production-ready.
+
+- The Netlify `athleten` build command is only `npm run build`; it does not apply Supabase migrations.
+- The Netlify site and team environment-variable key lists were checked. No Razorpay, Stripe, Cashfree, or payment-provider configuration keys are present. Secret values were not read or copied.
+- Web and mobile paid-checkout flags remain disabled, and the server checkout endpoint retains `FREE_LAUNCH = true`.
+- Production contains the AI-budget tables/RPCs and the subscription activation RPCs used by the current app runtime.
+- Production does **not** contain `private.payment_webhook_receipts` or its three receipt RPCs. No provider signing secrets are configured, so the deployed webhook cannot authenticate provider events. If any payment-provider credentials are added later, do not enable billing until the receipt migration has been reviewed, applied, and verified.
+- Production does **not** contain `subscriptions.cancel_at_period_end`. Cancellation remains disabled as described above.
+- Production migration history is materially divergent from the repository. Do not run `supabase db push`, reset, or apply the candidate migration directory wholesale. The PR's merge does not apply these SQL migrations; any future schema deployment requires a separately reviewed migration-recovery and restore plan.
+- Supabase Auth leaked/compromised-password protection remains disabled and requires project-owner configuration before broad public onboarding. Signed Android physical-device acceptance also remains outstanding.
+
+**Scope boundary:** merging this PR is only for the Free Launch code path with paid checkout and cancellation disabled and payment-provider credentials absent. It is not authorization to activate payments, apply the candidate SQL migrations, or declare the November 30 launch fully accepted.

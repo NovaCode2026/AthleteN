@@ -15,8 +15,14 @@ export function serverSupabase() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
+export function extractBearerToken(authorization) {
+  if (typeof authorization !== "string") return null;
+  const match = authorization.match(/^Bearer\s+(\S+)\s*$/i);
+  return match?.[1] ?? null;
+}
+
 export async function authenticate(request) {
-  const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  const token = extractBearerToken(request.headers.get("authorization"));
   if (!token) return null;
   const url = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const key = env("SUPABASE_ANON_KEY") || env("VITE_SUPABASE_ANON_KEY");
@@ -26,10 +32,18 @@ export async function authenticate(request) {
   return error || !data?.user ? null : data.user;
 }
 
-// New-sale monthly amounts in INR paise. Annual checkout remains disabled.
-export const planPricesMinor = { pro: 9900, elite: 19900, coach: 49900, academy: 79900 };
-export function providerPlanKey(provider, planId) {
-  return `${provider.toUpperCase()}_PLAN_V2_${planId.toUpperCase()}_MONTHLY`;
+// New-sale price amounts in INR paise. The UI's yearly totals are mapped here
+// so the server, not the browser, chooses the exact amount and recurring price.
+export const planPricesMinor = Object.freeze({
+  monthly: Object.freeze({ pro: 9900, elite: 19900, coach: 49900, academy: 79900 }),
+  yearly: Object.freeze({ pro: 99900, elite: 199900, coach: 499900, academy: 799900 })
+});
+
+export function providerPlanKey(provider, planId, billingPeriod = "monthly") {
+  if (!["monthly", "yearly"].includes(billingPeriod)) {
+    throw new Error("INVALID_BILLING_PERIOD");
+  }
+  return `${provider.toUpperCase()}_PLAN_V2_${planId.toUpperCase()}_${billingPeriod.toUpperCase()}`;
 }
 
 export function siteUrl() {
@@ -42,6 +56,7 @@ export async function requireApprovedStudent(supabase, userId) {
     .select("id,status,reviewed_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw error;

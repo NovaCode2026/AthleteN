@@ -1,0 +1,70 @@
+# AthleteN Migration-History Drift — 18 November 2026
+
+## Snapshot provenance
+
+- Repository: `NovaCode2026/AthleteN`
+- Compared Git branch: `main`
+- Git main commit at capture: `15a1f141e1fea1bed6380fb0eedfc8fe19046e3d`
+- Supabase project: `wjegokgtrewtoopbsiol`
+- Live migration ledger latest version: `20261116065422`
+- Snapshot date: 18 November 2026
+
+This is a read-only inventory. It does not modify the live database or migration ledger.
+
+## Exact timestamp comparison
+
+| Measure | Count |
+|---|---:|
+| SQL files under `supabase/migrations/` | 132 |
+| Files with a valid 14-digit timestamp prefix | 113 |
+| Unique local timestamp versions | 111 |
+| Versions recorded in live Supabase | 191 |
+| Exact timestamp versions present both locally and remotely | 34 |
+| Remote versions with no matching local SQL filename | 157 |
+| Local timestamp versions not recorded remotely | 77 |
+| Duplicate local timestamp groups | 2 |
+| SQL files without a valid 14-digit timestamp prefix | 19 |
+
+The timestamp match is only a filename/version comparison. It does **not** establish that SQL bodies match the effects in the live database, nor that the remaining migrations can be safely replayed.
+
+## Exact shared versions
+
+`20261011093726`, `20261011094653`, `20261013113154`, `20261029165600`, `20261103100630`, `20261103100957`, `20261103101214`, `20261103112535`, `20261103113211`, `20261104101337`, `20261104103042`, `20261104103647`, `20261111072407`, `20261111094649`, `20261111095119`, `20261111100811`, `20261111101046`, `20261111101404`, `20261111101832`, `20261111110705`, `20261111111236`, `20261111111529`, `20261111112015`, `20261111155116`, `20261111162744`, `20261111163731`, `20261112092215`, `20261114162145`, `20261114162529`, `20261115080229`, `20261115110213`, `20261116012408`, `20261116020713`, `20261116062941`
+
+## Remote-only versions
+
+These version IDs exist in the live migration ledger but have no exact timestamp match in the current `main` migration directory:
+
+`20260823165636`, `20260823165951`, `20260823170951`, `20260823171337`, `20260823171406`, `20260823172934`, `20260823173006`, `20260824085740`, `20260824085752`, `20260824090123`, `20260824090341`, `20260824092227`, `20260824092249`, `20260824092714`, `20260824122933`, `20260824123018`, `20260912053044`, `20260912055818`, `20260912083145`, `20260912083158`, `20260912141845`, `20260912154817`, `20260912160856`, `20260913102550`, `20260913102608`, `20260913102728`, `20260913142524`, `20260913164024`, `20260913170642`, `20260914014946`, `20260914015014`, `20260914015212`, `20260914015231`, `20260914015722`, `20260914072334`, `20260914073106`, `20260914073116`, `20260914170830`, `20260914172110`, `20260914172148`, `20260915081523`, `20260915100916`, `20260915101016`, `20260915101731`, `20260915153623`, `20260915153751`, `20260915161728`, `20260916103350`, `20260916103407`, `20260916103706`, `20260916103725`, `20260917060630`, `20260917060715`, `20260917060738`, `20260917062021`, `20260917081345`, `20260917081627`, `20260917082915`, `20260917083311`, `20260917084821`, `20260917101406`, `20260918160916`, `20260918161155`, `20260921100511`, `20260921152405`, `20260922063954`, `20260922064809`, `20260922065053`, `20260922070204`, `20260922070221`, `20260922101906`, `20260922101921`, `20260922111113`, `20260922111938`, `20260922112334`, `20260923080837`, `20260923081929`, `20260923082645`, `20260923082659`, `20260923082744`, `20260923083005`, `20260923083911`, `20260923084124`, `20260923085000`, `20260923085340`, `20260923085425`, `20260923090949`, `20260923091806`, `20260923093859`, `20260923094341`, `20260923162619`, `20260923162642`, `20260924073730`, `20260924073733`, `20260925172800`, `20260925173337`, `20260925173518`, `20260925173558`, `20260926092408`, `20260926154200`, `20260926154348`, `20260926154459`, `20260926155020`, `20260927140900`, `20260927161040`, `20261007085834`, `20261007090047`, `20261007092928`, `20261007094039`, `20261007094223`, `20261007094253`, `20261007094654`, `20261007100902`, `20261007101151`, `20261007101349`, `20261007113940`, `20261007114547`, `20261007114720`, `20261007130311`, `20261007130414`, `20261007131147`, `20261007131318`, `20261007131327`, `20261007131423`, `20261007132010`, `20261007132037`, `20261007132131`, `20261007132151`, `20261007132209`, `20261008094759`, `20261009070542`, `20261012165837`, `20261012165843`, `20261028174845`, `20261028180826`, `20261028181613`, `20261029170219`, `20261029171052`, `20261029171121`, `20261101100225`, `20261101100529`, `20261101100819`, `20261101100839`, `20261101101012`, `20261103105030`, `20261103105237`, `20261103162053`, `20261103162715`, `20261103162851`, `20261103171241`, `20261115122941`, `20261115171446`, `20261116035031`, `20261116035802`, `20261116040038`, `20261116062024`, `20261116065422`
+
+## Local-only versions
+
+These unique timestamp IDs exist in the repository but are absent from the live ledger:
+
+`20260914200000`, `20260914200500`, `20260914201000`, `20260914201500`, `20260915000000`, `20260915010000`, `20260915210000`, `20260915213000`, `20260916143000`, `20260916144500`, `20260916145500`, `20260917120000`, `20260917121000`, `20260917121500`, `20260917130000`, `20260917150000`, `20260917200000`, `20260918170000`, `20260921000000`, `20260922000000`, `20260922010000`, `20260922070300`, `20260922120000`, `20260922120100`, `20260922150000`, `20260922153000`, `20260922160000`, `20260922193000`, `20260923100000`, `20260923120000`, `20260923121500`, `20260923133000`, `20260923143000`, `20260923144000`, `20260923150000`, `20260923151000`, `20260924090000`, `20260924092000`, `20260925065314`, `20260926210000`, `20261007120000`, `20261007121500`, `20261007123000`, `20261007133000`, `20261007134000`, `20261007140000`, `20261007143000`, `20261009150000`, `20261009211000`, `20261012180000`, `20261012183000`, `20261028190000`, `20261028200000`, `20261029170000`, `20261029171000`, `20261029171500`, `20261101153000`, `20261101153100`, `20261101154500`, `20261101154600`, `20261101160000`, `20261103110000`, `20261103110200`, `20261103130000`, `20261103133000`, `20261103134000`, `20261103170000`, `20261111160000`, `20261112180000`, `20261112180100`, `20261115120600`, `20261115190000`, `20261116040000`, `20261116043000`, `20261116050000`, `20261116070000`, `20261116114200`
+
+## Duplicate local timestamp groups
+
+- `20260915213000`: `20260915213000_trial_payment_placeholder.sql`, `20260915213000_trial_pricing_and_access.sql`
+- `20261007133000`: `20261007133000_enforce_canonical_plan_constraints.sql`, `20261007133000_harden_badges_and_achievement_engine.sql`
+
+## Nonstandard filenames
+
+These SQL files do not begin with a 14-digit version prefix followed by an underscore:
+
+`20260912_instagram_business_discovery.sql`, `20260912_instagram_connections.sql`, `20260912_instagram_server_hardening.sql`, `20260912_secure_messaging.sql`, `20260912_secure_messaging_rls_hardening.sql`, `20260912_upload_size_limit.sql`, `20260913_add_missing_foreign_key_indexes.sql`, `20260913_add_payment_approval_flow.sql`, `20260913_clarify_instagram_rls_policies.sql`, `20260913_harden_messaging_function_permissions_and_rls.sql`, `20260913_restore_athlete_own_record_policies.sql`, `20260914_fix_messaging_rls_and_usernames.sql`, `20260914_harden_messaging_membership.sql`, `20260914_harden_payment_rpc_permissions_and_indexes.sql`, `20260914_messaging_user_search.sql`, `20260914_messaging_user_search_and_id_rpcs.sql`, `20260914_unique_messaging_usernames.sql`, `20260914_user_chosen_usernames_and_novacode_contact.sql`, `20260917_trial_payment_checkout.sql`
+
+## Release decision
+
+**Migration deployment remains blocked.** Do not run `supabase db push`, `db reset`, a replay, a baseline operation, a migration-ledger edit, or any production DDL based on this inventory alone.
+
+Safe recovery sequence:
+
+1. Preserve a verified production schema, policies, functions, grants, extensions, triggers, and storage configuration snapshot.
+2. Recover the original SQL bodies for the 157 remote-only versions from trusted Git history, backups, or deployment records. Do not invent placeholder migrations.
+3. Investigate both duplicate timestamp groups and all 19 nonstandard migration filenames. Each must be assigned an unambiguous, verified place in the migration history.
+4. Reconcile the 77 local-only versions with the live schema to determine which are unapplied, superseded, or represented by later migrations. Do not mark them applied just to make the version lists match.
+5. On a disposable Supabase/PostgreSQL environment, restore the authoritative migration chain and replay it from a clean baseline. Compare its resulting schema and security state with the production snapshot.
+6. Only after independent review and positive/negative role tests, apply a controlled forward migration plan to production. Keep all new November 18 release migrations un-applied until this sequence is complete.
+
+The November 18 public-launch candidate is not eligible for production deployment until the history has been reconciled and validated.
