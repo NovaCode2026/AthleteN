@@ -22,7 +22,7 @@ const permissionSets:any={
 
 export default function AcademyOperations(){
   const {session,profile}=useAuth(); const router=useRouter(); const userId=session?.user?.id; const academyId=profile?.academy_id;
-  const [section,setSection]=useState('fees'); const [busy,setBusy]=useState(false); const [refreshing,setRefreshing]=useState(false); const [error,setError]=useState('');
+  const [section,setSection]=useState(()=>!profile?.academy_id?'guardians':profile?.role==='athlete'?'transfers':profile?.role==='coach'?'coach':'fees'); const [busy,setBusy]=useState(false); const [refreshing,setRefreshing]=useState(false); const [error,setError]=useState('');
   const [members,setMembers]=useState<any[]>([]); const [invoices,setInvoices]=useState<any[]>([]); const [payments,setPayments]=useState<any[]>([]);
   const [coachAttendance,setCoachAttendance]=useState<any[]>([]); const [availability,setAvailability]=useState<any[]>([]); const [transfers,setTransfers]=useState<any[]>([]);
   const [announcements,setAnnouncements]=useState<any[]>([]); const [guardianLinks,setGuardianLinks]=useState<any[]>([]); const [reportExports,setReportExports]=useState<any[]>([]);
