@@ -75,12 +75,12 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
     setBusy(true);setError("");const clientMessageId=draftMessageId||crypto.randomUUID();setDraftMessageId(clientMessageId);
     try{
       let uploadedPath="";
-      if(attachment){const allowed=["pdf","png","jpg","jpeg","webp","txt","doc","docx","csv","xlsx","zip"];const ext=attachment.name.includes(".")?attachment.name.split(".").pop()?.toLowerCase():"";if(!ext||!allowed.includes(ext))throw new Error("Unsupported file type.");if(attachment.size>10*1024*1024)throw new Error("File too large.");uploadedPath=`${selectedId}/${clientMessageId}.${ext}`;
+      if(attachment){const mimeByExtension:Record<string,string>={pdf:"application/pdf",png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",webp:"image/webp",txt:"text/plain",doc:"application/msword",docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",csv:"text/csv",xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",zip:"application/zip",mp4:"video/mp4",mp3:"audio/mpeg",m4a:"audio/mp4",aac:"audio/aac",wav:"audio/wav"};const ext=attachment.name.includes(".")?attachment.name.split(".").pop()?.toLowerCase():"";const mimeType=ext?mimeByExtension[ext]:undefined;if(!ext||!mimeType)throw new Error("Unsupported attachment type.");if(attachment.size>10*1024*1024)throw new Error("File too large (10 MB maximum).");uploadedPath=`${selectedId}/${clientMessageId}.${ext}`;
         const attachmentName=`${clientMessageId}.${ext}`;
         const {data:existingFiles,error:listError}=await supabase.storage.from("message-attachments").list(selectedId,{search:attachmentName,limit:10});
         if(listError)throw listError;
         if(!existingFiles?.some(file=>file.name===attachmentName)){
-          const {error:uploadError}=await supabase.storage.from("message-attachments").upload(uploadedPath,attachment,{contentType:attachment.type||"application/octet-stream",upsert:false});
+          const {error:uploadError}=await supabase.storage.from("message-attachments").upload(uploadedPath,attachment,{contentType:mimeType,upsert:false});
           if(uploadError){
             const {data:retryFiles,error:retryListError}=await supabase.storage.from("message-attachments").list(selectedId,{search:attachmentName,limit:10});
             if(retryListError||!retryFiles?.some(file=>file.name===attachmentName))throw uploadError;
