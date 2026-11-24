@@ -66,17 +66,10 @@ Deno.serve(async (req) => {
 
       if (removeError) {
         failed += 1
-        await admin
-          .from('messaging_attachment_cleanup_queue')
-          .update({
-            attempts: undefined,
-            last_attempt_at: attemptedAt,
-            last_error: String(removeError.message || 'Storage removal failed').slice(0, 500),
-          })
-          .eq('id', item.id)
-          .is('completed_at', null)
-        // Use a separate atomic increment to avoid replacing attempts with a client value.
-        await admin.rpc('increment_messaging_attachment_cleanup_attempt', { p_queue_id: item.id })
+        await admin.rpc('record_messaging_attachment_cleanup_failure', {
+          p_queue_id: item.id,
+          p_error: String(removeError.message || 'Storage removal failed').slice(0, 500),
+        })
         continue
       }
 
