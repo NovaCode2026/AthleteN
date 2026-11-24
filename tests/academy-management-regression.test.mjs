@@ -25,7 +25,7 @@ test("direct Academy and membership creation, deletion and role promotion are bl
   assert.match(migration, /revoke delete on public\.academy_memberships from public, anon, authenticated/i);
   assert.match(migration, /academy memberships admin update/i);
   assert.match(migration, /academy memberships admin delete/i);
-  assert.ok(migration.includes("grant update (status, updated_at) on public.academy_memberships"));
+  assert.ok(migration.toLowerCase().includes("grant update (status, updated_at) on public.academy_memberships"));
   assert.doesNotMatch(migration, /grant select, delete on public\.(academies|academy_memberships)/i);
   assert.doesNotMatch(migration, /create policy [\s\S]{0,150}academy memberships[^;]*for insert/i);
 });
