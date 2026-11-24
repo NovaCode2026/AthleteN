@@ -125,9 +125,13 @@ export default function AcademySetupScreen() {
     const nextEmail = email.trim().toLowerCase();
     if (!nextEmail || !nextEmail.includes('@')) { setMessage('Enter a valid academy email address.'); return; }
     if (nextEmail === String(session.user.email || '').toLowerCase() && session.user.email_confirmed_at) {
+      if (!academyId) { setMessage('Your Academy workspace is not ready yet. Please refresh and try again.'); return; }
+      setBusy(true);
+      const { error } = await supabase.rpc('sync_verified_academy_contact_email', { p_academy_id: academyId });
+      setBusy(false);
+      if (error) { setEmailVerified(false); setMessage(error.message); return; }
       setEmailVerified(true);
-      if (academyId) await supabase.from('academies').update({ contact_email: nextEmail, contact_email_verified_at: new Date().toISOString() }).eq('id', academyId);
-      setMessage('Your email is already verified.');
+      setMessage('Your verified AthleteN account email is saved as the Academy contact email.');
       return;
     }
     if (nextEmail === String(session.user.email || '').toLowerCase()) { setMessage('Please verify your AthleteN account email first.'); return; }
@@ -144,11 +148,19 @@ export default function AcademySetupScreen() {
     const { data, error } = await supabase.auth.getUser();
     if (error) { setBusy(false); setMessage(error.message); return; }
     const verified = String(data.user?.email || '').toLowerCase() === email.trim().toLowerCase() && Boolean(data.user?.email_confirmed_at);
-    setEmailVerified(verified);
     if (verified && academyId) {
-      await supabase.from('academies').update({ contact_email: email.trim().toLowerCase(), contact_email_verified_at: new Date().toISOString() }).eq('id', academyId);
-      setMessage('Email verified and account email updated successfully.');
-    } else if (!verified) setMessage('The new email is not verified yet. Open the verification email, then try again.');
+      const { error: syncError } = await supabase.rpc('sync_verified_academy_contact_email', { p_academy_id: academyId });
+      if (syncError) {
+        setEmailVerified(false);
+        setMessage(syncError.message);
+      } else {
+        setEmailVerified(true);
+        setMessage('Email verified and saved as the Academy contact email.');
+      }
+    } else {
+      setEmailVerified(false);
+      setMessage(!verified ? 'The new email is not verified yet. Open the verification email, then try again.' : 'Your Academy workspace is not ready yet. Please refresh and try again.');
+    }
     setBusy(false);
   }
 
@@ -177,20 +189,14 @@ export default function AcademySetupScreen() {
     }
 
     setBusy(true);
-    const { error } = await supabase
-      .from('academies')
-      .update({
-        name: name.trim(),
-        city: city.trim(),
-        state: state.trim(),
-        country: country.trim(),
-        contact_email: email.trim(),
-        contact_phone: phone.trim(),
-        contact_email_verified_at: new Date().toISOString(),
-        setup_completed: true,
-        setup_completed_at: new Date().toISOString(),
-      })
-      .eq('id', academyId);
+    const { error } = await supabase.rpc('complete_academy_setup', {
+      p_academy_id: academyId,
+      p_name: name.trim(),
+      p_city: city.trim(),
+      p_state: state.trim(),
+      p_country: country.trim(),
+      p_contact_phone: phone.trim(),
+    });
 
     if (error) {
       setBusy(false);
