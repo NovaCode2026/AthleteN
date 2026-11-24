@@ -23,7 +23,7 @@ test("delete-for-everyone queues attachment objects and clears message reference
   assert.ok(migration.includes("'deleted_for_everyone'"));
   assert.match(migration, /attachment_path = NULL/);
   assert.match(migration, /queue_message_attachment_cleanup_before_delete/);
-  assert.match(migration, /REVOKE DELETE ON public\\.messages FROM PUBLIC, anon, authenticated/);
+  assert.match(migration, /REVOKE DELETE ON public\.messages FROM PUBLIC, anon, authenticated/);
   assert.match(migration, /messages expiry visibility guard/);
   assert.match(migration, /AS RESTRICTIVE/);
   assert.match(migration, /message attachment delete by uploader when unreferenced/);
