@@ -21,7 +21,7 @@ test("saved-message table contains only private owner metadata and cascades with
 test("only the owner can read or change saved messages for their own conversations", () => {
   assert.match(migration, /owner_user_id = \(SELECT auth\.uid\(\)\)/);
   assert.match(migration, /public\.is_age_approved/);
-  assert.match(migration, /public\.is_conversation_member/);
+  assert.match(migration, /JOIN public\.conversation_members cm/);
   assert.match(migration, /Users read their own saved messages/);
   assert.match(migration, /Users save messages in their conversations/);
   assert.match(migration, /Users update their saved message labels/);
