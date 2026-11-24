@@ -6,6 +6,21 @@
 **Initial platform:** Android rewarded ads; web reward redemption and provider support to follow only where the chosen network and policies permit  
 **Release posture:** Feature-flagged and disabled by default. No production ads, reward issuance, or ad-network payments until account approval, privacy review, implementation, and acceptance tests are complete.
 
+## Implementation snapshot — 24 November 2026
+
+The following foundation has been committed on PR #76:
+
+- Candidate reward-ad session and immutable reward-ledger schema, with RLS enabled and no client table policies.
+- Server-side AdMob ECDSA SSV verification, transaction idempotency, per-user serialization, three-ad daily cap, 30-credit monthly cap, and month-end expiry.
+- Authenticated wallet/history and short-lived ad-session endpoints, including session creation rate limiting.
+- AI Coach fallback to a separate bonus-credit reservation after subscription quota is exhausted; the existing platform AI spending reservation remains mandatory.
+- Mobile Rewards Centre wallet/history screen and Explore navigation entry.
+- Static security regression tests and an isolated PostgreSQL integration workflow for daily/monthly caps, duplicate events, expiry, credit reservation/refund, Student verification and client-role denial.
+
+**Not yet implemented:** native Android ad SDK dependency/configuration, consent and ad-request lifecycle, actual rewarded-ad presentation, production app/ad-unit IDs, and end-to-end physical-device verification. The wallet screen intentionally states that ads are not live. Session creation is fail-closed unless the global feature, live approval, minor-safety approval and ad-unit environment gates are all explicitly configured.
+
+The SQL files are candidate migrations only. They have not been applied to production. Do not enable the live environment gates or merge this PR until native SDK integration, consent and age-appropriate ad treatment, isolated SQL integration, mobile builds, and adult/legal/provider review are complete.
+
 ## 1. Product objective
 
 Offer athletes an optional way to earn small in-app benefits by choosing to watch a rewarded advertisement. Ads must never interrupt a user, block core functionality, or be required to use AthleteN. Users choose whether to watch an ad and, where supported, which available reward to redeem.
