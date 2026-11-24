@@ -14,11 +14,12 @@ An Academy account inherits the Coach toolkit. A Coach operates their own athlet
 | Training | Create Academy training groups, assign an active Academy Coach and active Academy athletes, define focus/level in the group focus field, and generate recurring sessions |
 | Attendance | Academy-wide read-only attendance oversight from existing group sessions; the responsible Coach remains the only role that records attendance |
 | Events | Register an active Academy athlete for a competition and optionally associate an active Academy Coach |
-| Calendar | Combined group-session schedule and recent/upcoming competition records |
+| Calendar | Combined group-session schedule, athlete calendar entries and recent/upcoming competition records |
 | Intelligence | Aggregate training logs, training time, attendance, competitions, medals, coach-to-athlete links and group workload; no health scoring or outcome prediction |
 | Achievements | Academy medal and certificate records, including the stored verification status |
 | Approvals | Academy-wide belt/category request visibility; approve/reject controls are shown only to the Coach who owns the request |
-| Communication | Links to existing private conversations and training-group conversations, with current messaging membership controls |
+| Communication | Links to existing private conversations and training-group conversations, with current messaging membership controls and the account notification center |
+| Documents | Academy-wide index of active athletes' documents, with links to each athlete's full record |
 | Finance | Existing Academy finance account and manual income/expense ledger, with income, expense and net totals |
 | AI | Existing shared Academy AI allowance plus a richer prompt context based on stored operational aggregates |
 
