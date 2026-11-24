@@ -216,6 +216,28 @@ $function$;
 REVOKE ALL ON FUNCTION public.delete_message_for_everyone(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.delete_message_for_everyone(uuid) TO authenticated;
 
+CREATE OR REPLACE FUNCTION public.record_messaging_attachment_cleanup_failure(
+  p_queue_id uuid,
+  p_error text
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+BEGIN
+  UPDATE public.messaging_attachment_cleanup_queue
+  SET attempts = attempts + 1,
+      last_attempt_at = now(),
+      last_error = left(coalesce(nullif(btrim(p_error), ''), 'Storage removal failed'), 500)
+  WHERE id = p_queue_id
+    AND completed_at IS NULL;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.record_messaging_attachment_cleanup_failure(uuid, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.record_messaging_attachment_cleanup_failure(uuid, text) TO service_role;
+
 -- Expired rows are hidden immediately by RLS and physically purged in bounded
 -- batches by the service-role cleanup worker. The DELETE trigger queues media.
 CREATE OR REPLACE FUNCTION public.cleanup_expired_messages(p_batch_size integer DEFAULT 500)
