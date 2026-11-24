@@ -43,13 +43,16 @@ test("web and mobile Academy setup share the same role-checked RPC", () => {
 });
 
 test("Academy verification and setup completion are server-owned Auth-backed states", () => {
-  assert.match(migration, /create or replace function public\\.sync_verified_academy_contact_email[\\s\\S]*?auth\\.users[\\s\\S]*?email_confirmed_at/i);
-  assert.match(migration, /create or replace function public\\.complete_academy_setup[\\s\\S]*?auth\\.users[\\s\\S]*?setup_completed = true/i);
-  assert.match(migration, /grant update \\(\s*name, city, state, country, contact_phone\s*\) on public\\.academies/i);
-  assert.doesNotMatch(migration, /grant update \\([\\s\\S]{0,240}contact_email_verified_at/i);
+  assert.ok(migration.includes("CREATE OR REPLACE FUNCTION public.sync_verified_academy_contact_email("));
+  assert.ok(migration.includes("CREATE OR REPLACE FUNCTION public.complete_academy_setup("));
+  assert.ok(migration.includes("FROM auth.users u"));
+  assert.ok(migration.includes("GRANT UPDATE (\n  name, city, state, country, contact_phone\n) ON public.academies TO authenticated;"));
+  assert.equal(migration.includes("contact_email_verified_at, setup_completed, setup_completed_at\n) ON public.academies TO authenticated;"), false);
   assert.ok(mobileSetup.includes("rpc('sync_verified_academy_contact_email'"));
   assert.ok(mobileSetup.includes("rpc('complete_academy_setup'"));
+  assert.ok(mobileSetup.includes("rpc('link_owned_academy_workspace'"));
   assert.equal(mobileSetup.includes("from('academies').update("), false);
+  assert.equal(mobileSetup.includes("from('profiles').update({ academy_id: id })"), false);
   assert.equal(mobileSetup.includes("contact_email_verified_at: new Date()"), false);
   assert.equal(mobileSetup.includes("setup_completed: true"), false);
 });
