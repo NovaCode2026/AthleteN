@@ -3,8 +3,8 @@ export const LEADERBOARD_TIME_ZONE = "Asia/Kolkata";
 export const LEADERBOARD_CATEGORIES = Object.freeze([
   { key: "training_consistency", label: "Training & Consistency", status: "active", description: "One daily credit for logging a training day. Extra sessions do not add more points." },
   { key: "performance_progress", label: "Performance & Progress", status: "active", description: "Coach-verified milestones achieved today." },
-  { key: "competition", label: "Competition", status: "active", description: "Official Kyorugi bouts and Poomsae results recorded today." },
-  { key: "fitness_conditioning", label: "Fitness & Conditioning", status: "active", description: "A single official conditioning-focused training record; no points for duration or volume." },
+  { key: "competition", label: "Competition", status: "active", description: "Coach-verified tournament results and verified medals recorded today." },
+  { key: "fitness_conditioning", label: "Fitness & Conditioning", status: "coming_soon", description: "Will score coach-verified fitness benchmarks only. Training volume, body metrics and health data are not leaderboard points." },
   { key: "learning_development", label: "Learning & Development", status: "active", description: "Newly verified certificates." },
   { key: "goals_achievements", label: "Goals & Achievements", status: "active", description: "System-awarded AthleteN badges and completed goals." },
   { key: "community_teamwork", label: "Community & Teamwork", status: "coming_soon", description: "Waiting for a verified contribution source." },
