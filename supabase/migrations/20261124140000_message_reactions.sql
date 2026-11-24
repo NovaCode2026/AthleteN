@@ -7,7 +7,6 @@ create table if not exists public.message_reactions (
   user_id uuid not null references auth.users(id) on delete cascade,
   reaction text not null check (reaction in ('👍','❤️','😂','😮','😢','🙏')),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
   constraint message_reactions_pkey primary key (message_id, user_id)
 );
 
