@@ -83,7 +83,7 @@ export default function AcademyGuardianTransferPortal({setToast}:Props){
     }catch(error){
       setToast({type:"error",message:error instanceof Error?error.message:"Academy requests could not be loaded."});
     }finally{setLoading(false);}
-  },[academyId,userId,setToast]);
+  },[academyId,userId,setToast,role]);
 
   useEffect(()=>{void load()},[load]);
 
@@ -121,9 +121,8 @@ export default function AcademyGuardianTransferPortal({setToast}:Props){
     "Guardian access approved for the selected scopes."
   );
   const withdrawGuardian=(row:any)=>run(
-    ()=>supabase.from("academy_guardian_links").update({status:"revoked",scopes:[],updated_at:new Date().toISOString()})
-      .eq("id",row.id).eq("athlete_user_id",userId),
-    "Guardian access update submitted."
+    ()=>supabase.rpc("academy_revoke_guardian_link",{p_link_id:row.id}),
+    "Guardian access revoked."
   );
   const openSummary=async(row:any)=>{
     setBusy(true);
