@@ -705,11 +705,15 @@ begin
     end if;
 
   elsif tg_table_name='academy_staff_assignments' then
-    v_user:=coalesce(nullif(v_row->>'user_id','')::uuid,nullif(to_jsonb(old)->>'user_id','')::uuid);
+    v_user:=nullif(v_row->>'user_id','')::uuid;
     if v_user is not null then
       perform private.enqueue_academy_notification(v_academy,v_user,
         'Academy staff permissions updated','Your Academy staff permissions were changed. Review your current access.','seat_updates');
     end if;
+
+  elsif tg_table_name='academy_report_exports' and tg_op='INSERT' then
+    perform private.enqueue_academy_notification(v_academy,(v_row->>'exported_by')::uuid,
+      'Academy report is ready','Your Academy '||coalesce(v_row->>'report_type','activity')||' report export is ready to share.','reports');
   end if;
 
   if tg_op='DELETE' then return old; else return new; end if;
