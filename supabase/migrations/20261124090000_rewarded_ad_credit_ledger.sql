@@ -102,6 +102,9 @@ BEGIN
     RETURN 'rejected';
   END IF;
 
+  -- Serialize grants for one user so simultaneous valid callbacks cannot exceed caps.
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_session.user_id::text, 0));
+
   SELECT count(*)::integer INTO v_daily_count
   FROM public.reward_ledger
   WHERE user_id = v_session.user_id
