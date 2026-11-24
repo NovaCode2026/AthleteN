@@ -13,7 +13,6 @@ const rolePermissions: Record<string,string[]> = {
   finance:["fees.manage","reports.export"],
   communications:["announcements.publish","guardians.manage","notifications.manage"]
 };
-const clean=(v:unknown)=>String(v??"").trim();
 const amount=(v:unknown)=>"₹"+Number(v||0).toLocaleString("en-IN",{maximumFractionDigits:2});
 
 export default function AcademyManagementSuite({profile,setToast}:Props){
