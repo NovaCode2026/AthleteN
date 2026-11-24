@@ -6,8 +6,8 @@ import { registerForPushNotifications } from '@/lib/push-notifications';
 import { Screen, Header, Card, c } from '@/components/mobile-ui';
 
 const fields = [['training', 'Training'], ['competitions', 'Competitions'], ['messages', 'Messages'], ['coach_academy', 'Coach / Academy'], ['achievements', 'Achievements'], ['system', 'System']] as const;
-type Preference = Record<(typeof fields)[number][0], boolean>;
-const defaults: Preference = { training: true, competitions: true, messages: true, coach_academy: true, achievements: true, system: true };
+type Preference = Record<(typeof fields)[number][0], boolean> & { message_preview: boolean };
+const defaults: Preference = { training: true, competitions: true, messages: true, coach_academy: true, achievements: true, system: true, message_preview: false };
 
 type PushStatus = 'checking' | 'registered' | 'permission-denied' | 'physical-device-required' | 'expo-project-id-missing' | 'registration-cancelled' | 'error' | 'idle';
 
@@ -82,6 +82,10 @@ export default function NotificationSettingsScreen() {
         <View><Text style={{ color: c.text, fontSize: 13, fontWeight: '800' }}>{label}</Text><Text style={{ color: c.muted, fontSize: 10, marginTop: 3 }}>{preferences[key] ? 'Enabled' : 'Muted'}</Text></View>
         <View style={{ width: 42, height: 24, borderRadius: 12, backgroundColor: preferences[key] ? c.accent : c.border, padding: 3, justifyContent: 'center', alignItems: preferences[key] ? 'flex-end' : 'flex-start' }}><View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff' }} /></View>
       </Pressable>)}
+      <Pressable onPress={() => void toggle('message_preview')} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderTopWidth: 1, borderTopColor: c.border }}>
+        <View style={{ flex: 1, paddingRight: 12 }}><Text style={{ color: c.text, fontSize: 13, fontWeight: '800' }}>Message previews on lock screen</Text><Text style={{ color: c.muted, fontSize: 10, marginTop: 3 }}>When enabled, push notifications may show the sender and message text. Disabled by default.</Text></View>
+        <View style={{ width: 42, height: 24, borderRadius: 12, backgroundColor: preferences.message_preview ? c.accent : c.border, padding: 3, justifyContent: 'center', alignItems: preferences.message_preview ? 'flex-end' : 'flex-start' }}><View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff' }} /></View>
+      </Pressable>
     </Card>
     {message ? <Text style={{ color: c.danger, fontSize: 11 }}>{message}</Text> : null}
   </Screen>;
