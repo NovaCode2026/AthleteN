@@ -68,7 +68,11 @@ export default function AcademySetupScreen() {
 
         if (data?.id) {
           id = data.id;
-          await supabase.from('profiles').update({ academy_id: id }).eq('user_id', session.user.id);
+          const { error: linkError } = await supabase.rpc('link_owned_academy_workspace', { p_academy_id: id });
+          if (linkError) {
+            if (alive) { setMessage(linkError.message); setLoading(false); }
+            return;
+          }
           if (alive) setAcademyId(id);
         }
       }
