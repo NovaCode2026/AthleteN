@@ -120,6 +120,127 @@ $function$;
 REVOKE ALL ON FUNCTION public.create_academy_workspace(text, text, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_academy_workspace(text, text, text, text) TO authenticated;
 
+
+-- Bind Academy verification to Supabase Auth's actual confirmation timestamp.
+-- No client-supplied email or timestamp is accepted by this RPC.
+CREATE OR REPLACE FUNCTION public.sync_verified_academy_contact_email(
+  p_academy_id uuid
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_user_id uuid := (SELECT auth.uid());
+  v_email text;
+  v_confirmed_at timestamptz;
+  v_updated integer;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+  IF NOT private.user_is_approved_academy_admin(p_academy_id) THEN
+    RAISE EXCEPTION 'Approved Academy Admin access required';
+  END IF;
+
+  SELECT lower(btrim(u.email)), u.email_confirmed_at
+    INTO v_email, v_confirmed_at
+  FROM auth.users u
+  WHERE u.id = v_user_id;
+
+  IF v_email IS NULL OR position('@' IN v_email) < 2 OR v_confirmed_at IS NULL THEN
+    RAISE EXCEPTION 'Academy contact email must be verified in Auth';
+  END IF;
+
+  UPDATE public.academies
+     SET contact_email = v_email,
+         contact_email_verified_at = v_confirmed_at,
+         updated_at = now()
+   WHERE id = p_academy_id;
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated <> 1 THEN
+    RAISE EXCEPTION 'Academy workspace was not found';
+  END IF;
+  RETURN true;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.sync_verified_academy_contact_email(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.sync_verified_academy_contact_email(uuid) TO authenticated;
+
+-- Complete setup only from a confirmed Auth email. Verification and completion
+-- timestamps are produced by the database; clients cannot assert either state.
+CREATE OR REPLACE FUNCTION public.complete_academy_setup(
+  p_academy_id uuid,
+  p_name text,
+  p_city text,
+  p_state text,
+  p_country text,
+  p_contact_phone text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_user_id uuid := (SELECT auth.uid());
+  v_email text;
+  v_confirmed_at timestamptz;
+  v_updated integer;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+  IF NOT private.user_is_approved_academy_admin(p_academy_id) THEN
+    RAISE EXCEPTION 'Approved Academy Admin access required';
+  END IF;
+
+  SELECT lower(btrim(u.email)), u.email_confirmed_at
+    INTO v_email, v_confirmed_at
+  FROM auth.users u
+  WHERE u.id = v_user_id;
+
+  IF v_email IS NULL OR position('@' IN v_email) < 2 OR v_confirmed_at IS NULL THEN
+    RAISE EXCEPTION 'Academy contact email must be verified in Auth';
+  END IF;
+  IF p_name IS NULL OR length(btrim(p_name)) NOT BETWEEN 2 AND 100 THEN
+    RAISE EXCEPTION 'Academy name must contain between 2 and 100 characters';
+  END IF;
+  IF p_city IS NULL OR length(btrim(p_city)) NOT BETWEEN 1 AND 120
+     OR p_state IS NULL OR length(btrim(p_state)) NOT BETWEEN 1 AND 120
+     OR p_country IS NULL OR length(btrim(p_country)) NOT BETWEEN 1 AND 120 THEN
+    RAISE EXCEPTION 'Academy city, state and country are required';
+  END IF;
+  IF length(regexp_replace(coalesce(p_contact_phone, ''), '[^0-9]', '', 'g')) < 10
+     OR length(p_contact_phone) > 40 THEN
+    RAISE EXCEPTION 'A valid Academy contact phone is required';
+  END IF;
+
+  UPDATE public.academies
+     SET name = btrim(p_name),
+         city = btrim(p_city),
+         state = btrim(p_state),
+         country = btrim(p_country),
+         contact_email = v_email,
+         contact_phone = btrim(p_contact_phone),
+         contact_email_verified_at = v_confirmed_at,
+         setup_completed = true,
+         setup_completed_at = now(),
+         updated_at = now()
+   WHERE id = p_academy_id;
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated <> 1 THEN
+    RAISE EXCEPTION 'Academy workspace was not found';
+  END IF;
+  RETURN true;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.complete_academy_setup(uuid, text, text, text, text, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.complete_academy_setup(uuid, text, text, text, text, text) TO authenticated;
+
 -- Keep the legacy RPC for older clients, with its original subscription gate.
 CREATE OR REPLACE FUNCTION public.create_academy(
   p_name text,
@@ -167,9 +288,10 @@ REVOKE INSERT ON public.academies FROM PUBLIC, anon, authenticated;
 REVOKE UPDATE ON public.academies FROM PUBLIC, anon, authenticated;
 REVOKE DELETE ON public.academies FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.academies TO authenticated;
+-- Clients may edit descriptive workspace fields only. Verified contact and
+-- setup-completion state are written exclusively by the Auth-backed RPCs below.
 GRANT UPDATE (
-  name, city, state, country, contact_email, contact_phone,
-  contact_email_verified_at, setup_completed, setup_completed_at
+  name, city, state, country, contact_phone
 ) ON public.academies TO authenticated;
 
 -- Memberships are created only by SECURITY DEFINER code-redemption/bootstrap
