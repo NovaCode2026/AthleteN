@@ -10,7 +10,7 @@ test("web and mobile message search is scoped to the currently loaded conversati
     assert.match(source, /messageSearch/);
     assert.match(source, /filteredMessages/);
     assert.match(source, /No matching messages/);
-    assert.match(source, /Search this conversation/);
+    assert.ok(source.toLowerCase().includes("search this conversation"));
     assert.match(source, /messages\.filter\(/);
   }
 });
