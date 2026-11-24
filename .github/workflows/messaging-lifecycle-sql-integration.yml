@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "supabase/migrations/20261124160000_messaging_lifecycle_and_disappearing_messages.sql"
+      - "supabase/migrations/20261124180000_private_saved_messages.sql"
       - "tests/sql/messaging-lifecycle-integration.sql"
       - "tests/sql/messaging-lifecycle-assertions.sql"
       - ".github/workflows/messaging-lifecycle-sql-integration.yml"
@@ -45,7 +46,11 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h 127.0.0.1 -U postgres -d athleten_messaging_lifecycle_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124160000_messaging_lifecycle_and_disappearing_messages.sql
-      - name: Verify expiry, cleanup, attachment deletion and group permissions
+      - name: Apply private saved-message migration
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_messaging_lifecycle_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124180000_private_saved_messages.sql
+      - name: Verify expiry, cleanup, attachment deletion, group permissions and saved-message privacy
         env:
           PGPASSWORD: postgres
         run: psql -h 127.0.0.1 -U postgres -d athleten_messaging_lifecycle_test -v ON_ERROR_STOP=1 -f tests/sql/messaging-lifecycle-assertions.sql
