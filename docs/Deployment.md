@@ -12,7 +12,7 @@ This guide applies to the **AthleteN** repository and its existing production Su
 
 The connected production Supabase project is healthy and contains an existing production schema, but the Git-tracked migration directory is **not reconciled** with its live migration ledger. Do not infer that a candidate migration has been applied merely because later schema objects exist. **Do not re-run baseline schema/policy/storage SQL files, push the candidate migration set, reset the database, or edit the migration ledger** until the drift has been reconciled against trusted SQL sources and a restore/preview replay has passed.
 
-## Current release-candidate hold — 24 November 2026
+## Historical pre-merge release-candidate hold — 24 November 2026 (superseded)
 
 This dated snapshot is the controlling deployment warning until a newer, evidence-backed release review replaces it.
 
@@ -24,7 +24,17 @@ This dated snapshot is the controlling deployment warning until a newer, evidenc
 - Supabase Security Advisor still reports 60 authenticated-callable `SECURITY DEFINER` functions, `pg_net` in `public`, three RLS-enabled tables without policies (including intentionally backend-only tables), and leaked-password protection disabled. Review functions individually; do not bulk-revoke, and do not add broad RLS policies.
 - Paid checkout and subscription cancellation remain disabled. Provider sandbox evidence, adult-authorized merchant onboarding and customer/legal terms, Auth dashboard configuration, a production-signed Android artifact, and physical-device/two-account acceptance remain separate release gates.
 
-**Decision: do not merge or deploy PR #68 yet.** Reconcile the migration baseline and prove the preview/restore replay first. Then verify candidate schema effects and function privileges against production, complete the remaining operator/device gates, and rerun all checks on the final head.
+**Historical decision before PR #68 was merged.** This instruction is superseded by the post-merge status below. The migration, security, operator and device gates listed here remain open unless separately verified.
+
+
+
+## Post-merge status — 24 November 2026
+
+PR [#68](https://github.com/NovaCode2026/AthleteN/pull/68) was merged into `main` on 24 November 2026. The verified merge commit is `7ec236cc6c1dbfd70eeb104fdd8ba68da61beef6`; GitHub comparison confirmed that `main` pointed to this exact commit at the time of the check.
+
+**This confirms a Git merge, not a verified production deployment or full production approval.** The Netlify deployment SHA and post-deploy smoke tests have not yet been verified after this merge. Keep paid checkout and subscription cancellation disabled. Do not apply the divergent Supabase migration set or enable provider credentials as part of this follow-up.
+
+The next release-readiness work is tracked in [FINAL_PRODUCTION_READINESS_2026-11-24.md](./FINAL_PRODUCTION_READINESS_2026-11-24.md) and the canonical launch gate [issue #67](https://github.com/NovaCode2026/AthleteN/issues/67). The follow-up PR must attach evidence to each completed gate and must not mark untested work as passed.
 
 ## Netlify build settings
 
