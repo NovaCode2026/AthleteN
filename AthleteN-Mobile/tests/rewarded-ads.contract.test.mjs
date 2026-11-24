@@ -68,18 +68,18 @@ test('platform resolver re-exports the privacy-options action', () => {
 
 test('AdMob app configuration rejects a publisher ID mismatch and accepts a matching publisher', () => {
   const script = "require('./app.config.js')()";
-  const baseEnv = { ...process.env, ADMOB_ANDROID_APP_ID: 'ca-app-pub-1636984338555274~1234567890' };
+  const baseEnv = { ...process.env, ADMOB_ANDROID_APP_ID: 'ca-app-pub-1234567890123456~1234567890' };
 
   const valid = spawnSync(process.execPath, ['-e', script], {
     cwd: mobileRoot,
-    env: { ...baseEnv, EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID: 'ca-app-pub-1636984338555274/9124393468' },
+    env: { ...baseEnv, EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID: 'ca-app-pub-1234567890123456/1234567890' },
     encoding: 'utf8',
   });
   assert.equal(valid.status, 0, valid.stderr);
 
   const mismatch = spawnSync(process.execPath, ['-e', script], {
     cwd: mobileRoot,
-    env: { ...baseEnv, EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID: 'ca-app-pub-9999999999999999/9124393468' },
+    env: { ...baseEnv, EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID: 'ca-app-pub-9999999999999999/1234567890' },
     encoding: 'utf8',
   });
   assert.notEqual(mismatch.status, 0, 'mismatched publisher IDs must fail native config');
