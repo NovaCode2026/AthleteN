@@ -27,7 +27,7 @@ export default function AcademyOperations(){
   const [coachAttendance,setCoachAttendance]=useState<any[]>([]); const [availability,setAvailability]=useState<any[]>([]); const [transfers,setTransfers]=useState<any[]>([]);
   const [announcements,setAnnouncements]=useState<any[]>([]); const [guardianLinks,setGuardianLinks]=useState<any[]>([]); const [reportExports,setReportExports]=useState<any[]>([]);
   const [seatRequests,setSeatRequests]=useState<any[]>([]); const [staffAssignments,setStaffAssignments]=useState<any[]>([]); const [auditRows,setAuditRows]=useState<any[]>([]);
-  const [notificationPrefs,setNotificationPrefs]=useState<any>({announcements:true,fees:true,transfers:true,seat_updates:true,reports:true});
+  const [notificationPrefs,setNotificationPrefs]=useState<any>({announcements:true,fees:true,transfers:true,seat_updates:true,reports:true,staff_updates:true});
   const [feeAthlete,setFeeAthlete]=useState(''); const [feeTitle,setFeeTitle]=useState('Monthly training fee'); const [feeAmount,setFeeAmount]=useState(''); const [feeDue,setFeeDue]=useState(''); const [feeDescription,setFeeDescription]=useState('');
   const [paymentAmounts,setPaymentAmounts]=useState<any>({}); const [paymentMethods,setPaymentMethods]=useState<any>({});
   const [coachDate,setCoachDate]=useState(today()); const [coachStatus,setCoachStatus]=useState('present');
@@ -67,7 +67,7 @@ export default function AcademyOperations(){
     add('seats',supabase.from('academy_seat_requests').select('*').eq('academy_id',academyId).order('created_at',{ascending:false}).limit(100));
     add('staff',supabase.from('academy_staff_assignments').select('*').eq('academy_id',academyId).order('created_at',{ascending:false}));
     add('audit',supabase.from('academy_audit_log').select('*').eq('academy_id',academyId).order('created_at',{ascending:false}).limit(150));
-    const pref=await supabase.from('academy_notification_preferences').select('announcements,fees,transfers,seat_updates,reports').eq('academy_id',academyId).eq('user_id',userId).maybeSingle();
+    const pref=await supabase.from('academy_notification_preferences').select('announcements,fees,transfers,seat_updates,reports,staff_updates').eq('academy_id',academyId).eq('user_id',userId).maybeSingle();
     if(pref.data)setNotificationPrefs(pref.data);
     const invoiceIds=await supabase.from('academy_fee_invoices').select('id').eq('academy_id',academyId);
     if(invoiceIds.data?.length){
