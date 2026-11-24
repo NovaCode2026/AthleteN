@@ -167,6 +167,21 @@ Do not mark the release as production-ready until the device, security, and post
 
 ### Subscription cancellation release gate
 
-The candidate exposes authenticated, account-scoped end-of-period cancellation for recurring Stripe and Razorpay subscriptions. It never requests immediate cancellation. Stripe uses `cancel_at_period_end=true`; Razorpay uses `cancel_at_cycle_end=true`. The user keeps access through the provider-confirmed period end, and webhook updates synchronize the stored cancellation flag. Cashfree Payment Gateway orders are one-time payments and do not use this recurring cancellation endpoint.
+**Cancellation is disabled in this Free Launch candidate.** The cancellation endpoint returns HTTP 503, and web/mobile Plans screens do not expose an active cancellation action. No provider cancellation request is sent.
 
-The endpoint and UI depend on `subscriptions.cancel_at_period_end` from migration `20261118000500_subscription_cancel_at_period_end.sql`. Keep cancellation unavailable in production until the complete migration history is reconciled, the migration is applied, provider sandbox scheduling and webhooks have been verified, and both web and physical Android flows pass. Do not test by creating real charges or canceling a real customer subscription.
+The future cancellation implementation depends on `subscriptions.cancel_at_period_end` from migration `20261118000500_subscription_cancel_at_period_end.sql`. Enable it only after the migration baseline is reconciled, the column and endpoint are verified in production, provider sandbox scheduling/webhooks pass, and both web and physical Android flows pass. Do not test by creating real charges or canceling a real customer subscription.
+
+### Free Launch merge gate — verified 24 November 2026
+
+This section records the narrow conditions under which this PR may be merged as a **code-only Free Launch deployment**. It does not declare paid billing or the full public launch production-ready.
+
+- The Netlify `athleten` build command is only `npm run build`; it does not apply Supabase migrations.
+- The Netlify site and team environment-variable key lists were checked. No Razorpay, Stripe, Cashfree, or payment-provider configuration keys are present. Secret values were not read or copied.
+- Web and mobile paid-checkout flags remain disabled, and the server checkout endpoint retains `FREE_LAUNCH = true`.
+- Production contains the AI-budget tables/RPCs and the subscription activation RPCs used by the current app runtime.
+- Production does **not** contain `private.payment_webhook_receipts` or its three receipt RPCs. No provider signing secrets are configured, so the deployed webhook cannot authenticate provider events. If any payment-provider credentials are added later, do not enable billing until the receipt migration has been reviewed, applied, and verified.
+- Production does **not** contain `subscriptions.cancel_at_period_end`. Cancellation remains disabled as described above.
+- Production migration history is materially divergent from the repository. Do not run `supabase db push`, reset, or apply the candidate migration directory wholesale. The PR's merge does not apply these SQL migrations; any future schema deployment requires a separately reviewed migration-recovery and restore plan.
+- Supabase Auth leaked/compromised-password protection remains disabled and requires project-owner configuration before broad public onboarding. Signed Android physical-device acceptance also remains outstanding.
+
+**Scope boundary:** merging this PR is only for the Free Launch code path with paid checkout and cancellation disabled and payment-provider credentials absent. It is not authorization to activate payments, apply the candidate SQL migrations, or declare the November 30 launch fully accepted.
