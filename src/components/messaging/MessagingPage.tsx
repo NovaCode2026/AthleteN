@@ -33,6 +33,7 @@ export default function MessagingPage({ userId, role, setToast }: Props) {
   const filteredMessages=useMemo(()=>{
     const query=messageSearch.trim().toLocaleLowerCase();
     return messages.filter(message=>{
+      if(message.expires_at&&new Date(message.expires_at).getTime()<=Date.now())return false;
       if(savedOnly&&!savedMessageIds[message.id])return false;
       if(!query)return true;
       return !message.deleted_for_everyone_at&&[message.body,message.attachment_name,message.message_type].some(value=>String(value||"").toLocaleLowerCase().includes(query));
