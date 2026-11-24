@@ -111,6 +111,7 @@ export default function RewardsScreen() {
     if (!session?.access_token || adBusy) return;
     setAdBusy(true);
     setAdNotice('');
+    let adPresentationStarted = false;
     try {
       const baseValue = process.env.EXPO_PUBLIC_ATHLETEN_API_URL || 'https://athleten.netlify.app';
       const base = baseValue.endsWith('/') ? baseValue.slice(0, -1) : baseValue;
@@ -130,11 +131,8 @@ export default function RewardsScreen() {
         throw new Error('AthleteN could not create a secure ad session. Please try again later.');
       }
 
-      let adPresentationStarted = false;
-      const outcome = await (async () => {
-        adPresentationStarted = true;
-        return presentRewardedAd(payload.customData!);
-      })();
+      adPresentationStarted = true;
+      const outcome = await presentRewardedAd(payload.customData);
       if (outcome === 'earned') {
         setAdNotice('Ad completed. Bonus credits are pending Google’s server-side verification. Credits appear only after verification.');
         void load();
@@ -146,7 +144,7 @@ export default function RewardsScreen() {
       // failure is an ad-delivery problem. Preserve the user's opportunity:
       // no credit is fabricated, no allowance is consumed, and they may retry.
       const message = e instanceof Error ? e.message : '';
-      const deliveryFailure = /adPresentationStarted|ad|load|fill|network|timeout|consent|sdk/i.test(message);
+      const deliveryFailure = adPresentationStarted;
       setAdNotice(deliveryFailure
         ? 'No ad is available right now. You have not lost your reward opportunity, and no credits or ad allowance were used. Please try again later.'
         : (message || 'AthleteN could not prepare the ad session. Your access is unchanged.'));
