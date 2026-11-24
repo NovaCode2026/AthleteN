@@ -16,7 +16,39 @@ type NotificationRow = {
   announcement_id?: string | null;
   created_at: string;
   read_at: string | null;
+  conversation_id?: string;
+  notification_ids?: string[];
+  message_count?: number;
+  unread_message_count?: number;
 };
+function notificationCategory(type:string|null|undefined){
+  const value=String(type||'').toLowerCase();
+  if(value==='message')return 'MESSAGES';
+  if(value==='training')return 'TRAINING';
+  if(['competition','competitions','tournament','tournament_update'].includes(value))return 'COMPETITIONS';
+  if(['coach','academy','coach_academy','connection','connection_request','academy_invitation','coach_invitation'].includes(value))return 'COACH & ACADEMY';
+  if(['achievement','badge','milestone'].includes(value))return 'ACHIEVEMENTS';
+  return 'SYSTEM';
+}
+function groupMessageNotifications(rows:NotificationRow[]){
+  const groups=new Map<string,NotificationRow[]>();
+  const output:NotificationRow[]=[];
+  for(const row of rows){
+    if(row.notification_type==='message'&&row.conversation_id){
+      const key=String(row.conversation_id);
+      const group=groups.get(key)||[];
+      group.push(row);
+      groups.set(key,group);
+    }else output.push({...row,notification_ids:[row.id],message_count:1,unread_message_count:row.read_at?0:1});
+  }
+  for(const [conversationId,group] of groups){
+    group.sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
+    const latest=group[0];
+    const unread=group.filter(row=>!row.read_at).length;
+    output.push({...latest,id:'message-group:'+conversationId,notification_ids:group.map(row=>row.id),message_count:group.length,unread_message_count:unread,read_at:unread?null:latest.read_at,title:group.length>1?'New messages':latest.title,body:group.length>1?group.length+' message notifications · '+unread+' unread':latest.body});
+  }
+  return output.sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
+}
 type AnnouncementSource = { title: string; body: string; published_at: string | null };
 
 export default function NotificationsScreen() {
@@ -41,7 +73,15 @@ export default function NotificationsScreen() {
       setError(queryError.message);
       console.warn('[AthleteN] could not load notifications', queryError.message);
     } else {
-      const next = (data || []) as NotificationRow[];
+      let next = (data || []) as NotificationRow[];
+      const messageIds = next.filter((row) => row.notification_type === 'message' && row.message_id).map((row) => row.message_id!);
+      if (messageIds.length) {
+        const { data: messageRows, error: messageLookupError } = await supabase.from('messages').select('id,conversation_id').in('id', messageIds);
+        if (!messageLookupError) {
+          const conversationByMessage = new Map((messageRows || []).map((row: any) => [String(row.id), String(row.conversation_id)]));
+          next = next.map((row) => ({ ...row, conversation_id: row.message_id ? conversationByMessage.get(String(row.message_id)) : undefined }));
+        }
+      }
       setRows(next);
       setError('');
       const unread = next.filter((row) => !row.read_at).length;
@@ -71,13 +111,15 @@ export default function NotificationsScreen() {
 
   async function markRead(row: NotificationRow) {
     if (!session || row.read_at) return;
+    const ids = row.notification_ids?.length ? row.notification_ids : [row.id];
+    const readAt = new Date().toISOString();
     const { error: updateError } = await supabase
       .from('notifications')
-      .update({ read_at: new Date().toISOString() })
-      .eq('id', row.id)
+      .update({ read_at: readAt })
+      .in('id', ids)
       .eq('user_id', session.user.id);
     if (updateError) throw updateError;
-    setRows((current) => current.map((item) => item.id === row.id ? { ...item, read_at: new Date().toISOString() } : item));
+    setRows((current) => current.map((item) => ids.includes(item.id) ? { ...item, read_at: readAt } : item));
   }
 
   async function openNotification(row: NotificationRow) {
@@ -139,9 +181,10 @@ export default function NotificationsScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => { void (async () => {
         setBusy(true);
-        const { error: deleteError } = await supabase.from('notifications').delete().eq('id', row.id).eq('user_id', session.user.id);
+        const ids = row.notification_ids?.length ? row.notification_ids : [row.id];
+        const { error: deleteError } = await supabase.from('notifications').delete().in('id', ids).eq('user_id', session.user.id);
         if (deleteError) setError(deleteError.message);
-        else setRows((current) => current.filter((item) => item.id !== row.id));
+        else setRows((current) => current.filter((item) => !ids.includes(item.id)));
         setBusy(false);
         await load();
       })(); } },
@@ -174,6 +217,7 @@ export default function NotificationsScreen() {
     ]);
   }
 
+  const displayRows = groupMessageNotifications(rows);
   const unread = rows.filter((row) => !row.read_at).length;
 
   return (
@@ -188,10 +232,11 @@ export default function NotificationsScreen() {
         </Pressable>
       </View>
       {error ? <Card><Text accessibilityRole="alert" style={{ color: c.warning, fontSize: 11, lineHeight: 17 }}>{error}</Text></Card> : null}
-      {loading ? <Card><ActivityIndicator color={c.accentBright}/></Card> : rows.length ? rows.map((row) => (
+      {loading ? <Card><ActivityIndicator color={c.accentBright}/></Card> : displayRows.length ? displayRows.map((row) => (
         <Card key={row.id} style={{ gap: 9, borderColor: row.read_at ? c.border : c.accent }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 9 }}>
             <Pressable accessibilityRole="button" accessibilityLabel={'Open notification: ' + (row.title || 'AthleteN notification')} onPress={() => void openNotification(row)} disabled={busy} style={{ flex: 1, gap: 6 }}>
+              <Text style={{ color: c.accentBright, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 }}>{notificationCategory(row.notification_type)}{(row.message_count||0)>1?' · '+row.message_count+' MESSAGES':''}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <Text style={{ color: row.read_at ? c.muted : c.text, fontSize: 14, fontWeight: '900', flex: 1 }}>{row.title || 'AthleteN notification'}</Text>
                 <View style={{ backgroundColor: row.read_at ? c.background : c.accentSoft, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 4 }}>
