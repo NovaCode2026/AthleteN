@@ -256,6 +256,7 @@ export default function Academy(){
   <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
    <View><Text style={{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1.5}}>ATHLETEN ACADEMY</Text><Text style={{color:c.text,fontSize:25,fontWeight:'900',marginTop:3}}>{academy?.name||'Academy'}</Text></View>
    <View style={{flexDirection:'row',alignItems:'center',gap:8}}><RefreshButton onPress={()=>void refresh()} busy={refreshing}/>
+     <Pressable onPress={()=>router.push('/academy-operations')} style={{height:40,paddingHorizontal:10,borderRadius:13,backgroundColor:c.accentSoft,borderWidth:1,borderColor:c.accentDeep,alignItems:'center',justifyContent:'center'}}><Text style={{color:c.accentBright,fontSize:8,fontWeight:'900'}}>OPS</Text></Pressable>
      <Pressable onPress={()=>router.push('/academy-settings')} style={{width:40,height:40,borderRadius:13,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,alignItems:'center',justifyContent:'center'}}><Icon name="settings" size={18}/></Pressable>
     </View>
   </View>
