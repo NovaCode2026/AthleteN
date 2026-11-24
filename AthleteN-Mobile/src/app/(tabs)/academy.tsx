@@ -17,7 +17,7 @@ type Member={user_id:string;role:string;status:string;full_name?:string|null;bel
 type Session={id:string;session_date:string;start_time:string;title:string};
 type Event={id:string;user_id?:string;name:string;starts_at:string;location?:string|null;status?:string|null;result?:string|null;coach_user_id?:string|null;discipline?:string|null;verification_status?:string|null};
 
-const academyIconMap:any={athletes:'people',coaches:'coach',training:'training',events:'event',people:'people',finance:'finance',calendar:'calendar',ai:'ai',settings:'settings',code:'searchCircle',refresh:'refresh',chevron:'arrow'};
+const academyIconMap:any={athletes:'people',coaches:'coach',training:'training',events:'event',people:'people',finance:'finance',calendar:'calendar',ai:'ai',settings:'settings',code:'searchCircle',refresh:'refresh',chevron:'arrow',documents:'file-document-outline',message:'message',bell:'bell',shield:'shield',medal:'medal'};
 function Icon({name,size=20,color=c.accentBright}:{name:string;size?:number;color?:string}){return <AppIcon name={academyIconMap[name]||name} size={size} color={color}/>} 
 
 
