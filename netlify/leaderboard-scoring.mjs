@@ -28,6 +28,7 @@ export function getIstDayWindow(now = new Date()) {
   const end = new Date(start.getTime() + DAY_MS);
   return {
     dayKey,
+    nextDayKey: new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day) + 1)).toISOString().slice(0, 10),
     startIso: start.toISOString(),
     endIso: end.toISOString(),
     resetsAt: end.toISOString()
@@ -83,22 +84,16 @@ export function buildDailyLeaderboard(profiles, events, currentUserId = null) {
 
   applyCount(events.verifiedMilestones, "performance_progress", 10, 20,
     (row) => row.verification_status === "verified");
-  applyCount(events.kyorugiBouts, "competition", 5, 10,
-    (row) => row.is_official === true);
-  applyCount(events.poomsaePerformances, "competition", 5, 10,
-    (row) => row.is_official === true);
-
-  const conditioningPattern = /\b(conditioning|strength|stamina|endurance|mobility)\b/i;
-  applyCount(events.conditioningLogs, "fitness_conditioning", 5, 5,
-    (row) => row.is_official === true && conditioningPattern.test(String(row.focus || "")));
+  applyCount(events.verifiedCompetitionResults, "competition", 5, 10,
+    (row) => row.verification_status === "verified");
+  applyCount(events.verifiedMedals, "competition", 5, 10,
+    (row) => row.verification_status === "verified");
 
   applyCount(events.verifiedCertificates, "learning_development", 10, 20,
     (row) => row.verification_status === "verified");
 
-  applyCount(events.completedGoals, "goals_achievements", 10, 20,
-    (row) => String(row.status || "").toLowerCase() === "completed");
   applyCount(events.badges, "goals_achievements", 10, 20,
-    (row) => true);
+    (row) => row.metadata?.system_assigned === true);
 
   applyCount(events.coachAttendance, "coach_academy", 5, 10,
     (row) => ["present", "late"].includes(String(row.status || "").toLowerCase()));
