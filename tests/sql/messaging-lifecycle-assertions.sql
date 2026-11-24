@@ -35,7 +35,9 @@ INSERT INTO public.messages(
 );
 SELECT public.delete_message_for_everyone('30000000-0000-4000-8000-000000000002');
 
-DO $$
+-- Inspect service-role-only cleanup queue as the database owner, not the client role.
+RESET ROLE;
+DO $
 DECLARE v_path text; v_deleted timestamptz; v_queued integer;
 BEGIN
   SELECT attachment_path, deleted_for_everyone_at INTO v_path, v_deleted
@@ -48,7 +50,8 @@ BEGIN
     RAISE EXCEPTION 'Attachment deletion did not tombstone and enqueue the object';
   END IF;
 END
-$$;
+$;
+SET ROLE authenticated;
 
 -- A regular group member cannot change the group TTL; an appointed admin can.
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',false);
