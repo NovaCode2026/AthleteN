@@ -59,7 +59,7 @@ INSERT INTO public.messages(
 );
 INSERT INTO public.messaging_saved_messages(owner_user_id,message_id,label)
 VALUES (auth.uid(),'30000000-0000-4000-8000-000000000002','Video reference');
-DO $
+DO $$
 DECLARE v_deleted integer; v_remaining integer;
 BEGIN
   DELETE FROM storage.objects
