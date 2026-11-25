@@ -920,11 +920,12 @@ begin
     if not private.platform_admin_has_permission('support.manage') then
       raise exception 'Support management permission required';
     end if;
-    if tg_table_name='support_tickets'
-       and new.assigned_to is distinct from old.assigned_to
-       and new.assigned_to is not null
-       and new.assigned_to<>(select auth.uid()) then
-      raise exception 'Support Admins may assign tickets only to themselves';
+    if tg_table_name='support_tickets' then
+      if new.assigned_to is distinct from old.assigned_to
+         and new.assigned_to is not null
+         and new.assigned_to<>(select auth.uid()) then
+        raise exception 'Support Admins may assign tickets only to themselves';
+      end if;
     end if;
   end if;
 
