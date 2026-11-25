@@ -316,7 +316,7 @@ export default function AdminOperationsScreen() {
           ['VERIFIED ATHLETES',overview.verified_athletes],['PENDING PROOFS',overview.pending_student_verifications],['ACTIVE PLANS',overview.active_subscriptions],
           ['OPEN SUPPORT',overview.open_support_tickets],['RESTRICTED',overview.restricted_accounts],
           ['COACH EMAIL VERIFIED',overview.verified_coaches],['ACADEMY VERIFIED',overview.verified_academies],
-        ].filter(([,value])=>value!==null&&value!==undefined).map(([label,value])=><Stat key={String(label)} label={String(label)} value={Number(value)}/>)}</View> : null}
+        ].filter(([,value])=>value!==null&&value!==undefined).map(([label,value])=><Stat key={String(label)} label={String(label)} value={value==null?null:Number(value)}/>)}</View> : null}
 
         {canVerify ? <View style={s.panel}>
           <Text style={s.section}>ATHLETE PROFILE VERIFICATION</Text>
@@ -456,8 +456,8 @@ export default function AdminOperationsScreen() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
-  return <View style={s.stat}><Text style={s.statValue}>{value.toLocaleString()}</Text><Text style={s.statLabel}>{label}</Text></View>;
+function Stat({ label, value }: { label: string; value: number | null }) {
+  return <View style={s.stat}><Text style={s.statValue}>{value==null?'—':value.toLocaleString()}</Text><Text style={s.statLabel}>{label}</Text></View>;
 }
 
 const s = StyleSheet.create({
