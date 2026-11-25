@@ -174,3 +174,66 @@ test("web tournament scanner checks the caller's age approval before scanning pu
   assert.match(scanner, /Account approval is required before using Tournament Scanner/);
   assert.match(scanner, /\["approved",\s*"not_required",\s*"qa_verified"\]/);
 });
+
+
+test("web-mobile parity exposes essential and role-specific workflows from mobile More", () => {
+  const more = read("AthleteN-Mobile/src/app/explore.tsx");
+  const routeFiles = [
+    "AthleteN-Mobile/src/app/notification-settings.tsx",
+    "AthleteN-Mobile/src/app/navigation-settings.tsx",
+    "AthleteN-Mobile/src/app/coach-more.tsx",
+    "AthleteN-Mobile/src/app/coach-notifications.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/coach.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/academy.tsx",
+    "AthleteN-Mobile/src/app/academy-settings.tsx",
+    "AthleteN-Mobile/src/app/academy-setup.tsx",
+    "AthleteN-Mobile/src/app/admin-panel.tsx",
+    "AthleteN-Mobile/src/app/admin-operations.tsx",
+    "AthleteN-Mobile/src/app/admin-support.tsx",
+    "AthleteN-Mobile/src/app/admin-badges.tsx",
+    "AthleteN-Mobile/src/app/admin-releases.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/analytics.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/reports.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/messages.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/calendar.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/attendance.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/documents.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/medals.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/badges.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/athlete-journey.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/weight.tsx",
+    "AthleteN-Mobile/src/app/checklist.tsx",
+    "AthleteN-Mobile/src/app/away-mode.tsx",
+    "AthleteN-Mobile/src/app/nutrition.tsx",
+    "AthleteN-Mobile/src/app/missions.tsx",
+    "AthleteN-Mobile/src/app/athlete-passport.tsx",
+    "AthleteN-Mobile/src/app/support.tsx",
+    "AthleteN-Mobile/src/app/team.tsx",
+    "AthleteN-Mobile/src/app/training-session.tsx",
+    "AthleteN-Mobile/src/app/competition-mode.tsx",
+    "AthleteN-Mobile/src/app/ai-coach.tsx",
+    "AthleteN-Mobile/src/app/plans.tsx",
+    "AthleteN-Mobile/src/app/rewards.tsx",
+    "AthleteN-Mobile/src/app/leaderboard.tsx",
+    "AthleteN-Mobile/src/app/scanner.tsx",
+    "AthleteN-Mobile/src/app/taekwondo.tsx",
+  ];
+  for (const file of routeFiles) assert.ok(fs.existsSync(path.join(root, file)), file);
+  for (const label of [
+    "Notification Preferences",
+    "Coach Dashboard",
+    "Coach Notifications",
+    "Coach More",
+    "Academy Management",
+    "Academy Settings",
+    "Academy Setup",
+    "Admin Control Center",
+    "Admin Operations & Verification",
+    "Admin Support",
+    "Badge Management",
+    "Mobile Release Management",
+  ]) assert.ok(more.includes(label), label);
+  assert.match(more, /profile\?\.role==='coach'/);
+  assert.match(more, /profile\?\.role==='academy_admin'/);
+  assert.match(more, /profile\?\.role==='super_admin'/);
+});
