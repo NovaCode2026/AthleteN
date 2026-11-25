@@ -184,6 +184,21 @@ test("platform overview only returns metrics within the caller's permission scop
   assert.ok(mobileOperations.includes("filter(([,value])=>value!==null&&value!==undefined)"));
 });
 
+test("Support and Finance workspaces enforce scoped read/write boundaries", () => {
+  assert.match(sql, /revoke update on public\.support_tickets, public\.feedback_items from public, anon, authenticated/i);
+  assert.match(sql, /grant update \(status,priority,assigned_to,updated_at\) on public\.support_tickets to authenticated/i);
+  assert.match(sql, /create trigger support_tickets_admin_audit/i);
+  assert.match(sql, /create trigger feedback_items_admin_audit/i);
+  assert.match(sql, /Support Admins may assign tickets only to themselves/);
+  assert.match(webExtensions, /canReadSupport = has\("support\.read"\)/);
+  assert.match(webExtensions, /canReadFinance = has\("billing\.read"\)/);
+  assert.match(webExtensions, /updateSupportTicket/);
+  assert.match(webExtensions, /updateFeedbackItem/);
+  assert.match(webExtensions, /Read-only provider-backed records/);
+  assert.match(mobileOperations, /Support & Dispute Queue/);
+  assert.match(mobileOperations, /Subscription & Payment Ledger/);
+});
+
 test("age-verification guardian approval remains separate and generic admin data stays minimised", () => {
   assert.match(webAdmin, /ageVerificationReadOnly = selected === "ageVerifications"/);
   assert.match(webAdmin, /select\("id,user_id,status,approved_at,rejected_at,created_at,updated_at"\)/);
