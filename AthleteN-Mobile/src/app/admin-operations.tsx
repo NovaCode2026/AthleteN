@@ -248,7 +248,7 @@ export default function AdminOperationsScreen() {
     if (!canManageSupport) return;
     setBusy(true); setMessage('');
     const { error } = await supabase.from('support_tickets')
-      .update({...values,updated_at:new Date().toISOString()}).eq('id',row.id);
+      .update({...values}).eq('id',row.id);
     setBusy(false);
     if (error) { setMessage(error.message); return; }
     setMessage('Support ticket updated and audited.');
