@@ -94,3 +94,13 @@ test('message push taps resolve and open the exact conversation with a safe inbo
   assert.match(listener, /router\.push\('\/notifications' as never\)/);
   assert.match(listener, /!route\.startsWith\('\/\/'\)/);
 });
+
+
+test('cold-start push taps are recovered and notification rows are marked read safely', () => {
+  assert.match(pushSource, /getLastNotificationResponseAsync\(\)/);
+  assert.match(pushSource, /clearLastNotificationResponseAsync\(\)/);
+  assert.match(pushSource, /handledResponses\.has\(identifier\)/);
+  assert.match(pushSource, /async function markNotificationRead/);
+  assert.match(pushSource, /\.from\('notifications'\)[\s\S]*?\.update\(\{ read_at: new Date\(\)\.toISOString\(\) \}\)/);
+  assert.match(pushSource, /\.eq\('id', notificationId\)[\s\S]*?\.is\('read_at', null\)/);
+});
