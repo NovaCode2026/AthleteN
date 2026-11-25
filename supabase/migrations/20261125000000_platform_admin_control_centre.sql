@@ -860,6 +860,18 @@ declare
   v_action text;
   v_fields jsonb;
 begin
+  if tg_op='UPDATE' and (select auth.uid()) is not null then
+    if not private.platform_admin_has_permission('support.manage') then
+      raise exception 'Support management permission required';
+    end if;
+    if tg_table_name='support_tickets'
+       and new.assigned_to is distinct from old.assigned_to
+       and new.assigned_to is not null
+       and new.assigned_to<>(select auth.uid()) then
+      raise exception 'Support Admins may assign tickets only to themselves';
+    end if;
+  end if;
+
   if tg_table_name='support_tickets' then
     if tg_op='DELETE' then
       v_user_id:=old.user_id; v_row_id:=old.id; v_action:='support.ticket.deleted';
@@ -1100,64 +1112,6 @@ drop trigger if exists feedback_items_touch_updated_at on public.feedback_items;
 create trigger feedback_items_touch_updated_at
 before update on public.feedback_items
 for each row execute function private.touch_support_workspace_updated_at();
-
-create or replace function private.audit_support_workspace_update()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $function$
-declare
-  v_actor uuid := (select auth.uid());
-  v_fields text[] := array[]::text[];
-  v_action text;
-begin
-  if v_actor is null or not private.platform_admin_has_permission('support.manage') then
-    raise exception 'Support management permission required';
-  end if;
-
-  if tg_table_name='support_tickets' then
-    if new.status is distinct from old.status then v_fields:=array_append(v_fields,'status'); end if;
-    if new.priority is distinct from old.priority then v_fields:=array_append(v_fields,'priority'); end if;
-    if new.assigned_to is distinct from old.assigned_to then
-      if new.assigned_to is not null and new.assigned_to<>v_actor then
-        raise exception 'Support Admins may assign tickets only to themselves';
-      end if;
-      v_fields:=array_append(v_fields,'assigned_to');
-    end if;
-    v_action:='support.ticket.updated';
-  else
-    if new.status is distinct from old.status then v_fields:=array_append(v_fields,'status'); end if;
-    if new.priority is distinct from old.priority then v_fields:=array_append(v_fields,'priority'); end if;
-    v_action:='support.feedback.updated';
-  end if;
-
-  if cardinality(v_fields)=0 then return new; end if;
-
-  insert into public.audit_logs(actor_user_id,action,entity_table,entity_id,metadata)
-  values(v_actor,v_action,tg_table_name,new.id,jsonb_build_object('changed_fields',to_jsonb(v_fields)));
-
-  insert into public.platform_admin_audit_log(actor_user_id,target_user_id,action,reason,metadata)
-  values(v_actor,new.user_id,v_action,null,jsonb_build_object('changed_fields',to_jsonb(v_fields)));
-
-  return new;
-end;
-$function$;
-
-revoke all on function private.audit_support_workspace_update() from public, anon, authenticated;
-drop trigger if exists support_tickets_admin_audit on public.support_tickets;
-create trigger support_tickets_admin_audit
-after update on public.support_tickets
-for each row execute function private.audit_support_workspace_update();
-drop trigger if exists feedback_items_admin_audit on public.feedback_items;
-create trigger feedback_items_admin_audit
-after update on public.feedback_items
-for each row execute function private.audit_support_workspace_update();
--- Replace the earlier broad audit triggers: only the column-scoped Support
--- update path above should emit one audit record per operation.
-drop trigger if exists platform_support_ticket_audit on public.support_tickets;
-drop trigger if exists platform_feedback_audit on public.feedback_items;
-
 
 -- Only the RPCs below can mutate role assignments, moderation state and reviews.
 revoke all on function public.get_my_platform_admin_permissions() from public, anon;
