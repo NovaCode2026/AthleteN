@@ -29,3 +29,11 @@ test("Web service worker opens the notification destination when tapped", () => 
   assert.match(worker, /event\.notification\?\.data\?\.url/);
   assert.match(worker, /self\.clients\.openWindow/);
 });
+
+
+test("desktop notification destinations cannot navigate to another origin", () => {
+  assert.match(app, /row\.action_route\.startsWith\('\/\/'\)\?\/notifications/);
+  const worker = read("../public/sw.js");
+  assert.match(worker, /new URL\(candidate, self\.location\.origin\)/);
+  assert.match(worker, /parsed\.origin === self\.location\.origin/);
+});
