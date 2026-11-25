@@ -407,16 +407,18 @@ RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000006',true);
 SET LOCAL ROLE authenticated;
 DO $test$
-DECLARE v_profiles integer; v_training integer; v_support integer; v_access jsonb;
+DECLARE v_profiles integer; v_training integer; v_support integer; v_storage integer; v_access jsonb;
 BEGIN
   v_access := public.get_my_platform_account_access();
   IF v_access->>'status' <> 'restricted' THEN RAISE EXCEPTION 'Athlete restriction status is not visible to the account owner'; END IF;
   SELECT count(*) INTO v_profiles FROM public.profiles;
   SELECT count(*) INTO v_training FROM public.training_sessions;
   SELECT count(*) INTO v_support FROM public.support_tickets;
+  SELECT count(*) INTO v_storage FROM storage.objects;
   IF v_profiles <> 1 THEN RAISE EXCEPTION 'Restricted Athlete must retain access to own profile'; END IF;
   IF v_training <> 0 THEN RAISE EXCEPTION 'Restricted Athlete must not access core training data'; END IF;
   IF v_support <> 1 THEN RAISE EXCEPTION 'Restricted Athlete must retain own support-ticket access'; END IF;
+  IF v_storage <> 0 THEN RAISE EXCEPTION 'Restricted Athlete must not access private stored documents'; END IF;
 END;
 $test$;
 RESET ROLE;
