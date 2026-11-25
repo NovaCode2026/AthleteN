@@ -58,6 +58,36 @@ END;
 $test$;
 RESET ROLE;
 
+-- Even Super Admin cannot bypass provider settlement, Student review RPC,
+-- server-metered usage or append-only audit mutation boundaries.
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+SET LOCAL ROLE authenticated;
+DO $test$
+DECLARE v_rows integer;
+BEGIN
+  UPDATE public.subscriptions SET status='canceled'
+  WHERE user_id='00000000-0000-0000-0000-000000000006';
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  IF v_rows <> 0 THEN RAISE EXCEPTION 'Super Admin must not manually mutate subscription settlement'; END IF;
+
+  UPDATE public.student_verifications SET status='approved'
+  WHERE user_id='00000000-0000-0000-0000-000000000006';
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  IF v_rows <> 0 THEN RAISE EXCEPTION 'Super Admin must use the audited Student verification RPC'; END IF;
+
+  UPDATE public.ai_usage_events SET payload='{"tokens":999}'::jsonb
+  WHERE user_id='00000000-0000-0000-0000-000000000006';
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  IF v_rows <> 0 THEN RAISE EXCEPTION 'Super Admin must not mutate server-metered AI usage'; END IF;
+
+  UPDATE public.audit_logs SET action='tampered'
+  WHERE action='user.role_change';
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  IF v_rows <> 0 THEN RAISE EXCEPTION 'Platform audit history must be append-only'; END IF;
+END;
+$test$;
+RESET ROLE;
+
 -- Super Admin assigns scoped roles to existing administrator accounts.
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
 SET LOCAL ROLE authenticated;
