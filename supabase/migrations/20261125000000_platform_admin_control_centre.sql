@@ -67,6 +67,12 @@ declare
   v_scope text;
 begin
   if p_user_id is null then return '{}'::text[]; end if;
+  if exists (
+    select 1 from public.platform_account_access_controls c
+    where c.user_id=p_user_id
+      and c.status in ('restricted','suspended')
+      and (c.expires_at is null or c.expires_at>pg_catalog.now())
+  ) then return '{}'::text[]; end if;
 
   select p.role into v_role
   from public.profiles p
@@ -543,7 +549,7 @@ begin
       execute pg_catalog.format('alter table public.%I enable row level security',t);
       execute pg_catalog.format('drop policy if exists platform_account_access_gate on public.%I',t);
       execute pg_catalog.format(
-        'create policy platform_account_access_gate on public.%I as restrictive for all to authenticated using ((select private.platform_account_is_active()) or (select private.is_platform_admin())) with check ((select private.platform_account_is_active()) or (select private.is_platform_admin()))',
+        'create policy platform_account_access_gate on public.%I as restrictive for all to authenticated using ((select private.platform_account_is_active()) or (select private.is_super_admin())) with check ((select private.platform_account_is_active()) or (select private.is_super_admin()))',
         t
       );
     end if;
