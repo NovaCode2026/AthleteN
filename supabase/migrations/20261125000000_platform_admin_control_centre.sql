@@ -266,6 +266,36 @@ begin
 end;
 $function$;
 
+create or replace function public.enforce_profile_entitlement_projection()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_plan text;
+  v_role text;
+  v_privileged_profile_mutation boolean;
+begin
+  v_privileged_profile_mutation :=
+    coalesce(pg_catalog.current_setting('athleten.privileged_profile_mutation',true),'')='1';
+
+  select ae.selected_plan_id into v_plan
+  from public.account_entitlements ae
+  where ae.user_id=new.user_id
+  limit 1;
+
+  if v_plan is not null and not v_privileged_profile_mutation then
+    new.plan_id := v_plan;
+    if coalesce(old.role::text,'athlete') not in ('support_admin','admin','super_admin') then
+      v_role := case v_plan when 'champion' then 'coach' when 'academy' then 'academy_admin' else 'athlete' end;
+      new.role := v_role;
+    end if;
+  end if;
+  return new;
+end;
+$function$;
+
 create or replace function public.enforce_profile_entitlement_security()
 returns trigger
 language plpgsql
