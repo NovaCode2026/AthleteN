@@ -125,7 +125,7 @@ export default function AdminControlCenter({ userId, role }: Props) {
       setError(e instanceof Error ? e.message : `Unable to load ${section.label}.`);
     } finally { setLoading(false); }
   }
-  useEffect(() => { void loadSummaries(); }, [canManage]); useEffect(() => { if (!canManage || !supabase) return; void load(); const ch = supabase.channel(`admin-${section.table}`).on("postgres_changes", { event: "*", schema: "public", table: section.table }, () => { void load(); void loadSummaries(); }).subscribe(); return () => { void supabase.removeChannel(ch); }; }, [section.table, canManage]);
+  useEffect(() => { void loadSummaries(); }, [canManage]); useEffect(() => { if (!canManage || !supabase) return; void load(); if (studentVerificationReadOnly || ageVerificationReadOnly) return; const ch = supabase.channel(`admin-${section.table}`).on("postgres_changes", { event: "*", schema: "public", table: section.table }, () => { void load(); void loadSummaries(); }).subscribe(); return () => { void supabase.removeChannel(ch); }; }, [section.table, canManage, studentVerificationReadOnly, ageVerificationReadOnly]);
   const filtered = useMemo(() => { const n = query.trim().toLowerCase(); return n ? rows.filter(r => JSON.stringify(r).toLowerCase().includes(n)) : rows; }, [rows, query]);
   const columns = useMemo(() => { const keys = new Set<string>(); filtered.slice(0, 30).forEach(r => Object.keys(r).forEach(k => keys.add(k))); return [...keys].filter(k => k !== "id").slice(0, 9); }, [filtered]);
   const total = summaries.reduce((a, b) => a + b.count, 0), users = summaries.find(s => s.key === "profiles")?.count ?? 0, tickets = summaries.find(s => s.key === "support")?.count ?? 0;
