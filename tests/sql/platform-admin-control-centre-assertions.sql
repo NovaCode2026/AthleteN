@@ -173,6 +173,45 @@ END;
 $test$;
 RESET ROLE;
 
+-- Suspending a scoped administrator must remove its scope privileges as well
+-- as gate core records; restoring it reactivates the assigned scope.
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+SET LOCAL ROLE authenticated;
+SELECT public.admin_set_platform_account_access(
+  '00000000-0000-0000-0000-000000000003',
+  'suspended',
+  'Temporary Finance Admin suspension during security review.',
+  NULL
+);
+RESET ROLE;
+
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',true);
+SET LOCAL ROLE authenticated;
+DO $test$
+DECLARE v_permissions jsonb; v_subscriptions integer; v_status jsonb;
+BEGIN
+  v_permissions:=public.get_my_platform_admin_permissions();
+  v_status:=public.get_my_platform_account_access();
+  SELECT count(*) INTO v_subscriptions FROM public.subscriptions;
+  IF jsonb_array_length(v_permissions->'permissions')<>0 THEN
+    RAISE EXCEPTION 'Restricted administrator must lose scoped admin permissions';
+  END IF;
+  IF v_status->>'status'<>'suspended' THEN RAISE EXCEPTION 'Suspended administrator must see its own access status'; END IF;
+  IF v_subscriptions<>0 THEN RAISE EXCEPTION 'Suspended administrator must lose billing data access'; END IF;
+END;
+$test$;
+RESET ROLE;
+
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+SET LOCAL ROLE authenticated;
+SELECT public.admin_set_platform_account_access(
+  '00000000-0000-0000-0000-000000000003',
+  'active',
+  'Finance Admin security review completed; restore assigned role permissions.',
+  NULL
+);
+RESET ROLE;
+
 -- Operations Admin gets account controls, search and platform configuration,
 -- but not unrestricted verification review or role assignment.
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',true);
