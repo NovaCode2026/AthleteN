@@ -1053,23 +1053,23 @@ begin
       execute pg_catalog.format('drop policy if exists platform_admin_scope_select on public.%I',t);
       execute pg_catalog.format(
         'create policy platform_admin_scope_select on public.%I as restrictive for select to authenticated using (private.platform_admin_resource_allowed(%L,''select'')%s)',
-        t,t,case when t in ('profiles','notifications','support_tickets','feedback_items') then ' or user_id=(select auth.uid())' else '' end
+        t,case when t in ('profiles','notifications','support_tickets','feedback_items') then ' or user_id=(select auth.uid())' else '' end
       );
       execute pg_catalog.format('drop policy if exists platform_admin_scope_insert on public.%I',t);
       execute pg_catalog.format(
         'create policy platform_admin_scope_insert on public.%I as restrictive for insert to authenticated with check (private.platform_admin_resource_allowed(%L,''insert'')%s)',
-        t,t,case when t='profiles' then ' or user_id=(select auth.uid())' else '' end
+        t,case when t='profiles' then ' or user_id=(select auth.uid())' else '' end
       );
       execute pg_catalog.format('drop policy if exists platform_admin_scope_update on public.%I',t);
       execute pg_catalog.format(
         'create policy platform_admin_scope_update on public.%I as restrictive for update to authenticated using (private.platform_admin_resource_allowed(%L,''update'')%s) with check (private.platform_admin_resource_allowed(%L,''update'')%s)',
-        t,t,case when t in ('profiles','notifications') then ' or user_id=(select auth.uid())' else '' end,
+        t,case when t in ('profiles','notifications') then ' or user_id=(select auth.uid())' else '' end,
         t,case when t in ('profiles','notifications') then ' or user_id=(select auth.uid())' else '' end
       );
       execute pg_catalog.format('drop policy if exists platform_admin_scope_delete on public.%I',t);
       execute pg_catalog.format(
         'create policy platform_admin_scope_delete on public.%I as restrictive for delete to authenticated using (private.platform_admin_resource_allowed(%L,''delete''))',
-        t,t
+        t
       );
     end if;
   end loop;
