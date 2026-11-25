@@ -92,7 +92,8 @@ SELECT public.admin_set_athlete_verified(
 DO $test$
 DECLARE v_verified boolean; v_audit integer;
 BEGIN
-  SELECT verified_athlete INTO v_verified FROM public.profiles
+  SELECT verified_athlete INTO v_verified
+  FROM public.search_athlete_verification_reviews('Test Athlete',20)
   WHERE user_id='00000000-0000-0000-0000-000000000006';
   IF v_verified IS DISTINCT FROM true THEN RAISE EXCEPTION 'Athlete verification was not granted'; END IF;
   SELECT count(*) INTO v_audit FROM public.get_platform_admin_audit(100)
