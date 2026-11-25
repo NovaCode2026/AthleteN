@@ -193,7 +193,7 @@ begin
     'admins', case when private.platform_admin_has_permission('platform.roles.manage') then (select count(*) from public.profiles where role in ('support_admin','admin','super_admin')) else null end,
     'pending_student_verifications', case when private.platform_admin_has_permission('verification.read') then (select count(*) from public.student_verifications where status='pending') else null end,
     'active_subscriptions', case when private.platform_admin_has_permission('billing.read') then (select count(*) from public.subscriptions where status='active') else null end,
-    'open_support_tickets', case when private.platform_admin_has_permission('support.read') then (select count(*) from public.support_tickets where status in ('new','open','in_progress')) else null end,
+    'open_support_tickets', case when private.platform_admin_has_permission('support.read') then (select count(*) from public.support_tickets where status in ('open','pending')) else null end,
     'restricted_accounts', case when private.platform_admin_has_permission('account.manage') or private.platform_admin_has_permission('security.read') then (select count(*) from public.platform_account_access_controls where status in ('restricted','suspended') and (expires_at is null or expires_at > pg_catalog.now())) else null end,
     'verified_athletes', case when private.platform_admin_has_permission('platform.read') or private.platform_admin_has_permission('analytics.read') then (select count(*) from public.profiles where role='athlete' and verified_athlete=true) else null end,
     'verified_coaches', case when private.platform_admin_has_permission('platform.read') or private.platform_admin_has_permission('analytics.read') then (select count(*) from auth.users u join public.profiles p on p.user_id=u.id where p.role='coach' and u.email_confirmed_at is not null) else null end,
@@ -796,6 +796,66 @@ after insert or update or delete on public.announcements
 for each row execute function private.audit_platform_configuration_change();
 
 revoke all on function private.audit_platform_configuration_change() from public, anon, authenticated;
+
+create or replace function private.audit_platform_support_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_user_id uuid;
+  v_row_id uuid;
+  v_action text;
+  v_fields jsonb;
+begin
+  if tg_table_name='support_tickets' then
+    if tg_op='DELETE' then
+      v_user_id:=old.user_id; v_row_id:=old.id; v_action:='support.ticket.deleted';
+      v_fields:=jsonb_build_object('status',old.status,'priority',old.priority,'assigned_to',old.assigned_to);
+    elsif tg_op='INSERT' then
+      v_user_id:=new.user_id; v_row_id:=new.id; v_action:='support.ticket.created';
+      v_fields:=jsonb_build_object('status',new.status,'priority',new.priority,'assigned_to',new.assigned_to);
+    else
+      v_user_id:=new.user_id; v_row_id:=new.id; v_action:='support.ticket.updated';
+      v_fields:=jsonb_build_object('status',new.status,'priority',new.priority,'assigned_to',new.assigned_to);
+    end if;
+  elsif tg_table_name='feedback_items' then
+    if tg_op='DELETE' then
+      v_user_id:=old.user_id; v_row_id:=old.id; v_action:='support.feedback.deleted';
+      v_fields:=jsonb_build_object('status',old.status,'priority',old.priority);
+    elsif tg_op='INSERT' then
+      v_user_id:=new.user_id; v_row_id:=new.id; v_action:='support.feedback.created';
+      v_fields:=jsonb_build_object('status',new.status,'priority',new.priority);
+    else
+      v_user_id:=new.user_id; v_row_id:=new.id; v_action:='support.feedback.updated';
+      v_fields:=jsonb_build_object('status',new.status,'priority',new.priority);
+    end if;
+  else
+    return null;
+  end if;
+
+  insert into public.platform_admin_audit_log(actor_user_id,target_user_id,action,reason,metadata)
+  values((select auth.uid()),v_user_id,v_action,
+    'Support record changed through the authenticated support workflow.',
+    v_fields||jsonb_build_object('record_id',v_row_id,'table',tg_table_name));
+
+  if tg_op='DELETE' then return old; end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists platform_support_ticket_audit on public.support_tickets;
+create trigger platform_support_ticket_audit
+after insert or update or delete on public.support_tickets
+for each row execute function private.audit_platform_support_change();
+
+drop trigger if exists platform_feedback_audit on public.feedback_items;
+create trigger platform_feedback_audit
+after insert or update or delete on public.feedback_items
+for each row execute function private.audit_platform_support_change();
+
+revoke all on function private.audit_platform_support_change() from public, anon, authenticated;
 
 -- Scoped administrators are restricted at the database boundary. Regular users
 -- retain their existing owner/team RLS paths; full Admin/Super Admin retains
