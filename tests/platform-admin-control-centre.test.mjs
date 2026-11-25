@@ -124,29 +124,29 @@ test("Athlete profile verification is scoped, reasoned, notified and audited", (
   const reviewEnd = sql.indexOf("$function$;", reviewStart);
   const reviewFn = sql.slice(reviewStart, reviewEnd);
   assert.ok(searchStart >= 0 && reviewStart > searchStart && reviewEnd > reviewStart);
-  assert.match(sql.slice(searchStart, reviewStart), /verification\\.read/);
-  assert.match(reviewFn, /verification\\.athlete\\.manage/);
-  assert.match(reviewFn, /p_reason is null/);
-  assert.match(reviewFn, /char_length\\(btrim\\(p_reason\\)\\) not between 5 and 500/);
-  assert.match(reviewFn, /p\\.role='athlete'/);
-  assert.match(reviewFn, /insert into public\\.platform_admin_audit_log/i);
-  assert.match(reviewFn, /insert into public\\.notifications/i);
-  assert.match(webExtensions, /search_athlete_verification_reviews/);
-  assert.match(webExtensions, /admin_set_athlete_verified/);
-  assert.match(mobileOperations, /search_athlete_verification_reviews/);
-  assert.match(mobileOperations, /admin_set_athlete_verified/);
+  assert.ok(sql.slice(searchStart, reviewStart).includes("verification.read"));
+  assert.ok(reviewFn.includes("verification.athlete.manage"));
+  assert.ok(reviewFn.includes("p_reason is null"));
+  assert.ok(reviewFn.includes("char_length(btrim(p_reason)) not between 5 and 500"));
+  assert.ok(reviewFn.includes("p.role='athlete'"));
+  assert.ok(reviewFn.includes("insert into public.platform_admin_audit_log"));
+  assert.ok(reviewFn.includes("insert into public.notifications"));
+  assert.ok(webExtensions.includes("search_athlete_verification_reviews"));
+  assert.ok(webExtensions.includes("admin_set_athlete_verified"));
+  assert.ok(mobileOperations.includes("search_athlete_verification_reviews"));
+  assert.ok(mobileOperations.includes("admin_set_athlete_verified"));
 });
 
 test("platform overview only returns metrics within the caller's permission scope", () => {
   const start = sql.indexOf("create or replace function public.get_platform_admin_overview");
   const end = sql.indexOf("$function$;", start);
   const fn = sql.slice(start, end);
-  assert.match(fn, /'active_subscriptions',[\\s\\S]*?platform_admin_has_permission\\('billing\\.read'\\)/);
-  assert.match(fn, /'pending_student_verifications',[\\s\\S]*?platform_admin_has_permission\\('verification\\.read'\\)/);
-  assert.match(fn, /'open_support_tickets',[\\s\\S]*?platform_admin_has_permission\\('support\\.read'\\)/);
-  assert.match(fn, /'restricted_accounts',[\\s\\S]*?platform_admin_has_permission\\('account\\.manage'\\)/);
-  assert.match(webExtensions, /filter\\(\\(\\[,value\\]\\)=>value!==null&&value!==undefined\\)/);
-  assert.match(mobileOperations, /filter\\(\\(\\[,value\\]\\)=>value!==null&&value!==undefined\\)/);
+  assert.ok(fn.includes("'active_subscriptions', case when private.platform_admin_has_permission('billing.read')"));
+  assert.ok(fn.includes("'pending_student_verifications', case when private.platform_admin_has_permission('verification.read')"));
+  assert.ok(fn.includes("'open_support_tickets', case when private.platform_admin_has_permission('support.read')"));
+  assert.ok(fn.includes("'restricted_accounts', case when private.platform_admin_has_permission('account.manage')"));
+  assert.ok(webExtensions.includes("filter(([,value])=>value!==null&&value!==undefined)"));
+  assert.ok(mobileOperations.includes("filter(([,value])=>value!==null&&value!==undefined)"));
 });
 
 test("age-verification guardian approval remains separate and generic admin data stays minimised", () => {
