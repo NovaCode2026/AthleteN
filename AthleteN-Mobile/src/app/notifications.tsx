@@ -82,7 +82,7 @@ export default function NotificationsScreen() {
     data = (primaryQuery.data || null) as NotificationRow[] | null;
     queryError = primaryQuery.error;
     // Older staging environments may not have the source-link migration yet.
-    if (queryError && ['attendance_record_id', 'training_group_session_id'].some((field) => String(queryError.message || '').toLowerCase().includes(field))) {
+    if (queryError && ['attendance_record_id', 'training_group_session_id'].some((field) => String(queryError?.message || '').toLowerCase().includes(field))) {
       const fallback = await supabase
         .from('notifications')
         .select('id,title,body,notification_type,action_route,message_id,announcement_id,created_at,read_at')
