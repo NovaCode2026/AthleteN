@@ -58,6 +58,7 @@ export default function AdminOperationsScreen() {
   const [reviewReasons, setReviewReasons] = useState<Record<string,string>>({});
   const [assignmentUserId, setAssignmentUserId] = useState('');
   const [assignmentScope, setAssignmentScope] = useState('support');
+  const [assignmentReason, setAssignmentReason] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -287,15 +288,17 @@ export default function AdminOperationsScreen() {
   }
 
   async function assignScope() {
+    const reason = assignmentReason.trim();
+    if (reason.length < 5 || reason.length > 500) { setMessage('Enter a permission-scope reason between 5 and 500 characters.'); return; }
     if (!assignmentUserId.trim()) { setMessage('Enter an Admin or Support Admin user ID.'); return; }
     setBusy(true); setMessage('');
     const { error } = await supabase.rpc('admin_assign_platform_role', {
-      p_admin_user_id: assignmentUserId.trim(), p_permission_role: assignmentScope === 'full' ? null : assignmentScope,
+      p_admin_user_id: assignmentUserId.trim(), p_permission_role: assignmentScope === 'full' ? null : assignmentScope, p_reason: reason,
     });
     setBusy(false);
     if (error) { setMessage(error.message); return; }
     setMessage('Administrator permission scope updated and audited.');
-    setAssignmentUserId('');
+    setAssignmentUserId(''); setAssignmentReason('');
     await load();
   }
 
@@ -423,6 +426,7 @@ export default function AdminOperationsScreen() {
           <TextInput value={assignmentUserId} onChangeText={setAssignmentUserId} placeholder="Admin user UUID" placeholderTextColor={c.muted} style={s.input} autoCapitalize="none"/>
           <Text style={s.controlLabel}>SCOPE</Text>
           <View style={s.chips}>{['support','verification','finance','operations','full'].map((scope)=><Pressable key={scope} onPress={()=>setAssignmentScope(scope)} style={[s.chip,assignmentScope===scope&&s.chipActive]}><Text style={s.chipText}>{scope.toUpperCase()}</Text></Pressable>)}</View>
+          <TextInput value={assignmentReason} onChangeText={setAssignmentReason} placeholder="Permission-scope reason (5–500 characters)" placeholderTextColor={c.muted} style={[s.input,s.multiline]} multiline maxLength={500}/>
           <Pressable style={s.primaryButton} disabled={busy} onPress={()=>void assignScope()}><Text style={s.buttonText}>SAVE PERMISSIONS</Text></Pressable>
           {assignmentRows.map((row)=><View key={row.admin_user_id} style={s.auditRow}><Text style={s.userName}>{row.full_name || row.username || row.admin_user_id}</Text><Text style={s.meta}>{row.base_role} · {row.permission_role || 'full'}</Text></View>)}
         </View> : null}
