@@ -14,6 +14,7 @@ type Overview = {
   restricted_accounts: number; verified_athletes: number; verified_coaches: number; verified_academies: number;
 };
 type PermissionPayload = { base_role: string; permission_role: string; permissions: string[] };
+type AthleteVerificationReview = { user_id:string; full_name:string|null; username:string|null; verified_athlete:boolean; created_at:string };
 type VerificationRequest = {
   id: string; user_id: string; full_name: string | null; username: string | null;
   document_type: string; file_path: string | null; status: string; created_at: string;
@@ -31,6 +32,9 @@ export default function AdminOperationsScreen() {
   const [permission, setPermission] = useState<PermissionPayload | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [queue, setQueue] = useState<VerificationRequest[]>([]);
+  const [athleteQuery, setAthleteQuery] = useState('');
+  const [athleteReviews, setAthleteReviews] = useState<AthleteVerificationReview[]>([]);
+  const [athleteReasons, setAthleteReasons] = useState<Record<string,string>>({});
   const [accounts, setAccounts] = useState<AccountResult[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<AccountResult | null>(null);
   const [accessRows, setAccessRows] = useState<AccessRow[]>([]);
@@ -51,6 +55,7 @@ export default function AdminOperationsScreen() {
   const has = (key: string) => role === 'super_admin' || permissions.includes('*') || permissions.includes(key);
   const canReadOverview = ['platform.read','analytics.read','billing.read','verification.read','support.read'].some(has);
   const canVerify = has('verification.read');
+  const canManageAthleteVerification = has('verification.athlete.manage');
   const canManageAccounts = has('account.manage');
   const canAssign = role === 'super_admin' && has('platform.roles.manage');
   const canReadAudit = has('audit.read');
@@ -134,6 +139,32 @@ export default function AdminOperationsScreen() {
     await load();
   }
 
+  async function searchAthleteReviews() {
+    if (athleteQuery.trim().length < 2) { setMessage('Enter at least two characters to search Athlete accounts.'); return; }
+    setBusy(true); setMessage('');
+    const { data, error } = await supabase.rpc('search_athlete_verification_reviews', {
+      p_query: athleteQuery.trim(), p_limit: 20,
+    });
+    setBusy(false);
+    if (error) { setMessage(error.message); return; }
+    setAthleteReviews((data || []) as AthleteVerificationReview[]);
+  }
+
+  async function setAthleteVerified(row: AthleteVerificationReview, verified: boolean) {
+    if (!canManageAthleteVerification) return;
+    const reason = (athleteReasons[row.user_id] || '').trim();
+    if (reason.length < 5 || reason.length > 500) { setMessage('Record the evidence reviewed and decision reason (5–500 characters).'); return; }
+    setBusy(true); setMessage('');
+    const { error } = await supabase.rpc('admin_set_athlete_verified', {
+      p_user_id: row.user_id, p_verified: verified, p_reason: reason,
+    });
+    setBusy(false);
+    if (error) { setMessage(error.message); return; }
+    setAthleteReasons((values)=>({...values,[row.user_id]:''}));
+    setMessage(verified ? 'Athlete verification granted and audited.' : 'Athlete verification revoked and audited.');
+    await searchAthleteReviews();
+  }
+
   async function searchAccounts() {
     if (query.trim().length < 2) { setMessage('Enter at least two characters to search.'); return; }
     setBusy(true); setMessage('');
@@ -196,6 +227,25 @@ export default function AdminOperationsScreen() {
           ['OPEN SUPPORT',overview.open_support_tickets],['RESTRICTED',overview.restricted_accounts],
           ['COACH EMAIL VERIFIED',overview.verified_coaches],['ACADEMY VERIFIED',overview.verified_academies],
         ].map(([label,value])=><Stat key={String(label)} label={String(label)} value={Number(value)}/>)}</View> : null}
+
+        {canVerify ? <View style={s.panel}>
+          <Text style={s.section}>ATHLETE PROFILE VERIFICATION</Text>
+          <Text style={s.meta}>Search individual Athlete accounts. Grant or revoke the verified badge only after reviewing credible supporting records. Every decision requires a reason and is audited. Student-plan proof review is a separate workflow below.</Text>
+          <TextInput value={athleteQuery} onChangeText={setAthleteQuery} placeholder="Athlete name, username or user ID prefix" placeholderTextColor={c.muted} style={s.input}/>
+          <Pressable style={s.secondaryButton} disabled={busy} onPress={()=>void searchAthleteReviews()}><Text style={s.buttonText}>SEARCH ATHLETES</Text></Pressable>
+          {athleteReviews.map((row)=><View key={row.user_id} style={s.request}>
+            <Text style={s.userName}>{row.full_name || 'Athlete account'} · {row.verified_athlete ? 'VERIFIED' : 'NOT VERIFIED'}</Text>
+            <Text style={s.meta}>@{row.username || 'username not set'} · Joined {new Date(row.created_at).toLocaleDateString()}</Text>
+            <Text style={s.code}>{row.user_id}</Text>
+            {canManageAthleteVerification ? <>
+              <TextInput value={athleteReasons[row.user_id] || ''} onChangeText={(value)=>setAthleteReasons((values)=>({...values,[row.user_id]:value}))} placeholder="Evidence reviewed / reason (5–500 characters)" placeholderTextColor={c.muted} style={[s.input,s.multiline]} multiline maxLength={500}/>
+              <View style={s.actions}>
+                <Pressable style={[s.primaryButton,row.verified_athlete&&s.disabled]} disabled={busy||row.verified_athlete} onPress={()=>void setAthleteVerified(row,true)}><Text style={s.buttonText}>VERIFY</Text></Pressable>
+                <Pressable style={[s.dangerButton,!row.verified_athlete&&s.disabled]} disabled={busy||!row.verified_athlete} onPress={()=>void setAthleteVerified(row,false)}><Text style={s.buttonText}>REVOKE</Text></Pressable>
+              </View>
+            </> : <Text style={s.meta}>Read-only review scope. A Verification Admin must make the decision.</Text>}
+          </View>)}
+        </View> : null}
 
         {canVerify ? <View style={s.panel}>
           <Text style={s.section}>STUDENT VERIFICATION QUEUE</Text>
