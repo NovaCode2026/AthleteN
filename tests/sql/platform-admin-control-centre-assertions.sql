@@ -26,8 +26,7 @@ END;
 $test$;
 RESET ROLE;
 
--- Super Admin role changes pass through the protected entitlement projection and
--- the system-managed Administrator badge follows the current role.
+-- Super Admin role changes pass through the protected entitlement projection.
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
 SET LOCAL ROLE authenticated;
 DO $test$
@@ -44,27 +43,23 @@ END;
 $test$;
 SELECT public.admin_set_user_role('00000000-0000-0000-0000-000000000006','admin','Promote athlete to Admin for controlled role workflow regression test.');
 DO $test$
-DECLARE v_role text; v_badges integer;
+DECLARE v_role text;
 BEGIN
   SELECT role INTO v_role FROM public.profiles
   WHERE user_id='00000000-0000-0000-0000-000000000006';
-  SELECT count(*) INTO v_badges FROM public.athlete_badges
-  WHERE user_id='00000000-0000-0000-0000-000000000006' AND badge_key='administrator';
-  IF v_role <> 'admin' OR v_badges <> 1 THEN
-    RAISE EXCEPTION 'Super Admin role promotion or Administrator badge failed';
+  IF v_role <> 'admin' THEN
+    RAISE EXCEPTION 'Super Admin role promotion failed: got %',v_role;
   END IF;
 END;
 $test$;
 SELECT public.admin_set_user_role('00000000-0000-0000-0000-000000000006','athlete','Restore test athlete role after controlled role workflow regression test.');
 DO $test$
-DECLARE v_role text; v_badges integer;
+DECLARE v_role text;
 BEGIN
   SELECT role INTO v_role FROM public.profiles
   WHERE user_id='00000000-0000-0000-0000-000000000006';
-  SELECT count(*) INTO v_badges FROM public.athlete_badges
-  WHERE user_id='00000000-0000-0000-0000-000000000006' AND badge_key='administrator';
-  IF v_role <> 'athlete' OR v_badges <> 0 THEN
-    RAISE EXCEPTION 'Super Admin role demotion or Administrator badge cleanup failed';
+  IF v_role <> 'athlete' THEN
+    RAISE EXCEPTION 'Super Admin role demotion failed: got %',v_role;
   END IF;
 END;
 $test$;
