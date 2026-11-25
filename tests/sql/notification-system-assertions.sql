@@ -61,7 +61,7 @@ VALUES ('10000000-0000-4000-8000-000000000001','first_session','First Session');
 -- The training_schedule companion message does not create a duplicate message-category alert.
 INSERT INTO public.messages(id,sender_id,conversation_id,body,message_type) VALUES
  ('77000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000002','30000000-0000-4000-8000-000000000001','Training cancelled','training_schedule'),
- ('77000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002','30000000-0000-4000-8000-000000000001','Technique review is ready','text');
+ ('77000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001','Technique review is ready','text');
 
 DO $$
 DECLARE
