@@ -45,6 +45,7 @@ DECLARE
   v_profiles integer;
   v_queue integer;
   v_assets integer;
+  v_overview jsonb;
 BEGIN
   v_permissions := public.get_my_platform_admin_permissions();
   IF NOT (v_permissions->'permissions' ? 'verification.review') THEN
@@ -53,6 +54,12 @@ BEGIN
 
   SELECT count(*) INTO v_profiles FROM public.profiles;
   IF v_profiles <> 1 THEN RAISE EXCEPTION 'Scoped Verification Admin must not browse the full profile directory'; END IF;
+  v_overview := public.get_platform_admin_overview();
+  IF v_overview->'active_subscriptions' <> 'null'::jsonb
+     OR v_overview->'users' <> 'null'::jsonb
+     OR v_overview->'pending_student_verifications' = 'null'::jsonb THEN
+    RAISE EXCEPTION 'Verification Admin overview leaked metrics outside its permission scope';
+  END IF;
 
   SELECT count(*) INTO v_queue FROM public.search_athlete_verification_reviews('Test Athlete',20);
   IF v_queue <> 1 THEN RAISE EXCEPTION 'Verification Admin should find one matching Athlete account'; END IF;
@@ -141,8 +148,14 @@ RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',true);
 SET LOCAL ROLE authenticated;
 DO $test$
-DECLARE v_rows integer; v_subscriptions integer;
+DECLARE v_rows integer; v_subscriptions integer; v_overview jsonb;
 BEGIN
+  v_overview := public.get_platform_admin_overview();
+  IF v_overview->'active_subscriptions' = 'null'::jsonb
+     OR v_overview->'pending_student_verifications' <> 'null'::jsonb
+     OR v_overview->'users' <> 'null'::jsonb THEN
+    RAISE EXCEPTION 'Finance Admin overview leaked metrics outside its permission scope';
+  END IF;
   SELECT count(*) INTO v_subscriptions FROM public.subscriptions;
   IF v_subscriptions <> 1 THEN RAISE EXCEPTION 'Finance Admin should read the subscription ledger'; END IF;
   UPDATE public.subscriptions SET status='canceled'
@@ -233,9 +246,14 @@ RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000005',true);
 SET LOCAL ROLE authenticated;
 DO $test$
-DECLARE v_tickets integer; v_subscriptions integer; v_permissions jsonb;
+DECLARE v_tickets integer; v_subscriptions integer; v_permissions jsonb; v_overview jsonb;
 BEGIN
   v_permissions := public.get_my_platform_admin_permissions();
+  v_overview := public.get_platform_admin_overview();
+  IF v_overview->'open_support_tickets' = 'null'::jsonb
+     OR v_overview->'active_subscriptions' <> 'null'::jsonb THEN
+    RAISE EXCEPTION 'Support Admin overview leaked metrics outside its permission scope';
+  END IF;
   IF NOT (v_permissions->'permissions' ? 'support.manage') THEN
     RAISE EXCEPTION 'Existing Support Admin was not seeded into Support scope';
   END IF;
