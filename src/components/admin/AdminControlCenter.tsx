@@ -106,7 +106,25 @@ export default function AdminControlCenter({ userId, role }: Props) {
   const canCreateCurrentSection = isOwner && !ageVerificationReadOnly && !studentVerificationReadOnly && !serverMeteredReadOnly && !financialStateReadOnly;
 
   async function loadSummaries() { if (!canManage || !supabase) { setSummaryLoading(false); return; } setSummaryLoading(true); try { const r = await Promise.all(sections.map(async s => { const { count, error: e } = await supabase.from(s.table).select("*", { count: "exact", head: true }); if (e) throw new Error(`${s.label}: ${e.message}`); return { key: s.key, label: s.label, count: count ?? 0 }; })); setSummaries(r); } catch (e) { setError(e instanceof Error ? e.message : "Some admin resource counts could not be loaded."); } finally { setSummaryLoading(false); } }
-  async function load() { if (!canManage || !supabase) return; setLoading(true); setError(""); setSelectedRow(null); try { const result = ageVerificationReadOnly ? await supabase.from(section.table).select("id,user_id,status,approved_at,rejected_at,created_at,updated_at").limit(100) : studentVerificationReadOnly ? await supabase.from(section.table).select("id,user_id,document_type,status,reviewer_notes,reviewed_by,reviewed_at,created_at").limit(100) : await supabase.from(section.table).select("*").limit(100); if (result.error) throw result.error; setRows((result.data ?? []) as Row[]); } catch (e) { setRows([]); setError(e instanceof Error ? e.message : `Unable to load ${section.label}.`); } finally { setLoading(false); } }
+  async function load() {
+    if (!canManage || !supabase) return;
+    setLoading(true); setError(""); setSelectedRow(null);
+    try {
+      if (studentVerificationReadOnly) {
+        setRows([]);
+        setNotice("Student proof requests are managed in the dedicated audited verification queue above.");
+        return;
+      }
+      const result = ageVerificationReadOnly
+        ? await supabase.rpc("get_age_verification_admin_queue")
+        : await supabase.from(section.table).select("*").limit(100);
+      if (result.error) throw result.error;
+      setRows((result.data ?? []) as Row[]);
+    } catch (e) {
+      setRows([]);
+      setError(e instanceof Error ? e.message : `Unable to load ${section.label}.`);
+    } finally { setLoading(false); }
+  }
   useEffect(() => { void loadSummaries(); }, [canManage]); useEffect(() => { if (!canManage || !supabase) return; void load(); const ch = supabase.channel(`admin-${section.table}`).on("postgres_changes", { event: "*", schema: "public", table: section.table }, () => { void load(); void loadSummaries(); }).subscribe(); return () => { void supabase.removeChannel(ch); }; }, [section.table, canManage]);
   const filtered = useMemo(() => { const n = query.trim().toLowerCase(); return n ? rows.filter(r => JSON.stringify(r).toLowerCase().includes(n)) : rows; }, [rows, query]);
   const columns = useMemo(() => { const keys = new Set<string>(); filtered.slice(0, 30).forEach(r => Object.keys(r).forEach(k => keys.add(k))); return [...keys].filter(k => k !== "id").slice(0, 9); }, [filtered]);
