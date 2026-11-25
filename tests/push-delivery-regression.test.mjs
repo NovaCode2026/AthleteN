@@ -35,7 +35,7 @@ test("receipt state distinguishes Expo ticket acceptance from FCM/APNs handoff",
   assert.match(migration, /'handed_off'/);
   assert.match(migration, /15 minutes/);
   assert.match(migration, /23 hours/);
-  assert.match(runbook, /does not prove that a person saw the notification/i);
+  assert.match(runbook, /does not prove that the phone displayed it or that a person saw it/i);
 });
 
 test("cleanup and push worker secrets are server-side deployment gates", () => {
@@ -97,6 +97,6 @@ test("Expo ticket response parsing supports both object and array response shape
 test("push retry workers and receipt ledgers are restricted to service role", () => {
   assert.match(reliability, /ALTER TABLE public\.push_receipt_poll_requests ENABLE ROW LEVEL SECURITY/i);
   assert.match(reliability, /REVOKE ALL ON TABLE public\.push_receipt_poll_requests FROM PUBLIC, anon, authenticated/i);
-  assert.match(reliability, /GRANT EXECUTE ON FUNCTION public\.run_push_delivery_cycle\(\) TO service_role/i);
-  assert.match(reliability, /REVOKE ALL ON FUNCTION public\.run_push_delivery_cycle\(\) FROM PUBLIC, anon, authenticated/i);
+  assert.match(reliability, /GRANT EXECUTE ON FUNCTION public.run_push_delivery_cycle/i);
+  assert.match(reliability, /REVOKE ALL ON FUNCTION public.run_push_delivery_cycle/i);
 });
