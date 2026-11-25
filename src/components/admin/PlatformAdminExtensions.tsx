@@ -5,9 +5,9 @@ import "./PlatformAdminExtensions.css";
 
 type PermissionPayload = { base_role: string; permission_role: string; permissions: string[] };
 type Overview = {
-  users: number; athletes: number; coaches: number; academies: number; admins: number;
-  pending_student_verifications: number; active_subscriptions: number; open_support_tickets: number;
-  restricted_accounts: number; verified_athletes: number; verified_coaches: number; verified_academies: number;
+  users: number | null; athletes: number | null; coaches: number | null; academies: number | null; admins: number | null;
+  pending_student_verifications: number | null; active_subscriptions: number | null; open_support_tickets: number | null;
+  restricted_accounts: number | null; verified_athletes: number | null; verified_coaches: number | null; verified_academies: number | null;
 };
 type AthleteVerificationReview = {
   user_id: string; full_name: string | null; username: string | null;
@@ -272,7 +272,7 @@ export default function PlatformAdminExtensions({ role }: { userId: string; role
         ["Verified athletes",overview.verified_athletes],["Pending Student reviews",overview.pending_student_verifications],["Active subscriptions",overview.active_subscriptions],
         ["Open support",overview.open_support_tickets],["Restricted accounts",overview.restricted_accounts],
         ["Coach email verified",overview.verified_coaches],["Academy setup verified",overview.verified_academies]
-      ].map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{Number(value).toLocaleString()}</strong></article>)}
+      ].filter(([,value])=>value!==null&&value!==undefined).map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{Number(value).toLocaleString()}</strong></article>)}
     </div>}
 
     {canVerify && <div className="platform-admin-panel">
