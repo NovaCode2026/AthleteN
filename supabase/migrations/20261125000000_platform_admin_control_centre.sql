@@ -1028,6 +1028,9 @@ begin
     values(p_user_id,'administrator','Administrator')
     on conflict(user_id,badge_key) do update
       set badge_label=excluded.badge_label;
+  else
+    delete from public.athlete_badges
+    where user_id=p_user_id and badge_key='administrator';
   end if;
 end;
 $function$;
