@@ -177,27 +177,41 @@ set search_path = ''
 as $function$
 begin
   if (select auth.uid()) is null then raise exception 'Authentication required'; end if;
-  if not (private.platform_admin_has_permission('platform.read')
-       or private.platform_admin_has_permission('analytics.read')
-       or private.platform_admin_has_permission('billing.read')
-       or private.platform_admin_has_permission('verification.read')
-       or private.platform_admin_has_permission('support.read')) then
+  if not (
+    private.platform_admin_has_permission('platform.read')
+    or private.platform_admin_has_permission('analytics.read')
+    or private.platform_admin_has_permission('billing.read')
+    or private.platform_admin_has_permission('verification.read')
+    or private.platform_admin_has_permission('support.read')
+  ) then
     raise exception 'Platform overview permission required';
   end if;
 
   return jsonb_build_object(
-    'users', case when private.platform_admin_has_permission('platform.read') or private.platform_admin_has_permission('analytics.read') then (select count(*) from public.profiles) else null end,
-    'athletes', case when private.platform_admin_has_permission('platform.read') or private.platform_admin_has_permission('analytics.read') then (select count(*) from public.profiles where role='athlete') else null end,
-    'coaches', case when private.platform_admin_has_permission('platform.read') or private.platform_admin_has_permission('analytics.read') then (select count(*) from public.profiles where role='coach') else null end,
-    'academies', case when private.platform_admin_has_permission('platform.read') or private.platform_admin_has_permission('analytics.read') then (select count(*) from public.academies) else null end,
-    'admins', case when private.platform_admin_has_permission('platform.roles.manage') then (select count(*) from public.profiles where role in ('support_admin','admin','super_admin')) else null end,
-    'pending_student_verifications', case when private.platform_admin_has_permission('verification.read') then (select count(*) from public.student_verifications where status='pending') else null end,
-    'active_subscriptions', case when private.platform_admin_has_permission('billing.read') then (select count(*) from public.subscriptions where status='active') else null end,
-    'open_support_tickets', case when private.platform_admin_has_permission('support.read') then (select count(*) from public.support_tickets where status in ('open','pending')) else null end,
-    'restricted_accounts', case when private.platform_admin_has_permission('account.manage') or private.platform_admin_has_permission('security.read') then (select count(*) from public.platform_account_access_controls where status in ('restricted','suspended') and (expires_at is null or expires_at > pg_catalog.now())) else null end,
-    'verified_athletes', case when private.platform_admin_has_permission('platform.read') or private.platform_admin_has_permission('analytics.read') then (select count(*) from public.profiles where role='athlete' and verified_athlete=true) else null end,
-    'verified_coaches', case when private.platform_admin_has_permission('platform.read') or private.platform_admin_has_permission('analytics.read') then (select count(*) from auth.users u join public.profiles p on p.user_id=u.id where p.role='coach' and u.email_confirmed_at is not null) else null end,
-    'verified_academies', case when private.platform_admin_has_permission('platform.read') or private.platform_admin_has_permission('analytics.read') then (select count(*) from public.academies a where a.status='active' and a.setup_completed=true and a.contact_email_verified_at is not null) else null end
+    'users', case when private.platform_admin_has_permission('platform.read') or private.platform_admin_has_permission('analytics.read')
+      then (select count(*) from public.profiles) else null end,
+    'athletes', case when private.platform_admin_has_permission('platform.read') or private.platform_admin_has_permission('analytics.read')
+      then (select count(*) from public.profiles where role='athlete') else null end,
+    'coaches', case when private.platform_admin_has_permission('platform.read') or private.platform_admin_has_permission('analytics.read')
+      then (select count(*) from public.profiles where role='coach') else null end,
+    'academies', case when private.platform_admin_has_permission('platform.read') or private.platform_admin_has_permission('analytics.read')
+      then (select count(*) from public.academies) else null end,
+    'admins', case when private.platform_admin_has_permission('platform.roles.manage') or private.platform_admin_has_permission('analytics.read')
+      then (select count(*) from public.profiles where role in ('support_admin','admin','super_admin')) else null end,
+    'pending_student_verifications', case when private.platform_admin_has_permission('verification.read')
+      then (select count(*) from public.student_verifications where status='pending') else null end,
+    'active_subscriptions', case when private.platform_admin_has_permission('billing.read')
+      then (select count(*) from public.subscriptions where status='active') else null end,
+    'open_support_tickets', case when private.platform_admin_has_permission('support.read')
+      then (select count(*) from public.support_tickets where status in ('open','pending')) else null end,
+    'restricted_accounts', case when private.platform_admin_has_permission('account.manage') or private.platform_admin_has_permission('analytics.read')
+      then (select count(*) from public.platform_account_access_controls where status in ('restricted','suspended') and (expires_at is null or expires_at > pg_catalog.now())) else null end,
+    'verified_athletes', case when private.platform_admin_has_permission('verification.read')
+      then (select count(*) from public.profiles where role='athlete' and verified_athlete=true) else null end,
+    'verified_coaches', case when private.platform_admin_has_permission('verification.read')
+      then (select count(*) from auth.users u join public.profiles p on p.user_id=u.id where p.role='coach' and u.email_confirmed_at is not null) else null end,
+    'verified_academies', case when private.platform_admin_has_permission('verification.read')
+      then (select count(*) from public.academies a where a.status='active' and a.setup_completed=true and a.contact_email_verified_at is not null) else null end
   );
 end;
 $function$;
