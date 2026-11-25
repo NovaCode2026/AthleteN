@@ -23,6 +23,10 @@ type AccountResult = { user_id: string; full_name: string | null; username: stri
 type AccessRow = { user_id: string; full_name: string | null; username: string | null; status: string; reason: string; expires_at: string | null; updated_at: string };
 type AuditRow = { id: string; actor_user_id: string | null; target_user_id: string | null; action: string; reason: string | null; created_at: string };
 type PlatformAnnouncement = { id:string; title:string; body:string; audience:string; published_at:string|null; created_at:string };
+type SupportTicket = {id:string;user_id:string;subject:string;body:string|null;status:string;priority:string;assigned_to:string|null;created_at:string;updated_at:string};
+type FeedbackItem = {id:string;user_id:string;title:string;details:string|null;status:string;priority:string;created_at:string;updated_at:string};
+type SubscriptionRecord = {id:string;user_id:string;plan_id:string;provider:string|null;status:string;current_period_end:string|null;created_at:string;updated_at:string};
+type PaymentEventRecord = {id:string;user_id:string|null;provider:string;event_type:string;amount_minor:number|null;currency:string|null;status:string|null;created_at:string};
 type AssignmentRow = { admin_user_id: string; full_name: string | null; username: string | null; base_role: string; permission_role: string | null; updated_at: string };
 
 export default function AdminOperationsScreen() {
@@ -34,6 +38,10 @@ export default function AdminOperationsScreen() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [queue, setQueue] = useState<VerificationRequest[]>([]);
   const [announcements, setAnnouncements] = useState<PlatformAnnouncement[]>([]);
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([]);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([]);
+  const [paymentEvents, setPaymentEvents] = useState<PaymentEventRecord[]>([]);
   const [announcementDraft, setAnnouncementDraft] = useState({title:'',body:'',audience:'all'});
   const [athleteQuery, setAthleteQuery] = useState('');
   const [athleteReviews, setAthleteReviews] = useState<AthleteVerificationReview[]>([]);
@@ -61,6 +69,9 @@ export default function AdminOperationsScreen() {
   const canManageAthleteVerification = has('verification.athlete.manage');
   const canManageAccounts = has('account.manage');
   const canManageAnnouncements = has('announcements.manage');
+  const canReadSupport = has('support.read');
+  const canManageSupport = has('support.manage');
+  const canReadFinance = has('billing.read');
   const canAssign = role === 'super_admin' && has('platform.roles.manage');
   const canReadAudit = has('audit.read');
 
@@ -111,6 +122,30 @@ export default function AdminOperationsScreen() {
         setAnnouncements((r.data || []) as PlatformAnnouncement[]);
       })());
     } else setAnnouncements([]);
+    if (allowedTo('support.read')) {
+      tasks.push((async () => {
+        const [ticketsResult, feedbackResult] = await Promise.all([
+          supabase.from('support_tickets').select('id,user_id,subject,body,status,priority,assigned_to,created_at,updated_at').order('created_at',{ascending:false}).limit(100),
+          supabase.from('feedback_items').select('id,user_id,title,details,status,priority,created_at,updated_at').order('created_at',{ascending:false}).limit(100)
+        ]);
+        if (ticketsResult.error) throw ticketsResult.error;
+        if (feedbackResult.error) throw feedbackResult.error;
+        setSupportTickets((ticketsResult.data || []) as SupportTicket[]);
+        setFeedbackItems((feedbackResult.data || []) as FeedbackItem[]);
+      })());
+    } else { setSupportTickets([]); setFeedbackItems([]); }
+    if (allowedTo('billing.read')) {
+      tasks.push((async () => {
+        const [subscriptionsResult, paymentsResult] = await Promise.all([
+          supabase.from('subscriptions').select('id,user_id,plan_id,provider,status,current_period_end,created_at,updated_at').order('updated_at',{ascending:false}).limit(100),
+          supabase.from('payment_events').select('id,user_id,provider,event_type,amount_minor,currency,status,created_at').order('created_at',{ascending:false}).limit(100)
+        ]);
+        if (subscriptionsResult.error) throw subscriptionsResult.error;
+        if (paymentsResult.error) throw paymentsResult.error;
+        setSubscriptions((subscriptionsResult.data || []) as SubscriptionRecord[]);
+        setPaymentEvents((paymentsResult.data || []) as PaymentEventRecord[]);
+      })());
+    } else { setSubscriptions([]); setPaymentEvents([]); }
     if (allowedTo('platform.roles.manage')) {
       tasks.push((async () => {
         const r = await supabase.rpc('get_platform_admin_assignments');
@@ -209,6 +244,28 @@ export default function AdminOperationsScreen() {
     await load();
   }
 
+  async function updateTicket(row: SupportTicket, values: Partial<Pick<SupportTicket,'status'|'priority'|'assigned_to'>>) {
+    if (!canManageSupport) return;
+    setBusy(true); setMessage('');
+    const { error } = await supabase.from('support_tickets')
+      .update({...values,updated_at:new Date().toISOString()}).eq('id',row.id);
+    setBusy(false);
+    if (error) { setMessage(error.message); return; }
+    setMessage('Support ticket updated and audited.');
+    await load();
+  }
+
+  async function updateFeedback(row: FeedbackItem, values: Partial<Pick<FeedbackItem,'status'|'priority'>>) {
+    if (!canManageSupport) return;
+    setBusy(true); setMessage('');
+    const { error } = await supabase.from('feedback_items')
+      .update({...values,updated_at:new Date().toISOString()}).eq('id',row.id);
+    setBusy(false);
+    if (error) { setMessage(error.message); return; }
+    setMessage('Feedback item updated and audited.');
+    await load();
+  }
+
   async function publishAnnouncement() {
     if (!canManageAnnouncements) return;
     const title = announcementDraft.title.trim();
@@ -295,6 +352,54 @@ export default function AdminOperationsScreen() {
             </View>
           </View>)}
           {!queue.length ? <Text style={s.meta}>No pending Student proof requests.</Text> : null}
+        </View> : null}
+
+        {canReadSupport ? <View style={s.panel}>
+          <Text style={s.section}>SUPPORT & DISPUTE QUEUE</Text>
+          <Text style={s.meta}>Support tickets and feedback are visible to Support Admins. Triage changes are recorded by database audit triggers. Ticket content is not copied into audit metadata.</Text>
+          <Text style={s.controlLabel}>{supportTickets.filter((row)=>['open','pending'].includes(row.status)).length} OPEN / PENDING</Text>
+          {supportTickets.map((row)=><View key={row.id} style={s.request}>
+            <Text style={s.userName}>{row.subject}</Text>
+            <Text style={s.meta}>{row.status.toUpperCase()} · {row.priority.toUpperCase()} · {new Date(row.created_at).toLocaleString()}</Text>
+            <Text style={s.code}>Account {row.user_id}</Text>
+            {row.body ? <Text style={s.meta}>{row.body}</Text> : null}
+            {canManageSupport ? <>
+              {row.assigned_to===session?.user?.id ? <Text style={s.meta}>ASSIGNED TO YOU</Text> : <Pressable style={s.secondaryButton} disabled={busy} onPress={()=>void updateTicket(row,{assigned_to:session?.user?.id||null})}><Text style={s.buttonText}>ASSIGN TO ME</Text></Pressable>}
+              <Text style={s.controlLabel}>STATUS</Text>
+              <View style={s.chips}>{['open','pending','resolved','closed'].map((status)=><Pressable key={status} style={[s.chip,row.status===status&&s.chipActive]} disabled={busy} onPress={()=>void updateTicket(row,{status})}><Text style={s.chipText}>{status.toUpperCase()}</Text></Pressable>)}</View>
+              <Text style={s.controlLabel}>PRIORITY</Text>
+              <View style={s.chips}>{['low','normal','high','urgent'].map((priority)=><Pressable key={priority} style={[s.chip,row.priority===priority&&s.chipActive]} disabled={busy} onPress={()=>void updateTicket(row,{priority})}><Text style={s.chipText}>{priority.toUpperCase()}</Text></Pressable>)}</View>
+            </> : null}
+          </View>)}
+          {feedbackItems.map((row)=><View key={row.id} style={s.request}>
+            <Text style={s.userName}>{row.title}</Text>
+            <Text style={s.meta}>{row.status.toUpperCase()} · {row.priority.toUpperCase()} · Account {row.user_id}</Text>
+            {row.details ? <Text style={s.meta}>{row.details}</Text> : null}
+            {canManageSupport ? <>
+              <Text style={s.controlLabel}>FEEDBACK STATUS</Text>
+              <View style={s.chips}>{['new','reviewing','planned','closed'].map((status)=><Pressable key={status} style={[s.chip,row.status===status&&s.chipActive]} disabled={busy} onPress={()=>void updateFeedback(row,{status})}><Text style={s.chipText}>{status.toUpperCase()}</Text></Pressable>)}</View>
+              <Text style={s.controlLabel}>PRIORITY</Text>
+              <View style={s.chips}>{['low','normal','high'].map((priority)=><Pressable key={priority} style={[s.chip,row.priority===priority&&s.chipActive]} disabled={busy} onPress={()=>void updateFeedback(row,{priority})}><Text style={s.chipText}>{priority.toUpperCase()}</Text></Pressable>)}</View>
+            </> : null}
+          </View>)}
+          {!supportTickets.length&&!feedbackItems.length ? <Text style={s.meta}>No support tickets or feedback available.</Text> : null}
+        </View> : null}
+
+        {canReadFinance ? <View style={s.panel}>
+          <Text style={s.section}>SUBSCRIPTION & PAYMENT LEDGER</Text>
+          <Text style={s.meta}>Read-only provider-backed records. No manual plan changes, successful payment marking, refunds or settlement changes are available.</Text>
+          <Text style={s.controlLabel}>SUBSCRIPTIONS ({subscriptions.length})</Text>
+          {subscriptions.map((row)=><View key={row.id} style={s.auditRow}>
+            <Text style={s.userName}>{row.plan_id.toUpperCase()} · {row.status.toUpperCase()}</Text>
+            <Text style={s.meta}>Account {row.user_id}</Text>
+            <Text style={s.meta}>Provider {row.provider||'—'} · Period end {row.current_period_end?new Date(row.current_period_end).toLocaleDateString():'—'}</Text>
+          </View>)}
+          <Text style={s.controlLabel}>PAYMENT EVENTS ({paymentEvents.length})</Text>
+          {paymentEvents.map((row)=><View key={row.id} style={s.auditRow}>
+            <Text style={s.userName}>{row.provider.toUpperCase()} · {row.event_type}</Text>
+            <Text style={s.meta}>{row.user_id||'Unknown account'} · {row.status||'No status'}</Text>
+            <Text style={s.meta}>{row.amount_minor==null?'—':String(row.currency||'INR')+' '+(row.amount_minor/100).toFixed(2)} · {new Date(row.created_at).toLocaleString()}</Text>
+          </View>)}
         </View> : null}
 
         {canManageAnnouncements ? <View style={s.panel}>
