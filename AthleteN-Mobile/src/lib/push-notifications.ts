@@ -179,6 +179,22 @@ async function handleNotificationResponse(data: Record<string, unknown> | undefi
     return;
   }
 
+  if (typeof data?.attendanceRecordId === 'string' && data.attendanceRecordId) {
+    router.push({
+      pathname: '/notifications',
+      params: { attendanceRecordId: data.attendanceRecordId },
+    } as never);
+    return;
+  }
+
+  if (typeof data?.announcementId === 'string' && data.announcementId) {
+    router.push({
+      pathname: '/notifications',
+      params: { announcementId: data.announcementId },
+    } as never);
+    return;
+  }
+
   const route = data?.route;
   if (typeof route === 'string' && route.startsWith('/') && !route.startsWith('//')) {
     router.push(route as never);
