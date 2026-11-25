@@ -30,7 +30,7 @@ RESET ROLE;
 -- the system-managed Administrator badge follows the current role.
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
 SET LOCAL ROLE authenticated;
-SELECT public.admin_set_user_role('00000000-0000-0000-0000-000000000006','admin');
+SELECT public.admin_set_user_role('00000000-0000-0000-0000-000000000006','admin','Promote athlete to Admin for controlled role workflow regression test.');
 DO $test$
 DECLARE v_role text; v_badges integer;
 BEGIN
@@ -43,7 +43,7 @@ BEGIN
   END IF;
 END;
 $test$;
-SELECT public.admin_set_user_role('00000000-0000-0000-0000-000000000006','athlete');
+SELECT public.admin_set_user_role('00000000-0000-0000-0000-000000000006','athlete','Restore test athlete role after controlled role workflow regression test.');
 DO $test$
 DECLARE v_role text; v_badges integer;
 BEGIN
