@@ -195,6 +195,14 @@ async function handleNotificationResponse(data: Record<string, unknown> | undefi
     return;
   }
 
+  if (typeof data?.trainingGroupSessionId === 'string' && data.trainingGroupSessionId) {
+    router.push({
+      pathname: '/notifications',
+      params: { trainingGroupSessionId: data.trainingGroupSessionId },
+    } as never);
+    return;
+  }
+
   const route = data?.route;
   if (typeof route === 'string' && route.startsWith('/') && !route.startsWith('//')) {
     router.push(route as never);
