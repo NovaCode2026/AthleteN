@@ -22,6 +22,7 @@ type VerificationRequest = {
 type AccountResult = { user_id: string; full_name: string | null; username: string | null; role: string; plan_id: string; created_at: string };
 type AccessRow = { user_id: string; full_name: string | null; username: string | null; status: string; reason: string; expires_at: string | null; updated_at: string };
 type AuditRow = { id: string; actor_user_id: string | null; target_user_id: string | null; action: string; reason: string | null; created_at: string };
+type PlatformAnnouncement = { id:string; title:string; body:string; audience:string; published_at:string|null; created_at:string };
 type AssignmentRow = { admin_user_id: string; full_name: string | null; username: string | null; base_role: string; permission_role: string | null; updated_at: string };
 
 export default function AdminOperationsScreen() {
@@ -32,6 +33,8 @@ export default function AdminOperationsScreen() {
   const [permission, setPermission] = useState<PermissionPayload | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [queue, setQueue] = useState<VerificationRequest[]>([]);
+  const [announcements, setAnnouncements] = useState<PlatformAnnouncement[]>([]);
+  const [announcementDraft, setAnnouncementDraft] = useState({title:'',body:'',audience:'all'});
   const [athleteQuery, setAthleteQuery] = useState('');
   const [athleteReviews, setAthleteReviews] = useState<AthleteVerificationReview[]>([]);
   const [athleteReasons, setAthleteReasons] = useState<Record<string,string>>({});
@@ -57,6 +60,7 @@ export default function AdminOperationsScreen() {
   const canVerify = has('verification.read');
   const canManageAthleteVerification = has('verification.athlete.manage');
   const canManageAccounts = has('account.manage');
+  const canManageAnnouncements = has('announcements.manage');
   const canAssign = role === 'super_admin' && has('platform.roles.manage');
   const canReadAudit = has('audit.read');
 
@@ -98,6 +102,15 @@ export default function AdminOperationsScreen() {
         setAuditRows((r.data || []) as AuditRow[]);
       })());
     } else setAuditRows([]);
+    if (allowedTo('announcements.manage')) {
+      tasks.push((async () => {
+        const r = await supabase.from('announcements')
+          .select('id,title,body,audience,published_at,created_at')
+          .order('created_at', { ascending: false }).limit(30);
+        if (r.error) throw r.error;
+        setAnnouncements((r.data || []) as PlatformAnnouncement[]);
+      })());
+    } else setAnnouncements([]);
     if (allowedTo('platform.roles.manage')) {
       tasks.push((async () => {
         const r = await supabase.rpc('get_platform_admin_assignments');
@@ -196,6 +209,26 @@ export default function AdminOperationsScreen() {
     await load();
   }
 
+  async function publishAnnouncement() {
+    if (!canManageAnnouncements) return;
+    const title = announcementDraft.title.trim();
+    const body = announcementDraft.body.trim();
+    if (title.length < 3 || title.length > 120 || body.length < 5 || body.length > 4000) {
+      setMessage('Announcement title must be 3–120 characters and body 5–4,000 characters.');
+      return;
+    }
+    setBusy(true); setMessage('');
+    const { error } = await supabase.from('announcements').insert({
+      title, body, audience: announcementDraft.audience,
+      published_at: new Date().toISOString(), created_by: session?.user?.id,
+    });
+    setBusy(false);
+    if (error) { setMessage(error.message); return; }
+    setAnnouncementDraft({title:'',body:'',audience:'all'});
+    setMessage('Announcement published and audited.');
+    await load();
+  }
+
   async function assignScope() {
     if (!assignmentUserId.trim()) { setMessage('Enter an Admin or Support Admin user ID.'); return; }
     setBusy(true); setMessage('');
@@ -262,6 +295,21 @@ export default function AdminOperationsScreen() {
             </View>
           </View>)}
           {!queue.length ? <Text style={s.meta}>No pending Student proof requests.</Text> : null}
+        </View> : null}
+
+        {canManageAnnouncements ? <View style={s.panel}>
+          <Text style={s.section}>PLATFORM ANNOUNCEMENTS</Text>
+          <Text style={s.meta}>Publish an announcement to a specific platform audience. Publishing is recorded in the administrative audit log.</Text>
+          <TextInput value={announcementDraft.title} onChangeText={(value)=>setAnnouncementDraft(v=>({...v,title:value}))} placeholder="Title (3–120 characters)" placeholderTextColor={c.muted} style={s.input} maxLength={120}/>
+          <Text style={s.controlLabel}>AUDIENCE</Text>
+          <View style={s.chips}>{['all','athletes','coaches','academies','admins'].map((audience)=><Pressable key={audience} onPress={()=>setAnnouncementDraft(v=>({...v,audience}))} style={[s.chip,announcementDraft.audience===audience&&s.chipActive]}><Text style={s.chipText}>{audience.toUpperCase()}</Text></Pressable>)}</View>
+          <TextInput value={announcementDraft.body} onChangeText={(value)=>setAnnouncementDraft(v=>({...v,body:value}))} placeholder="Announcement message (5–4,000 characters)" placeholderTextColor={c.muted} style={[s.input,s.multiline]} multiline maxLength={4000}/>
+          <Pressable style={s.primaryButton} disabled={busy} onPress={()=>void publishAnnouncement()}><Text style={s.buttonText}>PUBLISH ANNOUNCEMENT</Text></Pressable>
+          {announcements.slice(0,8).map((item)=><View key={item.id} style={s.auditRow}>
+            <Text style={s.userName}>{item.title}</Text>
+            <Text style={s.meta}>{item.audience.toUpperCase()} · {item.published_at ? new Date(item.published_at).toLocaleString() : 'DRAFT'}</Text>
+            <Text style={s.meta}>{item.body}</Text>
+          </View>)}
         </View> : null}
 
         {canAssign ? <View style={s.panel}>
