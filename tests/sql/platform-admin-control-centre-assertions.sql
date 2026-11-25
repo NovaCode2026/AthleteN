@@ -187,6 +187,31 @@ BEGIN
   END IF;
 END;
 $test$;
+DO $test$
+DECLARE v_rows integer; v_flag_events integer; v_announcement_events integer;
+BEGIN
+  UPDATE public.feature_flags SET enabled=true,updated_at=now()
+  WHERE flag_key='coach_tools';
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  IF v_rows <> 1 THEN RAISE EXCEPTION 'Operations Admin should toggle existing feature flags'; END IF;
+
+  INSERT INTO public.announcements(title,body,audience,published_at,created_by)
+  VALUES ('Platform test notice','Test announcement for the athlete audience.','athletes',now(),
+          '00000000-0000-0000-0000-000000000004');
+
+  SELECT count(*) INTO v_flag_events FROM public.get_platform_admin_audit(100)
+  WHERE action='platform.feature_flag.updated';
+  SELECT count(*) INTO v_announcement_events FROM public.get_platform_admin_audit(100)
+  WHERE action='platform.announcement.published';
+  IF v_flag_events < 1 THEN RAISE EXCEPTION 'Feature flag mutation must be audited'; END IF;
+  IF v_announcement_events < 1 THEN RAISE EXCEPTION 'Announcement publication must be audited'; END IF;
+
+  DELETE FROM public.announcements
+  WHERE title='Platform test notice';
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  IF v_rows <> 0 THEN RAISE EXCEPTION 'Operations Admin must not delete announcements'; END IF;
+END;
+$test$;
 SELECT public.admin_set_platform_account_access(
   '00000000-0000-0000-0000-000000000006',
   'restricted',
