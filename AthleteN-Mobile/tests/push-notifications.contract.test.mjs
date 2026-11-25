@@ -119,3 +119,12 @@ test('push taps deep-link to exact attendance and announcement source records', 
   assert.match(inbox, /routeParams\.announcementId/);
   assert.match(inbox, /attendance_record_id/);
 });
+
+
+test('mobile notification settings check quietly on load and explicitly request permission from the user action', () => {
+  const settings = readFileSync(new URL('../src/app/notification-settings.tsx', import.meta.url), 'utf8');
+  assert.match(settings, /useEffect\(\(\) => \{ void checkPushRegistration\(false\); \}/);
+  assert.match(settings, /onPress=\{\(\) => void checkPushRegistration\(true\)\}/);
+  assert.match(settings, /ENABLE OR RETRY PUSH NOTIFICATIONS/);
+  assert.match(settings, /permission-denied/);
+});
