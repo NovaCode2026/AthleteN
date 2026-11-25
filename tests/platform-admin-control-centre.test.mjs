@@ -21,6 +21,8 @@ test("platform admin scopes are least-privilege and RLS-enforced", () => {
   assert.ok(resourceFn.includes("elsif p_table='ai_usage_events'"));
   assert.ok(resourceFn.includes("elsif p_table='audit_logs'"));
   assert.ok(resourceFn.includes("elsif p_table='age_verifications'"));
+  assert.ok(resourceFn.includes("elsif p_table in ('support_tickets','feedback_items')"));
+  assert.ok(resourceFn.includes("p_action='update' and (v_full_access or private.platform_admin_has_permission('support.manage'))"));
   assert.ok(resourceFn.includes("return p_action='select' and v_full_access;"));
 
   assert.match(sql, /as restrictive for select to authenticated/i);
