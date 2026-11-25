@@ -29,6 +29,7 @@ test("platform admin scopes are least-privilege and RLS-enforced", () => {
   assert.match(sql, /as restrictive for insert to authenticated/i);
   assert.match(sql, /as restrictive for update to authenticated/i);
   assert.match(sql, /as restrictive for delete to authenticated/i);
+  assert.ok(sql.includes("case when t in ('profiles','notifications','support_tickets','feedback_items') then ' or user_id=(select auth.uid())' else '' end"));
   assert.ok(resourceFn.includes("if p_table='student_verifications' then"));
   assert.ok(resourceFn.includes("elsif p_table='age_verifications' then"));
   assert.ok(resourceFn.includes("elsif p_table in ('subscriptions','subscription_usage','account_entitlements','payment_orders','payment_events')"));
