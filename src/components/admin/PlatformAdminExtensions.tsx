@@ -9,6 +9,10 @@ type Overview = {
   pending_student_verifications: number; active_subscriptions: number; open_support_tickets: number;
   restricted_accounts: number; verified_athletes: number; verified_coaches: number; verified_academies: number;
 };
+type AthleteVerificationReview = {
+  user_id: string; full_name: string | null; username: string | null;
+  verified_athlete: boolean; created_at: string;
+};
 type VerificationRequest = {
   id: string; user_id: string; full_name: string | null; username: string | null;
   document_type: string; file_path: string | null; status: string; created_at: string;
@@ -37,6 +41,9 @@ export default function PlatformAdminExtensions({ role }: { userId: string; role
   const [permission, setPermission] = useState<PermissionPayload | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [verificationQueue, setVerificationQueue] = useState<VerificationRequest[]>([]);
+  const [athleteReviews, setAthleteReviews] = useState<AthleteVerificationReview[]>([]);
+  const [athleteQuery, setAthleteQuery] = useState("");
+  const [athleteReasons, setAthleteReasons] = useState<Record<string,string>>({});
   const [assignments, setAssignments] = useState<AdminAssignment[]>([]);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [accessRows, setAccessRows] = useState<AccessControl[]>([]);
@@ -58,6 +65,7 @@ export default function PlatformAdminExtensions({ role }: { userId: string; role
   const has = (key: string) => role === "super_admin" || permissions.includes("*") || permissions.includes(key);
   const canAssign = role === "super_admin" && has("platform.roles.manage");
   const canVerify = has("verification.read");
+  const canManageAthleteVerification = has("verification.athlete.manage");
   const canManageAccounts = has("account.manage");
   const canReadAudit = has("audit.read");
   const canReadOverview = ["platform.read","analytics.read","billing.read","verification.read","support.read"].some(has);
@@ -149,6 +157,40 @@ export default function PlatformAdminExtensions({ role }: { userId: string; role
     } finally { setBusyKey(""); }
   }
 
+  async function searchAthleteReviews() {
+    if (!supabase) return;
+    if (athleteQuery.trim().length < 2) { setError("Enter at least two characters to search Athlete accounts."); return; }
+    setBusyKey("athlete-search"); setError("");
+    try {
+      const { data, error: searchError } = await supabase.rpc("search_athlete_verification_reviews", {
+        p_query: athleteQuery.trim(), p_limit: 20
+      });
+      if (searchError) throw searchError;
+      setAthleteReviews((data || []) as AthleteVerificationReview[]);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Athlete verification search failed."); }
+    finally { setBusyKey(""); }
+  }
+
+  async function setAthleteVerified(row: AthleteVerificationReview, verified: boolean) {
+    if (!supabase || !canManageAthleteVerification) return;
+    const reason = (athleteReasons[row.user_id] || "").trim();
+    if (reason.length < 5 || reason.length > 500) {
+      setError("Record the evidence reviewed and decision reason (5–500 characters).");
+      return;
+    }
+    setBusyKey("athlete-review:" + row.user_id); setError(""); setNotice("");
+    try {
+      const { error: updateError } = await supabase.rpc("admin_set_athlete_verified", {
+        p_user_id: row.user_id, p_verified: verified, p_reason: reason
+      });
+      if (updateError) throw updateError;
+      setNotice(verified ? "Athlete verification granted and audited." : "Athlete verification revoked and audited.");
+      setAthleteReasons((values)=>({...values,[row.user_id]:""}));
+      await searchAthleteReviews();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Athlete verification update failed."); }
+    finally { setBusyKey(""); }
+  }
+
   async function searchAccounts() {
     if (!supabase) { setError("Admin service is unavailable."); return; }
     if (accountQuery.trim().length < 2) { setError("Enter at least two characters to search accounts."); return; }
@@ -231,6 +273,24 @@ export default function PlatformAdminExtensions({ role }: { userId: string; role
         ["Open support",overview.open_support_tickets],["Restricted accounts",overview.restricted_accounts],
         ["Coach email verified",overview.verified_coaches],["Academy setup verified",overview.verified_academies]
       ].map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{Number(value).toLocaleString()}</strong></article>)}
+    </div>}
+
+    {canVerify && <div className="platform-admin-panel">
+      <div className="platform-admin-panel-head"><div><span className="admin-section-label">Athlete trust</span><h4>Athlete Profile Verification</h4>
+        <p>Search individual Athlete accounts. Grant or revoke the verified badge only after reviewing credible supporting records. Every decision requires a reason and is audited. Student-plan proof review is a separate workflow below.</p></div><BadgeCheck size={20}/></div>
+      <div className="platform-admin-account-search"><label>Find Athlete<input value={athleteQuery} onChange={(event)=>setAthleteQuery(event.target.value)} placeholder="Athlete name, username or user ID prefix"/></label><button type="button" className="btn" disabled={busyKey==="athlete-search"} onClick={()=>void searchAthleteReviews()}><Search size={14}/> Search Athletes</button></div>
+      {athleteReviews.map((row)=><article className="platform-admin-verification" key={row.user_id}>
+        <div className="platform-admin-verification-summary"><div><b>{row.full_name || "Athlete account"}</b><small>@{row.username || "username not set"} · Joined {new Date(row.created_at).toLocaleDateString()}</small><code>{row.user_id}</code></div>
+          <span className="platform-admin-count">{row.verified_athlete ? "Verified" : "Not verified"}</span></div>
+        {canManageAthleteVerification ? <>
+          <label>Evidence reviewed / decision reason<textarea rows={2} maxLength={500} value={athleteReasons[row.user_id] || ""} onChange={(event)=>setAthleteReasons((values)=>({...values,[row.user_id]:event.target.value}))} placeholder="Record the evidence source reviewed and reason (5–500 characters)."/></label>
+          <div className="inline-actions">
+            <button className="btn primary" type="button" disabled={busyKey==="athlete-review:"+row.user_id||row.verified_athlete} onClick={()=>void setAthleteVerified(row,true)}>Verify Athlete</button>
+            <button className="btn danger" type="button" disabled={busyKey==="athlete-review:"+row.user_id||!row.verified_athlete} onClick={()=>void setAthleteVerified(row,false)}>Revoke Verification</button>
+          </div>
+        </> : <p>Read-only review scope. A Verification Admin must make the decision.</p>}
+      </article>)}
+      {athleteQuery.trim().length>=2&&!athleteReviews.length&&<div className="platform-admin-empty">No matching Athlete accounts. Run Search Athletes to refresh this list.</div>}
     </div>}
 
     {canVerify && <div className="platform-admin-panel">
