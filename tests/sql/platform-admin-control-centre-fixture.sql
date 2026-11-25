@@ -207,11 +207,6 @@ CREATE POLICY fixture_admin_announcements ON public.announcements
   USING (private.is_platform_admin())
   WITH CHECK (private.is_platform_admin());
 
-CREATE POLICY fixture_admin_feature_flags ON public.feature_flags
-  FOR ALL TO authenticated
-  USING (private.is_platform_admin())
-  WITH CHECK (private.is_platform_admin());
-
 CREATE POLICY fixture_admin_notifications ON public.notifications
   FOR ALL TO authenticated
   USING (private.is_platform_admin() OR user_id=(SELECT auth.uid()))
