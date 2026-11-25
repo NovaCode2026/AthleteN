@@ -72,7 +72,7 @@ Do not expose the service-role key or worker secrets to clients. Delivery-ledger
 
 ## Notification event coverage
 
-The reliability migration adds durable in-app notification events for server-assigned badge awards, student verification decisions, Coach–athlete link activation, Academy invitations/membership activation and subscription state changes. Attendance alerts link to their exact attendance row. Group-training cancellation chat announcements no longer generate a second message-category alert in addition to the direct training alert. The existing central preference guard remains authoritative for every producer.
+The reliability migration adds durable in-app notification events for server-assigned badge awards, student verification decisions, Coach–athlete link activation, Academy invitations/membership activation and subscription state changes. Attendance alerts link to their exact attendance row; new, rescheduled and cancelled training-group alerts link to the exact session row. Group-training cancellation chat announcements no longer generate a second message-category alert in addition to the direct training alert. The existing central preference guard remains authoritative for every producer.
 
 All notification producers create an in-app row first. Push delivery is a separate, asynchronous channel and must never be treated as the durable inbox record. Message previews remain disabled by default.
 
