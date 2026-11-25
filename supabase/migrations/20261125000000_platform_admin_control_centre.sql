@@ -94,7 +94,7 @@ begin
     when 'support' then
       return array['support.read','support.manage','message_reports.read','message_reports.manage','audit.read']::text[];
     when 'verification' then
-      return array['verification.read','verification.review','audit.read']::text[];
+      return array['verification.read','verification.review','verification.athlete.manage','audit.read']::text[];
     when 'finance' then
       return array['billing.read','payments.read','reports.read','audit.read']::text[];
     when 'operations' then
@@ -263,6 +263,93 @@ begin
      or p.user_id::text like v_query||'%'
   order by p.created_at desc
   limit greatest(1,least(coalesce(p_limit,20),30));
+end;
+$function$;
+
+create or replace function public.search_athlete_verification_reviews(
+  p_query text,
+  p_limit integer default 20
+)
+returns table (
+  user_id uuid,
+  full_name text,
+  username text,
+  verified_athlete boolean,
+  created_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  v_query text;
+begin
+  if (select auth.uid()) is null then raise exception 'Authentication required'; end if;
+  if not private.platform_admin_has_permission('verification.read') then
+    raise exception 'Athlete verification read permission required';
+  end if;
+  v_query:=left(replace(replace(btrim(coalesce(p_query,'')),'%',''),'_',''),80);
+  if char_length(v_query)<2 then raise exception 'Enter at least two characters to search Athlete accounts'; end if;
+
+  return query
+  select p.user_id,p.full_name,p.username,p.verified_athlete,p.created_at
+  from public.profiles p
+  where p.role='athlete'
+    and (p.full_name ilike '%'||v_query||'%'
+      or coalesce(p.username,'') ilike '%'||v_query||'%'
+      or p.user_id::text like v_query||'%')
+  order by p.verified_athlete asc,p.created_at desc
+  limit greatest(1,least(coalesce(p_limit,20),30));
+end;
+$function$;
+
+create or replace function public.admin_set_athlete_verified(
+  p_user_id uuid,
+  p_verified boolean,
+  p_reason text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_name text;
+  v_old boolean;
+begin
+  if (select auth.uid()) is null
+     or not private.platform_admin_has_permission('verification.athlete.manage') then
+    raise exception 'Athlete verification management permission required';
+  end if;
+  if p_user_id is null or p_verified is null
+     or p_reason is null
+     or char_length(btrim(p_reason)) not between 5 and 500 then
+    raise exception 'A verification decision and evidence-review reason (5–500 characters) are required';
+  end if;
+  select p.full_name,p.verified_athlete into v_name,v_old
+  from public.profiles p
+  where p.user_id=p_user_id and p.role='athlete'
+  for update;
+  if not found then raise exception 'Athlete account not found'; end if;
+
+  update public.profiles
+    set verified_athlete=p_verified,updated_at=pg_catalog.now()
+  where user_id=p_user_id and role='athlete';
+
+  insert into public.platform_admin_audit_log(actor_user_id,target_user_id,action,reason,metadata)
+  values((select auth.uid()),p_user_id,
+    case when p_verified then 'verification.athlete.verified' else 'verification.athlete.revoked' end,
+    btrim(p_reason),
+    jsonb_build_object('from',v_old,'to',p_verified,'athlete_name',v_name));
+
+  insert into public.notifications(user_id,title,body,notification_type,created_at,updated_at)
+  values(p_user_id,
+    case when p_verified then 'Athlete profile verified' else 'Athlete verification updated' end,
+    case when p_verified then 'AthleteN has verified your athlete profile.' else 'Your AthleteN athlete verification status was changed. Contact support for details.' end,
+    'verification',pg_catalog.now(),pg_catalog.now());
+
+  return jsonb_build_object('user_id',p_user_id,'verified_athlete',p_verified,'updated_at',pg_catalog.now());
 end;
 $function$;
 
@@ -720,6 +807,8 @@ grant execute on function public.admin_set_user_role(uuid,text) to authenticated
 revoke all on function public.get_my_platform_admin_permissions() from public, anon;
 revoke all on function public.get_platform_admin_overview() from public, anon;
 revoke all on function public.get_platform_admin_assignments() from public, anon;
+revoke all on function public.search_athlete_verification_reviews(text,integer) from public, anon;
+revoke all on function public.admin_set_athlete_verified(uuid,boolean,text) from public, anon;
 revoke all on function public.get_student_verification_queue() from public, anon;
 revoke all on function public.search_platform_accounts(text,integer) from public, anon;
 revoke all on function public.admin_assign_platform_role(uuid,text) from public, anon;
@@ -732,6 +821,8 @@ revoke all on function public.get_my_platform_account_access() from public, anon
 grant execute on function public.get_my_platform_admin_permissions() to authenticated;
 grant execute on function public.get_platform_admin_overview() to authenticated;
 grant execute on function public.get_platform_admin_assignments() to authenticated;
+grant execute on function public.search_athlete_verification_reviews(text,integer) to authenticated;
+grant execute on function public.admin_set_athlete_verified(uuid,boolean,text) to authenticated;
 grant execute on function public.get_student_verification_queue() to authenticated;
 grant execute on function public.search_platform_accounts(text,integer) to authenticated;
 grant execute on function public.admin_assign_platform_role(uuid,text) to authenticated;
