@@ -439,7 +439,7 @@ BEGIN
   SELECT count(*) INTO v_subscriptions FROM public.subscriptions;
   IF v_tickets < 1 THEN RAISE EXCEPTION 'Support Admin should see support tickets'; END IF;
   IF v_subscriptions <> 0 THEN RAISE EXCEPTION 'Support Admin must not see billing data'; END IF;
-  UPDATE public.support_tickets SET status='pending',priority='high'
+  UPDATE public.support_tickets SET status='pending',priority='high',assigned_to=(SELECT auth.uid())
   WHERE user_id='00000000-0000-0000-0000-000000000006';
   UPDATE public.feedback_items SET status='reviewing',priority='high'
   WHERE user_id='00000000-0000-0000-0000-000000000006';
@@ -449,6 +449,21 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.get_platform_admin_audit(100) WHERE action='support.feedback.updated') THEN
     RAISE EXCEPTION 'Feedback moderation must be audited';
   END IF;
+  BEGIN
+    UPDATE public.support_tickets SET body='support agent cannot rewrite customer content'
+    WHERE user_id='00000000-0000-0000-0000-000000000006';
+    RAISE EXCEPTION 'Support Admin unexpectedly edited ticket content';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  BEGIN
+    UPDATE public.support_tickets
+    SET assigned_to='00000000-0000-0000-0000-000000000006'
+    WHERE user_id='00000000-0000-0000-0000-000000000006';
+    RAISE EXCEPTION 'Support Admin unexpectedly assigned a ticket to another account';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM='Support Admin unexpectedly assigned a ticket to another account' THEN RAISE; END IF;
+  END;
 END;
 $test$;
 
