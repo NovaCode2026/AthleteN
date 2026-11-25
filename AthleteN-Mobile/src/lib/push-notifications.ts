@@ -136,51 +136,85 @@ async function acknowledgeMessageDelivery(data: Record<string, unknown> | undefi
   }
 }
 
-export function attachNotificationListeners() {
-  const received = Notifications.addNotificationReceivedListener((notification) => {
-    void acknowledgeMessageDelivery(notification.request.content.data);
-  });
-  const response = Notifications.addNotificationResponseReceivedListener((event) => {
-    const notificationData = event.notification.request.content.data;
-    void acknowledgeMessageDelivery(notificationData);
+async function markNotificationRead(data: Record<string, unknown> | undefined) {
+  const notificationId = data?.notificationId;
+  if (typeof notificationId !== 'string' || !notificationId) return;
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', notificationId)
+    .is('read_at', null);
+  if (error) {
+    // RLS or a removed notification must not block safe deep-link navigation.
+    console.warn('AthleteN could not mark the push notification as read.');
+  }
+}
 
-    // Message pushes carry the message ID, not a conversation ID. Resolve the
-    // conversation under the signed-in user's RLS context before deep-linking.
-    // This avoids dropping users on the generic inbox when they tap a message.
-    if (
-      notificationData?.notificationType === 'message' &&
-      typeof notificationData.messageId === 'string' &&
-      notificationData.messageId
-    ) {
-      void (async () => {
-        const { data, error } = await supabase
-          .from('messages')
-          .select('conversation_id')
-          .eq('id', notificationData.messageId)
-          .maybeSingle();
+async function handleNotificationResponse(data: Record<string, unknown> | undefined) {
+  await markNotificationRead(data);
+  void acknowledgeMessageDelivery(data);
 
-        if (!error && data?.conversation_id) {
-          router.push({
-            pathname: '/messages',
-            params: { conversationId: String(data.conversation_id) },
-          } as never);
-          return;
-        }
+  // Message pushes carry the message ID, not a conversation ID. Resolve the
+  // conversation under the signed-in user's RLS context before deep-linking.
+  if (
+    data?.notificationType === 'message' &&
+    typeof data.messageId === 'string' &&
+    data.messageId
+  ) {
+    const { data: message, error } = await supabase
+      .from('messages')
+      .select('conversation_id')
+      .eq('id', data.messageId)
+      .maybeSingle();
 
-        // The message may have been removed or may not be readable anymore.
-        // Keep the notification available so the user gets a clear fallback.
-        router.push('/notifications' as never);
-      })();
+    if (!error && message?.conversation_id) {
+      router.push({
+        pathname: '/messages',
+        params: { conversationId: String(message.conversation_id) },
+      } as never);
       return;
     }
 
-    const route = notificationData?.route;
-    if (typeof route === 'string' && route.startsWith('/') && !route.startsWith('//')) {
-      router.push(route as never);
-    } else {
-      router.push('/notifications' as never);
-    }
+    router.push('/notifications' as never);
+    return;
+  }
+
+  const route = data?.route;
+  if (typeof route === 'string' && route.startsWith('/') && !route.startsWith('//')) {
+    router.push(route as never);
+  } else {
+    router.push('/notifications' as never);
+  }
+}
+
+export function attachNotificationListeners() {
+  const handledResponses = new Set<string>();
+  const handleResponse = (event: Notifications.NotificationResponse) => {
+    const identifier = event.notification.request.identifier;
+    if (identifier && handledResponses.has(identifier)) return;
+    if (identifier) handledResponses.add(identifier);
+    void handleNotificationResponse(event.notification.request.content.data);
+  };
+
+  const received = Notifications.addNotificationReceivedListener((notification) => {
+    void acknowledgeMessageDelivery(notification.request.content.data);
   });
+  const response = Notifications.addNotificationResponseReceivedListener(handleResponse);
+
+  // A tap that launches a terminated app is not guaranteed to arrive through
+  // the live listener. Recover the last response once the authenticated app
+  // installs its notification listeners.
+  void Notifications.getLastNotificationResponseAsync()
+    .then(async (lastResponse) => {
+      if (!lastResponse) return;
+      handleResponse(lastResponse);
+      if (Notifications.clearLastNotificationResponseAsync) {
+        await Notifications.clearLastNotificationResponseAsync();
+      }
+    })
+    .catch(() => {
+      // Live listeners remain active if the last-response lookup is unavailable.
+    });
 
   return () => {
     received.remove();
