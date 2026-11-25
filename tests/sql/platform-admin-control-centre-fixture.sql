@@ -79,9 +79,8 @@ CREATE TABLE public.athlete_badges (
   user_id uuid NOT NULL,
   badge_key text NOT NULL,
   badge_label text NOT NULL,
-  awarded_by uuid,
-  permanent boolean NOT NULL DEFAULT false,
-  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  awarded_at timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(user_id,badge_key)
 );
 CREATE SCHEMA IF NOT EXISTS storage;
@@ -165,6 +164,32 @@ $function$;
 CREATE TRIGGER guard_profile_role_change
 BEFORE UPDATE OF role ON public.profiles
 FOR EACH ROW EXECUTE FUNCTION private.guard_profile_role_change();
+
+-- Existing production profile protection, replaced by the candidate migration
+-- with the additional narrowly scoped verification RPC exception.
+CREATE OR REPLACE FUNCTION public.enforce_profile_entitlement_security()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=public
+AS $function$
+BEGIN
+  IF auth.uid() IS NULL THEN RETURN NEW; END IF;
+  IF TG_OP='INSERT' AND NOT private.is_super_admin() THEN
+    NEW.role:='athlete'; NEW.plan_id:='free';
+    NEW.verified_athlete:=false; NEW.founder_badge:=false;
+  END IF;
+  IF TG_OP='UPDATE' AND NOT private.is_super_admin() THEN
+    NEW.role:=OLD.role; NEW.plan_id:=OLD.plan_id;
+    NEW.verified_athlete:=OLD.verified_athlete;
+    NEW.founder_badge:=OLD.founder_badge;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+CREATE TRIGGER enforce_profile_entitlement_security
+BEFORE INSERT OR UPDATE ON public.profiles
+FOR EACH ROW EXECUTE FUNCTION public.enforce_profile_entitlement_security();
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS fixture_admin_and_owner_profiles ON public.profiles;
