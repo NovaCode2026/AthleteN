@@ -7,7 +7,17 @@ begin
   foreach t in array array[
     'taekwondo_training_logs',
     'taekwondo_kyorugi_bouts',
-    'taekwondo_poomsae_performances'
+    'taekwondo_poomsae_performances',
+    'student_verifications',
+    'subscription_usage',
+    'athlete_seasons',
+    'competition_journals',
+    'fight_iq_entries',
+    'technique_progress',
+    'athlete_challenges',
+    'personal_records',
+    'athlete_milestones',
+    'athlete_timeline_events'
   ] loop
     if to_regclass('public.' || t) is not null
       and not exists (
