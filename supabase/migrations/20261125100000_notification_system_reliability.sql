@@ -1244,3 +1244,10 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.announce_training_cancellation()
   FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS training_cancellation_announce_trigger
+  ON public.training_group_sessions;
+CREATE TRIGGER training_cancellation_announce_trigger
+  AFTER UPDATE ON public.training_group_sessions
+  FOR EACH ROW
+  EXECUTE FUNCTION public.announce_training_cancellation();
