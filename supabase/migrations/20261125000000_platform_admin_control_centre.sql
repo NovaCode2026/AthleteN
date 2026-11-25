@@ -247,6 +247,37 @@ begin
 end;
 $function$;
 
+create or replace function public.get_age_verification_admin_queue()
+returns table (
+  id uuid,
+  user_id uuid,
+  status text,
+  approved_at timestamptz,
+  rejected_at timestamptz,
+  created_at timestamptz,
+  updated_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  if (select auth.uid()) is null
+     or not ('*' = any(private.platform_admin_permissions_for((select auth.uid())))) then
+    raise exception 'Full platform administrator access required';
+  end if;
+  return query
+  select av.id,av.user_id,av.status,av.approved_at,av.rejected_at,av.created_at,av.updated_at
+  from public.age_verifications av
+  order by av.created_at desc
+  limit 100;
+end;
+$function$;
+
+revoke all on function public.get_age_verification_admin_queue() from public, anon;
+grant execute on function public.get_age_verification_admin_queue() to authenticated;
+
 create or replace function public.search_platform_accounts(p_query text,p_limit integer default 20)
 returns table (
   user_id uuid,
