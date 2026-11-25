@@ -63,6 +63,7 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
   const [accountResults, setAccountResults] = useState<AccountSearchResult[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<AccountSearchResult | null>(null);
   const [accountRole, setAccountRole] = useState("athlete");
+  const [roleChangeReason, setRoleChangeReason] = useState("");
   const [accountQuery, setAccountQuery] = useState("");
   const [assignmentTarget, setAssignmentTarget] = useState("");
   const [assignmentScope, setAssignmentScope] = useState("support");
@@ -362,15 +363,18 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
 
   async function changeUserRole() {
     if (!supabase || !canChangePlatformRoles || !selectedAccount) return;
+    const reason = roleChangeReason.trim();
+    if (reason.length < 5 || reason.length > 500) { setError("Enter a role-change reason between 5 and 500 characters."); return; }
     const confirmed = window.confirm("Change " + (selectedAccount.full_name || selectedAccount.username || "this account") + " from " + selectedAccount.role + " to " + accountRole + "? This is a high-impact platform role change.");
     if (!confirmed) return;
     setBusyKey("user-role"); setError(""); setNotice("");
     try {
       const { error: roleError } = await supabase.rpc("admin_set_user_role", {
-        p_user_id: selectedAccount.user_id, p_role: accountRole
+        p_user_id: selectedAccount.user_id, p_role: accountRole, p_reason: reason
       });
       if (roleError) throw roleError;
       setNotice("Platform account role updated and written to the administrative audit logs.");
+      setRoleChangeReason("");
       setSelectedAccount({...selectedAccount,role:accountRole});
       await searchAccounts();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Account role could not be changed."); }
@@ -532,6 +536,7 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
           <label>Platform account role<select value={accountRole} onChange={(event)=>setAccountRole(event.target.value)}>
             <option value="athlete">Athlete</option><option value="coach">Coach</option><option value="academy_admin">Academy Admin</option><option value="support_admin">Support Admin</option><option value="admin">Admin</option><option value="super_admin">Super Admin</option>
           </select></label>
+          <label>Role-change reason<textarea rows={2} maxLength={500} value={roleChangeReason} onChange={(event)=>setRoleChangeReason(event.target.value)} placeholder="Document the operational reason (5–500 characters)."/></label>
           <button type="button" className="btn danger" disabled={busyKey==="user-role"||accountRole===selectedAccount.role} onClick={()=>void changeUserRole()}>Change account role</button>
         </div>}
         <div className="platform-admin-assignment-form">
