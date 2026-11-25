@@ -1069,8 +1069,28 @@ grant execute on function public.admin_set_user_role(uuid,text,text) to authenti
 -- Support staff may update only operational fields. Ticket/feedback content and
 -- ownership remain immutable through the staff-facing REST surface.
 revoke update on public.support_tickets, public.feedback_items from public, anon, authenticated;
-grant update (status,priority,assigned_to,updated_at) on public.support_tickets to authenticated;
-grant update (status,priority,updated_at) on public.feedback_items to authenticated;
+grant update (status,priority,assigned_to) on public.support_tickets to authenticated;
+grant update (status,priority) on public.feedback_items to authenticated;
+
+create or replace function private.touch_support_workspace_updated_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $function$
+begin
+  new.updated_at:=pg_catalog.now();
+  return new;
+end;
+$function$;
+revoke all on function private.touch_support_workspace_updated_at() from public, anon, authenticated;
+drop trigger if exists support_tickets_touch_updated_at on public.support_tickets;
+create trigger support_tickets_touch_updated_at
+before update on public.support_tickets
+for each row execute function private.touch_support_workspace_updated_at();
+drop trigger if exists feedback_items_touch_updated_at on public.feedback_items;
+create trigger feedback_items_touch_updated_at
+before update on public.feedback_items
+for each row execute function private.touch_support_workspace_updated_at();
 
 create or replace function private.audit_support_workspace_update()
 returns trigger
