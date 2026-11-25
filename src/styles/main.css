@@ -923,3 +923,50 @@ select:-webkit-autofill {
 .rewards-history-row .positive{color:var(--success,#7bc99a)}
 .rewards-history-row .negative{color:var(--muted,#9aa4b2)}
 @media(max-width:800px){.rewards-hero{grid-template-columns:1fr}.rewards-balance{min-width:0}.rewards-stats,.rewards-limits{grid-template-columns:1fr}}
+
+
+/* ATHLETEN UI REFRESH — unified premium design system */
+:root{
+ --bg:#070b12;--surface:rgba(15,22,33,.94);--surface-2:rgba(20,29,43,.92);--surface-3:#182334;
+ --line:rgba(153,181,219,.14);--line-strong:rgba(153,181,219,.23);
+ --text:#f4f7fc;--muted:#9aa9bc;--blue:#4c8dff;--cyan:#70d7ff;--green:#62d9ad;--amber:#f2c76e;--red:#f18294;
+ --shadow:0 16px 38px rgba(0,0,0,.24);--radius:16px;--radius-sm:11px;
+ --font-display:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{background:radial-gradient(ellipse at 65% -12%,rgba(35,112,220,.18),transparent 34%),radial-gradient(ellipse at 0% 45%,rgba(24,62,112,.11),transparent 34%),#070b12;font-family:var(--font-display);letter-spacing:-.012em}
+.app-shell{grid-template-columns:248px minmax(0,1fr)}
+.sidebar{padding:24px 14px 18px;background:rgba(7,11,18,.88);border-right:1px solid var(--line);backdrop-filter:blur(22px);gap:10px}
+.brand{font-size:20px;letter-spacing:-.035em}.brand-mark{width:40px;height:40px;border-radius:13px;box-shadow:0 8px 24px rgba(28,132,255,.22)}
+.edition{letter-spacing:1.35px;margin:0 8px 16px}
+#nav{gap:3px}.nav-item{min-height:42px;border-radius:11px;padding:10px 11px;font-size:12px;transition:background .18s,color .18s,transform .18s}
+.nav-item:hover{transform:translateX(2px)}.nav-item.active{background:linear-gradient(100deg,rgba(76,141,255,.18),rgba(76,141,255,.055));box-shadow:inset 2px 0 var(--blue);color:#fff}
+main{padding:30px clamp(18px,3.3vw,54px);max-width:1680px}
+header{margin-bottom:24px;min-height:46px}h1{font-size:clamp(24px,2.4vw,34px);letter-spacing:-.045em}h2{letter-spacing:-.04em}h3{letter-spacing:-.025em}
+.eyebrow{letter-spacing:1.3px;font-size:10px;color:#8ebcff}
+.card{border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(145deg,rgba(20,30,45,.96),rgba(12,18,28,.96));box-shadow:0 12px 30px rgba(0,0,0,.14);transition:border-color .2s,transform .2s,box-shadow .2s}
+.card:hover{border-color:var(--line-strong)}
+.hero,.daily-leaderboard-hero{border-radius:22px;border:1px solid rgba(112,173,255,.18);background:radial-gradient(circle at 78% 12%,rgba(82,156,255,.20),transparent 32%),linear-gradient(115deg,rgba(17,45,80,.94),rgba(13,25,41,.94) 60%,rgba(9,15,24,.96));box-shadow:0 20px 42px rgba(0,0,0,.2)}
+.hero{padding:clamp(22px,3.5vw,38px)}.hero h2{font-size:clamp(25px,3vw,38px)}.countdown{border-left-color:var(--line-strong)}
+.metrics,.weather-grid{gap:12px}.metric{border-radius:15px;padding:16px;background:linear-gradient(145deg,rgba(20,31,47,.96),rgba(12,18,28,.96));border-color:var(--line)}.metric strong,.metric-value{letter-spacing:-.04em}
+.btn,.icon-btn,.profile{border-radius:11px;min-height:42px}.btn{padding:10px 15px;font-size:12px;letter-spacing:-.005em;background:rgba(150,180,220,.08)}.btn.primary{background:linear-gradient(135deg,#4d91ff,#2672e8);box-shadow:0 8px 22px rgba(38,114,232,.22)}.btn:hover,.icon-btn:hover,.profile:hover{border-color:var(--line-strong);transform:translateY(-1px)}
+.plain{border-radius:9px}.pill,.tag,.verified{border-radius:999px;letter-spacing:.55px}
+input,textarea,select{border-radius:11px!important;border-color:var(--line-strong)!important;background:rgba(9,16,26,.8)!important;color:var(--text)!important;transition:border-color .18s,box-shadow .18s}
+input:focus,textarea:focus,select:focus{border-color:rgba(92,155,255,.65)!important;box-shadow:0 0 0 3px rgba(76,141,255,.12)!important;outline:none}
+button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px solid #77b8ff!important;outline-offset:3px}
+.table-wrap,.admin-table-shell,.scan-table-wrap{border-radius:12px}.admin-table-shell th,.scan-table-wrap th{background:#111d2d;color:#9db8d6}
+.modal{border:1px solid var(--line-strong);border-radius:20px;background:linear-gradient(150deg,#172235,#0c1420);box-shadow:0 28px 80px rgba(0,0,0,.48)}
+.coach-hero,.admin-hero,.rewards-hero{border-radius:20px;background:radial-gradient(circle at 80% 0%,rgba(83,163,255,.17),transparent 33%),linear-gradient(125deg,rgba(19,45,77,.95),rgba(10,19,32,.96));border:1px solid rgba(112,173,255,.16)}
+.coach-tabs{border-radius:14px;background:rgba(8,14,23,.9);border-color:var(--line);padding:5px}.coach-tabs button{border-radius:10px;padding:10px 12px}.coach-tabs button.active{background:rgba(76,141,255,.15);border-color:rgba(76,141,255,.2)}
+.coach-athlete-card,.approval-card,.seat-card{border-radius:15px;background:linear-gradient(145deg,rgba(18,28,42,.96),rgba(10,16,25,.96));border-color:var(--line)}
+.admin-control-center{gap:14px}.admin-hero{padding:24px;border-radius:20px}.admin-stats article{border-radius:15px;background:linear-gradient(145deg,rgba(18,29,44,.96),rgba(10,16,25,.96));border-color:var(--line)}.admin-workspace{border-radius:16px;background:rgba(7,12,20,.8)}.admin-resource-nav{background:rgba(8,13,21,.78)}.admin-nav-group button{border-radius:9px}.admin-content{padding:clamp(14px,2vw,22px)}
+.rewards-centre,.daily-leaderboard{gap:14px}.rewards-balance,.rewards-badge,.rewards-history-row,.daily-leaderboard-row{border-radius:13px;background:rgba(14,21,32,.88)}
+.notification-row,.scanner-merge-bar{border-radius:13px}.scanner-merge-bar{background:rgba(13,20,30,.82)}
+.empty,.empty-state{border:1px dashed var(--line-strong);border-radius:15px;background:rgba(13,20,30,.5)}
+/* Consistent motion, with user preference respected. */
+@keyframes athleten-enter{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+main>.card,main>.hero,main>.metrics,main>.grid,main>.section,main>.daily-leaderboard,main>.rewards-centre{animation:athleten-enter .28s ease both}
+@media(max-width:1050px){.app-shell{grid-template-columns:220px minmax(0,1fr)}.sidebar{padding-inline:11px}main{padding:24px 20px}}
+@media(max-width:760px){.app-shell{grid-template-columns:1fr}.sidebar{display:none}main{padding:18px 13px 28px}header{align-items:flex-start;flex-wrap:wrap}.hero{border-radius:18px}.metrics{gap:9px}.metric{padding:13px}.coach-hero,.admin-hero{padding:18px}.admin-workspace{grid-template-columns:1fr}.admin-resource-nav{border-right:0;border-bottom:1px solid var(--line);max-height:230px}.admin-content{padding:14px}.admin-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){main{padding:14px 10px 24px}.card{border-radius:14px}.hero{padding:18px}.countdown{min-width:100px;padding-left:12px}.btn{min-height:40px}.admin-stats{gap:8px}.admin-stats article{padding:12px}.admin-form-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
