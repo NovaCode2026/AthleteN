@@ -54,6 +54,13 @@ BEGIN
   SELECT count(*) INTO v_profiles FROM public.profiles;
   IF v_profiles <> 1 THEN RAISE EXCEPTION 'Scoped Verification Admin must not browse the full profile directory'; END IF;
 
+  SELECT count(*) INTO v_queue FROM public.search_athlete_verification_reviews('Test Athlete',20);
+  IF v_queue <> 1 THEN RAISE EXCEPTION 'Verification Admin should find one matching Athlete account'; END IF;
+
+  IF NOT private.platform_admin_has_permission('verification.athlete.manage') THEN
+    RAISE EXCEPTION 'Verification Admin is missing Athlete verification management permission';
+  END IF;
+
   SELECT count(*) INTO v_queue FROM public.get_student_verification_queue();
   IF v_queue <> 2 THEN RAISE EXCEPTION 'Verification Admin should see the two pending Student proofs'; END IF;
 
@@ -69,6 +76,28 @@ BEGIN
   END;
 END;
 $test$;
+
+SELECT public.admin_set_athlete_verified(
+  '00000000-0000-0000-0000-000000000006',
+  true,
+  'Reviewed federation competition certificate and matching AthleteN profile details.'
+);
+DO $test$
+DECLARE v_verified boolean; v_audit integer;
+BEGIN
+  SELECT verified_athlete INTO v_verified FROM public.profiles
+  WHERE user_id='00000000-0000-0000-0000-000000000006';
+  IF v_verified IS DISTINCT FROM true THEN RAISE EXCEPTION 'Athlete verification was not granted'; END IF;
+  SELECT count(*) INTO v_audit FROM public.get_platform_admin_audit(100)
+  WHERE action='verification.athlete.verified';
+  IF v_audit < 1 THEN RAISE EXCEPTION 'Athlete verification must be audited'; END IF;
+END;
+$test$;
+SELECT public.admin_set_athlete_verified(
+  '00000000-0000-0000-0000-000000000006',
+  false,
+  'Re-review found that the submitted federation document could not be independently confirmed.'
+);
 
 SELECT public.admin_review_student_verification(
   (SELECT id FROM public.student_verifications WHERE document_type='school_id'),
