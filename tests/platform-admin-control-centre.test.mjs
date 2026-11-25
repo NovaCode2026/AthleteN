@@ -13,6 +13,14 @@ test("platform admin scopes are least-privilege and RLS-enforced", () => {
   assert.match(sql, /create table if not exists public\.platform_admin_assignments/i);
   assert.match(sql, /permission_role text not null check \(permission_role in \('support','verification','finance','operations'\)\)/i);
   assert.match(sql, /create or replace function private\.platform_admin_resource_allowed/i);
+  const resourceStart = sql.indexOf("create or replace function private.platform_admin_resource_allowed");
+  const resourceEnd = sql.indexOf("$function$;", resourceStart);
+  const resourceFn = sql.slice(resourceStart, resourceEnd);
+  assert.ok(resourceFn.indexOf("if p_table='student_verifications'") < resourceFn.indexOf("if v_full_access then return true"));
+  assert.ok(resourceFn.includes("elsif p_table in ('subscriptions','subscription_usage','account_entitlements','payment_orders','payment_events')"));
+  assert.ok(resourceFn.includes("elsif p_table='ai_usage_events'"));
+  assert.ok(resourceFn.includes("elsif p_table='audit_logs'"));
+
   assert.match(sql, /as restrictive for select to authenticated/i);
   assert.match(sql, /as restrictive for insert to authenticated/i);
   assert.match(sql, /as restrictive for update to authenticated/i);
