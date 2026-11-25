@@ -118,6 +118,11 @@ CREATE TABLE IF NOT EXISTS storage.objects (
   name text NOT NULL
 );
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS fixture_storage_owner_select ON storage.objects;
+CREATE POLICY fixture_storage_owner_select ON storage.objects
+  FOR SELECT TO authenticated
+  USING (name LIKE (SELECT auth.uid())::text || '/%');
+
 
 -- Create the remaining resource tables named by the scoped-admin policy map.
 DO $tables$
