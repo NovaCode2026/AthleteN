@@ -221,7 +221,7 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
     setBusyKey("ticket:" + row.id); setError(""); setNotice("");
     try {
       const { error: updateError } = await supabase.from("support_tickets")
-        .update({...values,updated_at:new Date().toISOString()}).eq("id",row.id);
+        .update({...values}).eq("id",row.id);
       if (updateError) throw updateError;
       setNotice("Support ticket updated. The database audit trigger recorded the change.");
       await load();
