@@ -1024,7 +1024,7 @@ begin
       execute pg_catalog.format('drop policy if exists platform_admin_scope_select on public.%I',t);
       execute pg_catalog.format(
         'create policy platform_admin_scope_select on public.%I as restrictive for select to authenticated using (private.platform_admin_resource_allowed(%L,''select'')%s)',
-        t,t,case when t in ('profiles','notifications') then ' or user_id=(select auth.uid())' else '' end
+        t,t,case when t in ('profiles','notifications','support_tickets','feedback_items') then ' or user_id=(select auth.uid())' else '' end
       );
       execute pg_catalog.format('drop policy if exists platform_admin_scope_insert on public.%I',t);
       execute pg_catalog.format(
