@@ -507,9 +507,11 @@ begin
 end;
 $function$;
 
+drop function if exists public.admin_assign_platform_role(uuid,text);
 create or replace function public.admin_assign_platform_role(
   p_admin_user_id uuid,
-  p_permission_role text
+  p_permission_role text,
+  p_reason text
 )
 returns void
 language plpgsql
@@ -523,6 +525,9 @@ begin
      or not private.platform_admin_has_permission('platform.roles.manage')
      or not exists(select 1 from public.profiles where user_id=(select auth.uid()) and role='super_admin') then
     raise exception 'Super Admin access required';
+  end if;
+  if p_reason is null or char_length(btrim(p_reason)) not between 5 and 500 then
+    raise exception 'A permission-scope reason between 5 and 500 characters is required';
   end if;
   if p_admin_user_id is null or p_admin_user_id=(select auth.uid()) then
     raise exception 'Choose another administrator account';
@@ -547,7 +552,7 @@ begin
 
   insert into public.platform_admin_audit_log(actor_user_id,target_user_id,action,reason,metadata)
   values((select auth.uid()),p_admin_user_id,'admin.permission_scope_changed',
-    'Super Admin changed the administrator permission scope',
+    btrim(p_reason),
     jsonb_build_object('permission_role',coalesce(p_permission_role,'full')));
 end;
 $function$;
