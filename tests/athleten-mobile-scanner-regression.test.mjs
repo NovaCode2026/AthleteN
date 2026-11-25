@@ -79,7 +79,11 @@ test("mobile refreshes shared athlete records after realtime changes from web or
   assert.match(auth, /const ownedTables = \[/);
   assert.match(auth, /setSyncVersion\(\(version\) => version \+ 1\)/);
   assert.match(auth, /filter: `user_id=eq\.\$\{userId\}`/);
-  for (const table of ["training_sessions", "tournaments", "medals", "weight_logs", "goals", "calendar_events", "documents", "competition_checklists"]) {
+  for (const table of [
+    "training_sessions", "tournaments", "medals", "weight_logs", "goals",
+    "calendar_events", "documents", "competition_checklists",
+    "taekwondo_training_logs", "taekwondo_kyorugi_bouts", "taekwondo_poomsae_performances"
+  ]) {
     assert.match(auth, new RegExp("'" + table + "'"));
   }
   for (const screenPath of [
@@ -236,4 +240,22 @@ test("web-mobile parity exposes essential and role-specific workflows from mobil
   assert.match(more, /profile\?\.role==='coach'/);
   assert.match(more, /profile\?\.role==='academy_admin'/);
   assert.match(more, /profile\?\.role==='super_admin'/);
+});
+
+
+test("Taekwondo domain tables participate in Realtime for Web-Mobile synchronization", () => {
+  const auth = read("AthleteN-Mobile/src/context/AuthContext.tsx");
+  const migration = read("supabase/migrations/20261125090000_enable_taekwondo_realtime_sync.sql");
+  const tables = [
+    "taekwondo_training_logs",
+    "taekwondo_kyorugi_bouts",
+    "taekwondo_poomsae_performances",
+  ];
+  for (const table of tables) {
+    assert.ok(auth.includes("'" + table + "'"), "mobile account sync subscribes to " + table);
+    assert.ok(migration.includes("'" + table + "'"), "Realtime publication includes " + table);
+    assert.match(migration, /alter publication supabase_realtime add table/);
+  }
+  const taekwondo = read("AthleteN-Mobile/src/app/taekwondo.tsx");
+  assert.match(taekwondo, /\[session,discipline,syncVersion\]/);
 });
