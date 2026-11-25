@@ -145,6 +145,7 @@ DECLARE
   v_permissions jsonb;
   v_profiles integer;
   v_queue integer;
+  v_direct_proofs integer;
   v_assets integer;
   v_overview jsonb;
 BEGIN
@@ -169,6 +170,9 @@ BEGIN
     RAISE EXCEPTION 'Verification Admin is missing Athlete verification management permission';
   END IF;
 
+  SELECT count(*) INTO v_direct_proofs FROM public.student_verifications;
+  IF v_direct_proofs <> 0 THEN RAISE EXCEPTION 'Scoped Verification Admin must use the pending-proof RPC, not direct proof-table access'; END IF;
+
   SELECT count(*) INTO v_queue FROM public.get_student_verification_queue();
   IF v_queue <> 2 THEN RAISE EXCEPTION 'Verification Admin should see the two pending Student proofs'; END IF;
 
@@ -177,7 +181,7 @@ BEGIN
   IF v_assets <> 2 THEN RAISE EXCEPTION 'Verification Admin should read only proof bucket assets allowed by the review policy'; END IF;
 
   BEGIN
-    PERFORM public.admin_set_user_role('00000000-0000-0000-0000-000000000006','super_admin');
+    PERFORM public.admin_set_user_role('00000000-0000-0000-0000-000000000006','super_admin','Scoped reviewer must not change platform roles.');;
     RAISE EXCEPTION 'Scoped Verification Admin unexpectedly changed a platform role';
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM = 'Scoped Verification Admin unexpectedly changed a platform role' THEN RAISE; END IF;
