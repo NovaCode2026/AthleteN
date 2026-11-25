@@ -612,7 +612,7 @@ declare
     'student_verifications','age_verifications','feedback_items','roadmap_items','roadmap_votes','tournament_scans',
     'referrals','athlete_badges','ai_usage_events','subscriptions','subscription_usage','account_entitlements',
     'payment_orders','payment_events','support_tickets','conversations','conversation_members','messages',
-    'message_reports','user_blocks','announcements','feature_flags','reserved_usernames','audit_logs',
+    'message_reports','user_blocks','notifications','announcements','feature_flags','reserved_usernames','audit_logs',
     'academy_fee_invoices','academy_fee_payments','academy_coach_attendance','academy_coach_availability',
     'academy_athlete_transfer_requests','academy_announcements','academy_guardian_links','academy_report_exports',
     'academy_seat_requests','academy_staff_assignments','academy_notification_preferences'
@@ -624,7 +624,7 @@ begin
       execute pg_catalog.format('drop policy if exists platform_admin_scope_select on public.%I',t);
       execute pg_catalog.format(
         'create policy platform_admin_scope_select on public.%I as restrictive for select to authenticated using (private.platform_admin_resource_allowed(%L,''select'')%s)',
-        t,t,case when t='profiles' then ' or user_id=(select auth.uid())' else '' end
+        t,t,case when t in ('profiles','notifications') then ' or user_id=(select auth.uid())' else '' end
       );
       execute pg_catalog.format('drop policy if exists platform_admin_scope_insert on public.%I',t);
       execute pg_catalog.format(
