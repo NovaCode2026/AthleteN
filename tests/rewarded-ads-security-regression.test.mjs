@@ -45,7 +45,7 @@ test("AdMob SSV callback verifies Google's ECDSA signature before calling the gr
   assert.match(ssv, /p_custom_data_hash/);
 });
 
-test("reward ad session creation fails closed pending adult and youth-safety approval", () => {
+test("reward ad session creation fails closed and permits only approved teens 13–17 or eligible adults", () => {
   assert.match(session, /ATHLETEN_REWARDED_ADS_ENABLED/);
   assert.match(session, /ATHLETEN_REWARDED_ADS_LIVE_APPROVED/);
   assert.match(session, /ATHLETEN_REWARDED_ADS_MINOR_SAFETY_APPROVED/);
@@ -54,10 +54,13 @@ test("reward ad session creation fails closed pending adult and youth-safety app
   assert.match(session, /custom_data_hash: customDataHash/);
   assert.doesNotMatch(session, /request\.json\(\).*user_id/s);
   assert.match(session, /get_age_verification_status/);
-  assert.match(session, /ageRecord\?\.status !== "not_required"/);
+  assert.match(session, /ageYears < 13/);
+  assert.match(session, /ageYears < 18 && ageRecord\?\.status !== "approved"/);
+  assert.match(session, /ageYears >= 18 && ageRecord\?\.status !== "not_required"/);
   assert.ok(session.includes('dob.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);'));
-  assert.match(session, /ageYears < 18/);
-  assert.match(session, /Rewarded ads are not available for accounts under 18/);
+  assert.match(session, /ageCategory: ageYears < 18 \? "teen" : "adult"/);
+  assert.match(mobileRewards, /parent\/guardian-approved teen eligibility \(13–17\)/);
+  assert.match(mobileRewards, /Accounts under 13 are not eligible/);
 });
 
 test("wallet API derives its owner from the authenticated Supabase user", () => {
