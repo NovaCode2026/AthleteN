@@ -1062,6 +1062,65 @@ $function$;
 revoke all on function public.admin_set_user_role(uuid,text) from public, anon;
 grant execute on function public.admin_set_user_role(uuid,text) to authenticated;
 
+-- Support staff may update only operational fields. Ticket/feedback content and
+-- ownership remain immutable through the staff-facing REST surface.
+revoke update on public.support_tickets, public.feedback_items from public, anon, authenticated;
+grant update (status,priority,assigned_to,updated_at) on public.support_tickets to authenticated;
+grant update (status,priority,updated_at) on public.feedback_items to authenticated;
+
+create or replace function private.audit_support_workspace_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor uuid := (select auth.uid());
+  v_fields text[] := array[]::text[];
+  v_action text;
+begin
+  if v_actor is null or not private.platform_admin_has_permission('support.manage') then
+    raise exception 'Support management permission required';
+  end if;
+
+  if tg_table_name='support_tickets' then
+    if new.status is distinct from old.status then v_fields:=array_append(v_fields,'status'); end if;
+    if new.priority is distinct from old.priority then v_fields:=array_append(v_fields,'priority'); end if;
+    if new.assigned_to is distinct from old.assigned_to then
+      if new.assigned_to is not null and new.assigned_to<>v_actor then
+        raise exception 'Support Admins may assign tickets only to themselves';
+      end if;
+      v_fields:=array_append(v_fields,'assigned_to');
+    end if;
+    v_action:='support_ticket.updated';
+  else
+    if new.status is distinct from old.status then v_fields:=array_append(v_fields,'status'); end if;
+    if new.priority is distinct from old.priority then v_fields:=array_append(v_fields,'priority'); end if;
+    v_action:='feedback_item.updated';
+  end if;
+
+  if cardinality(v_fields)=0 then return new; end if;
+
+  insert into public.audit_logs(actor_user_id,action,entity_table,entity_id,metadata)
+  values(v_actor,v_action,tg_table_name,new.id,jsonb_build_object('changed_fields',to_jsonb(v_fields)));
+
+  insert into public.platform_admin_audit_log(actor_user_id,target_user_id,action,reason,metadata)
+  values(v_actor,new.user_id,v_action,null,jsonb_build_object('changed_fields',to_jsonb(v_fields)));
+
+  return new;
+end;
+$function$;
+
+revoke all on function private.audit_support_workspace_update() from public, anon, authenticated;
+drop trigger if exists support_tickets_admin_audit on public.support_tickets;
+create trigger support_tickets_admin_audit
+after update on public.support_tickets
+for each row execute function private.audit_support_workspace_update();
+drop trigger if exists feedback_items_admin_audit on public.feedback_items;
+create trigger feedback_items_admin_audit
+after update on public.feedback_items
+for each row execute function private.audit_support_workspace_update();
+
 -- Only the RPCs below can mutate role assignments, moderation state and reviews.
 revoke all on function public.get_my_platform_admin_permissions() from public, anon;
 revoke all on function public.get_platform_admin_overview() from public, anon;
