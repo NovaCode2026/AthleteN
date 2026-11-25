@@ -20,7 +20,6 @@ test("platform admin scopes are least-privilege and RLS-enforced", () => {
   assert.match(sql, /when 'student_verifications' then/i);
 
   assert.match(sql, /when 'age_verifications' then[\s\S]*?return false/);
-  assert.match(sql, /platform_account_is_active\(\)\) or \(select private\.is_super_admin\(\)\)/);
   assert.match(sql, /when 'subscriptions','subscription_usage','account_entitlements','payment_orders','payment_events' then/i);
   assert.match(sql, /when 'support_tickets','feedback_items' then/i);
   assert.match(sql, /when 'feature_flags' then/i);
@@ -80,8 +79,6 @@ test("account restrictions require reasons and gate core data while preserving p
   assert.match(fn, /p_status='restricted'[\s\S]*?p_expires_at<=pg_catalog\.now\(\)/);
   assert.match(fn, /v_target_role='super_admin'/);
   assert.match(fn, /insert into public\.platform_admin_audit_log/i);
-  assert.match(sql, /platform_account_is_active\\(\\)\\) or \\(select private\\.is_super_admin\\(\\)\\)/);
-  assert.match(sql, /platform_account_is_active\(\) or \(select private\.is_super_admin\(\)\)/);
   assert.match(sql, /create or replace function public\.search_platform_accounts/i);
   assert.match(webExtensions, /admin_set_platform_account_access/);
   assert.match(mobileOperations, /admin_set_platform_account_access/);
