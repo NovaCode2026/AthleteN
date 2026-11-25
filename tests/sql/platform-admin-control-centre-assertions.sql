@@ -490,14 +490,20 @@ BEGIN
   SELECT count(*) INTO v_subscriptions FROM public.subscriptions;
   IF v_tickets < 1 THEN RAISE EXCEPTION 'Support Admin should see support tickets'; END IF;
   IF v_subscriptions <> 0 THEN RAISE EXCEPTION 'Support Admin must not see billing data'; END IF;
-  INSERT INTO public.support_tickets(user_id,subject)
-  VALUES ('00000000-0000-0000-0000-000000000006','Admin-created ticket must be blocked');
-  GET DIAGNOSTICS v_rows = ROW_COUNT;
-  IF v_rows <> 0 THEN RAISE EXCEPTION 'Support Admin must not insert customer tickets directly'; END IF;
-  INSERT INTO public.feedback_items(user_id,title)
-  VALUES ('00000000-0000-0000-0000-000000000006','Admin-created feedback must be blocked');
-  GET DIAGNOSTICS v_rows = ROW_COUNT;
-  IF v_rows <> 0 THEN RAISE EXCEPTION 'Support Admin must not insert feedback directly'; END IF;
+  BEGIN
+    INSERT INTO public.support_tickets(user_id,subject)
+    VALUES ('00000000-0000-0000-0000-000000000006','Admin-created ticket must be blocked');
+    RAISE EXCEPTION 'Support Admin unexpectedly inserted a customer ticket';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  BEGIN
+    INSERT INTO public.feedback_items(user_id,title)
+    VALUES ('00000000-0000-0000-0000-000000000006','Admin-created feedback must be blocked');
+    RAISE EXCEPTION 'Support Admin unexpectedly inserted feedback';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
   UPDATE public.support_tickets SET status='pending',priority='high',assigned_to=(SELECT auth.uid())
   WHERE user_id='00000000-0000-0000-0000-000000000006';
   UPDATE public.feedback_items SET status='reviewing',priority='high'
