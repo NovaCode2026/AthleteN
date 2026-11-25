@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, ChevronRight, Database, FileCheck2, Megaphone, PauseCircle, RefreshCw, Search, ShieldCheck, Ticket, Users, X } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import MobileReleaseControl from "./MobileReleaseControl";
+import PlatformAdminExtensions from "./PlatformAdminExtensions";
 import { plans } from "../../config/plans";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import "./AdminControlCenter.css";
@@ -46,8 +47,29 @@ export default function AdminControlCenter({ userId, role }: Props) {
   const [loading, setLoading] = useState(false); const [summaryLoading, setSummaryLoading] = useState(true); const [error, setError] = useState(""); const [notice, setNotice] = useState("");
   const [query, setQuery] = useState(""); const [group, setGroup] = useState("All"); const [selectedRow, setSelectedRow] = useState<Row | null>(null); const [editorDraft, setEditorDraft] = useState<Row>({}); const [editorBusy, setEditorBusy] = useState(false);
   const [billing, setBilling] = useState<BillingState>(blankBilling()); const [billingBusy, setBillingBusy] = useState(false); const [verificationBusy, setVerificationBusy] = useState<string | null>(null); const [announcementOpen, setAnnouncementOpen] = useState(false); const [createOpen, setCreateOpen] = useState(false); const [createJson, setCreateJson] = useState("{}"); const [announcement, setAnnouncement] = useState({ title: "", body: "", audience: "all" });
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const [adminPermissionLoaded, setAdminPermissionLoaded] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setAdminPermissionLoaded(false);
+    if (!supabase || !["support_admin","admin","super_admin"].includes(role)) {
+      setAdminPermissions([]);
+      setAdminPermissionLoaded(true);
+      return () => { active = false; };
+    }
+    void supabase.rpc("get_my_platform_admin_permissions").then(({ data, error: permissionError }) => {
+      if (!active) return;
+      if (permissionError) { setAdminPermissions([]); setError(permissionError.message); }
+      else setAdminPermissions(Array.isArray(data?.permissions) ? data.permissions : []);
+    }).finally(() => { if (active) setAdminPermissionLoaded(true); });
+    return () => { active = false; };
+  }, [role, userId]);
   const [rewardAdmin, setRewardAdmin] = useState<RewardAdminOverview | null>(null); const [rewardAdminBusy, setRewardAdminBusy] = useState(false); const [rewardAdminError, setRewardAdminError] = useState(""); const [rewardPauseBusy, setRewardPauseBusy] = useState(false);
-  const canManage = role === "admin" || role === "super_admin"; const isSuperAdmin = role === "super_admin"; const isOwner = isSuperAdmin; const section = sections.find(s => s.key === selected) ?? sections[0];
+  const isSuperAdmin = role === "super_admin";
+  const canManage = isSuperAdmin || adminPermissions.includes("*");
+  const isOwner = isSuperAdmin;
+  const canReviewVerification = isSuperAdmin || adminPermissions.includes("*") || adminPermissions.includes("verification.review");
+  const section = sections.find(s => s.key === selected) ?? sections[0];
   async function loadRewardAdmin() {
     if (!canManage || !supabase) return;
     setRewardAdminBusy(true); setRewardAdminError("");
@@ -78,30 +100,34 @@ export default function AdminControlCenter({ userId, role }: Props) {
   }
   const ageVerificationReadOnly = selected === "ageVerifications";
   const serverMeteredReadOnly = selected === "aiUsage";
-  const canEditCurrentSection = canManage && !ageVerificationReadOnly && !serverMeteredReadOnly;
-  const canCreateCurrentSection = isOwner && !ageVerificationReadOnly && !serverMeteredReadOnly;
+  const studentVerificationReadOnly = selected === "verifications";
+  const canEditCurrentSection = canManage && !ageVerificationReadOnly && !studentVerificationReadOnly && !serverMeteredReadOnly;
+  const canCreateCurrentSection = isOwner && !ageVerificationReadOnly && !studentVerificationReadOnly && !serverMeteredReadOnly;
 
-  async function loadSummaries() { if (!supabase) return; setSummaryLoading(true); try { const r = await Promise.all(sections.map(async s => { const { count, error: e } = await supabase.from(s.table).select("*", { count: "exact", head: true }); if (e) throw new Error(`${s.label}: ${e.message}`); return { key: s.key, label: s.label, count: count ?? 0 }; })); setSummaries(r); } catch (e) { setError(e instanceof Error ? e.message : "Some admin resource counts could not be loaded."); } finally { setSummaryLoading(false); } }
-  async function load() { if (!supabase) return; setLoading(true); setError(""); setSelectedRow(null); try { const result = ageVerificationReadOnly ? await supabase.from(section.table).select("id,user_id,date_of_birth,parent_email,status,approved_at,rejected_at,created_at,updated_at").limit(100) : await supabase.from(section.table).select("*").limit(100); if (result.error) throw result.error; setRows((result.data ?? []) as Row[]); } catch (e) { setRows([]); setError(e instanceof Error ? e.message : `Unable to load ${section.label}.`); } finally { setLoading(false); } }
-  useEffect(() => { void loadSummaries(); }, []); useEffect(() => { void load(); if (!supabase) return; const ch = supabase.channel(`admin-${section.table}`).on("postgres_changes", { event: "*", schema: "public", table: section.table }, () => { void load(); void loadSummaries(); }).subscribe(); return () => { void supabase.removeChannel(ch); }; }, [section.table]);
+  async function loadSummaries() { if (!canManage || !supabase) { setSummaryLoading(false); return; } setSummaryLoading(true); try { const r = await Promise.all(sections.map(async s => { const { count, error: e } = await supabase.from(s.table).select("*", { count: "exact", head: true }); if (e) throw new Error(`${s.label}: ${e.message}`); return { key: s.key, label: s.label, count: count ?? 0 }; })); setSummaries(r); } catch (e) { setError(e instanceof Error ? e.message : "Some admin resource counts could not be loaded."); } finally { setSummaryLoading(false); } }
+  async function load() { if (!canManage || !supabase) return; setLoading(true); setError(""); setSelectedRow(null); try { const result = ageVerificationReadOnly ? await supabase.from(section.table).select("id,user_id,status,approved_at,rejected_at,created_at,updated_at").limit(100) : studentVerificationReadOnly ? await supabase.from(section.table).select("id,user_id,document_type,status,reviewer_notes,reviewed_by,reviewed_at,created_at").limit(100) : await supabase.from(section.table).select("*").limit(100); if (result.error) throw result.error; setRows((result.data ?? []) as Row[]); } catch (e) { setRows([]); setError(e instanceof Error ? e.message : `Unable to load ${section.label}.`); } finally { setLoading(false); } }
+  useEffect(() => { void loadSummaries(); }, [canManage]); useEffect(() => { if (!canManage || !supabase) return; void load(); const ch = supabase.channel(`admin-${section.table}`).on("postgres_changes", { event: "*", schema: "public", table: section.table }, () => { void load(); void loadSummaries(); }).subscribe(); return () => { void supabase.removeChannel(ch); }; }, [section.table, canManage]);
   const filtered = useMemo(() => { const n = query.trim().toLowerCase(); return n ? rows.filter(r => JSON.stringify(r).toLowerCase().includes(n)) : rows; }, [rows, query]);
   const columns = useMemo(() => { const keys = new Set<string>(); filtered.slice(0, 30).forEach(r => Object.keys(r).forEach(k => keys.add(k))); return [...keys].filter(k => k !== "id").slice(0, 9); }, [filtered]);
   const total = summaries.reduce((a, b) => a + b.count, 0), users = summaries.find(s => s.key === "profiles")?.count ?? 0, tickets = summaries.find(s => s.key === "support")?.count ?? 0;
   const resourceGroupCounts=useMemo(()=>groups.map(name=>({group:name,records:summaries.filter(item=>sections.find(section=>section.key===item.key)?.group===name).reduce((sum,item)=>sum+item.count,0)})),[summaries]);
 
   async function reviewStudentVerification(row: Row, status: "approved" | "rejected") {
-    if (!canManage || !supabase || !userId || !text(row.id)) return;
+    if (!canReviewVerification || !supabase || !userId || !text(row.id)) return;
+    const reason = window.prompt("Record the evidence-based reason for this decision (5–500 characters):");
+    if (reason === null) return;
+    if (reason.trim().length < 5 || reason.trim().length > 500) { setError("Enter a decision reason between 5 and 500 characters."); return; }
     const id = text(row.id);
     setVerificationBusy(id);
     setError(""); setNotice("");
     try {
-      const { error: reviewError } = await supabase.from("student_verifications")
-        .update({ status, reviewed_by: userId, reviewed_at: new Date().toISOString() })
-        .eq("id", id).eq("status", "pending");
+      const { error: reviewError } = await supabase.rpc("admin_review_student_verification", {
+        p_request_id: id, p_status: status, p_reason: reason.trim()
+      });
       if (reviewError) throw reviewError;
       setNotice(status === "approved"
-        ? "Student verification approved. The athlete can now proceed to Student checkout."
-        : "Student verification rejected. The athlete can submit updated proof.");
+        ? "Student proof approved. The decision was recorded in the platform audit log."
+        : "Student proof rejected with feedback recorded for the athlete.");
       await load();
       await loadSummaries();
     } catch (error) {
@@ -120,6 +146,8 @@ export default function AdminControlCenter({ userId, role }: Props) {
   return <section className="admin-control-center" aria-label="Admin control center">
     <div className="admin-hero"><div className="admin-hero-copy"><div className="admin-kicker"><ShieldCheck size={16} /> Secure administration</div><h2>Command Center</h2><p>One place to operate AthleteN: users, athlete data, verification, support, billing, product controls and audit history.</p><div className="admin-identity"><span className="admin-avatar">{role.slice(0, 2).toUpperCase()}</span><span><b>{role}</b><small>Signed in administrator</small></span></div></div><div className="admin-hero-actions"><div className="admin-live"><span /> Realtime connected</div><button className="btn" onClick={() => { void load(); void loadSummaries(); }} disabled={loading || summaryLoading}><RefreshCw size={15} /> {loading || summaryLoading ? "Refreshing..." : "Refresh all"}</button>{canManage&&<button type="button" className="btn primary" aria-controls="admin-announcement-panel" aria-expanded={announcementOpen} onClick={()=>setAnnouncementOpen(v=>!v)}><Megaphone size={15}/> Announcement</button>}{canCreateCurrentSection&&<button type="button" className="btn" aria-controls="admin-create-panel" aria-expanded={createOpen} onClick={()=>{setCreateJson("{}");setCreateOpen(v=>!v);}}>+ New record</button>}</div></div>
     {isSuperAdmin && <MobileReleaseControl role={role} userId={userId} />}
+    <PlatformAdminExtensions userId={userId} role={role} />
+    {canManage && <>
     <div className="admin-stats"><article><span><Users size={17}/></span><div><small>Users</small><strong>{summaryLoading?"…":users}</strong><em>Profiles in platform</em></div></article><article><span><Database size={17}/></span><div><small>Total records</small><strong>{summaryLoading?"…":total}</strong><em>Across admin resources</em></div></article><article><span><FileCheck2 size={17}/></span><div><small>Plan & usage</small><strong>Ready</strong><em>Admin billing editor</em></div></article><article><span><Ticket size={17}/></span><div><small>Support tickets</small><strong>{summaryLoading?"…":tickets}</strong><em>All ticket records</em></div></article></div>
     <section className="admin-analytics card"><div><span className="admin-section-label">Platform analytics</span><h3>Records by operational area</h3><p>Live counts from the admin resource summaries.</p></div>{summaryLoading?<p>Loading analytics…</p>:<ResponsiveContainer width="100%" height={220}><BarChart data={resourceGroupCounts}><CartesianGrid strokeDasharray="3 3" stroke="#263f5a"/><XAxis dataKey="group" tick={{fill:"#9eb3c9",fontSize:10}} interval={0} angle={-18} textAnchor="end" height={55}/><YAxis allowDecimals={false} tick={{fill:"#9eb3c9",fontSize:10}}/><Tooltip contentStyle={{background:"#0b1b2d",border:"1px solid #294663",borderRadius:12}}/><Bar dataKey="records" name="Records" fill="#49d7ff" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>}</section>
     {canManage&&<section className="admin-reward-ops card" aria-label="Rewarded ad operations">
@@ -136,10 +164,11 @@ export default function AdminControlCenter({ userId, role }: Props) {
     <div className="admin-toolbar"><div className="admin-search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={`Search ${section.label.toLowerCase()}...`}/></div><select value={group} onChange={e=>setGroup(e.target.value)}><option>All</option>{groups.map(g=><option key={g}>{g}</option>)}</select><span className="admin-result-count">{filtered.length} shown · {rows.length} loaded</span></div>
     <div className="admin-workspace"><aside className="admin-resource-nav"><div className="admin-nav-title">Resources</div>{resourceGroups.map(g=><div key={g} className="admin-nav-group"><span>{g}</span>{sections.filter(s=>s.group===g).map(s=><button key={s.key} type="button" aria-label={`Admin resource: ${s.label}`} data-testid={`admin-resource-${s.key}`} className={s.key===selected?"active":""} onClick={()=>{setSelected(s.key);setQuery("");setSelectedRow(null);}}><span>{s.label}</span><b>{summaries.find(x=>x.key===s.key)?.count??"—"}</b><ChevronRight size={14}/></button>)}</div>)}</aside>
       <div className="admin-content"><div className="admin-section-head"><div><span className="admin-section-label">{section.group}</span><h3>{section.label}</h3><p>{isOwner?"Owner mode: full create, edit, delete, billing, system and product controls.":canManage?"Administrative controls are enabled for your role.":"Read-only view."}</p></div><div className="admin-permission"><span className={canManage?"ok":"limited"}>{canManage?"Manage":"Read only"}</span><small>{isOwner?"Owner / Super administrator":role}</small></div></div>
-      {ageVerificationReadOnly&&<div className="admin-alert"><ShieldCheck size={17}/><span>Age-verification records are view-only here. DOB corrections and guardian approval decisions must use the dedicated, audited server-side workflow; the generic record editor is disabled.</span></div>}
+      {ageVerificationReadOnly&&<div className="admin-alert"><ShieldCheck size={17}/><span>Age-verification records are view-only here. DOB and guardian details are not exposed in this list; approval decisions must use the dedicated guardian workflow.</span></div>}
+      {studentVerificationReadOnly&&<div className="admin-alert"><ShieldCheck size={17}/><span>Student proof decisions use the audited review queue above. This resource list is read-only and does not expose private proof paths.</span></div>}
       {error&&<div className="admin-alert error"><AlertTriangle size={17}/><span>{error}</span><button onClick={()=>setError("")}><X size={15}/></button></div>}{notice&&<div className="admin-alert success"><Check size={17}/><span>{notice}</span><button onClick={()=>setNotice("")}><X size={15}/></button></div>}
       {usageKeys.has(selected)&&<div className="admin-compose" style={{marginBottom:16}}><div><div><Database size={18}/><h3>Plan & usage controls</h3></div><span className="admin-section-label">Select a record below, or enter a user ID</span></div><div className="admin-form-grid"><label>User ID<input value={billing.userId} onChange={e=>setBilling({...billing,userId:e.target.value})} placeholder="User UUID"/></label><label>Plan<select value={billing.planId} onChange={e=>{const id=e.target.value;setBilling({...billing,planId:id,aiLimit:String(plans.find(p=>p.id===id)?.aiLimit??0)})}}>{plans.map(p=><option key={p.id} value={p.id}>{p.name} ({p.id})</option>)}</select></label><label>AI requests used<input type="number" min="0" value={billing.aiUsed} onChange={e=>setBilling({...billing,aiUsed:e.target.value})}/></label><label>AI requests limit<input type="number" min="0" value={billing.aiLimit} onChange={e=>setBilling({...billing,aiLimit:e.target.value})}/></label><label>Storage MB used<input type="number" min="0" value={billing.storageUsed} onChange={e=>setBilling({...billing,storageUsed:e.target.value})}/></label><label>Usage month<input type="date" value={billing.usageMonth} onChange={e=>setBilling({...billing,usageMonth:e.target.value})}/></label><label>Status<select value={billing.status} onChange={e=>setBilling({...billing,status:e.target.value})}><option value="active">active</option><option value="trialing">trialing</option><option value="past_due">past_due</option><option value="canceled">canceled</option><option value="incomplete">incomplete</option></select></label><label>Current period end<input type="datetime-local" value={billing.currentPeriodEnd} onChange={e=>setBilling({...billing,currentPeriodEnd:e.target.value})}/></label></div><div className="inline-actions"><button className="btn primary" onClick={()=>void saveBilling()} disabled={!canManage||billingBusy||!billing.userId}>{billingBusy?"Saving...":"Save plan & usage"}</button></div></div>}
-      {loading?<div className="admin-loading"><span/><span/><span/></div>:filtered.length?<div className="admin-table-shell"><table><thead><tr><th>Record</th>{columns.map(k=><th key={k}>{k.replace(/_/g," ")}</th>)}<th>Open</th></tr></thead><tbody>{filtered.map((r,i)=><tr key={rowKeyColumns(section).map((key) => text(r[key])).join(":") || i}><td><strong>{text(r.id).slice(0,8)||"record"}</strong></td>{columns.map(k=><td key={k}>{shown(r[k]).slice(0,120)}</td>)}<td><div className="inline-actions"><button className="btn" onClick={()=>void openRow(r)}>Open</button>{section.key === "verifications" && text(r.status) === "pending" && canManage && <><button className="btn primary" disabled={verificationBusy===text(r.id)} onClick={()=>void reviewStudentVerification(r,"approved")}>{verificationBusy===text(r.id)?"Saving…":"Approve"}</button><button className="btn danger" disabled={verificationBusy===text(r.id)} onClick={()=>void reviewStudentVerification(r,"rejected")}>Reject</button></>}</div></td></tr>)}</tbody></table></div>:<div className="empty"><strong>No records found.</strong><p>Try another search or refresh.</p></div>}
+      {loading?<div className="admin-loading"><span/><span/><span/></div>:filtered.length?<div className="admin-table-shell"><table><thead><tr><th>Record</th>{columns.map(k=><th key={k}>{k.replace(/_/g," ")}</th>)}<th>Open</th></tr></thead><tbody>{filtered.map((r,i)=><tr key={rowKeyColumns(section).map((key) => text(r[key])).join(":") || i}><td><strong>{text(r.id).slice(0,8)||"record"}</strong></td>{columns.map(k=><td key={k}>{shown(r[k]).slice(0,120)}</td>)}<td><div className="inline-actions"><button className="btn" onClick={()=>void openRow(r)}>Open</button>{section.key === "verifications" && text(r.status) === "pending" && canReviewVerification && <><button className="btn primary" disabled={verificationBusy===text(r.id)} onClick={()=>void reviewStudentVerification(r,"approved")}>{verificationBusy===text(r.id)?"Saving…":"Approve"}</button><button className="btn danger" disabled={verificationBusy===text(r.id)} onClick={()=>void reviewStudentVerification(r,"rejected")}>Reject</button></>}</div></td></tr>)}</tbody></table></div>:<div className="empty"><strong>No records found.</strong><p>Try another search or refresh.</p></div>}
       {selectedRow&&<div className="admin-compose" style={{marginTop:16}}>
         <div><div><Database size={18}/><h3>Record editor</h3></div><button className="icon-btn" onClick={()=>setSelectedRow(null)}><X size={17}/></button></div>
         <p>{serverMeteredReadOnly ? "AI usage records are server-metered and read-only. Token counts, costs and usage events cannot be edited or deleted from the admin console." : ageVerificationReadOnly ? "Age-verification records are sensitive and read-only. Approval must use the guardian verification workflow." : "Edit this record using structured controls. Primary-key fields and timestamps are protected."}</p>
@@ -161,5 +190,6 @@ export default function AdminControlCenter({ userId, role }: Props) {
         <div className="inline-actions"><button className="btn primary" onClick={()=>void saveEditor()} disabled={!canEditCurrentSection||editorBusy}>{editorBusy?"Saving...":"Save record"}</button>{canEditCurrentSection&&isSuperAdmin&&<button className="btn" onClick={()=>void remove()}>Delete</button>}</div>
       </div>}
       </div></div>
+    </>}
   </section>;
 }
