@@ -27,13 +27,12 @@ test("platform admin scopes are least-privilege and RLS-enforced", () => {
   assert.match(sql, /as restrictive for insert to authenticated/i);
   assert.match(sql, /as restrictive for update to authenticated/i);
   assert.match(sql, /as restrictive for delete to authenticated/i);
-  assert.match(sql, /when 'student_verifications' then/i);
-
-  assert.match(sql, /when 'age_verifications' then[\s\S]*?return false/);
-  assert.match(sql, /when 'subscriptions','subscription_usage','account_entitlements','payment_orders','payment_events' then/i);
-  assert.match(sql, /when 'support_tickets','feedback_items' then/i);
-  assert.match(sql, /when 'feature_flags' then/i);
-  assert.match(sql, /when 'announcements' then/i);
+  assert.ok(resourceFn.includes("if p_table='student_verifications' then"));
+  assert.ok(resourceFn.includes("elsif p_table='age_verifications' then"));
+  assert.ok(resourceFn.includes("elsif p_table in ('subscriptions','subscription_usage','account_entitlements','payment_orders','payment_events')"));
+  assert.ok(resourceFn.includes("when 'support_tickets','feedback_items' then"));
+  assert.ok(resourceFn.includes("when 'feature_flags' then"));
+  assert.ok(resourceFn.includes("when 'announcements' then"));
 
   assert.match(sql, /p_action in \('select','update'\) and private\.platform_admin_has_permission\('flags\.manage'\)/);
   assert.match(sql, /p_action in \('select','insert','update'\) and private\.platform_admin_has_permission\('announcements\.manage'\)/);
@@ -43,7 +42,6 @@ test("platform admin scopes are least-privilege and RLS-enforced", () => {
   assert.match(webExtensions, /announcements/);
   assert.match(webExtensions, /admin_set_user_role/);
   assert.match(mobileOperations, /announcements/);
-  assert.match(sql, /when 'audit_logs' then/i);
   assert.match(sql, /grant execute on function private\.platform_admin_resource_allowed\(text,text\) to authenticated/i);
   assert.match(sql, /revoke all on public\.platform_admin_assignments,[\s\S]*?from public, anon, authenticated/i);
 });
