@@ -54,6 +54,15 @@ test("Student verification decisions require a reason and use an audited server 
   assert.match(fn, /insert into public\.platform_admin_audit_log/i);
   assert.match(fn, /insert into public\.notifications/i);
   assert.match(sql, /create or replace function public\.get_student_verification_queue/i);
+  assert.match(sql, /verification\.athlete\.manage/);
+  assert.match(sql, /create or replace function public\.search_athlete_verification_reviews/i);
+  assert.match(sql, /create or replace function public\.admin_set_athlete_verified/i);
+  assert.match(sql, /evidence-review reason \(5–500 characters\)/);
+  assert.match(webExtensions, /search_athlete_verification_reviews/);
+  assert.match(webExtensions, /admin_set_athlete_verified/);
+  assert.match(mobileOperations, /search_athlete_verification_reviews/);
+  assert.match(mobileOperations, /admin_set_athlete_verified/);
+
   assert.match(sql, /bucket_id='verification-proofs'[\s\S]*?platform_admin_has_permission\('verification\.review'\)/);
   assert.match(webExtensions, /admin_review_student_verification/);
   assert.match(webExtensions, /createSignedUrl\(row\.file_path, 120\)/);
