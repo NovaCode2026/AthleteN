@@ -88,8 +88,8 @@ test('message push taps resolve and open the exact conversation with a safe inbo
   );
 
   assert.match(listener, /notificationData\?\.notificationType === 'message'/);
-  assert.match(listener, /typeof notificationData\.messageId === 'string'/);
-  assert.match(listener, /\.from\('messages'\)[\s\S]*?\.select\('conversation_id'\)[\s\S]*?\.eq\('id', notificationData\.messageId\)/);
+  assert.match(listener, /typeof data.messageId === 'string'/);
+  assert.match(listener, /\.from\('messages'\)[\s\S]*?\.select\('conversation_id'\)[\s\S]*?\.eq\('id', data.messageId\)/);
   assert.match(listener, /pathname: '\/messages'[\s\S]*?params: \{ conversationId: String\(data\.conversation_id\) \}/);
   assert.match(listener, /router\.push\('\/notifications' as never\)/);
   assert.match(listener, /!route\.startsWith\('\/\/'\)/);
@@ -111,7 +111,7 @@ test('push taps deep-link to exact attendance and announcement source records', 
   assert.match(pushSource, /params: \{ attendanceRecordId: data\.attendanceRecordId \}/);
   assert.match(pushSource, /typeof data\?\.announcementId === 'string'/);
   assert.match(pushSource, /params: \{ announcementId: data\.announcementId \}/);
-  const inbox = readFileSync(new URL('../app/notifications.tsx', import.meta.url), 'utf8');
+  const inbox = readFileSync(new URL('../src/app/notifications.tsx', import.meta.url), 'utf8');
   assert.match(inbox, /useLocalSearchParams/);
   assert.match(inbox, /routeParams\.attendanceRecordId/);
   assert.match(inbox, /routeParams\.announcementId/);
