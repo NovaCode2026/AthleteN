@@ -93,12 +93,21 @@ export default function AdminControlCenter({ userId, role }: Props) {
       return;
     }
     setError(""); setNotice("");
+    // Open the tab during the user gesture so popup blockers do not discard it
+    // while the private signed URL is being requested.
+    const proofWindow = window.open("about:blank", "_blank");
+    if (!proofWindow) {
+      setError("Allow pop-ups for AthleteN to view private verification proofs.");
+      return;
+    }
+    proofWindow.opener = null;
     const { data, error: proofError } = await supabase.storage.from("verification-proofs").createSignedUrl(path, 300);
     if (proofError || !data?.signedUrl) {
+      proofWindow.close();
       setError(proofError?.message ?? "The verification proof could not be opened.");
       return;
     }
-    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    proofWindow.location.href = data.signedUrl;
   }
   async function loadBilling(uid: string) { if (!supabase || !uid) return; const [{ data: p, error: pe }, { data: u, error: ue }, { data: sub, error: se }] = await Promise.all([supabase.from("profiles").select("plan_id").eq("user_id", uid).maybeSingle(), supabase.from("subscription_usage").select("*").eq("user_id", uid).order("usage_month", { ascending: false }).limit(1).maybeSingle(), supabase.from("subscriptions").select("*").eq("user_id", uid).order("created_at", { ascending: false }).limit(1).maybeSingle()]); if (pe || ue || se) { setError((pe || ue || se)?.message ?? "Unable to load billing data."); return; } const planId = text(p?.plan_id) || text(sub?.plan_id) || "free"; setBilling({ userId: uid, planId, aiUsed: text(u?.ai_requests_used) || "0", aiLimit: text(u?.ai_requests_limit) || String(plans.find(x => x.id === planId)?.aiLimit ?? 0), storageUsed: text(u?.storage_mb_used) || "0", usageMonth: text(u?.usage_month) || new Date().toISOString().slice(0, 10), status: text(sub?.status) || "active", currentPeriodEnd: text(sub?.current_period_end).slice(0, 16) }); }
   async function openRow(r: Row) { setSelectedRow(r); setEditorDraft({ ...r }); const uid = text(r.user_id); if (uid && usageKeys.has(selected)) await loadBilling(uid); }
