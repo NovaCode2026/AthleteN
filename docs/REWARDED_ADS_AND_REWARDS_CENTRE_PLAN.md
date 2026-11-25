@@ -32,7 +32,7 @@ This feature is intended to supplement—not replace—subscription allowances a
 
 | Decision | Specification |
 |---|---|
-| Eligibility | All AthleteN plans: Free, Student (where an account has a valid Student entitlement), Pro, Elite, Coach, and Academy |
+| Eligibility | All plans; adults and parent/guardian-approved teens aged 13–17. Accounts under 13 are not eligible in this release |
 | Participation | Entirely optional; explicit user opt-in for each ad |
 | Reward for one successfully completed rewarded ad | 2 bonus AI messages |
 | Daily ad limit | At most 3 successfully rewarded ads per user per calendar day |
@@ -99,14 +99,14 @@ AthleteN may be used by minors. Before any live advertising:
 
 - A parent or guardian must handle publisher-account creation, agreements, tax/payment details, and any required business authorisations where the platform/provider requires an adult account holder.
 - Complete a documented review of applicable Indian law, Google Play requirements, AdMob policies, privacy notices, consent requirements, and child/teen restrictions with an appropriately qualified adult/legal adviser.
-- Configure age-appropriate ad treatment and child/teen privacy controls as required by provider policy and applicable law. Do not use personalised behavioural advertising for children or teens unless a qualified compliance review establishes a lawful and provider-permitted basis; safest initial posture is non-personalised/contextual age-appropriate inventory.
+- Configure age-appropriate ad treatment and child/teen privacy controls as required by provider policy and applicable law. Parent/guardian approval is required for teen (13–17) rewarded-ad access. Accounts under 13 remain ineligible for this release. Personalised advertising and remarketing are disabled; use age-appropriate inventory and review provider/legal requirements before activation.
 - Do not collect extra personal data to improve ad targeting. Do not send athlete health, biometric, weight, injury, training, school, or competition data to ad networks.
 - Do not show ads that are unsuitable for minors or categories that could harm young users. Apply provider content ratings and block categories where supported.
 - Explicitly block gambling/betting, alcohol, tobacco/nicotine, weapons, adult content, dating, and other age-inappropriate or high-risk ad categories wherever the provider exposes category controls; verify the settings in the publisher console and test inventory rather than assuming a content rating alone is sufficient.
 - Do not create misleading buttons, fake close controls, forced viewing, or reward promises that cannot be fulfilled.
 - Provide a privacy notice and a clear explanation that the user is choosing to view an advertisement in exchange for a stated in-app reward.
 
-Provider eligibility, app approval, consent, and ad inventory must be confirmed before production activation. If policy or legal eligibility is uncertain, keep the feature disabled.
+Provider eligibility, app approval, teen consent workflow, consent, and ad inventory must be confirmed before production activation. If policy or legal eligibility is uncertain, keep the feature disabled.
 
 ## 7. Technical architecture
 
@@ -126,8 +126,8 @@ The current mobile app is on Expo SDK 57 / React Native 0.86.3. The maintained `
 
 Required implementation order:
 
-1. Resolve the signed-in account's approved age band before any ad SDK initialization. Use Google's age-restricted treatment `teen` for teen accounts and `child` for child accounts. If age band is unknown or cannot be trusted, do not initialize or request ads. Do not send date of birth or identity documents to the ad provider.
-2. Set the global request configuration before SDK initialization. Use a conservative maximum ad content rating (initial candidate: `PG`) and the matching age-restricted treatment. Never default a minor account to `unspecified`. Google's teen treatment disables personalized ads and remarketing; this setting must be chosen under an adult-authorized compliance review, not merely as a code convenience.
+1. Resolve age eligibility server-side before any ad session. Adults are eligible through the adult age-verification path; teens aged 13–17 require an approved parent/guardian consent record; accounts under 13 are ineligible for this release. Do not send date of birth or identity documents to the ad provider.
+2. Set the global request configuration before SDK initialization. Use a conservative maximum ad content rating (`PG`) and the `TEEN` age-restricted treatment for all rewarded-ad requests as a conservative default. Never use `UNSPECIFIED` for this feature. Google's teen treatment disables personalized ads and remarketing; confirm this configuration through adult-authorized compliance review.
 3. Run Google's User Messaging Platform consent update and any required consent form before initializing the Mobile Ads SDK. If the user cannot request ads after the consent flow, keep the ad placement unavailable. Consent must be revocable/manageable where required.
 4. Initialize the SDK only after the age and consent gates pass. Load only the rewarded format, only from the Rewards Centre after a clear user action. Do not preload from app launch or other screens.
 5. Use Google's test app/ad unit IDs in development. Production IDs must be injected through the approved build environment and must never be committed to source control. Production builds must fail closed if IDs or the release approval configuration are absent.
