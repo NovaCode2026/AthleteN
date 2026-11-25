@@ -5,7 +5,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { desktopNotificationPermission, requestDesktopNotifications } from "../../lib/desktopNotifications";
 const fields=[["training","Training"],["competitions","Competitions"],["messages","Messages"],["coach_academy","Coach / Academy"],["achievements","Achievements"],["system","System"]] as const;
 const defaults={training:true,competitions:true,messages:true,coach_academy:true,achievements:true,system:true,message_preview:false};
-type NotificationSource = { kind: "announcement" | "attendance"; title: string; body: string; meta: string[] };
+type NotificationSource = { kind: "announcement" | "attendance" | "training"; title: string; body: string; meta: string[] };
 function notificationCategory(type:string|null|undefined){
  const value=String(type||"").toLowerCase();
  if(value==="message")return "Messages";
@@ -48,9 +48,9 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
   if(!uid)return;
   setLoading(true);
   let {data,error}=await supabase.from("notifications")
-   .select("id,title,body,notification_type,action_route,message_id,announcement_id,attendance_record_id,created_at,read_at")
+   .select("id,title,body,notification_type,action_route,message_id,announcement_id,attendance_record_id,training_group_session_id,created_at,read_at")
    .eq("user_id",uid).order("created_at",{ascending:false}).limit(50);
-  if(error && String(error.message||"").toLowerCase().includes("attendance_record_id")){
+  if(error && ["attendance_record_id","training_group_session_id"].some((field)=>String(error.message||"").toLowerCase().includes(field))){
    const fallback=await supabase.from("notifications")
     .select("id,title,body,notification_type,action_route,message_id,announcement_id,created_at,read_at")
     .eq("user_id",uid).order("created_at",{ascending:false}).limit(50);
@@ -114,6 +114,29 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
     await load();
     return;
    }
+   if(row.training_group_session_id){
+    const {data:training,error:trainingError}=await supabase.from("training_group_sessions").select("id,group_id,session_date,start_time,title,status,venue,notes").eq("id",row.training_group_session_id).maybeSingle();
+    if(trainingError)throw trainingError;
+    if(!training){setToast({type:"warning",message:"The original training session is no longer available."});}
+    else{
+     const {data:group,error:groupError}=await supabase.from("training_groups").select("name").eq("id",training.group_id).maybeSingle();
+     if(groupError)throw groupError;
+     setSelectedSource({
+      kind:"training",
+      title:String(training.title||"Training session"),
+      body:String(training.notes||"No additional session notes were recorded."),
+      meta:[
+       String(group?.name||"Training group"),
+       training.session_date?"Session date: "+training.session_date:"",
+       training.start_time?"Start: "+String(training.start_time).slice(0,5):"",
+       "Status: "+String(training.status||"scheduled"),
+       training.venue?"Venue: "+training.venue:"",
+      ].filter(Boolean)
+     });
+    }
+    await load();
+    return;
+   }
    if(row.attendance_record_id){
     const {data:attendance,error}=await supabase.from("attendance_records").select("id,training_session_id,attended_at,status,notes").eq("id",row.attendance_record_id).eq("user_id",uid).maybeSingle();
     if(error)throw error;
@@ -154,13 +177,15 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
   const params=new URLSearchParams(window.location.search);
   const attendanceId=params.get("attendanceRecordId");
   const announcementId=params.get("announcementId");
-  const sourceKey=attendanceId?"attendance:"+attendanceId:announcementId?"announcement:"+announcementId:"";
+  const trainingSessionId=params.get("trainingGroupSessionId");
+  const sourceKey=attendanceId?"attendance:"+attendanceId:announcementId?"announcement:"+announcementId:trainingSessionId?"training:"+trainingSessionId:"";
   if(!sourceKey||handledDeepLink.current===sourceKey)return;
   handledDeepLink.current=sourceKey;
 
   const cleanUrl=new URL(window.location.href);
   cleanUrl.searchParams.delete("attendanceRecordId");
   cleanUrl.searchParams.delete("announcementId");
+  cleanUrl.searchParams.delete("trainingGroupSessionId");
   window.history.replaceState(window.history.state,"",cleanUrl.pathname+cleanUrl.search+cleanUrl.hash);
 
   void (async()=>{
@@ -169,7 +194,8 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
      .select("id,title,body,notification_type,action_route,message_id,announcement_id,attendance_record_id,created_at,read_at")
      .eq("user_id",uid);
     if(attendanceId)query.eq("attendance_record_id",attendanceId);
-    else query.eq("announcement_id",announcementId);
+    else if(announcementId)query.eq("announcement_id",announcementId);
+    else query.eq("training_group_session_id",trainingSessionId);
     const {data,error}=await query.order("created_at",{ascending:false}).limit(1).maybeSingle();
     if(error)throw error;
     if(data)await openNotification(data);
