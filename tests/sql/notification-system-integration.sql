@@ -193,9 +193,9 @@ INSERT INTO public.profiles(user_id,full_name,role) VALUES
  ('10000000-0000-4000-8000-000000000002','Coach Two','coach'),
  ('10000000-0000-4000-8000-000000000003','Athlete Three','athlete');
 
-INSERT INTO public.device_push_tokens(user_id,token,platform) VALUES
- ('10000000-0000-4000-8000-000000000001','ExponentPushToken[TEST_ATHLETE_0001]','android'),
- ('10000000-0000-4000-8000-000000000002','ExponentPushToken[TEST_COACH_0002]','ios');
+INSERT INTO public.device_push_tokens(id,user_id,token,platform) VALUES
+ ('60000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','ExponentPushToken[TEST_ATHLETE_0001]','android'),
+ ('60000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002','ExponentPushToken[TEST_COACH_0002]','ios');
 
 INSERT INTO public.notification_preferences(user_id) VALUES
  ('10000000-0000-4000-8000-000000000001'),
