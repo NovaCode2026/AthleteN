@@ -234,7 +234,7 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
     setBusyKey("feedback:" + row.id); setError(""); setNotice("");
     try {
       const { error: updateError } = await supabase.from("feedback_items")
-        .update({...values,updated_at:new Date().toISOString()}).eq("id",row.id);
+        .update({...values}).eq("id",row.id);
       if (updateError) throw updateError;
       setNotice("Feedback item updated. The database audit trigger recorded the change.");
       await load();
