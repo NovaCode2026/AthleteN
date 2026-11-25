@@ -78,6 +78,8 @@ test("account restrictions require reasons and gate core data while preserving p
   assert.match(fn, /char_length\(btrim\(p_reason\)\) not between 5 and 500/);
   assert.match(fn, /p_status='restricted'[\s\S]*?p_expires_at<=pg_catalog\.now\(\)/);
   assert.match(fn, /v_target_role='super_admin'/);
+  assert.match(sql, /create or replace function private\\.platform_account_is_active/i);
+  assert.match(sql, /platform_account_is_active\(\)\) or \(select private\.is_super_admin\(\)\)/);
   assert.match(fn, /insert into public\.platform_admin_audit_log/i);
   assert.match(sql, /create or replace function public\.search_platform_accounts/i);
   assert.match(webExtensions, /admin_set_platform_account_access/);
