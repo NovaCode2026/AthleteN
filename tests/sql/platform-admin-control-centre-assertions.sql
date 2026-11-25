@@ -9,6 +9,23 @@ VALUES ('00000000-0000-0000-0000-000000000006','pending','bonafide',
 INSERT INTO storage.objects(bucket_id,name)
 VALUES ('verification-proofs','00000000-0000-0000-0000-000000000006/bonafide.pdf');
 
+-- An Athlete cannot self-assign the verified badge through the generic profile API.
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000006',true);
+SET LOCAL ROLE authenticated;
+UPDATE public.profiles SET verified_athlete=true
+WHERE user_id='00000000-0000-0000-0000-000000000006';
+DO $test$
+DECLARE v_verified boolean;
+BEGIN
+  SELECT verified_athlete INTO v_verified FROM public.profiles
+  WHERE user_id='00000000-0000-0000-0000-000000000006';
+  IF v_verified IS DISTINCT FROM false THEN
+    RAISE EXCEPTION 'Athlete self-service profile update bypassed the verified badge guard';
+  END IF;
+END;
+$test$;
+RESET ROLE;
+
 -- Super Admin assigns scoped roles to existing administrator accounts.
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
 SET LOCAL ROLE authenticated;
