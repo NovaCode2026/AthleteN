@@ -34,6 +34,28 @@ CREATE TABLE public.support_tickets (
   subject text NOT NULL DEFAULT 'Test support case',
   created_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE public.announcements (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  body text NOT NULL,
+  audience text NOT NULL DEFAULT 'all',
+  published_at timestamptz,
+  created_by uuid,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE public.feature_flags (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  flag_key text NOT NULL UNIQUE,
+  description text,
+  enabled boolean NOT NULL DEFAULT false,
+  audience text NOT NULL DEFAULT 'all',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO public.feature_flags(flag_key,description,enabled,audience)
+VALUES ('coach_tools','Coach tooling entry point',false,'coaches');
+
 CREATE TABLE public.notifications (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
@@ -176,6 +198,16 @@ CREATE POLICY fixture_admin_feature_flags ON public.feature_flags
   WITH CHECK (private.is_platform_admin());
 
 CREATE POLICY fixture_admin_audit_logs ON public.audit_logs
+  FOR ALL TO authenticated
+  USING (private.is_platform_admin())
+  WITH CHECK (private.is_platform_admin());
+
+CREATE POLICY fixture_admin_announcements ON public.announcements
+  FOR ALL TO authenticated
+  USING (private.is_platform_admin())
+  WITH CHECK (private.is_platform_admin());
+
+CREATE POLICY fixture_admin_feature_flags ON public.feature_flags
   FOR ALL TO authenticated
   USING (private.is_platform_admin())
   WITH CHECK (private.is_platform_admin());
