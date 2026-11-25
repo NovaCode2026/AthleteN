@@ -8,10 +8,6 @@ CREATE TRIGGER messages_create_delivery_records
 AFTER INSERT ON public.messages
 FOR EACH ROW EXECUTE FUNCTION public.create_message_delivery_records();
 
-CREATE TRIGGER training_cancellation_announce_trigger
-AFTER UPDATE ON public.training_group_sessions
-FOR EACH ROW EXECUTE FUNCTION public.announce_training_cancellation();
-
 -- Attendance insert and status changes each create an alert linked to the exact source.
 INSERT INTO public.attendance_records(id,user_id,status,attended_at,notes) VALUES
  ('70000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','present',now(),'On time');
