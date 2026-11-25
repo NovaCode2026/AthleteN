@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, Text, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Screen, Header, Card, Empty, c, Icon } from '@/components/mobile-ui';
@@ -56,6 +56,8 @@ type AttendanceSource = { title: string; date: string; status: string; attended_
 export default function NotificationsScreen() {
   const { session } = useAuth();
   const router = useRouter();
+  const routeParams = useLocalSearchParams<{ attendanceRecordId?: string; announcementId?: string }>();
+  const handledSourceParam = useRef<string | null>(null);
   const [rows, setRows] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -122,6 +124,81 @@ export default function NotificationsScreen() {
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [load, session]);
+
+  useEffect(() => {
+    if (!session) return;
+    const attendanceId = typeof routeParams.attendanceRecordId === 'string' ? routeParams.attendanceRecordId : '';
+    const announcementId = typeof routeParams.announcementId === 'string' ? routeParams.announcementId : '';
+    const sourceKey = attendanceId ? 'attendance:' + attendanceId : announcementId ? 'announcement:' + announcementId : '';
+    if (!sourceKey || handledSourceParam.current === sourceKey) return;
+    handledSourceParam.current = sourceKey;
+
+    void (async () => {
+      try {
+        if (attendanceId) {
+          const { data: attendanceRow, error: attendanceError } = await supabase
+            .from('attendance_records')
+            .select('id,training_session_id,attended_at,status,notes')
+            .eq('id', attendanceId)
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+          if (attendanceError) throw attendanceError;
+          if (!attendanceRow) {
+            setError('The original attendance record is no longer available.');
+            return;
+          }
+          let sessionTitle = 'Training session';
+          let sessionDate = '';
+          if (attendanceRow.training_session_id) {
+            const { data: trainingSession, error: sessionError } = await supabase
+              .from('training_sessions')
+              .select('title,session_date')
+              .eq('id', attendanceRow.training_session_id)
+              .eq('user_id', session.user.id)
+              .maybeSingle();
+            if (sessionError) throw sessionError;
+            if (trainingSession) {
+              sessionTitle = String(trainingSession.title || sessionTitle);
+              sessionDate = String(trainingSession.session_date || '');
+            }
+          }
+          setAttendance({
+            title: sessionTitle,
+            date: sessionDate,
+            status: String(attendanceRow.status || 'updated'),
+            attended_at: attendanceRow.attended_at || null,
+            notes: attendanceRow.notes || null,
+          });
+          await supabase.from('notifications')
+            .update({ read_at: new Date().toISOString() })
+            .eq('user_id', session.user.id)
+            .eq('attendance_record_id', attendanceId)
+            .is('read_at', null);
+        } else if (announcementId) {
+          const { data, error: sourceError } = await supabase
+            .from('announcements')
+            .select('id,title,body,published_at')
+            .eq('id', announcementId)
+            .maybeSingle();
+          if (sourceError) throw sourceError;
+          if (!data) setError('The original announcement is no longer available.');
+          else setAnnouncement({
+            title: String(data.title || 'Announcement'),
+            body: String(data.body || ''),
+            published_at: data.published_at || null,
+          });
+          await supabase.from('notifications')
+            .update({ read_at: new Date().toISOString() })
+            .eq('user_id', session.user.id)
+            .eq('announcement_id', announcementId)
+            .is('read_at', null);
+        }
+        await load();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Notification source could not be opened.');
+      }
+    })();
+  }, [load, routeParams.announcementId, routeParams.attendanceRecordId, session]);
 
   async function markRead(row: NotificationRow) {
     if (!session || row.read_at) return;
