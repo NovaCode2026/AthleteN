@@ -89,4 +89,4 @@ export default function TabLayout(){
   {eligible.filter(x=>TAB_SCREEN_IDS.has(x.id)).map(x=><Tabs.Screen key={x.id} name={x.id}/>)}
  </Tabs>;
 }
-const s=StyleSheet.create({outer:{backgroundColor:c.surface,borderTopWidth:1,borderTopColor:c.borderStrong},bar:{height:62,flexDirection:'row',paddingHorizontal:5,paddingTop:5},item:{flex:1,alignItems:'center',gap:2},icon:{width:38,height:30,borderRadius:13,alignItems:'center',justifyContent:'center'},active:{backgroundColor:c.accentSoft},label:{color:c.muted,fontSize:9,fontWeight:'800'},activeLabel:{color:c.text}});
+const s=StyleSheet.create({outer:{backgroundColor:'rgba(8,12,19,0.96)',borderTopWidth:1,borderTopColor:c.border, paddingTop:4},bar:{height:66,flexDirection:'row',paddingHorizontal:6,paddingTop:4,gap:2},item:{flex:1,alignItems:'center',justifyContent:'center',gap:3,borderRadius:16,marginHorizontal:1},icon:{width:40,height:32,borderRadius:12,alignItems:'center',justifyContent:'center'},active:{backgroundColor:'rgba(76,141,255,0.16)',borderWidth:1,borderColor:'rgba(76,141,255,0.2)'},label:{color:c.muted,fontSize:9,fontWeight:'800',letterSpacing:0.1},activeLabel:{color:c.accentBright}});
