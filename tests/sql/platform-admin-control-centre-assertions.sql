@@ -130,7 +130,7 @@ SELECT public.admin_review_student_verification(
   'School document reviewed; name and current academic year are legible.'
 );
 DO $test$
-DECLARE v_status text; v_notes text; v_audit integer; v_notifications integer;
+DECLARE v_status text; v_notes text; v_audit integer;
 BEGIN
   SELECT status,reviewer_notes INTO v_status,v_notes
   FROM public.student_verifications WHERE document_type='school_id';
@@ -140,12 +140,22 @@ BEGIN
   SELECT count(*) INTO v_audit FROM public.get_platform_admin_audit(100)
   WHERE action='verification.student.approved';
   IF v_audit < 1 THEN RAISE EXCEPTION 'Student verification decision was not audited'; END IF;
+END;
+$test$;
+RESET ROLE;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000006',true);
+SET LOCAL ROLE authenticated;
+DO $test$
+DECLARE v_notifications integer;
+BEGIN
   SELECT count(*) INTO v_notifications FROM public.notifications
-  WHERE user_id='00000000-0000-0000-0000-000000000006'
-    AND notification_type='verification';
+  WHERE user_id=(SELECT auth.uid()) AND notification_type='verification';
   IF v_notifications < 1 THEN RAISE EXCEPTION 'Athlete was not notified of Student verification result'; END IF;
 END;
 $test$;
+RESET ROLE;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
+SET LOCAL ROLE authenticated;
 DO $test$
 BEGIN
   BEGIN
