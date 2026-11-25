@@ -11,7 +11,7 @@ const ADMIN_ROLES = ['support_admin', 'admin', 'super_admin'];
 type Overview = {
   users: number; athletes: number; coaches: number; academies: number; admins: number;
   pending_student_verifications: number; active_subscriptions: number; open_support_tickets: number;
-  restricted_accounts: number; verified_coaches: number; verified_academies: number;
+  restricted_accounts: number; verified_athletes: number; verified_coaches: number; verified_academies: number;
 };
 type PermissionPayload = { base_role: string; permission_role: string; permissions: string[] };
 type VerificationRequest = {
@@ -192,7 +192,7 @@ export default function AdminOperationsScreen() {
         {!permission ? <ActivityIndicator color={c.accentBright}/> : <View style={s.scope}><Text style={s.scopeText}>{permission.permission_role.toUpperCase()} · {permission.base_role.toUpperCase()}</Text></View>}
         {overview ? <View style={s.grid}>{[
           ['USERS',overview.users],['ATHLETES',overview.athletes],['COACHES',overview.coaches],['ACADEMIES',overview.academies],
-          ['PENDING PROOFS',overview.pending_student_verifications],['ACTIVE PLANS',overview.active_subscriptions],
+          ['VERIFIED ATHLETES',overview.verified_athletes],['PENDING PROOFS',overview.pending_student_verifications],['ACTIVE PLANS',overview.active_subscriptions],
           ['OPEN SUPPORT',overview.open_support_tickets],['RESTRICTED',overview.restricted_accounts],
           ['COACH EMAIL VERIFIED',overview.verified_coaches],['ACADEMY VERIFIED',overview.verified_academies],
         ].map(([label,value])=><Stat key={String(label)} label={String(label)} value={Number(value)}/>)}</View> : null}
