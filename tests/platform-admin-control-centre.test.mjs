@@ -17,7 +17,7 @@ test("platform admin scopes are least-privilege and RLS-enforced", () => {
   assert.match(sql, /as restrictive for insert to authenticated/i);
   assert.match(sql, /as restrictive for update to authenticated/i);
   assert.match(sql, /as restrictive for delete to authenticated/i);
-  assert.match(sql, /when 'student_verifications','age_verifications' then/i);
+  assert.match(sql, /when 'student_verifications' then/i);
 
   assert.match(sql, /when 'age_verifications' then[\s\S]*?return false/);
   assert.match(sql, /platform_account_is_active\(\)\) or \(select private\.is_super_admin\(\)\)/);
