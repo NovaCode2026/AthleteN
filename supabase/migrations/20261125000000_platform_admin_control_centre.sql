@@ -1001,7 +1001,8 @@ begin
 end;
 $scope_policies$;
 
-create or replace function public.admin_set_user_role(p_user_id uuid,p_role text)
+drop function if exists public.admin_set_user_role(uuid,text);
+create or replace function public.admin_set_user_role(p_user_id uuid,p_role text,p_reason text)
 returns void
 language plpgsql
 security definer
@@ -1016,6 +1017,9 @@ begin
      or not exists(select 1 from public.profiles where user_id=(select auth.uid()) and role='super_admin')
      or not private.platform_admin_has_permission('platform.roles.manage') then
     raise exception 'Super Admin role-management permission required';
+  end if;
+  if p_reason is null or char_length(btrim(p_reason)) not between 5 and 500 then
+    raise exception 'A role-change reason between 5 and 500 characters is required';
   end if;
   if p_role is null or p_role not in ('athlete','coach','academy_admin','support_admin','admin','super_admin') then
     raise exception 'Invalid role';
@@ -1041,10 +1045,10 @@ begin
 
   insert into public.audit_logs(actor_user_id,action,entity_table,entity_id,metadata)
   values((select auth.uid()),'user.role_change','profiles',v_target_profile_id,
-    jsonb_build_object('target_user_id',p_user_id,'target_name',v_name,'from',v_old,'to',p_role));
+    jsonb_build_object('target_user_id',p_user_id,'target_name',v_name,'from',v_old,'to',p_role,'reason',btrim(p_reason)));
 
   insert into public.platform_admin_audit_log(actor_user_id,target_user_id,action,reason,metadata)
-  values((select auth.uid()),p_user_id,'user.role_change','Super Admin changed the platform account role',
+  values((select auth.uid()),p_user_id,'user.role_change',btrim(p_reason),
     jsonb_build_object('from',v_old,'to',p_role));
 
   if p_role in ('support_admin','admin','super_admin') then
@@ -1059,8 +1063,8 @@ begin
 end;
 $function$;
 
-revoke all on function public.admin_set_user_role(uuid,text) from public, anon;
-grant execute on function public.admin_set_user_role(uuid,text) to authenticated;
+revoke all on function public.admin_set_user_role(uuid,text,text) from public, anon;
+grant execute on function public.admin_set_user_role(uuid,text,text) to authenticated;
 
 -- Support staff may update only operational fields. Ticket/feedback content and
 -- ownership remain immutable through the staff-facing REST surface.
