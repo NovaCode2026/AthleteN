@@ -341,6 +341,8 @@ SELECT user_id,plan_id FROM public.profiles;
 
 INSERT INTO public.training_sessions(user_id,payload)
 VALUES ('00000000-0000-0000-0000-000000000006','{"note":"owned training record"}'::jsonb);
+INSERT INTO public.ai_usage_events(user_id,status,payload)
+VALUES ('00000000-0000-0000-0000-000000000006','recorded','{"tokens":1}'::jsonb);
 INSERT INTO public.support_tickets(user_id,status,subject)
 VALUES ('00000000-0000-0000-0000-000000000006','open','Athlete help request');
 INSERT INTO public.subscriptions(user_id,plan_id,provider,status,current_period_end)
