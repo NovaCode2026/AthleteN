@@ -348,6 +348,38 @@ begin
 end;
 $function$;
 
+-- Preserve the existing profile entitlement protection while allowing
+-- only the reason-required verification RPC below to mutate verified_athlete.
+create or replace function public.enforce_profile_entitlement_security()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $function$
+begin
+  if auth.uid() is null then return new; end if;
+
+  if tg_op='INSERT' and not private.is_super_admin() then
+    new.role:='athlete';
+    new.plan_id:='free';
+    new.verified_athlete:=false;
+    new.founder_badge:=false;
+  end if;
+
+  if tg_op='UPDATE' and not private.is_super_admin() then
+    new.role:=old.role;
+    new.plan_id:=old.plan_id;
+    if coalesce(current_setting('athleten.verified_athlete_mutation',true),'') <> '1' then
+      new.verified_athlete:=old.verified_athlete;
+    end if;
+    new.founder_badge:=old.founder_badge;
+  end if;
+  return new;
+end;
+$function$;
+
+revoke execute on function public.enforce_profile_entitlement_security() from public, anon, authenticated;
+
 create or replace function public.admin_set_athlete_verified(
   p_user_id uuid,
   p_verified boolean,
@@ -378,9 +410,11 @@ begin
   if not found then raise exception 'Athlete account not found'; end if;
 
   perform pg_catalog.set_config('athleten.platform_athlete_verification_mutation','1',true);
+  perform pg_catalog.set_config('athleten.verified_athlete_mutation','1',true);
   update public.profiles
     set verified_athlete=p_verified,updated_at=pg_catalog.now()
   where user_id=p_user_id and role='athlete';
+  perform pg_catalog.set_config('athleten.verified_athlete_mutation','',true);
   perform pg_catalog.set_config('athleten.platform_athlete_verification_mutation','',true);
 
   insert into public.platform_admin_audit_log(actor_user_id,target_user_id,action,reason,metadata)
@@ -900,11 +934,10 @@ begin
     jsonb_build_object('from',v_old,'to',p_role));
 
   if p_role in ('support_admin','admin','super_admin') then
-    insert into public.athlete_badges(user_id,badge_key,badge_label,awarded_by,permanent,metadata)
-    values(p_user_id,'administrator','Administrator',null,true,
-      jsonb_build_object('system_assigned',true,'role',p_role))
+    insert into public.athlete_badges(user_id,badge_key,badge_label)
+    values(p_user_id,'administrator','Administrator')
     on conflict(user_id,badge_key) do update
-      set permanent=true,metadata=excluded.metadata;
+      set badge_label=excluded.badge_label;
   end if;
 end;
 $function$;
