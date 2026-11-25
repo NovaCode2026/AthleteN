@@ -250,6 +250,16 @@ test("Taekwondo domain tables participate in Realtime for Web-Mobile synchroniza
     "taekwondo_training_logs",
     "taekwondo_kyorugi_bouts",
     "taekwondo_poomsae_performances",
+    "student_verifications",
+    "subscription_usage",
+    "athlete_seasons",
+    "competition_journals",
+    "fight_iq_entries",
+    "technique_progress",
+    "athlete_challenges",
+    "personal_records",
+    "athlete_milestones",
+    "athlete_timeline_events",
   ];
   for (const table of tables) {
     assert.ok(auth.includes("'" + table + "'"), "mobile account sync subscribes to " + table);
@@ -258,4 +268,17 @@ test("Taekwondo domain tables participate in Realtime for Web-Mobile synchroniza
   }
   const taekwondo = read("AthleteN-Mobile/src/app/taekwondo.tsx");
   assert.match(taekwondo, /\[session,discipline,syncVersion\]/);
+});
+
+
+test("screens backed by Realtime-owned records reload when shared records change", () => {
+  for (const file of [
+    "AthleteN-Mobile/src/app/taekwondo.tsx",
+    "AthleteN-Mobile/src/app/badges.tsx",
+    "AthleteN-Mobile/src/app/athlete-passport.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/athlete-journey.tsx",
+    "AthleteN-Mobile/src/app/plans.tsx",
+  ]) {
+    assert.match(read(file), /syncVersion/, file + " must refresh from the shared account sync version");
+  }
 });
