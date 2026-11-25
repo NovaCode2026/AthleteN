@@ -81,18 +81,18 @@ test('mobile auth session installs notification registration and listener cleanu
 });
 
 test('message push taps resolve and open the exact conversation with a safe inbox fallback', () => {
-  const listener = between(
+  const handler = between(
     pushSource,
-    'export function attachNotificationListeners',
-    'return () => {'
+    'async function handleNotificationResponse',
+    'export function attachNotificationListeners'
   );
 
-  assert.match(listener, /notificationData\?\.notificationType === 'message'/);
-  assert.match(listener, /typeof data.messageId === 'string'/);
-  assert.match(listener, /\.from\('messages'\)[\s\S]*?\.select\('conversation_id'\)[\s\S]*?\.eq\('id', data.messageId\)/);
-  assert.match(listener, /pathname: '\/messages'[\s\S]*?params: \{ conversationId: String\(data\.conversation_id\) \}/);
-  assert.match(listener, /router\.push\('\/notifications' as never\)/);
-  assert.match(listener, /!route\.startsWith\('\/\/'\)/);
+  assert.match(handler, /data\?\.notificationType === 'message'/);
+  assert.match(handler, /typeof data\.messageId === 'string'/);
+  assert.match(handler, /\.from\('messages'\)[\s\S]*?\.select\('conversation_id'\)[\s\S]*?\.eq\('id', data\.messageId\)/);
+  assert.match(handler, /pathname: '\/messages'[\s\S]*?params: \{ conversationId: String\(message\.conversation_id\) \}/);
+  assert.match(handler, /router\.push\('\/notifications' as never\)/);
+  assert.match(handler, /!route\.startsWith\('\/\/'\)/);
 });
 
 
