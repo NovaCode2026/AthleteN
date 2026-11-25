@@ -103,9 +103,19 @@ RESET ROLE;
 -- Super Admin assigns scoped roles to existing administrator accounts.
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
 SET LOCAL ROLE authenticated;
-SELECT public.admin_assign_platform_role('00000000-0000-0000-0000-000000000002','verification');
-SELECT public.admin_assign_platform_role('00000000-0000-0000-0000-000000000003','finance');
-SELECT public.admin_assign_platform_role('00000000-0000-0000-0000-000000000004','operations');
+DO $test$
+BEGIN
+  BEGIN
+    PERFORM public.admin_assign_platform_role('00000000-0000-0000-0000-000000000002','verification','  ');
+    RAISE EXCEPTION 'Blank permission-scope reason was accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM='Blank permission-scope reason was accepted' THEN RAISE; END IF;
+  END;
+END;
+$test$;
+SELECT public.admin_assign_platform_role('00000000-0000-0000-0000-000000000002','verification','Assign Verification scope for proof and Athlete badge review duties.');
+SELECT public.admin_assign_platform_role('00000000-0000-0000-0000-000000000003','finance','Assign Finance scope for read-only provider settlement oversight.');
+SELECT public.admin_assign_platform_role('00000000-0000-0000-0000-000000000004','operations','Assign Operations scope for account safety and platform configuration.');
 
 DO $test$
 DECLARE
