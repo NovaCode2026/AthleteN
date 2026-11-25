@@ -416,7 +416,7 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
         ["Verified athletes",overview.verified_athletes],["Pending Student reviews",overview.pending_student_verifications],["Active subscriptions",overview.active_subscriptions],
         ["Open support",overview.open_support_tickets],["Restricted accounts",overview.restricted_accounts],
         ["Coach email verified",overview.verified_coaches],["Academy setup verified",overview.verified_academies]
-      ].filter(([,value])=>value!==null&&value!==undefined).map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{Number(value).toLocaleString()}</strong></article>)}
+      ].filter(([,value])=>value!==null&&value!==undefined).map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{value==null?"—":Number(value).toLocaleString()}</strong></article>)}
     </div>}
 
     {canVerify && <div className="platform-admin-panel">
