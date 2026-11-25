@@ -9,13 +9,13 @@ const btn={backgroundColor:c.accent,borderRadius:10,padding:11,alignItems:'cente
 function Field({label,value,onChangeText,placeholder,multi=false}){return <View style={{gap:5}}><Text style={{color:c.muted,fontSize:8,fontWeight:'900'}}>{label}</Text><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={c.muted} multiline={multi} style={[input,multi&&{minHeight:70,textAlignVertical:'top'}]}/></View>}
 function Add({title,children,onSave}){return <Card><Text style={{color:c.text,fontWeight:'900',fontSize:12,marginBottom:9}}>{title}</Text><View style={{gap:8}}>{children}<Pressable onPress={onSave} style={btn}><Text style={{color:'#fff',fontWeight:'900',fontSize:9}}>SAVE</Text></Pressable></View></Card>}
 export default function AthleteJourney(){
- const {session}=useAuth(); const [message,setMessage]=useState(''); const [refresh,setRefresh]=useState(0);
+ const {session,syncVersion}=useAuth(); const [message,setMessage]=useState(''); const [refresh,setRefresh]=useState(0);
  const [season,setSeason]=useState({name:'',start:'',end:'',goal:''}); const [journal,setJournal]=useState({title:'',result:'',worked:'',improve:'',coach:'',next:''});
  const [iq,setIq]=useState({style:'',used:'',worked:'',failed:'',lesson:'',coach:''}); const [tech,setTech]=useState({name:'',cat:'Kyorugi',level:'1',count:'0',note:''});
  const [challenge,setChallenge]=useState({title:'',target:'',unit:'',due:''}); const [record,setRecord]=useState({title:'',value:'',unit:'',date:'',notes:''});
  const [milestone,setMilestone]=useState({title:'',date:''}); const [timeline,setTimeline]=useState({title:'',date:'',desc:''});
  const [rows,setRows]=useState<any>({});
- const load=useCallback(async()=>{if(!session)return;const tables=['athlete_seasons','competition_journals','fight_iq_entries','technique_progress','athlete_challenges','personal_records','athlete_milestones','athlete_timeline_events'];const out:any={};for(const t of tables){const r=await supabase.from(t).select('*').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(8);out[t]=r.data||[]}setRows(out)},[session,refresh]);
+ const load=useCallback(async()=>{if(!session)return;const tables=['athlete_seasons','competition_journals','fight_iq_entries','technique_progress','athlete_challenges','personal_records','athlete_milestones','athlete_timeline_events'];const out:any={};for(const t of tables){const r=await supabase.from(t).select('*').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(8);out[t]=r.data||[]}setRows(out)},[session,refresh,syncVersion]);
  useEffect(()=>{void load()},[load]);
  const save=async(table,data)=>{if(!session)return;setMessage('');const {error}=await supabase.from(table).insert({...data,user_id:session.user.id,created_by:table==='athlete_challenges'?session.user.id:undefined});if(error)setMessage(error.message);else{setMessage('Saved.');setRefresh(x=>x+1)}};
  const remove=async(table,id)=>{const {error}=await supabase.from(table).delete().eq('id',id).eq('user_id',session?.user.id);if(error)setMessage(error.message);else setRefresh(x=>x+1)};
