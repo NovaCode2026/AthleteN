@@ -238,7 +238,7 @@ RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',true);
 SET LOCAL ROLE authenticated;
 DO $test$
-DECLARE v_rows integer; v_subscriptions integer; v_overview jsonb;
+DECLARE v_rows integer; v_subscriptions integer; v_payments integer; v_overview jsonb;
 BEGIN
   v_overview := public.get_platform_admin_overview();
   IF v_overview->'active_subscriptions' = 'null'::jsonb
@@ -247,11 +247,18 @@ BEGIN
     RAISE EXCEPTION 'Finance Admin overview leaked metrics outside its permission scope';
   END IF;
   SELECT count(*) INTO v_subscriptions FROM public.subscriptions;
-  IF v_subscriptions <> 1 THEN RAISE EXCEPTION 'Finance Admin should read the subscription ledger'; END IF;
+  SELECT count(*) INTO v_payments FROM public.payment_events;
+  IF v_subscriptions <> 1 OR v_payments <> 1 THEN
+    RAISE EXCEPTION 'Finance Admin should read subscription and payment event ledgers';
+  END IF;
   UPDATE public.subscriptions SET status='canceled'
   WHERE user_id='00000000-0000-0000-0000-000000000006';
   GET DIAGNOSTICS v_rows = ROW_COUNT;
   IF v_rows <> 0 THEN RAISE EXCEPTION 'Finance Admin must not mutate provider-settled subscription state'; END IF;
+  UPDATE public.payment_events SET status='refunded'
+  WHERE user_id='00000000-0000-0000-0000-000000000006';
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  IF v_rows <> 0 THEN RAISE EXCEPTION 'Finance Admin must not mutate provider payment event history'; END IF;
   BEGIN
     PERFORM public.search_platform_accounts('test',20);
     RAISE EXCEPTION 'Finance Admin unexpectedly gained account-management search';
@@ -306,10 +313,12 @@ RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',true);
 SET LOCAL ROLE authenticated;
 DO $test$
-DECLARE v_found integer;
+DECLARE v_found integer; v_support integer;
 BEGIN
   SELECT count(*) INTO v_found FROM public.search_platform_accounts('Test Athlete',20);
   IF v_found <> 1 THEN RAISE EXCEPTION 'Operations Admin account search should return the matched account only'; END IF;
+  SELECT count(*) INTO v_support FROM public.support_tickets;
+  IF v_support <> 0 THEN RAISE EXCEPTION 'Operations Admin unexpectedly received Support ticket access'; END IF;
   IF private.platform_admin_has_permission('verification.review') THEN
     RAISE EXCEPTION 'Operations Admin unexpectedly received verification permissions';
   END IF;
@@ -430,6 +439,16 @@ BEGIN
   SELECT count(*) INTO v_subscriptions FROM public.subscriptions;
   IF v_tickets < 1 THEN RAISE EXCEPTION 'Support Admin should see support tickets'; END IF;
   IF v_subscriptions <> 0 THEN RAISE EXCEPTION 'Support Admin must not see billing data'; END IF;
+  UPDATE public.support_tickets SET status='pending',priority='high'
+  WHERE user_id='00000000-0000-0000-0000-000000000006';
+  UPDATE public.feedback_items SET status='reviewing',priority='high'
+  WHERE user_id='00000000-0000-0000-0000-000000000006';
+  IF NOT EXISTS (SELECT 1 FROM public.get_platform_admin_audit(100) WHERE action='support.ticket.updated') THEN
+    RAISE EXCEPTION 'Support ticket changes must be audited';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.get_platform_admin_audit(100) WHERE action='support.feedback.updated') THEN
+    RAISE EXCEPTION 'Feedback moderation must be audited';
+  END IF;
 END;
 $test$;
 
