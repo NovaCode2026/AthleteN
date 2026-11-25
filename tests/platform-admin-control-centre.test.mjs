@@ -195,8 +195,8 @@ test("Support and Finance workspaces enforce scoped read/write boundaries", () =
   assert.match(webExtensions, /updateSupportTicket/);
   assert.match(webExtensions, /updateFeedbackItem/);
   assert.match(webExtensions, /Read-only provider-backed records/);
-  assert.match(mobileOperations, /Support & Dispute Queue/);
-  assert.match(mobileOperations, /Subscription & Payment Ledger/);
+  assert.match(mobileOperations, /SUPPORT & DISPUTE QUEUE/);
+  assert.match(mobileOperations, /SUBSCRIPTION & PAYMENT LEDGER/);
 });
 
 test("age-verification guardian approval remains separate and generic admin data stays minimised", () => {
