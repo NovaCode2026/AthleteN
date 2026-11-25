@@ -997,11 +997,9 @@ begin
   -- These records are append-only or provider/consent-controlled even for
   -- Super Admin. Dedicated audited RPCs are the only mutation path.
   if p_table='student_verifications' then
-    -- Verification staff must use the pending-only RPC; direct table reads are
-    -- reserved to full administrators.
-    return p_action='select' and v_full_access;
+    return false;
   elsif p_table='age_verifications' then
-    return p_action='select' and v_full_access;
+    return false;
   elsif p_table in ('support_tickets','feedback_items') then
     return (p_action='select' and (v_full_access or private.platform_admin_has_permission('support.read')))
       or (p_action='update' and (v_full_access or private.platform_admin_has_permission('support.manage')));
