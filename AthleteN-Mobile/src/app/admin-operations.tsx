@@ -325,7 +325,7 @@ const s = StyleSheet.create({
   dangerButton:{alignItems:'center',justifyContent:'center',backgroundColor:'#632c39',borderWidth:1,borderColor:'#a64d62',borderRadius:10,paddingVertical:12},
   buttonText:{color:'#fff',fontSize:8,fontWeight:'900',letterSpacing:.6},chips:{flexDirection:'row',flexWrap:'wrap',gap:6},
   chip:{borderWidth:1,borderColor:c.border,borderRadius:9,paddingHorizontal:9,paddingVertical:8,backgroundColor:c.background},
-  chipActive:{borderColor:c.accent,backgroundColor:c.accentSoft},chipText:{color:c.text,fontSize:8,fontWeight:'900'},
+  chipActive:{borderColor:c.accent,backgroundColor:c.accentSoft},disabled:{opacity:0.45},chipText:{color:c.text,fontSize:8,fontWeight:'900'},
   userRow:{borderTopWidth:1,borderTopColor:c.border,paddingVertical:10},selected:{backgroundColor:c.accentSoft,borderRadius:9,paddingHorizontal:8},
   auditRow:{borderTopWidth:1,borderTopColor:c.border,paddingVertical:8,gap:3},footnote:{color:c.muted,fontSize:9,lineHeight:15},
   message:{color:c.accentBright,fontSize:10},denied:{flex:1,alignItems:'center',justifyContent:'center',padding:25,backgroundColor:c.background}
