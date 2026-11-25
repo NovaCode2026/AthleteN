@@ -159,6 +159,8 @@ export default function AdminPanelScreen() {
           <Text style={s.section}>ROLE-AUTHORIZED WORKSPACES</Text>
           {superAdmin ? <Action title="Founder Workspace" text="Platform oversight, founding members and release controls on mobile." onPress={() => router.push('/founder')} /> : null}
           {superAdmin || role === 'admin' ? <Action title="Full Admin Command Center" text="Open the server-permission-aware data and operations workspace." onPress={() => router.push('/admin')} /> : null}
+          {['support_admin', 'admin', 'super_admin'].includes(role) ? <Action title="Student Verification Queue" text="Review Student plan proof files, approve eligible requests or reject with an athlete-visible note." onPress={() => router.push('/admin-verifications')} /> : null}
+          {['coach', 'academy_admin', 'academy', 'admin', 'super_admin'].includes(role) ? <Action title="Weight Verification Review" text="Review pending athlete weight records through the existing Coach / Academy verification workflow." onPress={() => router.push('/verification-review')} /> : null}
           <Action title="Support Workspace" text="Review tickets, assign cases, reply and resolve issues where server permissions allow." onPress={() => router.push('/admin-support')} />
           <Action title="Badge Control" text="Award or revoke eligible badges through protected operations." onPress={() => router.push('/admin-badges')} />
           {superAdmin ? <Action title="Android Release Control" text="Prepare and publish native Android updates." onPress={() => router.push('/admin-releases')} /> : null}
