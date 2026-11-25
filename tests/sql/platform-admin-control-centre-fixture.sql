@@ -209,7 +209,7 @@ VALUES
  ('00000000-0000-0000-0000-000000000006','Test Athlete','test_athlete','athlete','free',false);
 
 INSERT INTO public.training_sessions(user_id,payload)
-VALUES ('00000000-0000-0000-0000-000000000006','owned training record');
+VALUES ('00000000-0000-0000-0000-000000000006','{"note":"owned training record"}'::jsonb);
 INSERT INTO public.support_tickets(user_id,status,subject)
 VALUES ('00000000-0000-0000-0000-000000000006','open','Athlete help request');
 INSERT INTO public.subscriptions(user_id,status)
