@@ -9,7 +9,8 @@ import { supabase } from '@/lib/supabase';
 const c = Colors.dark;
 const ADMIN_ROLES = ['support_admin', 'admin', 'super_admin'];
 const ROLES = ['athlete', 'coach', 'academy_admin', 'support_admin', 'admin', 'super_admin'];
-const PLANS = ['free', 'student', 'pro', 'elite', 'coach', 'academy'];
+
+type Overview = { users:number; athletes:number; coaches:number; academies:number; admins:number; verified_athletes:number };
 
 type ProfileRow = {
   user_id: string;
@@ -48,6 +49,11 @@ export default function AdminPanelScreen() {
   const superAdmin = role === 'super_admin';
 
   const [users, setUsers] = useState<ProfileRow[]>([]);
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const fullAdmin = superAdmin || permissions.includes('*');
+  const canManageFlags = fullAdmin || permissions.includes('flags.manage');
+  const canReadAudit = fullAdmin || permissions.includes('audit.read');
   const [audits, setAudits] = useState<AuditRow[]>([]);
   const [flags, setFlags] = useState<FlagRow[]>([]);
   const [selected, setSelected] = useState<ProfileRow | null>(null);
@@ -59,17 +65,50 @@ export default function AdminPanelScreen() {
   const load = useCallback(async () => {
     if (!allowed || !session) return;
     setMessage('');
-    const [u, a, f] = await Promise.all([
-      supabase.from('profiles').select('user_id,full_name,username,role,plan_id,founder_badge,verified_athlete,account_code,created_at').order('created_at', { ascending: false }).limit(250),
-      supabase.from('audit_logs').select('id,action,entity_table,entity_id,created_at,metadata').order('created_at', { ascending: false }).limit(40),
-      supabase.from('feature_flags').select('id,flag_key,description,enabled,audience').order('flag_key'),
-    ]);
-    const error = u.error || a.error || f.error;
-    if (error) setMessage(error.message);
-    setUsers((u.data || []) as ProfileRow[]);
-    setAudits((a.data || []) as AuditRow[]);
-    setFlags((f.data || []) as FlagRow[]);
-  }, [allowed, session]);
+    const permissionResult = await supabase.rpc('get_my_platform_admin_permissions');
+    if (permissionResult.error) { setMessage(permissionResult.error.message); return; }
+    const loaded = (permissionResult.data?.permissions || []) as string[];
+    const full = role === 'super_admin' || loaded.includes('*');
+    const allows = (key:string) => full || loaded.includes(key);
+    setPermissions(loaded);
+
+    let nextUsers: ProfileRow[] = [];
+    let nextAudits: AuditRow[] = [];
+    let nextFlags: FlagRow[] = [];
+    let nextOverview: Overview | null = null;
+    const errors: string[] = [];
+
+    if (full) {
+      const result = await supabase.from('profiles')
+        .select('user_id,full_name,username,role,plan_id,founder_badge,verified_athlete,account_code,created_at')
+        .order('created_at', { ascending: false }).limit(250);
+      if (result.error) errors.push(result.error.message);
+      else nextUsers = (result.data || []) as ProfileRow[];
+    }
+    if (allows('audit.read')) {
+      const result = await supabase.from('audit_logs')
+        .select('id,action,entity_table,entity_id,created_at,metadata')
+        .order('created_at', { ascending: false }).limit(40);
+      if (result.error) errors.push(result.error.message);
+      else nextAudits = (result.data || []) as AuditRow[];
+    }
+    if (allows('flags.manage')) {
+      const result = await supabase.from('feature_flags')
+        .select('id,flag_key,description,enabled,audience').order('flag_key');
+      if (result.error) errors.push(result.error.message);
+      else nextFlags = (result.data || []) as FlagRow[];
+    }
+    if (['platform.read','analytics.read','billing.read','verification.read','support.read'].some(allows)) {
+      const result = await supabase.rpc('get_platform_admin_overview');
+      if (result.error) errors.push(result.error.message);
+      else nextOverview = result.data as Overview;
+    }
+    setUsers(nextUsers);
+    setAudits(nextAudits);
+    setFlags(nextFlags);
+    setOverview(nextOverview);
+    if (errors.length) setMessage(errors.slice(0,2).join(' '));
+  }, [allowed, session, role]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -83,13 +122,13 @@ export default function AdminPanelScreen() {
   }, [users, query]);
 
   const counts = useMemo(() => ({
-    total: users.length,
-    athletes: users.filter((u) => u.role === 'athlete').length,
-    coaches: users.filter((u) => u.role === 'coach').length,
-    academies: users.filter((u) => u.role === 'academy' || u.role === 'academy_admin').length,
-    admins: users.filter((u) => ADMIN_ROLES.includes(String(u.role))).length,
-    verified: users.filter((u) => Boolean(u.verified_athlete)).length,
-  }), [users]);
+    total: overview?.users ?? users.length,
+    athletes: overview?.athletes ?? users.filter((u) => u.role === 'athlete').length,
+    coaches: overview?.coaches ?? users.filter((u) => u.role === 'coach').length,
+    academies: overview?.academies ?? users.filter((u) => u.role === 'academy_admin').length,
+    admins: overview?.admins ?? users.filter((u) => ADMIN_ROLES.includes(String(u.role))).length,
+    verified: overview?.verified_athletes ?? users.filter((u) => Boolean(u.verified_athlete)).length,
+  }), [users, overview]);
 
   async function setRole(target: ProfileRow, nextRole: string) {
     if (!superAdmin || !target.user_id) return;
@@ -105,18 +144,10 @@ export default function AdminPanelScreen() {
     await load();
   }
 
-  async function setPlan(target: ProfileRow, planId: string) {
-    if (!allowed || !target.user_id) return;
-    setBusy(true);
-    const { error } = await supabase.rpc('admin_set_user_plan', { p_user_id: target.user_id, p_plan_id: planId });
-    setBusy(false);
-    if (error) { setMessage(error.message); return; }
-    setMessage('Plan updated securely.');
-    await load();
-  }
+
 
   async function toggleFlag(flag: FlagRow) {
-    if (!superAdmin) return;
+    if (!canManageFlags) return;
     setBusy(true);
     const { error } = await supabase.from('feature_flags').update({ enabled: !flag.enabled }).eq('id', flag.id);
     setBusy(false);
@@ -167,6 +198,7 @@ export default function AdminPanelScreen() {
           <Action title="Refresh Control Center" text="Reload users, audit events and feature flags." onPress={() => void refresh()} />
         </View>
 
+        {fullAdmin ? <>
         <View style={s.panel}>
           <Text style={s.section}>USER MANAGEMENT</Text>
           <TextInput value={query} onChangeText={setQuery} placeholder="Search username or UUID" placeholderTextColor={c.muted} style={s.input} />
@@ -204,7 +236,10 @@ export default function AdminPanelScreen() {
           </View>
         ) : null}
 
-        {superAdmin ? (
+
+        </> : <View style={s.panel}><Text style={s.section}>LEAST-PRIVILEGE ACCESS</Text><Text style={s.meta}>User-level administration is not included in your assigned permission scope. Open Platform Governance & Verification for the tools your role can use.</Text></View>}
+
+        {canManageFlags ? (
           <View style={s.panel}>
             <Text style={s.section}>FEATURE FLAGS</Text>
             {flags.map((flag) => (
@@ -222,7 +257,7 @@ export default function AdminPanelScreen() {
           </View>
         ) : null}
 
-        <View style={s.panel}>
+        {canReadAudit ? <View style={s.panel}>
           <Text style={s.section}>RECENT AUDIT</Text>
           {audits.map((a) => (
             <View key={a.id} style={s.auditRow}>
@@ -231,7 +266,7 @@ export default function AdminPanelScreen() {
             </View>
           ))}
           {!audits.length ? <Text style={s.meta}>No audit events visible.</Text> : null}
-        </View>
+        </View> : null}
 
         {message ? <Text style={s.message}>{message}</Text> : null}
       </ScrollView>
