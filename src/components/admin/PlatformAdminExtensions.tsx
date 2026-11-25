@@ -31,6 +31,10 @@ type AccessControl = {
 };
 type FeatureFlag = { id:string; flag_key:string; description:string|null; enabled:boolean; audience:string };
 type PlatformAnnouncement = { id:string; title:string; body:string; audience:string; published_at:string|null; created_at:string };
+type SupportTicket = { id:string; user_id:string; subject:string; body:string|null; status:string; priority:string; assigned_to:string|null; created_at:string; updated_at:string };
+type FeedbackItem = { id:string; user_id:string; title:string; details:string|null; status:string; priority:string; created_at:string; updated_at:string };
+type SubscriptionRecord = { id:string; user_id:string; plan_id:string; provider:string|null; status:string; current_period_end:string|null; created_at:string; updated_at:string };
+type PaymentEventRecord = { id:string; user_id:string|null; provider:string; event_type:string; amount_minor:number|null; currency:string|null; status:string|null; created_at:string };
 type AuditEntry = {
   id: string; actor_user_id: string | null; target_user_id: string | null;
   action: string; reason: string | null; metadata: Record<string, unknown>; created_at: string;
@@ -44,6 +48,10 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
   const [overview, setOverview] = useState<Overview | null>(null);
   const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([]);
   const [announcements, setAnnouncements] = useState<PlatformAnnouncement[]>([]);
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([]);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([]);
+  const [paymentEvents, setPaymentEvents] = useState<PaymentEventRecord[]>([]);
   const [announcementDraft, setAnnouncementDraft] = useState({ title:"", body:"", audience:"all" });
   const [verificationQueue, setVerificationQueue] = useState<VerificationRequest[]>([]);
   const [athleteReviews, setAthleteReviews] = useState<AthleteVerificationReview[]>([]);
@@ -76,6 +84,9 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
   const canChangePlatformRoles = role === "super_admin";
   const canManageFlags = has("flags.manage");
   const canManageAnnouncements = has("announcements.manage");
+  const canReadSupport = has("support.read");
+  const canManageSupport = has("support.manage");
+  const canReadFinance = has("billing.read");
   const canReadAudit = has("audit.read");
   const canReadOverview = ["platform.read","analytics.read","billing.read","verification.read","support.read"].some(has);
 
@@ -118,6 +129,30 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
           setAnnouncements((r.data || []) as PlatformAnnouncement[]);
         })());
       } else setAnnouncements([]);
+      if (allowed("support.read")) {
+        jobs.push((async () => {
+          const [ticketsResult, feedbackResult] = await Promise.all([
+            supabase.from("support_tickets").select("id,user_id,subject,body,status,priority,assigned_to,created_at,updated_at").order("created_at",{ascending:false}).limit(100),
+            supabase.from("feedback_items").select("id,user_id,title,details,status,priority,created_at,updated_at").order("created_at",{ascending:false}).limit(100)
+          ]);
+          if (ticketsResult.error) throw ticketsResult.error;
+          if (feedbackResult.error) throw feedbackResult.error;
+          setSupportTickets((ticketsResult.data || []) as SupportTicket[]);
+          setFeedbackItems((feedbackResult.data || []) as FeedbackItem[]);
+        })());
+      } else { setSupportTickets([]); setFeedbackItems([]); }
+      if (allowed("billing.read")) {
+        jobs.push((async () => {
+          const [subscriptionsResult, paymentsResult] = await Promise.all([
+            supabase.from("subscriptions").select("id,user_id,plan_id,provider,status,current_period_end,created_at,updated_at").order("updated_at",{ascending:false}).limit(100),
+            supabase.from("payment_events").select("id,user_id,provider,event_type,amount_minor,currency,status,created_at").order("created_at",{ascending:false}).limit(100)
+          ]);
+          if (subscriptionsResult.error) throw subscriptionsResult.error;
+          if (paymentsResult.error) throw paymentsResult.error;
+          setSubscriptions((subscriptionsResult.data || []) as SubscriptionRecord[]);
+          setPaymentEvents((paymentsResult.data || []) as PaymentEventRecord[]);
+        })());
+      } else { setSubscriptions([]); setPaymentEvents([]); }
       if (allowed("platform.roles.manage")) {
         jobs.push((async () => {
           const r = await supabase.rpc("get_platform_admin_assignments");
@@ -178,6 +213,32 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Verification review failed.");
     } finally { setBusyKey(""); }
+  }
+
+  async function updateSupportTicket(row: SupportTicket, values: Partial<Pick<SupportTicket,"status"|"priority"|"assigned_to">>) {
+    if (!supabase || !canManageSupport) return;
+    setBusyKey("ticket:" + row.id); setError(""); setNotice("");
+    try {
+      const { error: updateError } = await supabase.from("support_tickets")
+        .update({...values,updated_at:new Date().toISOString()}).eq("id",row.id);
+      if (updateError) throw updateError;
+      setNotice("Support ticket updated. The database audit trigger recorded the change.");
+      await load();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Support ticket could not be updated."); }
+    finally { setBusyKey(""); }
+  }
+
+  async function updateFeedbackItem(row: FeedbackItem, values: Partial<Pick<FeedbackItem,"status"|"priority">>) {
+    if (!supabase || !canManageSupport) return;
+    setBusyKey("feedback:" + row.id); setError(""); setNotice("");
+    try {
+      const { error: updateError } = await supabase.from("feedback_items")
+        .update({...values,updated_at:new Date().toISOString()}).eq("id",row.id);
+      if (updateError) throw updateError;
+      setNotice("Feedback item updated. The database audit trigger recorded the change.");
+      await load();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Feedback item could not be updated."); }
+    finally { setBusyKey(""); }
   }
 
   async function toggleFeatureFlag(flag: FeatureFlag) {
@@ -385,6 +446,47 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
         <label>Decision reason<textarea rows={2} maxLength={500} value={reviewReasons[row.id] || ""} onChange={(event)=>setReviewReasons((values)=>({...values,[row.id]:event.target.value}))} placeholder="Record the evidence-based reason for this decision (5–500 characters)."/></label>
         <div className="inline-actions"><button className="btn primary" type="button" disabled={busyKey==="review:"+row.id} onClick={()=>void review(row,"approved")}>Approve</button><button className="btn danger" type="button" disabled={busyKey==="review:"+row.id} onClick={()=>void review(row,"rejected")}>Reject</button></div>
       </article>):<div className="platform-admin-empty">No Student proof requests are waiting for review.</div>}
+    </div>}
+
+    {canReadSupport && <div className="platform-admin-panel">
+      <div className="platform-admin-panel-head"><div><span className="admin-section-label">Support operations</span><h4>Support & Dispute Queue</h4>
+        <p>Support tickets and feedback are visible to Support Admins. Status and priority changes are permission-gated and recorded by database audit triggers. Ticket content is not copied into audit metadata.</p></div><Shield size={20}/></div>
+      <div className="platform-admin-count">{supportTickets.filter((row)=>["open","pending"].includes(row.status)).length} open / pending tickets</div>
+      {supportTickets.map((row)=><article className="platform-admin-verification" key={row.id}>
+        <div className="platform-admin-verification-summary"><div><b>{row.subject}</b><small>{row.status} · {row.priority} · {new Date(row.created_at).toLocaleString()}</small><code>Account {row.user_id}</code></div>
+          {row.assigned_to===userId ? <span className="platform-admin-count">Assigned to you</span> : canManageSupport ? <button type="button" className="btn" disabled={busyKey==="ticket:"+row.id} onClick={()=>void updateSupportTicket(row,{assigned_to:userId})}>Assign to me</button> : null}</div>
+        {row.body && <p className="platform-admin-ticket-body">{row.body}</p>}
+        {canManageSupport && <div className="platform-admin-assignment-form">
+          <label>Status<select value={row.status} disabled={busyKey==="ticket:"+row.id} onChange={(event)=>void updateSupportTicket(row,{status:event.target.value})}>
+            <option value="open">Open</option><option value="pending">Pending</option><option value="resolved">Resolved</option><option value="closed">Closed</option>
+          </select></label>
+          <label>Priority<select value={row.priority} disabled={busyKey==="ticket:"+row.id} onChange={(event)=>void updateSupportTicket(row,{priority:event.target.value})}>
+            <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option>
+          </select></label>
+        </div>}
+      </article>)}
+      {feedbackItems.length>0 && <><h4>Product feedback</h4>{feedbackItems.map((row)=><article className="platform-admin-verification" key={row.id}>
+        <div><b>{row.title}</b><small>{row.status} · {row.priority} · Account {row.user_id}</small></div>
+        {row.details && <p className="platform-admin-ticket-body">{row.details}</p>}
+        {canManageSupport && <div className="platform-admin-assignment-form">
+          <label>Status<select value={row.status} disabled={busyKey==="feedback:"+row.id} onChange={(event)=>void updateFeedbackItem(row,{status:event.target.value})}>
+            <option value="new">New</option><option value="reviewing">Reviewing</option><option value="planned">Planned</option><option value="closed">Closed</option>
+          </select></label>
+          <label>Priority<select value={row.priority} disabled={busyKey==="feedback:"+row.id} onChange={(event)=>void updateFeedbackItem(row,{priority:event.target.value})}>
+            <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option>
+          </select></label>
+        </div>}
+      </article>)}</>}
+      {!supportTickets.length&&!feedbackItems.length&&<div className="platform-admin-empty">No support tickets or feedback items are currently available.</div>}
+    </div>}
+
+    {canReadFinance && <div className="platform-admin-panel">
+      <div className="platform-admin-panel-head"><div><span className="admin-section-label">Finance operations</span><h4>Subscription & Payment Ledger</h4>
+        <p>Read-only provider-backed records. This workspace cannot change plan entitlements, mark a payment successful, issue refunds or alter settlement state.</p></div><ShieldCheck size={20}/></div>
+      <h4>Subscriptions ({subscriptions.length})</h4>
+      <div className="platform-admin-table-wrap"><table><thead><tr><th>Account</th><th>Plan</th><th>Provider</th><th>Status</th><th>Period end</th></tr></thead><tbody>{subscriptions.map((row)=><tr key={row.id}><td><code>{row.user_id}</code></td><td>{row.plan_id}</td><td>{row.provider || "—"}</td><td>{row.status}</td><td>{row.current_period_end ? new Date(row.current_period_end).toLocaleDateString() : "—"}</td></tr>)}</tbody></table></div>
+      <h4>Payment events ({paymentEvents.length})</h4>
+      <div className="platform-admin-table-wrap"><table><thead><tr><th>Created</th><th>Account</th><th>Provider</th><th>Event</th><th>Amount</th><th>Status</th></tr></thead><tbody>{paymentEvents.map((row)=><tr key={row.id}><td>{new Date(row.created_at).toLocaleString()}</td><td><code>{row.user_id || "—"}</code></td><td>{row.provider}</td><td>{row.event_type}</td><td>{row.amount_minor==null?"—":String(row.currency || "INR")+" "+(row.amount_minor/100).toFixed(2)}</td><td>{row.status || "—"}</td></tr>)}</tbody></table></div>
     </div>}
 
     {(canManageFlags || canManageAnnouncements) && <div className="platform-admin-panel">
