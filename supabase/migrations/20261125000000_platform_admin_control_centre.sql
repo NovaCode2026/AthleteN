@@ -149,6 +149,7 @@ declare
   v_scope text;
   v_permissions text[];
 begin
+  if (select auth.uid()) is null then raise exception 'Authentication required'; end if;
   select p.role into v_role from public.profiles p where p.user_id = (select auth.uid());
   select a.permission_role into v_scope
   from public.platform_admin_assignments a where a.admin_user_id = (select auth.uid());
@@ -169,6 +170,7 @@ security definer
 set search_path = ''
 as $function$
 begin
+  if (select auth.uid()) is null then raise exception 'Authentication required'; end if;
   if not (private.platform_admin_has_permission('platform.read')
        or private.platform_admin_has_permission('analytics.read')
        or private.platform_admin_has_permission('billing.read')
@@ -211,6 +213,7 @@ security definer
 set search_path = ''
 as $function$
 begin
+  if (select auth.uid()) is null then raise exception 'Authentication required'; end if;
   if not private.platform_admin_has_permission('verification.read') then
     raise exception 'Verification review permission required';
   end if;
@@ -240,6 +243,7 @@ set search_path = ''
 as $function$
 declare v_query text;
 begin
+  if (select auth.uid()) is null then raise exception 'Authentication required'; end if;
   if not private.platform_admin_has_permission('account.manage') then
     raise exception 'Account management permission required';
   end if;
@@ -272,6 +276,7 @@ security definer
 set search_path = ''
 as $function$
 begin
+  if (select auth.uid()) is null then raise exception 'Authentication required'; end if;
   if not private.platform_admin_has_permission('platform.roles.manage') then
     raise exception 'Super Admin role-management permission required';
   end if;
@@ -346,6 +351,7 @@ security definer
 set search_path = ''
 as $function$
 begin
+  if (select auth.uid()) is null then raise exception 'Authentication required'; end if;
   if not private.platform_admin_has_permission('audit.read') then
     raise exception 'Audit read permission required';
   end if;
@@ -479,6 +485,7 @@ security definer
 set search_path = ''
 as $function$
 begin
+  if (select auth.uid()) is null then raise exception 'Authentication required'; end if;
   if not private.platform_admin_has_permission('account.manage') then
     raise exception 'Account-access management permission required';
   end if;
@@ -493,12 +500,14 @@ $function$;
 
 create or replace function public.get_my_platform_account_access()
 returns jsonb
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $function$
-  select jsonb_build_object(
+begin
+  if (select auth.uid()) is null then raise exception 'Authentication required'; end if;
+  return jsonb_build_object(
     'status',coalesce((select c.status from public.platform_account_access_controls c
        where c.user_id=(select auth.uid())
          and (c.expires_at is null or c.expires_at>pg_catalog.now())
@@ -508,6 +517,7 @@ as $function$
          and (c.expires_at is null or c.expires_at>pg_catalog.now())
        limit 1)
   );
+end;
 $function$;
 
 -- Restrictive RLS layer: a restricted/suspended account retains its profile and
@@ -610,6 +620,7 @@ declare
 begin
   foreach t in array v_tables loop
     if pg_catalog.to_regclass('public.'||t) is not null then
+      execute pg_catalog.format('alter table public.%I enable row level security',t);
       execute pg_catalog.format('drop policy if exists platform_admin_scope_select on public.%I',t);
       execute pg_catalog.format(
         'create policy platform_admin_scope_select on public.%I as restrictive for select to authenticated using (private.platform_admin_resource_allowed(%L,''select'')%s)',
@@ -670,6 +681,9 @@ begin
   perform pg_catalog.set_config('athleten.privileged_profile_mutation','1',true);
   update public.profiles set role=p_role,updated_at=pg_catalog.now() where user_id=p_user_id;
   perform pg_catalog.set_config('athleten.privileged_profile_mutation','',true);
+  if p_role not in ('admin','support_admin') then
+    delete from public.platform_admin_assignments where admin_user_id=p_user_id;
+  end if;
 
   insert into public.audit_logs(actor_user_id,action,entity_table,entity_id,metadata)
   values((select auth.uid()),'user.role_change','profiles',v_target_profile_id,
