@@ -57,6 +57,7 @@ export default function AdminPanelScreen() {
   const [audits, setAudits] = useState<AuditRow[]>([]);
   const [flags, setFlags] = useState<FlagRow[]>([]);
   const [selected, setSelected] = useState<ProfileRow | null>(null);
+  const [roleChangeReason, setRoleChangeReason] = useState('');
   const [query, setQuery] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -132,15 +133,18 @@ export default function AdminPanelScreen() {
 
   async function setRole(target: ProfileRow, nextRole: string) {
     if (!superAdmin || !target.user_id) return;
+    const reason = roleChangeReason.trim();
+    if (reason.length < 5 || reason.length > 500) { setMessage('Enter a role-change reason between 5 and 500 characters.'); return; }
     if (target.user_id === session?.user.id && nextRole !== 'super_admin') {
       setMessage('Super Admin cannot demote itself.');
       return;
     }
     setBusy(true);
-    const { error } = await supabase.rpc('admin_set_user_role', { p_user_id: target.user_id, p_role: nextRole });
+    const { error } = await supabase.rpc('admin_set_user_role', { p_user_id: target.user_id, p_role: nextRole, p_reason: reason });
     setBusy(false);
     if (error) { setMessage(error.message); return; }
-    setMessage('Role updated securely.');
+    setRoleChangeReason('');
+    setMessage('Role updated securely and audited.');
     await load();
   }
 
@@ -226,6 +230,7 @@ export default function AdminPanelScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
               {ROLES.map((nextRole) => <Pressable key={nextRole} disabled={busy || !superAdmin} onPress={() => void setRole(selected, nextRole)} style={[s.chip, selected.role === nextRole && s.chipActive, !superAdmin && s.disabled]}><Text style={s.chipText}>{nextRole.toUpperCase()}</Text></Pressable>)}
             </ScrollView>
+            {superAdmin ? <TextInput value={roleChangeReason} onChangeText={setRoleChangeReason} placeholder="Role-change reason (5–500 characters)" placeholderTextColor={c.muted} style={[s.input,s.multiline]} multiline maxLength={500}/> : null}
 
             {busy ? <ActivityIndicator color={c.accentBright} /> : null}
           </View>
