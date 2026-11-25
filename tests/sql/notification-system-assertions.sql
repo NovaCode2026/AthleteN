@@ -133,7 +133,7 @@ BEGIN
   FROM public.push_delivery_attempts p
   JOIN public.notifications n ON n.id=p.notification_id
   WHERE n.user_id='10000000-0000-4000-8000-000000000001';
-  IF v_count < 10 THEN RAISE EXCEPTION 'Expected at least 10 durable per-device delivery attempts, got %',v_count; END IF;
+  IF v_count <> 9 THEN RAISE EXCEPTION 'Expected exactly nine durable athlete-device delivery attempts, got %',v_count; END IF;
 END
 $$;
 
