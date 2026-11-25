@@ -21,8 +21,8 @@ async function prepareGoogleMobileAds(): Promise<void> {
       // The server checks the account's first-saved age-verification record
       // before issuing this short-lived session. That DOB is not sent to AdMob.
       // A recorded DOB is not independent identity proof; live serving stays
-      // disabled until adult-owned policy review and any required age assurance
-      // are complete.
+      // disabled until adult-owned policy review and required age assurance
+      // are complete. Teen accounts require guardian approval server-side.
       const consent = await AdsConsent.gatherConsent();
       if (!consent.canRequestAds) {
         throw new Error('Ad consent is not available. You can continue using AthleteN without watching an ad.');
@@ -30,9 +30,10 @@ async function prepareGoogleMobileAds(): Promise<void> {
 
       await mobileAds().setRequestConfiguration({
         maxAdContentRating: MaxAdContentRating.PG,
-        // The server issues sessions only to independently verified adults.
-        // All accounts under 18 are denied before an ad session is created.
-        ageRestrictedTreatment: AgeRestrictedTreatment.UNSPECIFIED,
+        // Use teen-safe age treatment for all rewarded-ad requests. This is
+        // deliberately conservative and avoids age-treatment switching when
+        // an account changes on the same device. Personalization is disabled.
+        ageRestrictedTreatment: AgeRestrictedTreatment.TEEN,
       });
       await mobileAds().initialize();
     })().catch((error: unknown) => {
