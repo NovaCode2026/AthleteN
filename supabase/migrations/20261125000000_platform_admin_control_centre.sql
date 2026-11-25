@@ -536,7 +536,10 @@ begin
      or char_length(btrim(p_reason)) not between 5 and 500 then
     raise exception 'Invalid access status or reason';
   end if;
-  if p_status='restricted' and (p_expires_at is null or p_expires_at<=pg_catalog.now()) then
+  if p_expires_at is not null and p_expires_at<=pg_catalog.now() then
+    raise exception 'An account-access expiry must be in the future';
+  end if;
+  if p_status='restricted' and p_expires_at is null then
     raise exception 'A temporary restriction must have a future expiry';
   end if;
 
