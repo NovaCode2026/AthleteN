@@ -191,6 +191,68 @@ begin
 end;
 $function$;
 
+create or replace function public.get_student_verification_queue()
+returns table (
+  id uuid,
+  user_id uuid,
+  full_name text,
+  username text,
+  document_type text,
+  file_path text,
+  status text,
+  created_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  if not private.platform_admin_has_permission('verification.read') then
+    raise exception 'Verification review permission required';
+  end if;
+  return query
+  select sv.id,sv.user_id,p.full_name,p.username,sv.document_type,sv.file_path,sv.status,sv.created_at
+  from public.student_verifications sv
+  join public.profiles p on p.user_id=sv.user_id and p.role='athlete'
+  where sv.status='pending'
+  order by sv.created_at asc
+  limit 100;
+end;
+$function$;
+
+create or replace function public.search_platform_accounts(p_query text,p_limit integer default 20)
+returns table (
+  user_id uuid,
+  full_name text,
+  username text,
+  role text,
+  plan_id text,
+  created_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare v_query text;
+begin
+  if not private.platform_admin_has_permission('account.manage') then
+    raise exception 'Account management permission required';
+  end if;
+  v_query:=left(replace(replace(btrim(coalesce(p_query,'')),'%',''),'_',''),80);
+  if char_length(v_query)<2 then raise exception 'Enter at least two search characters'; end if;
+  return query
+  select p.user_id,p.full_name,p.username,p.role,p.plan_id,p.created_at
+  from public.profiles p
+  where p.full_name ilike '%'||v_query||'%'
+     or coalesce(p.username,'') ilike '%'||v_query||'%'
+     or p.user_id::text like v_query||'%'
+  order by p.created_at desc
+  limit greatest(1,least(coalesce(p_limit,20),30));
+end;
+$function$;
+
 create or replace function public.get_platform_admin_assignments()
 returns table (
   admin_user_id uuid,
@@ -486,10 +548,97 @@ create policy platform_verification_review_read
     and (select private.platform_admin_has_permission('verification.review'))
   );
 
+-- Scoped administrators are restricted at the database boundary. Regular users
+-- retain their existing owner/team RLS paths; full Admin/Super Admin retains
+-- existing platform-wide capabilities. Sensitive mutation remains RPC-only.
+create or replace function private.platform_admin_resource_allowed(p_table text,p_action text)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  if not private.is_platform_admin() then return true; end if;
+  if '*' = any(private.platform_admin_permissions_for((select auth.uid()))) then return true; end if;
+
+  case p_table
+    when 'student_verifications','age_verifications' then
+      return p_action='select' and private.platform_admin_has_permission('verification.read');
+    when 'subscriptions','subscription_usage','account_entitlements','payment_orders','payment_events' then
+      return p_action='select' and private.platform_admin_has_permission('billing.read');
+    when 'support_tickets','feedback_items' then
+      return (p_action='select' and private.platform_admin_has_permission('support.read'))
+        or (p_action in ('insert','update') and private.platform_admin_has_permission('support.manage'));
+    when 'message_reports' then
+      return (p_action='select' and private.platform_admin_has_permission('message_reports.read'))
+        or (p_action='update' and private.platform_admin_has_permission('message_reports.manage'));
+    when 'feature_flags' then
+      return private.platform_admin_has_permission('flags.manage');
+    when 'announcements' then
+      return private.platform_admin_has_permission('announcements.manage');
+    when 'audit_logs' then
+      return p_action='select' and private.platform_admin_has_permission('audit.read');
+    when 'roadmap_items','roadmap_votes','reserved_usernames' then
+      return p_action='select' and private.platform_admin_has_permission('platform.read');
+    else
+      return false;
+  end case;
+end;
+$function$;
+revoke all on function private.platform_admin_resource_allowed(text,text) from public, anon;
+grant execute on function private.platform_admin_resource_allowed(text,text) to authenticated;
+
+do $scope_policies$
+declare
+  t text;
+  v_tables text[] := array[
+    'profiles','academies','academy_memberships','academy_coach_seats','coach_athlete_links','coach_approval_requests',
+    'training_sessions','training_plans','attendance_records','tournaments','matches','medals','certificates',
+    'documents','weight_logs','calendar_events','competition_checklists','injuries','goals',
+    'student_verifications','age_verifications','feedback_items','roadmap_items','roadmap_votes','tournament_scans',
+    'referrals','athlete_badges','ai_usage_events','subscriptions','subscription_usage','account_entitlements',
+    'payment_orders','payment_events','support_tickets','conversations','conversation_members','messages',
+    'message_reports','user_blocks','announcements','feature_flags','reserved_usernames','audit_logs',
+    'academy_fee_invoices','academy_fee_payments','academy_coach_attendance','academy_coach_availability',
+    'academy_athlete_transfer_requests','academy_announcements','academy_guardian_links','academy_report_exports',
+    'academy_seat_requests','academy_staff_assignments','academy_notification_preferences'
+  ];
+begin
+  foreach t in array v_tables loop
+    if pg_catalog.to_regclass('public.'||t) is not null then
+      execute pg_catalog.format('drop policy if exists platform_admin_scope_select on public.%I',t);
+      execute pg_catalog.format(
+        'create policy platform_admin_scope_select on public.%I as restrictive for select to authenticated using (private.platform_admin_resource_allowed(%L,''select'')%s)',
+        t,t,case when t='profiles' then ' or user_id=(select auth.uid())' else '' end
+      );
+      execute pg_catalog.format('drop policy if exists platform_admin_scope_insert on public.%I',t);
+      execute pg_catalog.format(
+        'create policy platform_admin_scope_insert on public.%I as restrictive for insert to authenticated with check (private.platform_admin_resource_allowed(%L,''insert'')%s)',
+        t,t,case when t='profiles' then ' or user_id=(select auth.uid())' else '' end
+      );
+      execute pg_catalog.format('drop policy if exists platform_admin_scope_update on public.%I',t);
+      execute pg_catalog.format(
+        'create policy platform_admin_scope_update on public.%I as restrictive for update to authenticated using (private.platform_admin_resource_allowed(%L,''update'')%s) with check (private.platform_admin_resource_allowed(%L,''update'')%s)',
+        t,t,case when t='profiles' then ' or user_id=(select auth.uid())' else '' end,
+        t,case when t='profiles' then ' or user_id=(select auth.uid())' else '' end
+      );
+      execute pg_catalog.format('drop policy if exists platform_admin_scope_delete on public.%I',t);
+      execute pg_catalog.format(
+        'create policy platform_admin_scope_delete on public.%I as restrictive for delete to authenticated using (private.platform_admin_resource_allowed(%L,''delete''))',
+        t,t
+      );
+    end if;
+  end loop;
+end;
+$scope_policies$;
+
 -- Only the RPCs below can mutate role assignments, moderation state and reviews.
 revoke all on function public.get_my_platform_admin_permissions() from public, anon;
 revoke all on function public.get_platform_admin_overview() from public, anon;
 revoke all on function public.get_platform_admin_assignments() from public, anon;
+revoke all on function public.get_student_verification_queue() from public, anon;
+revoke all on function public.search_platform_accounts(text,integer) from public, anon;
 revoke all on function public.admin_assign_platform_role(uuid,text) from public, anon;
 revoke all on function public.get_platform_admin_audit(integer) from public, anon;
 revoke all on function public.admin_review_student_verification(uuid,text,text) from public, anon;
@@ -500,6 +649,8 @@ revoke all on function public.get_my_platform_account_access() from public, anon
 grant execute on function public.get_my_platform_admin_permissions() to authenticated;
 grant execute on function public.get_platform_admin_overview() to authenticated;
 grant execute on function public.get_platform_admin_assignments() to authenticated;
+grant execute on function public.get_student_verification_queue() to authenticated;
+grant execute on function public.search_platform_accounts(text,integer) to authenticated;
 grant execute on function public.admin_assign_platform_role(uuid,text) to authenticated;
 grant execute on function public.get_platform_admin_audit(integer) to authenticated;
 grant execute on function public.admin_review_student_verification(uuid,text,text) to authenticated;
