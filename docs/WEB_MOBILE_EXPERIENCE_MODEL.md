@@ -130,6 +130,7 @@ A row is not complete merely because a button or route exists. Verify the underl
 - [ ] Create a Kyorugi bout on either client; verify the same bout and result on the other client.
 - [ ] Create a Poomsae practice log and official result on either client; verify forms, category, repetitions, score, placing and notes on the other client.
 - [ ] Create or edit Taekwondo training logs, Kyorugi bouts and Poomsae performances on Web; verify Mobile refreshes the same records through Realtime, and repeat in the opposite direction.
+- [ ] Verify athlete journey, badge, student verification and subscription-usage changes refresh their corresponding Mobile screens.
 - [ ] Verify changing the selected discipline never relabels or mixes historical records.
 - [ ] Verify athlete, coach and academy summaries use only records visible to their permitted role and relationships.
 - [ ] Compare shared KPIs using the same date range and definition on both clients.
@@ -170,4 +171,4 @@ This is **navigation/entry-point parity**, not proof that every underlying workf
 
 A code audit found that Mobile's shared account-sync channel did not subscribe to the three Taekwondo domain tables, although the Taekwondo screen reloads when the shared sync version changes and the Web dashboard already listens for those tables. This left cross-client updates dependent on a manual refresh.
 
-The correction adds `taekwondo_training_logs`, `taekwondo_kyorugi_bouts` and `taekwondo_poomsae_performances` to Mobile's account-scoped Realtime subscriptions, and adds a guarded migration to include the same tables in `supabase_realtime`. A regression test now guards both subscription coverage and the migration entries. The migration is a candidate until staging replay and migration-history reconciliation are complete.
+The correction adds Taekwondo domain records, student verification, subscription usage and Athlete Journey tables to Mobile's account-scoped Realtime subscriptions. The corresponding focused screens now reload from the shared sync version. A guarded migration adds those tables to `supabase_realtime`, and regression tests guard subscription coverage, publication entries and screen refresh dependencies. The migration is a candidate until staging replay and migration-history reconciliation are complete.
