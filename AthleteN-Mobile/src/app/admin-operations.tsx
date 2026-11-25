@@ -15,6 +15,7 @@ type Overview = {
 };
 type PermissionPayload = { base_role: string; permission_role: string; permissions: string[] };
 type AthleteVerificationReview = { user_id:string; full_name:string|null; username:string|null; verified_athlete:boolean; created_at:string };
+type AgeVerificationReview = { id:string; user_id:string; status:string; approved_at:string|null; rejected_at:string|null; created_at:string; updated_at:string };
 type VerificationRequest = {
   id: string; user_id: string; full_name: string | null; username: string | null;
   document_type: string; file_path: string | null; status: string; created_at: string;
@@ -37,6 +38,7 @@ export default function AdminOperationsScreen() {
   const [permission, setPermission] = useState<PermissionPayload | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [queue, setQueue] = useState<VerificationRequest[]>([]);
+  const [ageReviews, setAgeReviews] = useState<AgeVerificationReview[]>([]);
   const [announcements, setAnnouncements] = useState<PlatformAnnouncement[]>([]);
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
   const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([]);
@@ -67,6 +69,7 @@ export default function AdminOperationsScreen() {
   const has = (key: string) => role === 'super_admin' || permissions.includes('*') || permissions.includes(key);
   const canReadOverview = ['platform.read','analytics.read','billing.read','verification.read','support.read'].some(has);
   const canVerify = has('verification.read');
+  const canReadAgeVerification = role === 'super_admin' || permissions.includes('*');
   const canManageAthleteVerification = has('verification.athlete.manage');
   const canManageAccounts = has('account.manage');
   const canManageAnnouncements = has('announcements.manage');
@@ -100,6 +103,13 @@ export default function AdminOperationsScreen() {
         setQueue((r.data || []) as VerificationRequest[]);
       })());
     } else setQueue([]);
+    if (loadedPermission.base_role === 'super_admin' || keys.includes('*')) {
+      tasks.push((async () => {
+        const r = await supabase.rpc('get_age_verification_admin_queue');
+        if (r.error) throw r.error;
+        setAgeReviews((r.data || []) as AgeVerificationReview[]);
+      })());
+    } else setAgeReviews([]);
     if (allowedTo('account.manage')) {
       tasks.push((async () => {
         const r = await supabase.rpc('get_platform_account_access_controls');
@@ -355,6 +365,16 @@ export default function AdminOperationsScreen() {
             </View>
           </View>)}
           {!queue.length ? <Text style={s.meta}>No pending Student proof requests.</Text> : null}
+        </View> : null}
+
+        {canReadAgeVerification ? <View style={s.panel}>
+          <Text style={s.section}>AGE & GUARDIAN CONSENT STATUS</Text>
+          <Text style={s.meta}>Read-only status review. This panel deliberately omits date of birth, guardian contact details and approval tokens. Parent/guardian approval remains an explicit action in the existing consent workflow; administrators cannot approve it here.</Text>
+          {ageReviews.map((row)=><View key={row.id} style={s.auditRow}>
+            <Text style={s.userName}>Account {row.user_id.slice(0,8)}… · {row.status.replace(/_/g,' ').toUpperCase()}</Text>
+            <Text style={s.meta}>Submitted {new Date(row.created_at).toLocaleDateString()} · Approved {row.approved_at?new Date(row.approved_at).toLocaleDateString():'—'} · Rejected {row.rejected_at?new Date(row.rejected_at).toLocaleDateString():'—'}</Text>
+          </View>)}
+          {!ageReviews.length ? <Text style={s.meta}>No age-consent records are available.</Text> : null}
         </View> : null}
 
         {canReadSupport ? <View style={s.panel}>
