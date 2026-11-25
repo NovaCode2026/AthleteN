@@ -94,7 +94,7 @@ test("generic admin resource editor cannot mutate or expose guardian token data"
   assert.match(source, /ageVerificationReadOnly = selected === "ageVerifications"/);
   assert.match(source, /canEditCurrentSection = canManage && !ageVerificationReadOnly/);
   assert.match(source, /canCreateCurrentSection = isOwner && !ageVerificationReadOnly/);
-  assert.match(source, /date_of_birth,parent_email,status,approved_at,rejected_at/);
+  assert.match(source, /select\("id,user_id,status,approved_at,rejected_at,created_at,updated_at"\)/);\n  assert.doesNotMatch(source, /select\("id,user_id,date_of_birth,parent_email/);
   assert.doesNotMatch(source, /select\("id,user_id,date_of_birth,parent_email,status,token_hash/);
   assert.match(source, /if \(!canEditCurrentSection \|\| !supabase \|\| !rowHasKey/);
   assert.match(source, /Age-verification records are view-only here/);
