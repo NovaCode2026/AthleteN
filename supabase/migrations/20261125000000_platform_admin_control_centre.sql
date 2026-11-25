@@ -576,8 +576,12 @@ begin
   if '*' = any(private.platform_admin_permissions_for((select auth.uid()))) then return true; end if;
 
   case p_table
-    when 'student_verifications','age_verifications' then
+    when 'student_verifications' then
       return p_action='select' and private.platform_admin_has_permission('verification.read');
+    when 'age_verifications' then
+      -- Guardian consent and age-approval data remains in its separate,
+      -- existing workflow; the Student proof reviewer scope cannot read it.
+      return false;
     when 'subscriptions','subscription_usage','account_entitlements','payment_orders','payment_events' then
       return p_action='select' and private.platform_admin_has_permission('billing.read');
     when 'support_tickets','feedback_items' then
