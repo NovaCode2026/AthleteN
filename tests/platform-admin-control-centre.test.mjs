@@ -24,6 +24,15 @@ test("platform admin scopes are least-privilege and RLS-enforced", () => {
   assert.match(sql, /when 'support_tickets','feedback_items' then/i);
   assert.match(sql, /when 'feature_flags' then/i);
   assert.match(sql, /when 'announcements' then/i);
+
+  assert.match(sql, /p_action in \('select','update'\) and private\.platform_admin_has_permission\('flags\.manage'\)/);
+  assert.match(sql, /p_action in \('select','insert','update'\) and private\.platform_admin_has_permission\('announcements\.manage'\)/);
+  assert.match(sql, /create trigger platform_feature_flags_audit/i);
+  assert.match(sql, /create trigger platform_announcements_audit/i);
+  assert.match(webExtensions, /feature_flags/);
+  assert.match(webExtensions, /announcements/);
+  assert.match(webExtensions, /admin_set_user_role/);
+  assert.match(mobileOperations, /announcements/);
   assert.match(sql, /when 'audit_logs' then/i);
   assert.match(sql, /grant execute on function private\.platform_admin_resource_allowed\(text,text\) to authenticated/i);
   assert.match(sql, /revoke all on public\.platform_admin_assignments,[\s\S]*?from public, anon, authenticated/i);
