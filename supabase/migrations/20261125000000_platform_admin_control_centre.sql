@@ -186,7 +186,9 @@ begin
     'pending_student_verifications', (select count(*) from public.student_verifications where status='pending'),
     'active_subscriptions', (select count(*) from public.subscriptions where status='active'),
     'open_support_tickets', (select count(*) from public.support_tickets where status in ('new','open','in_progress')),
-    'restricted_accounts', (select count(*) from public.platform_account_access_controls where status in ('restricted','suspended') and (expires_at is null or expires_at > pg_catalog.now()))
+    'restricted_accounts', (select count(*) from public.platform_account_access_controls where status in ('restricted','suspended') and (expires_at is null or expires_at > pg_catalog.now())),
+    'verified_coaches', (select count(*) from auth.users u join public.profiles p on p.user_id=u.id where p.role='coach' and u.email_confirmed_at is not null),
+    'verified_academies', (select count(*) from public.academies a where a.status='active' and a.setup_completed=true and a.contact_email_verified_at is not null)
   );
 end;
 $function$;
@@ -371,7 +373,7 @@ begin
      or not private.platform_admin_has_permission('verification.review') then
     raise exception 'Student verification review permission required';
   end if;
-  if p_status not in ('approved','rejected')
+  if p_status is null or p_status not in ('approved','rejected')
      or p_reason is null
      or char_length(btrim(p_reason)) not between 5 and 500 then
     raise exception 'Choose approve or reject and provide a reason of 5 to 500 characters';
@@ -429,7 +431,7 @@ begin
   if p_user_id is null or p_user_id=(select auth.uid()) then
     raise exception 'Administrators cannot change their own access status';
   end if;
-  if p_status not in ('active','restricted','suspended')
+  if p_status is null or p_status not in ('active','restricted','suspended')
      or p_reason is null
      or char_length(btrim(p_reason)) not between 5 and 500 then
     raise exception 'Invalid access status or reason';
