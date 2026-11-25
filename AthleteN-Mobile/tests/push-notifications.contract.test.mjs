@@ -109,6 +109,8 @@ test('cold-start push taps are recovered and notification rows are marked read s
 test('push taps deep-link to exact attendance and announcement source records', () => {
   assert.match(pushSource, /typeof data\?\.attendanceRecordId === 'string'/);
   assert.match(pushSource, /params: \{ attendanceRecordId: data\.attendanceRecordId \}/);
+  assert.match(pushSource, /typeof data\?\.trainingGroupSessionId === 'string'/);
+  assert.match(pushSource, /params: \{ trainingGroupSessionId: data\.trainingGroupSessionId \}/);
   assert.match(pushSource, /typeof data\?\.announcementId === 'string'/);
   assert.match(pushSource, /params: \{ announcementId: data\.announcementId \}/);
   const inbox = readFileSync(new URL('../src/app/notifications.tsx', import.meta.url), 'utf8');
