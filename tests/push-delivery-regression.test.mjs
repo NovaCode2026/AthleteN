@@ -66,6 +66,9 @@ test("notification event producers cover athlete, coach, academy, verification a
   assert.match(reliability, /'achievement'/);
   assert.match(reliability, /'competition'/);
   assert.match(reliability, /'training'/);
+  assert.match(reliability, /training_group_session_id/);
+  assert.match(reliability, /trainingGroupSessionId/);
+  assert.match(reliability, /announce_training_cancellation/);
   assert.match(reliability, /'coach_academy'/);
   assert.match(reliability, /'academy'/);
   assert.match(reliability, /'system'/);
