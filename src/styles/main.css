@@ -998,7 +998,7 @@ header { position:relative; }
 .page-head p { max-width:760px; margin:4px 0 0; }
 .eyebrow { display:inline-flex; align-items:center; gap:7px; }
 .card,.panel,.role-analytics-card,.coach-feature,.academy-suite-row,.platform-admin-panel {
-  position:relative; min-width:0; overflow:hidden;
+  position:relative; min-width:0;
 }
 .panel { padding:clamp(16px,2vw,24px); }
 .panel-head,.section-heading,.panel-header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
