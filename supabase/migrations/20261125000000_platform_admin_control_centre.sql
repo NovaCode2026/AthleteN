@@ -266,6 +266,50 @@ begin
 end;
 $function$;
 
+create or replace function public.enforce_profile_entitlement_security()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_privileged_profile_mutation boolean;
+  v_athlete_verification_mutation boolean;
+begin
+  if (select auth.uid()) is null then
+    return new;
+  end if;
+
+  v_privileged_profile_mutation :=
+    coalesce(pg_catalog.current_setting('athleten.privileged_profile_mutation',true),'')='1';
+  v_athlete_verification_mutation :=
+    coalesce(pg_catalog.current_setting('athleten.platform_athlete_verification_mutation',true),'')='1';
+
+  if tg_op='INSERT' and not (select private.is_super_admin()) then
+    new.role := 'athlete';
+    new.plan_id := 'free';
+    new.verified_athlete := false;
+    new.founder_badge := false;
+  elsif tg_op='UPDATE' and not (select private.is_super_admin()) then
+    if not v_privileged_profile_mutation then
+      new.role := old.role;
+      new.plan_id := old.plan_id;
+    end if;
+    if not v_athlete_verification_mutation then
+      new.verified_athlete := old.verified_athlete;
+    end if;
+    new.founder_badge := old.founder_badge;
+  end if;
+  return new;
+end;
+$function$;
+
+revoke all on function public.enforce_profile_entitlement_security() from public, anon, authenticated;
+drop trigger if exists enforce_profile_entitlement_security on public.profiles;
+create trigger enforce_profile_entitlement_security
+before insert or update on public.profiles
+for each row execute function public.enforce_profile_entitlement_security();
+
 create or replace function public.search_athlete_verification_reviews(
   p_query text,
   p_limit integer default 20
@@ -333,9 +377,11 @@ begin
   for update;
   if not found then raise exception 'Athlete account not found'; end if;
 
+  perform pg_catalog.set_config('athleten.platform_athlete_verification_mutation','1',true);
   update public.profiles
     set verified_athlete=p_verified,updated_at=pg_catalog.now()
   where user_id=p_user_id and role='athlete';
+  perform pg_catalog.set_config('athleten.platform_athlete_verification_mutation','',true);
 
   insert into public.platform_admin_audit_log(actor_user_id,target_user_id,action,reason,metadata)
   values((select auth.uid()),p_user_id,
