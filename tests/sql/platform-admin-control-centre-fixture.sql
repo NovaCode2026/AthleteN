@@ -167,6 +167,15 @@ BEFORE UPDATE OF role ON public.profiles
 FOR EACH ROW EXECUTE FUNCTION private.guard_profile_role_change();
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS fixture_admin_and_owner_profiles ON public.profiles;
+DROP POLICY IF EXISTS fixture_admin_and_owner_student_verifications ON public.student_verifications;
+DROP POLICY IF EXISTS fixture_admin_subscriptions ON public.subscriptions;
+DROP POLICY IF EXISTS fixture_admin_support_tickets ON public.support_tickets;
+DROP POLICY IF EXISTS fixture_admin_training_sessions ON public.training_sessions;
+DROP POLICY IF EXISTS fixture_admin_feature_flags ON public.feature_flags;
+DROP POLICY IF EXISTS fixture_admin_audit_logs ON public.audit_logs;
+DROP POLICY IF EXISTS fixture_admin_notifications ON public.notifications;
+
 CREATE POLICY fixture_admin_and_owner_profiles ON public.profiles
   FOR ALL TO authenticated
   USING (user_id=(SELECT auth.uid()) OR private.is_platform_admin())
