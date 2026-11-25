@@ -176,7 +176,7 @@ BEGIN
   IF v_assets <> 2 THEN RAISE EXCEPTION 'Verification Admin should read only proof bucket assets allowed by the review policy'; END IF;
 
   BEGIN
-    PERFORM public.admin_set_user_role('00000000-0000-0000-0000-000000000006','super_admin','Scoped reviewer must not change platform roles.');;
+    PERFORM public.admin_set_user_role('00000000-0000-0000-0000-000000000006','super_admin','Scoped reviewer must not change platform roles.');
     RAISE EXCEPTION 'Scoped Verification Admin unexpectedly changed a platform role';
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM = 'Scoped Verification Admin unexpectedly changed a platform role' THEN RAISE; END IF;
