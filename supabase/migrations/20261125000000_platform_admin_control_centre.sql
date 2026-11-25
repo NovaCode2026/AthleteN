@@ -774,6 +774,27 @@ begin
 end;
 $policies$;
 
+create or replace function private.platform_admin_can_read_pending_verification_proof(p_path text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select (select auth.uid()) is not null
+    and private.platform_admin_has_permission('verification.review')
+    and exists (
+      select 1
+      from public.student_verifications sv
+      join public.profiles p on p.user_id=sv.user_id and p.role='athlete'
+      where sv.file_path=p_path
+        and sv.status='pending'
+    );
+$function$;
+
+revoke all on function private.platform_admin_can_read_pending_verification_proof(text) from public, anon;
+grant execute on function private.platform_admin_can_read_pending_verification_proof(text) to authenticated;
+
 -- Private proof files remain owner-only unless the caller has the dedicated
 -- Student verification review permission.
 drop policy if exists platform_verification_review_read on storage.objects;
@@ -781,14 +802,7 @@ create policy platform_verification_review_read
   on storage.objects for select to authenticated
   using (
     bucket_id='verification-proofs'
-    and (select private.platform_admin_has_permission('verification.review'))
-    and exists (
-      select 1
-      from public.student_verifications sv
-      join public.profiles p on p.user_id=sv.user_id and p.role='athlete'
-      where sv.file_path=storage.objects.name
-        and sv.status='pending'
-    )
+    and (select private.platform_admin_can_read_pending_verification_proof(name))
   );
 
 create or replace function private.audit_platform_configuration_change()
