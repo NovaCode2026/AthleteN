@@ -1,3 +1,8 @@
+## 2026-11-25 — Admin verification center
+- Added web and Android Student proof review queues with private proof viewing, status filters and rejection notes.
+- Routed decisions through an audited, pending-only Supabase RPC and added platform-admin-only read access to private verification proofs.
+- Kept guardian age verification and existing Coach / Academy verification workflows separate.
+
 # Changelog
 
 ## [Unreleased] — 2026-11-13
