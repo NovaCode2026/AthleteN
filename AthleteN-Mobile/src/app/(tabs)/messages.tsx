@@ -169,15 +169,15 @@ export default function MessagesScreen(){
  {error?<Text style={{color:c.danger,fontSize:10}}>{error}</Text>:null}
  </Screen>
 }
-const i={backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,padding:12,fontSize:12} as any;
-const groupBtn={marginTop:9,borderWidth:1,borderColor:c.accentDeep,borderRadius:12,padding:12,alignItems:'center',backgroundColor:c.accentSoft} as any;
-const primary={backgroundColor:c.accent,borderRadius:12,padding:13,alignItems:'center'} as any;
+const i={backgroundColor:c.background,borderWidth:1,borderColor:c.borderStrong,borderRadius:13,color:c.text,padding:13,fontSize:13} as any;
+const groupBtn={marginTop:10,borderWidth:1,borderColor:c.accentDeep,borderRadius:14,padding:13,alignItems:'center',backgroundColor:c.accentSoft} as any;
+const primary={backgroundColor:c.accent,borderRadius:14,padding:14,alignItems:'center',shadowColor:c.accent,shadowOpacity:.18,shadowRadius:9,elevation:2} as any;
 const pickerRow={paddingVertical:9,borderBottomWidth:1,borderBottomColor:c.border,flexDirection:'row',alignItems:'center',gap:10} as any;
 const pickerName={color:c.text,fontSize:10,fontWeight:'900'} as any;
 const pickerMeta={color:c.muted,fontSize:9,lineHeight:14} as any;
 const pickerSection={color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.1} as any;
 const pickerOwner={color:c.warning,fontSize:8,fontWeight:'900',marginTop:4} as any;
 const smallAction={borderWidth:1,borderColor:c.border,borderRadius:9,paddingHorizontal:9,paddingVertical:8} as any;
-const settingRow={flexDirection:'row',alignItems:'center',gap:10,borderWidth:1,borderColor:c.border,borderRadius:11,padding:10} as any;
+const settingRow={flexDirection:'row',alignItems:'center',gap:11,borderWidth:1,borderColor:c.borderStrong,borderRadius:13,padding:12} as any;
 const pickerAction={color:c.accentBright,fontSize:9,fontWeight:'900'} as any;
 const pickerChosen={color:c.success,fontSize:9,fontWeight:'900'} as any;
