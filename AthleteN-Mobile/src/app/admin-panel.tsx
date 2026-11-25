@@ -222,11 +222,6 @@ export default function AdminPanelScreen() {
             <Text style={s.userMeta}>{selected.user_id}</Text>
             <Text style={s.userMeta}>Founder: {selected.founder_badge ? 'YES' : 'NO'} · Verified: {selected.verified_athlete ? 'YES' : 'NO'}</Text>
 
-            <Text style={s.controlLabel}>PLAN</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
-              {PLANS.map((plan) => <Pressable key={plan} disabled={busy} onPress={() => void setPlan(selected, plan)} style={[s.chip, selected.plan_id === plan && s.chipActive]}><Text style={s.chipText}>{plan.toUpperCase()}</Text></Pressable>)}
-            </ScrollView>
-
             <Text style={s.controlLabel}>ROLE {superAdmin ? '' : '(SUPER ADMIN ONLY)'}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
               {ROLES.map((nextRole) => <Pressable key={nextRole} disabled={busy || !superAdmin} onPress={() => void setRole(selected, nextRole)} style={[s.chip, selected.role === nextRole && s.chipActive, !superAdmin && s.disabled]}><Text style={s.chipText}>{nextRole.toUpperCase()}</Text></Pressable>)}
