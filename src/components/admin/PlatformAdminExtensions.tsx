@@ -7,7 +7,7 @@ type PermissionPayload = { base_role: string; permission_role: string; permissio
 type Overview = {
   users: number; athletes: number; coaches: number; academies: number; admins: number;
   pending_student_verifications: number; active_subscriptions: number; open_support_tickets: number;
-  restricted_accounts: number; verified_coaches: number; verified_academies: number;
+  restricted_accounts: number; verified_athletes: number; verified_coaches: number; verified_academies: number;
 };
 type VerificationRequest = {
   id: string; user_id: string; full_name: string | null; username: string | null;
@@ -33,7 +33,7 @@ type AuditEntry = {
 const text = (value: unknown) => value == null ? "" : String(value);
 const localDateTime = (value: string | null) => value ? new Date(value).toLocaleString() : "No expiry";
 
-export default function PlatformAdminExtensions({ userId, role }: { userId: string; role: string }) {
+export default function PlatformAdminExtensions({ role }: { userId: string; role: string }) {
   const [permission, setPermission] = useState<PermissionPayload | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [verificationQueue, setVerificationQueue] = useState<VerificationRequest[]>([]);
@@ -117,7 +117,7 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
   useEffect(() => { void load(); }, [load]);
 
   async function openProof(row: VerificationRequest) {
-    if (!row.file_path || !canVerify) return;
+    if (!supabase || !row.file_path || !canVerify) return;
     setBusyKey("proof:" + row.id); setError("");
     try {
       const { data, error: signedError } = await supabase.storage.from("verification-proofs").createSignedUrl(row.file_path, 120);
@@ -160,7 +160,7 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
   }
 
   async function applyAccountAccess() {
-    if (!selectedAccount) { setError("Select an account first."); return; }
+    if (!supabase || !selectedAccount) { setError("Select an account first."); return; }
     const reason = accessReason.trim();
     if (reason.length < 5 || reason.length > 500) { setError("Enter an account-access reason between 5 and 500 characters."); return; }
     const expiresAt = accessStatus === "restricted" || (accessStatus === "suspended" && accessExpiry)
@@ -216,7 +216,7 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
     {canReadOverview && overview && <div className="platform-admin-metrics">
       {[
         ["Users",overview.users],["Athletes",overview.athletes],["Coaches",overview.coaches],["Academies",overview.academies],
-        ["Pending Student reviews",overview.pending_student_verifications],["Active subscriptions",overview.active_subscriptions],
+        ["Verified athletes",overview.verified_athletes],["Pending Student reviews",overview.pending_student_verifications],["Active subscriptions",overview.active_subscriptions],
         ["Open support",overview.open_support_tickets],["Restricted accounts",overview.restricted_accounts],
         ["Coach email verified",overview.verified_coaches],["Academy setup verified",overview.verified_academies]
       ].map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{Number(value).toLocaleString()}</strong></article>)}
