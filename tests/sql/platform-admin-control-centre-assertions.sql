@@ -30,6 +30,18 @@ RESET ROLE;
 -- the system-managed Administrator badge follows the current role.
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
 SET LOCAL ROLE authenticated;
+DO $test$
+BEGIN
+  BEGIN
+    PERFORM public.admin_set_user_role(
+      '00000000-0000-0000-0000-000000000006','admin','  '
+    );
+    RAISE EXCEPTION 'Blank role-change reason was accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM='Blank role-change reason was accepted' THEN RAISE; END IF;
+  END;
+END;
+$test$;
 SELECT public.admin_set_user_role('00000000-0000-0000-0000-000000000006','admin','Promote athlete to Admin for controlled role workflow regression test.');
 DO $test$
 DECLARE v_role text; v_badges integer;
