@@ -884,3 +884,136 @@ COMMENT ON TABLE public.push_receipt_poll_requests IS
   'Private pg_net request ledger for scheduled Expo push receipt polling.';
 COMMENT ON FUNCTION public.run_push_delivery_cycle() IS
   'Scheduled server-side worker for Expo ticket processing, bounded send retries and receipt polling.';
+
+
+-- Keep the existing attendance notification trigger attached to the refreshed source-link function.
+DROP TRIGGER IF EXISTS athleten_attendance_notification ON public.attendance_records;
+CREATE TRIGGER athleten_attendance_notification
+  AFTER INSERT OR UPDATE OF status ON public.attendance_records
+  FOR EACH ROW
+  EXECUTE FUNCTION public.athleten_notify_attendance_change();
+
+-- Competition changes made by a Coach/admin are pushed to the athlete whose record changed.
+CREATE OR REPLACE FUNCTION public.notify_tournament_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_title text;
+  v_body text;
+  v_changed boolean := true;
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    v_changed :=
+      NEW.starts_at IS DISTINCT FROM OLD.starts_at
+      OR NEW.status IS DISTINCT FROM OLD.status
+      OR NEW.result IS DISTINCT FROM OLD.result;
+  END IF;
+
+  IF NOT v_changed OR NEW.user_id IS NULL OR NEW.user_id = auth.uid() THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    v_title := 'Competition added';
+    v_body := coalesce(nullif(btrim(NEW.name), ''), 'A competition') || ' was added to your AthleteN calendar.';
+  ELSIF NEW.result IS DISTINCT FROM OLD.result AND nullif(btrim(coalesce(NEW.result, '')), '') IS NOT NULL THEN
+    v_title := 'Competition result updated';
+    v_body := coalesce(nullif(btrim(NEW.name), ''), 'Your competition') || ' result: ' || NEW.result || '.';
+  ELSIF NEW.starts_at IS DISTINCT FROM OLD.starts_at THEN
+    v_title := 'Competition schedule updated';
+    v_body := coalesce(nullif(btrim(NEW.name), ''), 'Your competition') || ' date was updated to ' || coalesce(to_char(NEW.starts_at, 'DD Mon YYYY'), 'a new date') || '.';
+  ELSE
+    v_title := 'Competition status updated';
+    v_body := coalesce(nullif(btrim(NEW.name), ''), 'Your competition') || ' status: ' || coalesce(replace(NEW.status, '_', ' '), 'updated') || '.';
+  END IF;
+
+  INSERT INTO public.notifications(
+    user_id, title, body, notification_type, action_route
+  )
+  VALUES (NEW.user_id, v_title, v_body, 'competition', '/compete');
+
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.notify_tournament_change()
+  FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS tournament_notification ON public.tournaments;
+CREATE TRIGGER tournament_notification
+  AFTER INSERT OR UPDATE OF starts_at, status, result ON public.tournaments
+  FOR EACH ROW
+  EXECUTE FUNCTION public.notify_tournament_change();
+
+-- New and rescheduled group sessions notify active athletes. Cancellation is
+-- deliberately excluded because the existing cancellation trigger sends its own
+-- dedicated training alert and group-chat notice.
+CREATE OR REPLACE FUNCTION public.notify_training_group_session_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_group_name text;
+  v_body text;
+  v_title text;
+  v_changed boolean := true;
+BEGIN
+  IF NEW.status = 'cancelled' THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'UPDATE' THEN
+    v_changed :=
+      NEW.session_date IS DISTINCT FROM OLD.session_date
+      OR NEW.start_time IS DISTINCT FROM OLD.start_time
+      OR NEW.title IS DISTINCT FROM OLD.title
+      OR NEW.venue IS DISTINCT FROM OLD.venue
+      OR NEW.status IS DISTINCT FROM OLD.status;
+  END IF;
+
+  IF NOT v_changed THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT g.name INTO v_group_name
+  FROM public.training_groups g
+  WHERE g.id = NEW.group_id;
+
+  v_title := CASE WHEN TG_OP = 'INSERT'
+    THEN 'New training session'
+    ELSE 'Training session updated'
+  END;
+  v_body := coalesce(nullif(btrim(v_group_name), ''), 'Your training group')
+    || ' · ' || to_char(NEW.session_date, 'DD Mon')
+    || CASE WHEN NEW.start_time IS NOT NULL THEN ' at ' || to_char(NEW.start_time, 'HH12:MI AM') ELSE '' END
+    || '.';
+
+  INSERT INTO public.notifications(user_id, title, body, notification_type, action_route)
+  SELECT m.athlete_user_id, v_title, v_body, 'training', '/calendar'
+  FROM public.training_group_members m
+  WHERE m.group_id = NEW.group_id
+    AND m.status = 'active';
+
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.notify_training_group_session_change()
+  FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS training_group_session_notification ON public.training_group_sessions;
+CREATE TRIGGER training_group_session_notification
+  AFTER INSERT OR UPDATE OF session_date, start_time, title, venue, status
+  ON public.training_group_sessions
+  FOR EACH ROW
+  EXECUTE FUNCTION public.notify_training_group_session_change();
+
+COMMENT ON FUNCTION public.notify_tournament_change() IS
+  'Creates private competition notifications for athlete-visible tournament changes made by their Coach/admin.';
+COMMENT ON FUNCTION public.notify_training_group_session_change() IS
+  'Notifies active group members of new or rescheduled sessions; cancellation uses the dedicated cancellation notification.';
