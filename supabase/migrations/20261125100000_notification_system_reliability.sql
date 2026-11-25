@@ -27,6 +27,30 @@ CREATE INDEX IF NOT EXISTS notifications_attendance_record_id_idx
   ON public.notifications(attendance_record_id)
   WHERE attendance_record_id IS NOT NULL;
 
+ALTER TABLE public.notifications
+  ADD COLUMN IF NOT EXISTS training_group_session_id uuid;
+
+DO $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'notifications_training_group_session_id_fkey'
+      AND conrelid = 'public.notifications'::regclass
+  ) THEN
+    ALTER TABLE public.notifications
+      ADD CONSTRAINT notifications_training_group_session_id_fkey
+      FOREIGN KEY (training_group_session_id)
+      REFERENCES public.training_group_sessions(id)
+      ON DELETE SET NULL;
+  END IF;
+END;
+$;
+
+CREATE INDEX IF NOT EXISTS notifications_training_group_session_id_idx
+  ON public.notifications(training_group_session_id)
+  WHERE training_group_session_id IS NOT NULL;
+
 -- Keep the notification linked to the precise attendance change.
 CREATE OR REPLACE FUNCTION public.athleten_notify_attendance_change()
 RETURNS trigger
@@ -591,7 +615,8 @@ BEGIN
       n.action_route,
       n.message_id,
       n.announcement_id,
-      n.attendance_record_id
+      n.attendance_record_id,
+      n.training_group_session_id
     FROM public.push_delivery_attempts p
     JOIN public.notifications n ON n.id = p.notification_id
     JOIN public.device_push_tokens dpt ON dpt.id = p.device_push_token_id
@@ -658,6 +683,7 @@ BEGIN
         'conversationId', v_conversation_id::text,
         'announcementId', v_attempt.announcement_id::text,
         'attendanceRecordId', v_attempt.attendance_record_id::text,
+        'trainingGroupSessionId', v_attempt.training_group_session_id::text,
         'route', coalesce(v_attempt.action_route, '/notifications')
       )
     );
@@ -997,8 +1023,16 @@ BEGIN
     || CASE WHEN NEW.start_time IS NOT NULL THEN ' at ' || to_char(NEW.start_time, 'HH12:MI AM') ELSE '' END
     || '.';
 
-  INSERT INTO public.notifications(user_id, title, body, notification_type, action_route)
-  SELECT m.athlete_user_id, v_title, v_body, 'training', '/calendar'
+  INSERT INTO public.notifications(
+    user_id, title, body, notification_type, action_route, training_group_session_id
+  )
+  SELECT
+    m.athlete_user_id,
+    v_title,
+    v_body,
+    'training',
+    '/notifications?trainingGroupSessionId=' || NEW.id::text,
+    NEW.id
   FROM public.training_group_members m
   WHERE m.group_id = NEW.group_id
     AND m.status = 'active';
@@ -1116,6 +1150,7 @@ BEGIN
           'conversationId', v_conversation_id::text,
           'announcementId', NEW.announcement_id::text,
           'attendanceRecordId', NEW.attendance_record_id::text,
+          'trainingGroupSessionId', NEW.training_group_session_id::text,
           'route', coalesce(NEW.action_route, '/notifications')
         )
       );
@@ -1152,3 +1187,60 @@ REVOKE ALL ON FUNCTION public.dispatch_notification_push() FROM PUBLIC, anon, au
 
 COMMENT ON FUNCTION public.dispatch_notification_push() IS
   'Dispatches privacy-aware Expo pushes, conversation grouping and safe source-record deep-link identifiers.';
+
+-- Keep cancellation alerts linked to the exact group session. The companion
+-- training_schedule chat message remains non-duplicating in the message trigger.
+CREATE OR REPLACE FUNCTION public.announce_training_cancellation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_group_name text;
+  v_coach uuid;
+  v_conversation uuid;
+  v_reason text;
+  v_body text;
+BEGIN
+  IF NEW.status = 'cancelled' AND coalesce(OLD.status, '') <> 'cancelled' THEN
+    SELECT g.name, g.coach_user_id, g.conversation_id
+    INTO v_group_name, v_coach, v_conversation
+    FROM public.training_groups g
+    WHERE g.id = NEW.group_id;
+
+    v_reason := nullif(trim(NEW.notes), '');
+    v_body := 'Training update' || E'\n' || 'Today''s training is cancelled.';
+    IF v_reason IS NOT NULL THEN
+      v_body := v_body || E'\n' || 'Reason: ' || v_reason;
+    END IF;
+    v_body := v_body || E'\n' || 'No attendance will be recorded for this session.';
+
+    IF v_conversation IS NOT NULL AND v_coach IS NOT NULL THEN
+      INSERT INTO public.messages(conversation_id, sender_id, body, message_type)
+      VALUES (v_conversation, v_coach, v_body, 'training_schedule');
+    END IF;
+
+    INSERT INTO public.notifications(
+      user_id, title, body, notification_type, action_route, training_group_session_id
+    )
+    SELECT
+      m.athlete_user_id,
+      'Training cancelled',
+      coalesce(v_group_name, 'Training group') || ' · ' ||
+        to_char(NEW.session_date, 'DD Mon') || E'\n' ||
+        coalesce(v_reason, 'Training is cancelled today.'),
+      'training',
+      '/notifications?trainingGroupSessionId=' || NEW.id::text,
+      NEW.id
+    FROM public.training_group_members m
+    WHERE m.group_id = NEW.group_id
+      AND m.status = 'active';
+  END IF;
+
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.announce_training_cancellation()
+  FROM PUBLIC, anon, authenticated;
