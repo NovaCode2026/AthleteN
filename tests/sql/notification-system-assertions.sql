@@ -8,6 +8,10 @@ CREATE TRIGGER messages_create_delivery_records
 AFTER INSERT ON public.messages
 FOR EACH ROW EXECUTE FUNCTION public.create_message_delivery_records();
 
+CREATE TRIGGER training_cancellation_announce_trigger
+AFTER UPDATE ON public.training_group_sessions
+FOR EACH ROW EXECUTE FUNCTION public.announce_training_cancellation();
+
 -- Attendance insert and status changes each create an alert linked to the exact source.
 INSERT INTO public.attendance_records(id,user_id,status,attended_at,notes) VALUES
  ('70000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','present',now(),'On time');
@@ -20,6 +24,8 @@ INSERT INTO public.training_group_sessions(id,group_id,session_date,start_time,t
 UPDATE public.training_group_sessions SET session_date=current_date+2,venue='Dojo B'
 WHERE id='71000000-0000-4000-8000-000000000001';
 UPDATE public.training_group_sessions SET notes='Coach notes only'
+WHERE id='71000000-0000-4000-8000-000000000001';
+UPDATE public.training_group_sessions SET status='cancelled',notes='Venue unavailable'
 WHERE id='71000000-0000-4000-8000-000000000001';
 
 -- Athlete-authored tournament edits do not notify the same athlete; Coach updates do.
@@ -83,6 +89,14 @@ BEGIN
     AND user_id='10000000-0000-4000-8000-000000000001';
   IF v_count <> 2 THEN RAISE EXCEPTION 'Expected new and rescheduled training alerts, got %',v_count; END IF;
 
+  SELECT count(*) INTO v_count
+  FROM public.notifications
+  WHERE title='Training cancelled'
+    AND user_id='10000000-0000-4000-8000-000000000001'
+    AND training_group_session_id='71000000-0000-4000-8000-000000000001'
+    AND action_route='/notifications?trainingGroupSessionId=71000000-0000-4000-8000-000000000001';
+  IF v_count <> 1 THEN RAISE EXCEPTION 'Cancellation alert did not link the exact training session'; END IF;
+
   SELECT count(*) INTO v_competition
   FROM public.notifications
   WHERE notification_type='competition'
@@ -133,7 +147,7 @@ BEGIN
   FROM public.push_delivery_attempts p
   JOIN public.notifications n ON n.id=p.notification_id
   WHERE n.user_id='10000000-0000-4000-8000-000000000001';
-  IF v_count <> 9 THEN RAISE EXCEPTION 'Expected exactly nine durable athlete-device delivery attempts, got %',v_count; END IF;
+  IF v_count <> 10 THEN RAISE EXCEPTION 'Expected exactly ten durable athlete-device delivery attempts, got %',v_count; END IF;
 END
 $$;
 
