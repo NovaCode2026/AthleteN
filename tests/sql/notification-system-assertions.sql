@@ -173,9 +173,7 @@ BEGIN
     (v_array_request,200,'{"data":[{"status":"ok","id":"ticket-array-002"}]}'),
     (v_invalid_request,200,'{"data":{"status":"error","message":"Device no longer registered","details":{"error":"DeviceNotRegistered"}}}');
 
-  SET LOCAL ROLE service_role;
   v_processed := public.process_expo_push_ticket_responses(100);
-  RESET ROLE;
 
   IF v_processed < 3 THEN RAISE EXCEPTION 'Expected three Expo ticket responses to be processed, got %',v_processed; END IF;
 END
@@ -202,6 +200,7 @@ DECLARE
   v_old_request bigint;
   v_new_request bigint;
   v_attempt_count integer;
+  v_status text;
 BEGIN
   SELECT id,pg_net_request_id INTO v_attempt_id,v_old_request
   FROM public.push_delivery_attempts
@@ -215,9 +214,7 @@ BEGIN
       send_attempt_count=1
   WHERE id=v_attempt_id;
 
-  SET LOCAL ROLE service_role;
   PERFORM public.retry_expo_push_delivery_attempts(100);
-  RESET ROLE;
 
   SELECT pg_net_request_id,send_attempt_count,delivery_status
   INTO v_new_request,v_attempt_count,v_status
@@ -229,9 +226,7 @@ BEGIN
 
   INSERT INTO net._http_response(id,status_code,content)
   VALUES (v_new_request,200,'{"data":{"status":"ok","id":"ticket-retry-003"}}');
-  SET LOCAL ROLE service_role;
   PERFORM public.process_expo_push_ticket_responses(100);
-  RESET ROLE;
 END
 $$;
 
@@ -252,18 +247,14 @@ BEGIN
       receipt_last_checked_at=NULL
   WHERE expo_ticket_id='ticket-object-001';
 
-  SET LOCAL ROLE service_role;
   v_request := public.enqueue_expo_push_receipt_poll();
-  RESET ROLE;
 
   IF v_request IS NULL THEN RAISE EXCEPTION 'Receipt poll request was not enqueued'; END IF;
 
   INSERT INTO net._http_response(id,status_code,content)
   VALUES (v_request,200,'{"data":{"ticket-object-001":{"status":"ok"}}}');
 
-  SET LOCAL ROLE service_role;
   PERFORM public.process_expo_push_receipt_poll_responses(100);
-  RESET ROLE;
 END
 $$;
 
