@@ -187,6 +187,7 @@ begin
     'active_subscriptions', (select count(*) from public.subscriptions where status='active'),
     'open_support_tickets', (select count(*) from public.support_tickets where status in ('new','open','in_progress')),
     'restricted_accounts', (select count(*) from public.platform_account_access_controls where status in ('restricted','suspended') and (expires_at is null or expires_at > pg_catalog.now())),
+    'verified_athletes', (select count(*) from public.profiles where role='athlete' and verified_athlete=true),
     'verified_coaches', (select count(*) from auth.users u join public.profiles p on p.user_id=u.id where p.role='coach' and u.email_confirmed_at is not null),
     'verified_academies', (select count(*) from public.academies a where a.status='active' and a.setup_completed=true and a.contact_email_verified_at is not null)
   );
@@ -634,6 +635,62 @@ begin
   end loop;
 end;
 $scope_policies$;
+
+create or replace function public.admin_set_user_role(p_user_id uuid,p_role text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_old text;
+  v_name text;
+  v_target_profile_id uuid;
+begin
+  if (select auth.uid()) is null
+     or not exists(select 1 from public.profiles where user_id=(select auth.uid()) and role='super_admin')
+     or not private.platform_admin_has_permission('platform.roles.manage') then
+    raise exception 'Super Admin role-management permission required';
+  end if;
+  if p_role is null or p_role not in ('athlete','coach','academy_admin','support_admin','admin','super_admin') then
+    raise exception 'Invalid role';
+  end if;
+  if p_user_id is null then raise exception 'Target user is required'; end if;
+  if p_user_id=(select auth.uid()) and p_role<>'super_admin' then
+    raise exception 'Super Admin cannot demote itself';
+  end if;
+
+  select p.role,p.full_name,p.id
+    into v_old,v_name,v_target_profile_id
+  from public.profiles p
+  where p.user_id=p_user_id
+  for update;
+  if v_old is null then raise exception 'User profile not found'; end if;
+
+  perform pg_catalog.set_config('athleten.privileged_profile_mutation','1',true);
+  update public.profiles set role=p_role,updated_at=pg_catalog.now() where user_id=p_user_id;
+  perform pg_catalog.set_config('athleten.privileged_profile_mutation','',true);
+
+  insert into public.audit_logs(actor_user_id,action,entity_table,entity_id,metadata)
+  values((select auth.uid()),'user.role_change','profiles',v_target_profile_id,
+    jsonb_build_object('target_user_id',p_user_id,'target_name',v_name,'from',v_old,'to',p_role));
+
+  insert into public.platform_admin_audit_log(actor_user_id,target_user_id,action,reason,metadata)
+  values((select auth.uid()),p_user_id,'user.role_change','Super Admin changed the platform account role',
+    jsonb_build_object('from',v_old,'to',p_role));
+
+  if p_role in ('support_admin','admin','super_admin') then
+    insert into public.athlete_badges(user_id,badge_key,badge_label,awarded_by,permanent,metadata)
+    values(p_user_id,'administrator','Administrator',null,true,
+      jsonb_build_object('system_assigned',true,'role',p_role))
+    on conflict(user_id,badge_key) do update
+      set permanent=true,metadata=excluded.metadata;
+  end if;
+end;
+$function$;
+
+revoke all on function public.admin_set_user_role(uuid,text) from public, anon;
+grant execute on function public.admin_set_user_role(uuid,text) to authenticated;
 
 -- Only the RPCs below can mutate role assignments, moderation state and reviews.
 revoke all on function public.get_my_platform_admin_permissions() from public, anon;
