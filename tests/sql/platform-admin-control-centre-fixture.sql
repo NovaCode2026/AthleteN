@@ -24,8 +24,36 @@ ALTER TABLE public.student_verifications
 CREATE TABLE public.subscriptions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
+  plan_id text NOT NULL DEFAULT 'free',
+  provider text,
+  provider_customer_id text,
+  provider_subscription_id text,
   status text NOT NULL DEFAULT 'active',
+  current_period_end timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE public.payment_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid,
+  provider text NOT NULL,
+  event_type text NOT NULL,
+  provider_event_id text,
+  amount_minor integer,
+  currency text DEFAULT 'INR',
+  status text,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE public.feedback_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  details text,
+  status text NOT NULL DEFAULT 'new',
+  priority text NOT NULL DEFAULT 'normal',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE public.support_tickets (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -240,6 +268,16 @@ CREATE POLICY fixture_admin_and_owner_student_verifications ON public.student_ve
   USING (user_id=(SELECT auth.uid()) OR private.is_platform_admin())
   WITH CHECK (user_id=(SELECT auth.uid()) OR private.is_platform_admin());
 
+CREATE POLICY fixture_admin_feedback_items ON public.feedback_items
+  FOR ALL TO authenticated
+  USING (private.is_platform_admin() OR user_id=(SELECT auth.uid()))
+  WITH CHECK (private.is_platform_admin() OR user_id=(SELECT auth.uid()));
+
+CREATE POLICY fixture_admin_payment_events ON public.payment_events
+  FOR ALL TO authenticated
+  USING (private.is_platform_admin())
+  WITH CHECK (private.is_platform_admin());
+
 CREATE POLICY fixture_admin_subscriptions ON public.subscriptions
   FOR ALL TO authenticated
   USING (private.is_platform_admin())
@@ -305,8 +343,12 @@ INSERT INTO public.training_sessions(user_id,payload)
 VALUES ('00000000-0000-0000-0000-000000000006','{"note":"owned training record"}'::jsonb);
 INSERT INTO public.support_tickets(user_id,status,subject)
 VALUES ('00000000-0000-0000-0000-000000000006','open','Athlete help request');
-INSERT INTO public.subscriptions(user_id,status)
-VALUES ('00000000-0000-0000-0000-000000000006','active');
+INSERT INTO public.subscriptions(user_id,plan_id,provider,status,current_period_end)
+VALUES ('00000000-0000-0000-0000-000000000006','pro','razorpay','active',now()+interval '30 days');
+INSERT INTO public.payment_events(user_id,provider,event_type,amount_minor,currency,status)
+VALUES ('00000000-0000-0000-0000-000000000006','razorpay','subscription.charged',19900,'INR','captured');
+INSERT INTO public.feedback_items(user_id,title,details,status,priority)
+VALUES ('Test feedback','Mobile navigation needs improvement.','A test athlete feedback item.','new','normal');
 
 INSERT INTO public.student_verifications(user_id,status,document_type,file_path)
 VALUES ('00000000-0000-0000-0000-000000000006','pending','school_id',
