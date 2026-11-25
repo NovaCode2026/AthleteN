@@ -9,9 +9,9 @@ import { supabase } from '@/lib/supabase';
 const c = Colors.dark;
 const ADMIN_ROLES = ['support_admin', 'admin', 'super_admin'];
 type Overview = {
-  users: number; athletes: number; coaches: number; academies: number; admins: number;
-  pending_student_verifications: number; active_subscriptions: number; open_support_tickets: number;
-  restricted_accounts: number; verified_athletes: number; verified_coaches: number; verified_academies: number;
+  users: number | null; athletes: number | null; coaches: number | null; academies: number | null; admins: number | null;
+  pending_student_verifications: number | null; active_subscriptions: number | null; open_support_tickets: number | null;
+  restricted_accounts: number | null; verified_athletes: number | null; verified_coaches: number | null; verified_academies: number | null;
 };
 type PermissionPayload = { base_role: string; permission_role: string; permissions: string[] };
 type AthleteVerificationReview = { user_id:string; full_name:string|null; username:string|null; verified_athlete:boolean; created_at:string };
@@ -226,7 +226,7 @@ export default function AdminOperationsScreen() {
           ['VERIFIED ATHLETES',overview.verified_athletes],['PENDING PROOFS',overview.pending_student_verifications],['ACTIVE PLANS',overview.active_subscriptions],
           ['OPEN SUPPORT',overview.open_support_tickets],['RESTRICTED',overview.restricted_accounts],
           ['COACH EMAIL VERIFIED',overview.verified_coaches],['ACADEMY VERIFIED',overview.verified_academies],
-        ].map(([label,value])=><Stat key={String(label)} label={String(label)} value={Number(value)}/>)}</View> : null}
+        ].filter(([,value])=>value!==null&&value!==undefined).map(([label,value])=><Stat key={String(label)} label={String(label)} value={Number(value)}/>)}</View> : null}
 
         {canVerify ? <View style={s.panel}>
           <Text style={s.section}>ATHLETE PROFILE VERIFICATION</Text>
