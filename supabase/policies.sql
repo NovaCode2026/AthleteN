@@ -85,31 +85,43 @@ revoke execute on function private.is_super_admin() from public, anon;
 grant execute on function private.is_super_admin() to authenticated;
 
 create or replace function public.enforce_profile_entitlement_security()
-returns trigger language plpgsql security definer set search_path = public as $
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_privileged_profile_mutation boolean;
+  v_athlete_verification_mutation boolean;
 begin
-  if auth.uid() is null then
+  if (select auth.uid()) is null then
     return new;
   end if;
 
-  -- Only the owner/super_admin can assign or change privileged roles.
-  -- Admins may manage athlete records, but cannot promote themselves or anyone else.
-  if tg_op = 'INSERT' and not private.is_super_admin() then
-    new.role = 'athlete';
-    new.plan_id = 'free';
-    new.verified_athlete = false;
-    new.founder_badge = false;
-  end if;
+  v_privileged_profile_mutation :=
+    coalesce(pg_catalog.current_setting('athleten.privileged_profile_mutation',true),'')='1';
+  v_athlete_verification_mutation :=
+    coalesce(pg_catalog.current_setting('athleten.platform_athlete_verification_mutation',true),'')='1';
 
-  if tg_op = 'UPDATE' and not private.is_super_admin() then
-    new.role = old.role;
-    new.plan_id = old.plan_id;
-    new.verified_athlete = old.verified_athlete;
-    new.founder_badge = old.founder_badge;
+  if tg_op='INSERT' and not (select private.is_super_admin()) then
+    new.role := 'athlete';
+    new.plan_id := 'free';
+    new.verified_athlete := false;
+    new.founder_badge := false;
+  elsif tg_op='UPDATE' and not (select private.is_super_admin()) then
+    if not v_privileged_profile_mutation then
+      new.role := old.role;
+      new.plan_id := old.plan_id;
+    end if;
+    if not v_athlete_verification_mutation then
+      new.verified_athlete := old.verified_athlete;
+    end if;
+    new.founder_badge := old.founder_badge;
   end if;
 
   return new;
 end;
-$;
+$function$;
 
 revoke execute on function public.enforce_profile_entitlement_security() from public, anon, authenticated;
 revoke execute on function public.is_platform_admin() from public, anon;
