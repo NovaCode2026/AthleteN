@@ -1098,10 +1098,13 @@ begin
     jsonb_build_object('from',v_old,'to',p_role));
 
   if p_role in ('support_admin','admin','super_admin') then
-    insert into public.athlete_badges(user_id,badge_key,badge_label)
-    values(p_user_id,'administrator','Administrator')
+    insert into public.athlete_badges(user_id,badge_key,badge_label,permanent,metadata)
+    values(p_user_id,'administrator','Administrator',true,
+      jsonb_build_object('system_assigned',true,'role',p_role))
     on conflict(user_id,badge_key) do update
-      set badge_label=excluded.badge_label;
+      set badge_label=excluded.badge_label,
+          permanent=true,
+          metadata=excluded.metadata;
   else
     delete from public.athlete_badges
     where user_id=p_user_id and badge_key='administrator';
