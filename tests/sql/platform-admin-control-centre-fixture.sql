@@ -116,6 +116,35 @@ BEGIN
 END;
 $tables$;
 
+ALTER TABLE public.account_entitlements
+  ADD COLUMN IF NOT EXISTS selected_plan_id text;
+
+CREATE OR REPLACE FUNCTION public.enforce_profile_entitlement_projection()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=public
+AS $function$
+DECLARE v_plan text; v_role text;
+BEGIN
+  SELECT selected_plan_id INTO v_plan
+  FROM public.account_entitlements
+  WHERE user_id=NEW.user_id;
+  IF v_plan IS NOT NULL THEN
+    NEW.plan_id:=v_plan;
+    IF COALESCE(OLD.role::text,'athlete') NOT IN ('support_admin','admin','super_admin') THEN
+      v_role:=CASE v_plan WHEN 'champion' THEN 'coach' WHEN 'academy' THEN 'academy_admin' ELSE 'athlete' END;
+      NEW.role:=v_role;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+DROP TRIGGER IF EXISTS trg_enforce_profile_entitlement_projection ON public.profiles;
+CREATE TRIGGER trg_enforce_profile_entitlement_projection
+BEFORE UPDATE OF plan_id,role ON public.profiles
+FOR EACH ROW EXECUTE FUNCTION public.enforce_profile_entitlement_projection();
+
 -- Simulate the existing production admin helpers and owner/admin permissive RLS.
 CREATE OR REPLACE FUNCTION public.is_platform_admin()
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
@@ -268,6 +297,9 @@ VALUES
  ('00000000-0000-0000-0000-000000000004','Operations Admin','operations_admin','admin','free',false),
  ('00000000-0000-0000-0000-000000000005','Support Admin','support_admin','support_admin','free',false),
  ('00000000-0000-0000-0000-000000000006','Test Athlete','test_athlete','athlete','free',false);
+
+INSERT INTO public.account_entitlements(user_id,selected_plan_id)
+SELECT user_id,plan_id FROM public.profiles;
 
 INSERT INTO public.training_sessions(user_id,payload)
 VALUES ('00000000-0000-0000-0000-000000000006','{"note":"owned training record"}'::jsonb);
