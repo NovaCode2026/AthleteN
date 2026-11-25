@@ -350,7 +350,7 @@ VALUES ('00000000-0000-0000-0000-000000000006','pro','razorpay','active',now()+i
 INSERT INTO public.payment_events(user_id,provider,event_type,amount_minor,currency,status)
 VALUES ('00000000-0000-0000-0000-000000000006','razorpay','subscription.charged',19900,'INR','captured');
 INSERT INTO public.feedback_items(user_id,title,details,status,priority)
-VALUES ('Test feedback','Mobile navigation needs improvement.','A test athlete feedback item.','new','normal');
+VALUES ('00000000-0000-0000-0000-000000000006','Test feedback','Mobile navigation needs improvement.','new','normal');
 
 INSERT INTO public.student_verifications(user_id,status,document_type,file_path)
 VALUES ('00000000-0000-0000-0000-000000000006','pending','school_id',
