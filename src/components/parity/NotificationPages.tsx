@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, CheckCheck, Trash2, ExternalLink } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
+import { desktopNotificationPermission, requestDesktopNotifications } from "../../lib/desktopNotifications";
 const fields=[["training","Training"],["competitions","Competitions"],["messages","Messages"],["coach_academy","Coach / Academy"],["achievements","Achievements"],["system","System"]] as const;
 const defaults={training:true,competitions:true,messages:true,coach_academy:true,achievements:true,system:true,message_preview:false};
 type NotificationSource = { kind: "announcement" | "attendance"; title: string; body: string; meta: string[] };
@@ -185,10 +186,28 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
 
 export function NotificationSettingsPage({setToast}:{setToast:(toast:{type:"success"|"error"|"warning";message:string})=>void}){
  const uid=useAuth().user?.id;const [prefs,setPrefs]=useState<any>(defaults);const [busy,setBusy]=useState(false);const [error,setError]=useState("");
+ const [desktopPermission,setDesktopPermission]=useState<NotificationPermission|"unsupported">("default");
+ const [desktopBusy,setDesktopBusy]=useState(false);
  const load=useCallback(async()=>{if(!uid)return;const {data,error}=await supabase.from("notification_preferences").select("*").eq("user_id",uid).maybeSingle();if(error){setError(error.message);return}if(data)setPrefs({...defaults,...data})},[uid]);
- useEffect(()=>{void load()},[load]);
+ useEffect(()=>{void load();setDesktopPermission(desktopNotificationPermission())},[load]);
+ async function enableDesktop(){
+  if(desktopBusy)return;
+  setDesktopBusy(true);
+  try{
+   const permission=await requestDesktopNotifications();
+   setDesktopPermission(permission);
+   if(permission==="granted")setToast({type:"success",message:"Browser notifications enabled for AthleteN while this site is open."});
+   else if(permission==="denied")setToast({type:"warning",message:"Browser notifications are blocked. Allow them in this site's browser permissions, then retry."});
+   else if(permission==="unsupported")setToast({type:"warning",message:"This browser does not support desktop notifications."});
+   else setToast({type:"warning",message:"Browser notification permission was not granted."});
+  }catch(e){
+   setToast({type:"error",message:e instanceof Error?e.message:"Browser notification permission could not be requested."});
+   setDesktopPermission(desktopNotificationPermission());
+  }finally{setDesktopBusy(false)}
+ }
  async function toggle(key:string){if(!uid||busy)return;const previous=prefs;const next={...prefs,[key]:!prefs[key]};setPrefs(next);setBusy(true);setError("");const {error}=await supabase.from("notification_preferences").upsert({user_id:uid,...next,updated_at:new Date().toISOString()});if(error){setPrefs(previous);setError(error.message)}else setToast({type:"success",message:"Notification preferences saved."});setBusy(false)}
- return <><div className="page-head"><div><p className="eyebrow">AthleteN settings</p><h2>Notification settings</h2><p className="messaging-help">Choose which AthleteN notification categories you want enabled.</p></div></div><section className="card panel">{fields.map(([key,label])=><button type="button" className="notification-setting" key={key} disabled={busy} onClick={()=>void toggle(key)}><span><strong>{label}</strong><small>{prefs[key]?"Enabled":"Muted"}</small></span><span className={"switch "+(prefs[key]?"on":"")}><i/></span></button>)}<button type="button" className="notification-setting" disabled={busy} onClick={()=>void toggle("message_preview")}><span><strong>Message previews on lock screen</strong><small>{prefs.message_preview?"Sender and message text may appear":"Private preview · message text hidden by default"}</small></span><span className={"switch "+(prefs.message_preview?"on":"")}><i/></span></button></section>{error&&<p className="notice" role="alert">{error}</p>}</>
+ const desktopCopy=desktopPermission==="granted"?"Browser permission is enabled. Alerts appear while AthleteN is open.":desktopPermission==="denied"?"Browser permission is blocked. Change this site's permission in browser settings.":desktopPermission==="unsupported"?"This browser does not support desktop notifications.":"Enable browser alerts to see notifications while AthleteN is open.";
+ return <><div className="page-head"><div><p className="eyebrow">AthleteN settings</p><h2>Notification settings</h2><p className="messaging-help">Choose which AthleteN notification categories you want enabled.</p></div></div><section className="card panel notification-desktop-permission"><div><strong>Browser desktop alerts</strong><p className="messaging-help">{desktopCopy}</p></div><button type="button" className="btn" disabled={desktopBusy||desktopPermission==="granted"||desktopPermission==="unsupported"} onClick={()=>void enableDesktop()}>{desktopBusy?"Checking…":desktopPermission==="granted"?"Enabled":desktopPermission==="denied"?"Retry after browser settings":"Enable desktop alerts"}</button></section><section className="card panel">{fields.map(([key,label])=><button type="button" className="notification-setting" key={key} disabled={busy} onClick={()=>void toggle(key)}><span><strong>{label}</strong><small>{prefs[key]?"Enabled":"Muted"}</small></span><span className={"switch "+(prefs[key]?"on":"")}><i/></span></button>)}<button type="button" className="notification-setting" disabled={busy} onClick={()=>void toggle("message_preview")}><span><strong>Message previews on lock screen</strong><small>{prefs.message_preview?"Sender and message text may appear":"Private preview · message text hidden by default"}</small></span><span className={"switch "+(prefs.message_preview?"on":"")}><i/></span></button></section>{error&&<p className="notice" role="alert">{error}</p>}</>
 }
 export function SettingsPage(){
  return <><div className="page-head"><div><p className="eyebrow">AthleteN</p><h2>Settings</h2><p className="messaging-help">Account, privacy, communication and app controls.</p></div></div><section className="grid two">{[["Profile","Name, sport, club, coach and profile photo","/profile"],["Plan & billing","Subscription, features and AI usage","/plans"],["Messages & privacy","Username search, blocked accounts and chats","/messages"],["Notifications","Competition, training and account alerts","/notifications"],["Notification preferences","Choose which categories can notify you","/notification-settings"],["Navigation settings","Choose and reorder your shortcuts across devices","/navigation-settings"],["Attendance","View attendance across linked training groups","/attendance"],["Athlete Journey","Season, competition review, progress and milestones","/journey"],["Reports","Download or share your athlete report","/reports"],["Badges","Founding status and achievements","/badges"]].map(([title,description,url])=><a className="card panel settings-link" href={url} key={url}><strong>{title}</strong><p>{description}</p><span>Open →</span></a>)}</section></>
