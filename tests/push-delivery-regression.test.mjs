@@ -52,6 +52,10 @@ test("notification event producers cover athlete, coach, academy, verification a
     "notify_coach_athlete_link_change",
     "notify_academy_membership_change",
     "notify_subscription_change",
+    "notify_tournament_change",
+    "notify_training_group_session_change",
+    "tournament_notification",
+    "training_group_session_notification",
     "coach_athlete_link_notification",
     "academy_membership_notification",
     "student_verification_notification",
@@ -60,6 +64,8 @@ test("notification event producers cover athlete, coach, academy, verification a
     assert.ok(reliability.includes(token), "missing notification producer: " + token);
   }
   assert.match(reliability, /'achievement'/);
+  assert.match(reliability, /'competition'/);
+  assert.match(reliability, /'training'/);
   assert.match(reliability, /'coach_academy'/);
   assert.match(reliability, /'academy'/);
   assert.match(reliability, /'system'/);
