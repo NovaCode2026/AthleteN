@@ -782,6 +782,13 @@ create policy platform_verification_review_read
   using (
     bucket_id='verification-proofs'
     and (select private.platform_admin_has_permission('verification.review'))
+    and exists (
+      select 1
+      from public.student_verifications sv
+      join public.profiles p on p.user_id=sv.user_id and p.role='athlete'
+      where sv.file_path=storage.objects.name
+        and sv.status='pending'
+    )
   );
 
 create or replace function private.audit_platform_configuration_change()
@@ -922,7 +929,9 @@ begin
   -- These records are append-only or provider/consent-controlled even for
   -- Super Admin. Dedicated audited RPCs are the only mutation path.
   if p_table='student_verifications' then
-    return p_action='select' and (v_full_access or private.platform_admin_has_permission('verification.read'));
+    -- Verification staff must use the pending-only RPC; direct table reads are
+    -- reserved to full administrators.
+    return p_action='select' and v_full_access;
   elsif p_table='age_verifications' then
     return p_action='select' and v_full_access;
   elsif p_table in ('support_tickets','feedback_items') then
@@ -1144,6 +1153,11 @@ drop trigger if exists feedback_items_admin_audit on public.feedback_items;
 create trigger feedback_items_admin_audit
 after update on public.feedback_items
 for each row execute function private.audit_support_workspace_update();
+-- Replace the earlier broad audit triggers: only the column-scoped Support
+-- update path above should emit one audit record per operation.
+drop trigger if exists platform_support_ticket_audit on public.support_tickets;
+drop trigger if exists platform_feedback_audit on public.feedback_items;
+
 
 -- Only the RPCs below can mutate role assignments, moderation state and reviews.
 revoke all on function public.get_my_platform_admin_permissions() from public, anon;
