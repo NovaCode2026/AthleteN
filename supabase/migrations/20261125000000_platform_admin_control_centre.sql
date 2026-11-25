@@ -1092,11 +1092,11 @@ begin
       end if;
       v_fields:=array_append(v_fields,'assigned_to');
     end if;
-    v_action:='support_ticket.updated';
+    v_action:='support.ticket.updated';
   else
     if new.status is distinct from old.status then v_fields:=array_append(v_fields,'status'); end if;
     if new.priority is distinct from old.priority then v_fields:=array_append(v_fields,'priority'); end if;
-    v_action:='feedback_item.updated';
+    v_action:='support.feedback.updated';
   end if;
 
   if cardinality(v_fields)=0 then return new; end if;
