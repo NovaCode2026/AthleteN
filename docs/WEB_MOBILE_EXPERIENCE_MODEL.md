@@ -140,3 +140,26 @@ A row is not complete merely because a button or route exists. Verify the underl
 ---
 
 **Design principle:** Web explains the whole picture. Mobile helps the user take the next action. The data, permissions and product capabilities remain AthleteN.
+
+
+## 9. Parity implementation audit — 25 November 2026
+
+### Mobile access coverage strengthened
+
+The Mobile More hub now exposes role-specific entry points instead of relying only on tab customization or users finding a link inside another screen:
+
+- **Coach:** Coach Dashboard, Coach Notifications and Coach More.
+- **Academy Admin:** Academy Management, Academy Settings and Academy Setup.
+- **Platform Admin:** Admin Control Center, Admin Operations & Verification, Admin Support and Badge Management.
+- **Super Admin only:** Mobile Release Management.
+- **All signed-in roles:** Notification Preferences are directly reachable from More, in addition to the Settings screen.
+
+The target route files already exist; this change adds discoverable entry points. Screens continue to enforce their own authorization, and the mobile hub uses the current role to show the relevant workspace links.
+
+### Automated navigation contract
+
+A regression test now verifies the existence of the essential athlete workflows and role-specific route files and checks that the More hub exposes the corresponding role links. This guards against a future feature being implemented as a route but accidentally becoming unreachable from the mobile interface.
+
+### Parity is not release-certified yet
+
+This is **navigation/entry-point parity**, not proof that every underlying workflow behaves identically. The remaining acceptance evidence is cross-client record create/read/edit/refresh testing, KPI comparison using identical date ranges, role/relationship isolation, empty/error/offline states, accessibility and physical-device layout testing. Web may retain advanced review/configuration views while Mobile provides focused workflows, but neither may silently diverge in records, permissions or calculations.
