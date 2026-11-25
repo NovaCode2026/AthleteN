@@ -897,19 +897,31 @@ stable
 security definer
 set search_path = ''
 as $function$
+declare
+  v_permissions text[];
+  v_full_access boolean;
 begin
   if not private.is_platform_admin() then return true; end if;
-  if '*' = any(private.platform_admin_permissions_for((select auth.uid()))) then return true; end if;
+  v_permissions := private.platform_admin_permissions_for((select auth.uid()));
+  v_full_access := '*' = any(v_permissions);
+
+  -- These records are append-only or provider/consent-controlled even for
+  -- Super Admin. Dedicated audited RPCs are the only mutation path.
+  if p_table='student_verifications' then
+    return p_action='select' and (v_full_access or private.platform_admin_has_permission('verification.read'));
+  elsif p_table='age_verifications' then
+    return false;
+  elsif p_table in ('subscriptions','subscription_usage','account_entitlements','payment_orders','payment_events') then
+    return p_action='select' and (v_full_access or private.platform_admin_has_permission('billing.read'));
+  elsif p_table='ai_usage_events' then
+    return p_action='select' and (v_full_access or private.platform_admin_has_permission('analytics.read') or private.platform_admin_has_permission('platform.read'));
+  elsif p_table='audit_logs' then
+    return p_action='select' and (v_full_access or private.platform_admin_has_permission('audit.read'));
+  end if;
+
+  if v_full_access then return true; end if;
 
   case p_table
-    when 'student_verifications' then
-      return p_action='select' and private.platform_admin_has_permission('verification.read');
-    when 'age_verifications' then
-      -- Guardian consent and age-approval data remains in its separate,
-      -- existing workflow; the Student proof reviewer scope cannot read it.
-      return false;
-    when 'subscriptions','subscription_usage','account_entitlements','payment_orders','payment_events' then
-      return p_action='select' and private.platform_admin_has_permission('billing.read');
     when 'support_tickets','feedback_items' then
       return (p_action='select' and private.platform_admin_has_permission('support.read'))
         or (p_action in ('insert','update') and private.platform_admin_has_permission('support.manage'));
@@ -920,8 +932,6 @@ begin
       return p_action in ('select','update') and private.platform_admin_has_permission('flags.manage');
     when 'announcements' then
       return p_action in ('select','insert','update') and private.platform_admin_has_permission('announcements.manage');
-    when 'audit_logs' then
-      return p_action='select' and private.platform_admin_has_permission('audit.read');
     when 'roadmap_items','roadmap_votes','reserved_usernames' then
       return p_action='select' and private.platform_admin_has_permission('platform.read');
     else
