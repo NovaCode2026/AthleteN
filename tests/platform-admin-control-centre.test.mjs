@@ -127,6 +127,8 @@ test("Athlete profile verification is scoped, reasoned, notified and audited", (
   assert.ok(sql.slice(searchStart, reviewStart).includes("verification.read"));
   assert.ok(reviewFn.includes("verification.athlete.manage"));
   assert.ok(reviewFn.includes("p_reason is null"));
+  assert.ok(sql.includes("create or replace function public.enforce_profile_entitlement_security"));
+  assert.ok(reviewFn.includes("set_config('athleten.platform_athlete_verification_mutation','1',true)"));
   assert.ok(reviewFn.includes("char_length(btrim(p_reason)) not between 5 and 500"));
   assert.ok(reviewFn.includes("p.role='athlete'"));
   assert.ok(reviewFn.includes("insert into public.platform_admin_audit_log"));
