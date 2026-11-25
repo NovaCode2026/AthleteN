@@ -173,6 +173,18 @@ CREATE TRIGGER trg_enforce_profile_entitlement_projection
 BEFORE UPDATE OF plan_id,role ON public.profiles
 FOR EACH ROW EXECUTE FUNCTION public.enforce_profile_entitlement_projection();
 
+ALTER TABLE public.support_tickets
+  ADD COLUMN IF NOT EXISTS body text,
+  ADD COLUMN IF NOT EXISTS priority text NOT NULL DEFAULT 'normal',
+  ADD COLUMN IF NOT EXISTS assigned_to uuid,
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE public.feedback_items
+  ADD COLUMN IF NOT EXISTS title text NOT NULL DEFAULT 'Test feedback',
+  ADD COLUMN IF NOT EXISTS details text,
+  ADD COLUMN IF NOT EXISTS priority text NOT NULL DEFAULT 'normal',
+  ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
 -- Simulate the existing production admin helpers and owner/admin permissive RLS.
 CREATE OR REPLACE FUNCTION public.is_platform_admin()
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
@@ -253,6 +265,7 @@ DROP POLICY IF EXISTS fixture_admin_and_owner_profiles ON public.profiles;
 DROP POLICY IF EXISTS fixture_admin_and_owner_student_verifications ON public.student_verifications;
 DROP POLICY IF EXISTS fixture_admin_subscriptions ON public.subscriptions;
 DROP POLICY IF EXISTS fixture_admin_support_tickets ON public.support_tickets;
+DROP POLICY IF EXISTS fixture_admin_feedback_items ON public.feedback_items;
 DROP POLICY IF EXISTS fixture_admin_training_sessions ON public.training_sessions;
 DROP POLICY IF EXISTS fixture_admin_feature_flags ON public.feature_flags;
 DROP POLICY IF EXISTS fixture_admin_audit_logs ON public.audit_logs;
@@ -284,6 +297,10 @@ CREATE POLICY fixture_admin_subscriptions ON public.subscriptions
   WITH CHECK (private.is_platform_admin());
 
 CREATE POLICY fixture_admin_support_tickets ON public.support_tickets
+  FOR ALL TO authenticated
+  USING (private.is_platform_admin() OR user_id=(SELECT auth.uid()))
+  WITH CHECK (private.is_platform_admin() OR user_id=(SELECT auth.uid()));
+CREATE POLICY fixture_admin_feedback_items ON public.feedback_items
   FOR ALL TO authenticated
   USING (private.is_platform_admin() OR user_id=(SELECT auth.uid()))
   WITH CHECK (private.is_platform_admin() OR user_id=(SELECT auth.uid()));
@@ -345,6 +362,8 @@ INSERT INTO public.ai_usage_events(user_id,status,payload)
 VALUES ('00000000-0000-0000-0000-000000000006','recorded','{"tokens":1}'::jsonb);
 INSERT INTO public.support_tickets(user_id,status,subject)
 VALUES ('00000000-0000-0000-0000-000000000006','open','Athlete help request');
+INSERT INTO public.feedback_items(user_id,title,details,status,priority)
+VALUES ('00000000-0000-0000-0000-000000000006','Training feedback','Test feedback details','new','normal');
 INSERT INTO public.subscriptions(user_id,plan_id,provider,status,current_period_end)
 VALUES ('00000000-0000-0000-0000-000000000006','pro','razorpay','active',now()+interval '30 days');
 INSERT INTO public.payment_events(user_id,provider,event_type,amount_minor,currency,status)
