@@ -54,6 +54,7 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
   const [accessRows, setAccessRows] = useState<AccessControl[]>([]);
   const [accountResults, setAccountResults] = useState<AccountSearchResult[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<AccountSearchResult | null>(null);
+  const [accountRole, setAccountRole] = useState("athlete");
   const [accountQuery, setAccountQuery] = useState("");
   const [assignmentTarget, setAssignmentTarget] = useState("");
   const [assignmentScope, setAssignmentScope] = useState("support");
@@ -72,6 +73,7 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
   const canVerify = has("verification.read");
   const canManageAthleteVerification = has("verification.athlete.manage");
   const canManageAccounts = has("account.manage");
+  const canChangePlatformRoles = role === "super_admin";
   const canManageFlags = has("flags.manage");
   const canManageAnnouncements = has("announcements.manage");
   const canReadAudit = has("audit.read");
@@ -297,6 +299,23 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
     finally { setBusyKey(""); }
   }
 
+  async function changeUserRole() {
+    if (!supabase || !canChangePlatformRoles || !selectedAccount) return;
+    const confirmed = window.confirm("Change " + (selectedAccount.full_name || selectedAccount.username || "this account") + " from " + selectedAccount.role + " to " + accountRole + "? This is a high-impact platform role change.");
+    if (!confirmed) return;
+    setBusyKey("user-role"); setError(""); setNotice("");
+    try {
+      const { error: roleError } = await supabase.rpc("admin_set_user_role", {
+        p_user_id: selectedAccount.user_id, p_role: accountRole
+      });
+      if (roleError) throw roleError;
+      setNotice("Platform account role updated and written to the administrative audit logs.");
+      setSelectedAccount({...selectedAccount,role:accountRole});
+      await searchAccounts();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Account role could not be changed."); }
+    finally { setBusyKey(""); }
+  }
+
   async function changeAssignment() {
     if (!supabase) { setError("Admin service is unavailable."); return; }
     if (!assignmentTarget) { setError("Choose an administrator account."); return; }
@@ -405,8 +424,15 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
       <div className="platform-admin-panel-head"><div><span className="admin-section-label">Account safety</span><h4>Account Access Controls</h4>
         <p>Restrictions are enforced by database row-level security on core app data. Login sessions are not forcibly terminated; profile and support access remain available.</p></div><Shield size={20}/></div>
       <div className="platform-admin-account-search"><label>Find account<input value={accountQuery} onChange={(event)=>setAccountQuery(event.target.value)} placeholder="Name, username or user ID prefix"/></label><button type="button" className="btn" disabled={busyKey==="search"} onClick={()=>void searchAccounts()}><Search size={14}/> Search</button></div>
-      {accountResults.length>0&&<div className="platform-admin-search-results">{accountResults.map((row)=><button type="button" key={row.user_id} className={selectedAccount?.user_id===row.user_id?"selected":""} onClick={()=>setSelectedAccount(row)}><b>{row.full_name || "Unnamed account"}</b><small>@{row.username || "no username"} · {row.role} · {row.plan_id}</small><code>{row.user_id}</code></button>)}</div>}
-      {selectedAccount&&<div className="platform-admin-access-form"><b>Selected: {selectedAccount.full_name || selectedAccount.user_id}</b><div className="platform-admin-assignment-form">
+      {accountResults.length>0&&<div className="platform-admin-search-results">{accountResults.map((row)=><button type="button" key={row.user_id} className={selectedAccount?.user_id===row.user_id?"selected":""} onClick={()=>{setSelectedAccount(row);setAccountRole(row.role);}}><b>{row.full_name || "Unnamed account"}</b><small>@{row.username || "no username"} · {row.role} · {row.plan_id}</small><code>{row.user_id}</code></button>)}</div>}
+      {selectedAccount&&<div className="platform-admin-access-form"><b>Selected: {selectedAccount.full_name || selectedAccount.user_id}</b>
+        {canChangePlatformRoles && <div className="platform-admin-role-editor">
+          <label>Platform account role<select value={accountRole} onChange={(event)=>setAccountRole(event.target.value)}>
+            <option value="athlete">Athlete</option><option value="coach">Coach</option><option value="academy_admin">Academy Admin</option><option value="support_admin">Support Admin</option><option value="admin">Admin</option><option value="super_admin">Super Admin</option>
+          </select></label>
+          <button type="button" className="btn danger" disabled={busyKey==="user-role"||accountRole===selectedAccount.role} onClick={()=>void changeUserRole()}>Change account role</button>
+        </div>}
+        <div className="platform-admin-assignment-form">
         <label>Account status<select value={accessStatus} onChange={(event)=>setAccessStatus(event.target.value)}><option value="restricted">Temporary restriction</option><option value="suspended">Suspended (indefinite unless expiry supplied)</option><option value="active">Restore access</option></select></label>
         <label>Expiry {accessStatus==="restricted"?"(required)": "(optional)"}<input type="datetime-local" value={accessExpiry} onChange={(event)=>setAccessExpiry(event.target.value)} disabled={accessStatus==="active"}/></label>
         <label className="full">Reason<textarea rows={2} maxLength={500} value={accessReason} onChange={(event)=>setAccessReason(event.target.value)} placeholder="Document the policy or security reason (5–500 characters)."/></label>
