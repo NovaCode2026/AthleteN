@@ -67,6 +67,7 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
   const [accountQuery, setAccountQuery] = useState("");
   const [assignmentTarget, setAssignmentTarget] = useState("");
   const [assignmentScope, setAssignmentScope] = useState("support");
+  const [assignmentReason, setAssignmentReason] = useState("");
   const [accessStatus, setAccessStatus] = useState("restricted");
   const [accessReason, setAccessReason] = useState("");
   const [accessExpiry, setAccessExpiry] = useState("");
@@ -383,16 +384,18 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
 
   async function changeAssignment() {
     if (!supabase) { setError("Admin service is unavailable."); return; }
+    const reason = assignmentReason.trim();
+    if (reason.length < 5 || reason.length > 500) { setError("Enter a permission-scope reason between 5 and 500 characters."); return; }
     if (!assignmentTarget) { setError("Choose an administrator account."); return; }
     setBusyKey("assignment"); setError(""); setNotice("");
     try {
       const { error: assignmentError } = await supabase.rpc("admin_assign_platform_role", {
         p_admin_user_id: assignmentTarget,
-        p_permission_role: assignmentScope === "full" ? null : assignmentScope
+        p_permission_role: assignmentScope === "full" ? null : assignmentScope, p_reason: reason
       });
       if (assignmentError) throw assignmentError;
       setNotice("Administrator permission scope updated and audited.");
-      setAssignmentTarget("");
+      setAssignmentTarget(""); setAssignmentReason("");
       await load();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Permission assignment failed."); }
     finally { setBusyKey(""); }
@@ -522,6 +525,7 @@ export default function PlatformAdminExtensions({ userId, role }: { userId: stri
         <p>Assign narrowly scoped permissions to existing Admin or Support Admin accounts. Super Admin accounts remain separately protected.</p></div><UserRoundCog size={20}/></div>
       <div className="platform-admin-assignment-form"><label>Administrator<select value={assignmentTarget} onChange={(event)=>setAssignmentTarget(event.target.value)}><option value="">Select administrator</option>{assignments.filter((row)=>row.base_role!=="super_admin").map((row)=><option key={row.admin_user_id} value={row.admin_user_id}>{row.full_name || row.username || row.admin_user_id} · {row.base_role}</option>)}</select></label>
         <label>Permission scope<select value={assignmentScope} onChange={(event)=>setAssignmentScope(event.target.value)}><option value="support">Support Admin</option><option value="verification">Verification Reviewer</option><option value="finance">Finance Admin (read-only settlement)</option><option value="operations">Operations Admin</option><option value="full">Full Admin (all capabilities)</option></select></label>
+        <label>Assignment reason<textarea rows={2} maxLength={500} value={assignmentReason} onChange={(event)=>setAssignmentReason(event.target.value)} placeholder="Document the permission-scope reason (5–500 characters)."/></label>
         <button className="btn primary" type="button" disabled={busyKey==="assignment"} onClick={()=>void changeAssignment()}>Save permission scope</button></div>
       <div className="platform-admin-table-wrap"><table><thead><tr><th>Account</th><th>Base role</th><th>Scope</th><th>Updated</th></tr></thead><tbody>{assignments.map((row)=><tr key={row.admin_user_id}><td>{row.full_name || row.username || row.admin_user_id}</td><td>{row.base_role}</td><td>{row.permission_role || "Full Admin"}</td><td>{new Date(row.updated_at).toLocaleString()}</td></tr>)}</tbody></table></div>
     </div>}
