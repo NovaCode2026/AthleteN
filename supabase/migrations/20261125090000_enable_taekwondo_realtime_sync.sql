@@ -1,4 +1,4 @@
--- Keep Taekwondo domain records in sync between Web and Mobile.
+-- Keep shared athlete records in sync between Web and Mobile.
 -- Realtime is only delivered for tables included in supabase_realtime.
 do $$
 declare
