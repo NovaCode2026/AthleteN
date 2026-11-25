@@ -86,7 +86,7 @@ export default function NotificationsScreen() {
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
         .limit(50);
-      data = fallback.data;
+      data = (fallback.data || null) as NotificationRow[] | null;
       queryError = fallback.error;
     }
     if (queryError) {
