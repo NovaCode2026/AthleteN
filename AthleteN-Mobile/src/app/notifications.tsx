@@ -14,6 +14,7 @@ type NotificationRow = {
   action_route?: string | null;
   message_id?: string | null;
   announcement_id?: string | null;
+  attendance_record_id?: string | null;
   created_at: string;
   read_at: string | null;
   conversation_id?: string;
@@ -50,6 +51,7 @@ function groupMessageNotifications(rows:NotificationRow[]){
   return output.sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
 }
 type AnnouncementSource = { title: string; body: string; published_at: string | null };
+type AttendanceSource = { title: string; date: string; status: string; attended_at: string | null; notes: string | null };
 
 export default function NotificationsScreen() {
   const { session } = useAuth();
@@ -59,16 +61,28 @@ export default function NotificationsScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [announcement, setAnnouncement] = useState<AnnouncementSource | null>(null);
+  const [attendance, setAttendance] = useState<AttendanceSource | null>(null);
 
   const load = useCallback(async () => {
     if (!session) { setRows([]); setLoading(false); return; }
     setLoading(true);
-    const { data, error: queryError } = await supabase
+    let { data, error: queryError } = await supabase
       .from('notifications')
-      .select('id,title,body,notification_type,action_route,message_id,announcement_id,created_at,read_at')
+      .select('id,title,body,notification_type,action_route,message_id,announcement_id,attendance_record_id,created_at,read_at')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50);
+    // Older staging environments may not have the source-link migration yet.
+    if (queryError && String(queryError.message || '').toLowerCase().includes('attendance_record_id')) {
+      const fallback = await supabase
+        .from('notifications')
+        .select('id,title,body,notification_type,action_route,message_id,announcement_id,created_at,read_at')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      data = fallback.data;
+      queryError = fallback.error;
+    }
     if (queryError) {
       setError(queryError.message);
       console.warn('[AthleteN] could not load notifications', queryError.message);
@@ -153,6 +167,43 @@ export default function NotificationsScreen() {
         if (sourceError) throw sourceError;
         if (!data) setError('The original announcement is no longer available.');
         else setAnnouncement({ title: String(data.title || 'Announcement'), body: String(data.body || ''), published_at: data.published_at || null });
+        await load();
+        return;
+      }
+      if (row.attendance_record_id) {
+        const { data: attendanceRow, error: attendanceError } = await supabase
+          .from('attendance_records')
+          .select('id,training_session_id,attended_at,status,notes')
+          .eq('id', row.attendance_record_id)
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        if (attendanceError) throw attendanceError;
+        if (!attendanceRow) {
+          setError('The original attendance record is no longer available.');
+        } else {
+          let sessionTitle = 'Training session';
+          let sessionDate = '';
+          if (attendanceRow.training_session_id) {
+            const { data: trainingSession, error: sessionError } = await supabase
+              .from('training_sessions')
+              .select('title,session_date')
+              .eq('id', attendanceRow.training_session_id)
+              .eq('user_id', session.user.id)
+              .maybeSingle();
+            if (sessionError) throw sessionError;
+            if (trainingSession) {
+              sessionTitle = String(trainingSession.title || sessionTitle);
+              sessionDate = String(trainingSession.session_date || '');
+            }
+          }
+          setAttendance({
+            title: sessionTitle,
+            date: sessionDate,
+            status: String(attendanceRow.status || 'updated'),
+            attended_at: attendanceRow.attended_at || null,
+            notes: attendanceRow.notes || null,
+          });
+        }
         await load();
         return;
       }
@@ -261,6 +312,21 @@ export default function NotificationsScreen() {
             <Text style={{ color: c.muted, fontSize: 12, lineHeight: 19 }}>{announcement?.body}</Text>
             {announcement?.published_at ? <Text style={{ color: c.muted, fontSize: 9 }}>{new Date(announcement.published_at).toLocaleString()}</Text> : null}
             <Pressable onPress={() => setAnnouncement(null)} style={{ backgroundColor: c.accent, borderRadius: 11, padding: 13, alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900' }}>CLOSE</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={!!attendance} transparent animationType="fade" onRequestClose={() => setAttendance(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.78)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: c.surface, borderWidth: 1, borderColor: c.accent, borderRadius: 20, padding: 18, gap: 12 }}>
+            <Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1.3 }}>ORIGINAL ATTENDANCE RECORD</Text>
+            <Text style={{ color: c.text, fontSize: 21, fontWeight: '900' }}>{attendance?.title || 'Training session'}</Text>
+            {attendance?.date ? <Text style={{ color: c.muted, fontSize: 10 }}>Session date: {attendance.date}</Text> : null}
+            <Text style={{ color: c.text, fontSize: 12, fontWeight: '800' }}>Attendance: {attendance?.status}</Text>
+            {attendance?.attended_at ? <Text style={{ color: c.muted, fontSize: 9 }}>Recorded: {new Date(attendance.attended_at).toLocaleString()}</Text> : null}
+            <Text style={{ color: c.muted, fontSize: 12, lineHeight: 19 }}>{attendance?.notes || 'No additional attendance notes were recorded.'}</Text>
+            <Pressable onPress={() => setAttendance(null)} style={{ backgroundColor: c.accent, borderRadius: 11, padding: 13, alignItems: 'center' }}>
               <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900' }}>CLOSE</Text>
             </Pressable>
           </View>
