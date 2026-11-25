@@ -1140,7 +1140,7 @@ revoke all on function public.search_athlete_verification_reviews(text,integer) 
 revoke all on function public.admin_set_athlete_verified(uuid,boolean,text) from public, anon;
 revoke all on function public.get_student_verification_queue() from public, anon;
 revoke all on function public.search_platform_accounts(text,integer) from public, anon;
-revoke all on function public.admin_assign_platform_role(uuid,text) from public, anon;
+revoke all on function public.admin_assign_platform_role(uuid,text,text) from public, anon;
 revoke all on function public.get_platform_admin_audit(integer) from public, anon;
 revoke all on function public.admin_review_student_verification(uuid,text,text) from public, anon;
 revoke all on function public.admin_set_platform_account_access(uuid,text,text,timestamptz) from public, anon;
@@ -1154,7 +1154,7 @@ grant execute on function public.search_athlete_verification_reviews(text,intege
 grant execute on function public.admin_set_athlete_verified(uuid,boolean,text) to authenticated;
 grant execute on function public.get_student_verification_queue() to authenticated;
 grant execute on function public.search_platform_accounts(text,integer) to authenticated;
-grant execute on function public.admin_assign_platform_role(uuid,text) to authenticated;
+grant execute on function public.admin_assign_platform_role(uuid,text,text) to authenticated;
 grant execute on function public.get_platform_admin_audit(integer) to authenticated;
 grant execute on function public.admin_review_student_verification(uuid,text,text) to authenticated;
 grant execute on function public.admin_set_platform_account_access(uuid,text,text,timestamptz) to authenticated;
