@@ -925,6 +925,9 @@ begin
     return p_action='select' and (v_full_access or private.platform_admin_has_permission('verification.read'));
   elsif p_table='age_verifications' then
     return p_action='select' and v_full_access;
+  elsif p_table in ('support_tickets','feedback_items') then
+    return (p_action='select' and (v_full_access or private.platform_admin_has_permission('support.read')))
+      or (p_action='update' and (v_full_access or private.platform_admin_has_permission('support.manage')));
   elsif p_table in ('subscriptions','subscription_usage','account_entitlements','payment_orders','payment_events') then
     return p_action='select' and (v_full_access or private.platform_admin_has_permission('billing.read'));
   elsif p_table='ai_usage_events' then
@@ -936,9 +939,6 @@ begin
   if v_full_access then return true; end if;
 
   case p_table
-    when 'support_tickets','feedback_items' then
-      return (p_action='select' and private.platform_admin_has_permission('support.read'))
-        or (p_action in ('insert','update') and private.platform_admin_has_permission('support.manage'));
     when 'message_reports' then
       return (p_action='select' and private.platform_admin_has_permission('message_reports.read'))
         or (p_action='update' and private.platform_admin_has_permission('message_reports.manage'));
