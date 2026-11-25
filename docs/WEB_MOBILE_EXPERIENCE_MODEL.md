@@ -129,6 +129,7 @@ A row is not complete merely because a button or route exists. Verify the underl
 - [ ] Create a training session on Mobile; confirm it appears in Web with the same date, minutes and discipline.
 - [ ] Create a Kyorugi bout on either client; verify the same bout and result on the other client.
 - [ ] Create a Poomsae practice log and official result on either client; verify forms, category, repetitions, score, placing and notes on the other client.
+- [ ] Create or edit Taekwondo training logs, Kyorugi bouts and Poomsae performances on Web; verify Mobile refreshes the same records through Realtime, and repeat in the opposite direction.
 - [ ] Verify changing the selected discipline never relabels or mixes historical records.
 - [ ] Verify athlete, coach and academy summaries use only records visible to their permitted role and relationships.
 - [ ] Compare shared KPIs using the same date range and definition on both clients.
@@ -163,3 +164,10 @@ A regression test now verifies the existence of the essential athlete workflows 
 ### Parity is not release-certified yet
 
 This is **navigation/entry-point parity**, not proof that every underlying workflow behaves identically. The remaining acceptance evidence is cross-client record create/read/edit/refresh testing, KPI comparison using identical date ranges, role/relationship isolation, empty/error/offline states, accessibility and physical-device layout testing. Web may retain advanced review/configuration views while Mobile provides focused workflows, but neither may silently diverge in records, permissions or calculations.
+
+
+### Realtime parity correction — 25 November 2026
+
+A code audit found that Mobile's shared account-sync channel did not subscribe to the three Taekwondo domain tables, although the Taekwondo screen reloads when the shared sync version changes and the Web dashboard already listens for those tables. This left cross-client updates dependent on a manual refresh.
+
+The correction adds `taekwondo_training_logs`, `taekwondo_kyorugi_bouts` and `taekwondo_poomsae_performances` to Mobile's account-scoped Realtime subscriptions, and adds a guarded migration to include the same tables in `supabase_realtime`. A regression test now guards both subscription coverage and the migration entries. The migration is a candidate until staging replay and migration-history reconciliation are complete.
