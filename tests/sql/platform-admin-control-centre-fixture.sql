@@ -189,3 +189,34 @@ GRANT USAGE ON SCHEMA public, private, storage TO authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated, service_role;
 GRANT SELECT ON storage.objects TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated;
+-- Deterministic platform test identities; UUID suffixes are asserted in the
+-- paired SQL integration file and never reference live production accounts.
+INSERT INTO auth.users(id,email,email_confirmed_at) VALUES
+ ('00000000-0000-0000-0000-000000000001','root-admin@test.invalid',now()),
+ ('00000000-0000-0000-0000-000000000002','verify-admin@test.invalid',now()),
+ ('00000000-0000-0000-0000-000000000003','finance-admin@test.invalid',now()),
+ ('00000000-0000-0000-0000-000000000004','ops-admin@test.invalid',now()),
+ ('00000000-0000-0000-0000-000000000005','support-admin@test.invalid',now()),
+ ('00000000-0000-0000-0000-000000000006','athlete@test.invalid',now());
+
+INSERT INTO public.profiles(user_id,full_name,username,role,plan_id,verified_athlete)
+VALUES
+ ('00000000-0000-0000-0000-000000000001','Root Admin','root_admin','super_admin','free',false),
+ ('00000000-0000-0000-0000-000000000002','Verification Admin','verification_admin','admin','free',false),
+ ('00000000-0000-0000-0000-000000000003','Finance Admin','finance_admin','admin','free',false),
+ ('00000000-0000-0000-0000-000000000004','Operations Admin','operations_admin','admin','free',false),
+ ('00000000-0000-0000-0000-000000000005','Support Admin','support_admin','support_admin','free',false),
+ ('00000000-0000-0000-0000-000000000006','Test Athlete','test_athlete','athlete','free',false);
+
+INSERT INTO public.training_sessions(user_id,payload)
+VALUES ('00000000-0000-0000-0000-000000000006','owned training record');
+INSERT INTO public.support_tickets(user_id,status,subject)
+VALUES ('00000000-0000-0000-0000-000000000006','open','Athlete help request');
+INSERT INTO public.subscriptions(user_id,status)
+VALUES ('00000000-0000-0000-0000-000000000006','active');
+
+INSERT INTO public.student_verifications(user_id,status,document_type,file_path)
+VALUES ('00000000-0000-0000-0000-000000000006','pending','school_id',
+        '00000000-0000-0000-0000-000000000006/school-id.pdf');
+INSERT INTO storage.objects(bucket_id,name)
+VALUES ('verification-proofs','00000000-0000-0000-0000-000000000006/school-id.pdf');
