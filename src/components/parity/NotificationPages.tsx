@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw, CheckCheck, Trash2, ExternalLink } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
@@ -42,6 +42,7 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
  const [loading,setLoading]=useState(true);
  const [busy,setBusy]=useState(false);
  const [selectedSource,setSelectedSource]=useState<NotificationSource|null>(null);
+ const handledDeepLink=useRef<string|null>(null);
 
  const load=useCallback(async()=>{
   if(!uid)return;
@@ -147,6 +148,37 @@ export function NotificationsPage({setToast}:{setToast:(toast:{type:"success"|"e
    setToast({type:"error",message:error instanceof Error?error.message:"Notification could not be opened."});
   }finally{setBusy(false)}
  }
+
+ useEffect(()=>{
+  if(!uid||loading)return;
+  const params=new URLSearchParams(window.location.search);
+  const attendanceId=params.get("attendanceRecordId");
+  const announcementId=params.get("announcementId");
+  const sourceKey=attendanceId?"attendance:"+attendanceId:announcementId?"announcement:"+announcementId:"";
+  if(!sourceKey||handledDeepLink.current===sourceKey)return;
+  handledDeepLink.current=sourceKey;
+
+  const cleanUrl=new URL(window.location.href);
+  cleanUrl.searchParams.delete("attendanceRecordId");
+  cleanUrl.searchParams.delete("announcementId");
+  window.history.replaceState(window.history.state,"",cleanUrl.pathname+cleanUrl.search+cleanUrl.hash);
+
+  void (async()=>{
+   try{
+    const query=supabase.from("notifications")
+     .select("id,title,body,notification_type,action_route,message_id,announcement_id,attendance_record_id,created_at,read_at")
+     .eq("user_id",uid);
+    if(attendanceId)query.eq("attendance_record_id",attendanceId);
+    else query.eq("announcement_id",announcementId);
+    const {data,error}=await query.order("created_at",{ascending:false}).limit(1).maybeSingle();
+    if(error)throw error;
+    if(data)await openNotification(data);
+    else setToast({type:"warning",message:"The original notification is no longer available."});
+   }catch(error){
+    setToast({type:"error",message:error instanceof Error?error.message:"Notification source could not be opened."});
+   }
+  })();
+ },[uid,loading,rows,setToast]);
 
  async function deleteOne(row:any){
   if(!uid||busy)return;
