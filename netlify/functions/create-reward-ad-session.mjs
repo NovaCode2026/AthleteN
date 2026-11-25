@@ -54,12 +54,11 @@ export default async function handler(request) {
     return json("Rewarded ads are temporarily paused by AthleteN administrators. Your existing access is not affected.", 503);
   }
 
-  // Rewarded ads are adult-only in this release. Parent-approved minor accounts
-  // can use AthleteN normally but cannot request advertising inventory.
-  // The DOB remains inside AthleteN and is never sent to the ad provider.
-  // The stored DOB is user-entered and locked after initial submission; it is
-  // not independent identity proof. Keep live approval disabled until an
-  // adult-owned review and any required trusted age-assurance method are complete.
+  // Eligible teens (13–17) may request rewarded ads only after parent/guardian
+  // approval. Adults use the normal age-verification path. Accounts under 13
+  // remain ineligible. DOB stays inside AthleteN and is never sent to AdMob.
+  // A locked self-entered DOB is not independent identity proof; the live gate
+  // remains off until adult-owned policy and age-assurance review is complete.
   const { data: ageRows, error: ageError } = await client.rpc("get_age_verification_status");
   if (ageError) {
     console.error("Rewarded ad age eligibility check failed:", ageError);
@@ -68,8 +67,8 @@ export default async function handler(request) {
   const ageRecord = Array.isArray(ageRows) ? ageRows[0] : ageRows;
   const dob = typeof ageRecord?.date_of_birth === "string" ? ageRecord.date_of_birth : "";
   const match = dob.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (ageRecord?.status !== "not_required" || !match) {
-    return json("Rewarded ads are unavailable for this account. Your existing AthleteN access is not affected.", 403);
+  if (!match) {
+    return json("Age eligibility could not be verified. Rewarded ads are unavailable.", 403);
   }
   const birthDate = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
   if (!Number.isFinite(birthDate.getTime()) || birthDate.toISOString().slice(0, 10) !== dob) {
@@ -81,8 +80,14 @@ export default async function handler(request) {
       (now.getUTCMonth() === birthDate.getUTCMonth() && now.getUTCDate() < birthDate.getUTCDate())) {
     ageYears -= 1;
   }
-  if (ageYears < 18) {
-    return json("Rewarded ads are not available for accounts under 18. Your existing AthleteN access is not affected.", 403);
+  if (ageYears < 13) {
+    return json("Rewarded ads are unavailable for accounts under 13. Your existing AthleteN access is not affected.", 403);
+  }
+  if (ageYears < 18 && ageRecord?.status !== "approved") {
+    return json("A parent or guardian must approve this teen account before rewarded ads can be used. Your existing AthleteN access is not affected.", 403);
+  }
+  if (ageYears >= 18 && ageRecord?.status !== "not_required") {
+    return json("Adult age eligibility could not be verified. Rewarded ads are unavailable.", 403);
   }
 
   const windowStart = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -115,6 +120,7 @@ export default async function handler(request) {
     provider: "admob",
     customData,
     reward: { key: "ai_message", amount: 2 },
+    ageCategory: ageYears < 18 ? "teen" : "adult",
     expiresAt
   });
 }
