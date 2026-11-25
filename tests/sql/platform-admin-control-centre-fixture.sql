@@ -254,8 +254,12 @@ BEGIN
     NEW.verified_athlete:=false; NEW.founder_badge:=false;
   END IF;
   IF TG_OP='UPDATE' AND NOT private.is_super_admin() THEN
-    NEW.role:=OLD.role; NEW.plan_id:=OLD.plan_id;
-    NEW.verified_athlete:=OLD.verified_athlete;
+    IF coalesce(current_setting('athleten.privileged_profile_mutation',true),'') <> '1' THEN
+      NEW.role:=OLD.role; NEW.plan_id:=OLD.plan_id;
+    END IF;
+    IF coalesce(current_setting('athleten.platform_athlete_verification_mutation',true),'') <> '1' THEN
+      NEW.verified_athlete:=OLD.verified_athlete;
+    END IF;
     NEW.founder_badge:=OLD.founder_badge;
   END IF;
   RETURN NEW;
