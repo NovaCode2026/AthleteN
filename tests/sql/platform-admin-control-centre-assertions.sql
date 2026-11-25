@@ -44,13 +44,13 @@ END;
 $test$;
 SELECT public.admin_set_user_role('00000000-0000-0000-0000-000000000006','admin','Promote athlete to Admin for controlled role workflow regression test.');
 DO $test$
-DECLARE v_role text; v_badges integer;
+DECLARE v_role text; v_badges integer; v_badge_permanent boolean;
 BEGIN
   SELECT role INTO v_role FROM public.profiles
   WHERE user_id='00000000-0000-0000-0000-000000000006';
-  SELECT count(*) INTO v_badges FROM public.athlete_badges
+  SELECT count(*),bool_or(permanent) INTO v_badges,v_badge_permanent FROM public.athlete_badges
   WHERE user_id='00000000-0000-0000-0000-000000000006' AND badge_key='administrator';
-  IF v_role <> 'admin' OR v_badges <> 1 THEN
+  IF v_role <> 'admin' OR v_badges <> 1 OR v_badge_permanent IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'Super Admin role promotion or Administrator badge failed';
   END IF;
 END;
