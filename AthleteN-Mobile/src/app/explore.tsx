@@ -23,6 +23,7 @@ export default function ExploreScreen(){
    <FeatureRow title="Rewards Centre" text="View bonus AI credits, reward limits and reward history" icon="gift" onPress={()=>router.push('/rewards')}/>
    <FeatureRow title="Plans & Usage" text="Review your plan, feature access and AI usage" icon="credit-card" onPress={()=>router.push('/plans')}/>
    <FeatureRow title="Notifications & Settings" text="Manage account preferences and notifications" icon="settings" onPress={()=>router.push('/settings')}/>
+   <FeatureRow title="Notification Preferences" text="Control training, competition, messages, team and system alerts" icon="bell" onPress={()=>router.push('/notification-settings')}/>
    <FeatureRow title="Support & Safety" text="Get help, review policies, or report a safety concern" icon="shield" onPress={()=>router.push('/support')}/>
   </Section>
   <Section title="TRAVEL & COMPETITION">
@@ -51,7 +52,23 @@ export default function ExploreScreen(){
    <FeatureRow title="AthleteN Quest & Missions" text="Complete optional daily, weekly and monthly check-ins, and manage personal missions." icon="check" onPress={()=>router.push('/missions')}/>
    <FeatureRow title="Athlete Journey" text="Seasons, Fight IQ, techniques, challenges, records and milestones." icon="chart" onPress={()=>router.push('/athlete-journey')}/>
   </Section>
-  {['admin','super_admin','support_admin'].includes(String(profile?.role||''))?<Section title="ADMINISTRATION"><FeatureRow title="Admin Control Center" text="Users, roles, plans, feature flags, badges and audit activity." icon="shield" onPress={()=>router.push('/admin-panel')}/></Section>:null}
+  {profile?.role==='coach'?<Section title="COACH WORKSPACE">
+   <FeatureRow title="Coach Dashboard" text="Roster, athlete activity, attendance and coaching overview" icon="people" onPress={()=>router.push('/coach')}/>
+   <FeatureRow title="Coach Notifications" text="Connection requests, competition alerts and coaching activity" icon="bell" onPress={()=>router.push('/coach-notifications')}/>
+   <FeatureRow title="Coach More" text="Competition center, reports, profile and tools" icon="dashboard" onPress={()=>router.push('/coach-more')}/>
+  </Section>:null}
+  {profile?.role==='academy_admin'?<Section title="ACADEMY WORKSPACE">
+   <FeatureRow title="Academy Management" text="Athletes, staff, attendance, fees, announcements and operations" icon="school-outline" onPress={()=>router.push('/academy')}/>
+   <FeatureRow title="Academy Settings" text="Academy profile, navigation, plan and account controls" icon="settings" onPress={()=>router.push('/academy-settings')}/>
+   <FeatureRow title="Academy Setup" text="Complete or review academy onboarding" icon="check" onPress={()=>router.push('/academy-setup')}/>
+  </Section>:null}
+  {['admin','super_admin','support_admin'].includes(String(profile?.role||''))?<Section title="ADMINISTRATION">
+   <FeatureRow title="Admin Control Center" text="Users, roles, plans, feature flags, badges and audit activity." icon="shield" onPress={()=>router.push('/admin-panel')}/>
+   <FeatureRow title="Admin Operations & Verification" text="Verification queues, platform operations and scoped controls" icon="check" onPress={()=>router.push('/admin-operations')}/>
+   <FeatureRow title="Admin Support" text="Review tickets, assign, respond and resolve" icon="message" onPress={()=>router.push('/admin-support')}/>
+   <FeatureRow title="Badge Management" text="Review badge definitions and award verified badges" icon="trophy" onPress={()=>router.push('/admin-badges')}/>
+   {profile?.role==='super_admin'?<FeatureRow title="Mobile Release Management" text="Upload and publish approved Android releases" icon="download" onPress={()=>router.push('/admin-releases')}/>:null}
+  </Section>:null}
   <Section title="TEAM"><FeatureRow title="My Team" text="Connect or change your Coach and Academy" onPress={()=>router.push({pathname:'/team'})}/></Section>
   <Section title="PERFORMANCE & INTELLIGENCE">
    <FeatureRow title="Performance Analytics" text="Training load, weight history, medals and goals" icon="chart" onPress={()=>router.push('/analytics')}/>
