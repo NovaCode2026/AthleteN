@@ -55,10 +55,12 @@ test("Super Admin alone can change core platform roles and every change is audit
   assert.ok(start >= 0 && end > start);
   assert.match(fn, /role='super_admin'/i);
   assert.match(fn, /platform\.roles\.manage/);
+  assert.match(fn, /p_reason is null/);
+  assert.match(fn, /char_length\(btrim\(p_reason\)\) not between 5 and 500/);
   assert.match(fn, /athleten\.privileged_profile_mutation/);
   assert.match(fn, /insert into public\.platform_admin_audit_log/i);
   assert.match(fn, /insert into public\.audit_logs/i);
-  assert.match(sql, /revoke all on function public\.admin_set_user_role\(uuid,text\) from public, anon/i);
+  assert.match(sql, /revoke all on function public\.admin_set_user_role\(uuid,text,text\) from public, anon/i);
 });
 
 test("Student verification decisions require a reason and use an audited server RPC", () => {
