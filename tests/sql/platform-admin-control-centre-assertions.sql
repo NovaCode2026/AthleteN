@@ -207,22 +207,43 @@ SELECT public.admin_set_athlete_verified(
   'Re-review found that the submitted federation document could not be independently confirmed.'
 );
 
-SELECT public.admin_review_student_verification(
-  (SELECT id FROM public.student_verifications WHERE document_type='bonafide'),
-  'approved',
-  'Bonafide school document reviewed; athlete name and current academic year are legible.'
-);
 DO $test$
-DECLARE v_status text; v_notes text; v_audit integer;
+DECLARE
+  v_request_id uuid;
+  v_result jsonb;
+  v_pending integer;
+  v_audit integer;
 BEGIN
-  SELECT status,reviewer_notes INTO v_status,v_notes
-  FROM public.student_verifications WHERE document_type='bonafide';
-  IF v_status <> 'approved' OR v_notes NOT LIKE 'Bonafide school document reviewed%' THEN
-    RAISE EXCEPTION 'Verification decision and reason were not persisted';
+  -- Scoped Verification Admins intentionally cannot query the raw proof table.
+  -- Obtain the request ID through the permission-checked queue RPC.
+  SELECT request.id INTO v_request_id
+  FROM public.get_student_verification_queue() AS request
+  WHERE request.document_type='bonafide'
+  LIMIT 1;
+  IF v_request_id IS NULL THEN
+    RAISE EXCEPTION 'Bonafide proof is missing from the authorised review queue';
   END IF;
+
+  v_result := public.admin_review_student_verification(
+    v_request_id,
+    'approved',
+    'Bonafide school document reviewed; athlete name and current academic year are legible.'
+  );
+  IF v_result->>'status' <> 'approved' THEN
+    RAISE EXCEPTION 'Verification review RPC did not confirm approval';
+  END IF;
+
+  SELECT count(*) INTO v_pending
+  FROM public.get_student_verification_queue() AS request
+  WHERE request.document_type='bonafide';
+  IF v_pending <> 0 THEN
+    RAISE EXCEPTION 'Approved proof must leave the pending Student review queue';
+  END IF;
+
   SELECT count(*) INTO v_audit FROM public.get_platform_admin_audit(100)
-  WHERE action='verification.student.approved';
-  IF v_audit < 1 THEN RAISE EXCEPTION 'Student verification decision was not audited'; END IF;
+  WHERE action='verification.student.approved'
+    AND reason='Bonafide school document reviewed; athlete name and current academic year are legible.';
+  IF v_audit < 1 THEN RAISE EXCEPTION 'Student verification decision and reason must be audited'; END IF;
 END;
 $test$;
 RESET ROLE;
@@ -240,10 +261,15 @@ RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
 SET LOCAL ROLE authenticated;
 DO $test$
+DECLARE v_request_id uuid;
 BEGIN
+  SELECT request.id INTO v_request_id
+  FROM public.get_student_verification_queue() AS request
+  WHERE request.status='pending'
+  LIMIT 1;
   BEGIN
     PERFORM public.admin_review_student_verification(
-      (SELECT id FROM public.student_verifications WHERE document_type='bonafide'),
+      v_request_id,
       'rejected',
       '  '
     );
