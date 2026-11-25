@@ -104,5 +104,5 @@ Keep PR #76 in draft until staging, CI and physical-device evidence is attached.
 
 ## Remaining platform gates
 
-- Browser background Push API delivery is not enabled in this PR. The current web desktop-notification helper supports foreground permission/display only; a production Web Push rollout still needs VAPID public/private key provisioning, a server-side sender, an authenticated subscription lifecycle, a trusted worker schedule, and HTTPS acceptance testing.
+- Browser background Push API delivery is not enabled in this PR. Web now has an explicit browser-permission control and foreground desktop alerts through the registered service worker while the site is open. A production background Web Push rollout still needs VAPID public/private key provisioning, a server-side sender, an authenticated subscription lifecycle, a trusted worker schedule, and HTTPS acceptance testing.
 - End-to-end encryption and encrypted backup remain architecture-only. Do not advertise either feature until the selected maintained protocol implementation, cross-platform interoperability, independent review, device/key lifecycle, and recovery tests are complete.
