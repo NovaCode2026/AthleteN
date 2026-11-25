@@ -466,7 +466,7 @@ BEGIN
   SELECT count(*) INTO v_training FROM public.training_sessions;
   SELECT count(*) INTO v_storage FROM storage.objects;
   IF v_training <> 1 THEN RAISE EXCEPTION 'Restored Athlete should regain own training data'; END IF;
-  IF v_storage <> 1 THEN RAISE EXCEPTION 'Restored Athlete should regain own private document access'; END IF;
+  IF v_storage <> 2 THEN RAISE EXCEPTION 'Restored Athlete should regain access to both owned private proof files'; END IF;
 END;
 $test$;
 RESET ROLE;
