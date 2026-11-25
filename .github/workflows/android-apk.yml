@@ -65,8 +65,22 @@ jobs:
       - name: ESLint validation
         run: npm run lint
 
+      - name: Normalize mislabeled WebP assets before Expo prebuild
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          find assets -type f -iname '*.png' -print0 | while IFS= read -r -d '' asset; do
+            mime="$(file --brief --mime-type "$asset")"
+            if [ "$mime" = "image/webp" ]; then
+              echo "Converting WebP content mislabeled as PNG: $asset"
+              temp_file="${asset}.normalized.png"
+              magick "$asset" "png:$temp_file"
+              mv "$temp_file" "$asset"
+            fi
+          done
+
       - name: Generate Android project
-        run: npx expo prebuild --platform android --no-install --non-interactive
+        run: CI=1 npx expo prebuild --platform android --no-install
 
       - name: Build standalone release APK
         working-directory: AthleteN-Mobile/android
