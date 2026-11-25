@@ -32,7 +32,7 @@ test("platform admin scopes are least-privilege and RLS-enforced", () => {
   assert.ok(resourceFn.includes("if p_table='student_verifications' then"));
   assert.ok(resourceFn.includes("elsif p_table='age_verifications' then"));
   assert.ok(resourceFn.includes("elsif p_table in ('subscriptions','subscription_usage','account_entitlements','payment_orders','payment_events')"));
-  assert.ok(resourceFn.includes("when 'support_tickets','feedback_items' then"));
+  assert.ok(resourceFn.includes("elsif p_table in ('support_tickets','feedback_items')"));
   assert.ok(resourceFn.includes("when 'feature_flags' then"));
   assert.ok(resourceFn.includes("when 'announcements' then"));
 
