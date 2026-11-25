@@ -436,10 +436,12 @@ RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000006',true);
 SET LOCAL ROLE authenticated;
 DO $test$
-DECLARE v_training integer;
+DECLARE v_training integer; v_storage integer;
 BEGIN
   SELECT count(*) INTO v_training FROM public.training_sessions;
+  SELECT count(*) INTO v_storage FROM storage.objects;
   IF v_training <> 1 THEN RAISE EXCEPTION 'Restored Athlete should regain own training data'; END IF;
+  IF v_storage <> 1 THEN RAISE EXCEPTION 'Restored Athlete should regain own private document access'; END IF;
 END;
 $test$;
 RESET ROLE;
