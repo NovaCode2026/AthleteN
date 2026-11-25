@@ -300,10 +300,7 @@ CREATE POLICY fixture_admin_support_tickets ON public.support_tickets
   FOR ALL TO authenticated
   USING (private.is_platform_admin() OR user_id=(SELECT auth.uid()))
   WITH CHECK (private.is_platform_admin() OR user_id=(SELECT auth.uid()));
-CREATE POLICY fixture_admin_feedback_items ON public.feedback_items
-  FOR ALL TO authenticated
-  USING (private.is_platform_admin() OR user_id=(SELECT auth.uid()))
-  WITH CHECK (private.is_platform_admin() OR user_id=(SELECT auth.uid()));
+
 
 CREATE POLICY fixture_admin_training_sessions ON public.training_sessions
   FOR ALL TO authenticated
