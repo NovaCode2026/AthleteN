@@ -657,6 +657,63 @@ create policy platform_verification_review_read
     and (select private.platform_admin_has_permission('verification.review'))
   );
 
+create or replace function private.audit_platform_configuration_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor uuid := (select auth.uid());
+  v_entity_id uuid;
+  v_action text;
+  v_metadata jsonb;
+begin
+  if tg_table_name='feature_flags' then
+    if tg_op='DELETE' then
+      v_entity_id:=old.id;
+      v_action:='platform.feature_flag.deleted';
+      v_metadata:=jsonb_build_object('flag_key',old.flag_key,'enabled',old.enabled);
+    else
+      v_entity_id:=new.id;
+      v_action:=case when tg_op='INSERT' then 'platform.feature_flag.created' else 'platform.feature_flag.updated' end;
+      v_metadata:=jsonb_build_object('flag_key',new.flag_key,'enabled',new.enabled,'audience',new.audience);
+    end if;
+  elsif tg_table_name='announcements' then
+    if tg_op='DELETE' then
+      v_entity_id:=old.id;
+      v_action:='platform.announcement.deleted';
+      v_metadata:=jsonb_build_object('title',old.title,'audience',old.audience);
+    else
+      v_entity_id:=new.id;
+      v_action:=case when tg_op='INSERT' then 'platform.announcement.published' else 'platform.announcement.updated' end;
+      v_metadata:=jsonb_build_object('title',new.title,'audience',new.audience,'published_at',new.published_at);
+    end if;
+  else
+    return null;
+  end if;
+
+  insert into public.platform_admin_audit_log(actor_user_id,action,reason,metadata)
+  values(v_actor,v_action,'Platform configuration changed through an authorised database write.',
+    v_metadata||jsonb_build_object('entity_id',v_entity_id,'table',tg_table_name));
+
+  if tg_op='DELETE' then return old; end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists platform_feature_flags_audit on public.feature_flags;
+create trigger platform_feature_flags_audit
+after insert or update or delete on public.feature_flags
+for each row execute function private.audit_platform_configuration_change();
+
+drop trigger if exists platform_announcements_audit on public.announcements;
+create trigger platform_announcements_audit
+after insert or update or delete on public.announcements
+for each row execute function private.audit_platform_configuration_change();
+
+revoke all on function private.audit_platform_configuration_change() from public, anon, authenticated;
+
 -- Scoped administrators are restricted at the database boundary. Regular users
 -- retain their existing owner/team RLS paths; full Admin/Super Admin retains
 -- existing platform-wide capabilities. Sensitive mutation remains RPC-only.
@@ -687,9 +744,9 @@ begin
       return (p_action='select' and private.platform_admin_has_permission('message_reports.read'))
         or (p_action='update' and private.platform_admin_has_permission('message_reports.manage'));
     when 'feature_flags' then
-      return private.platform_admin_has_permission('flags.manage');
+      return p_action in ('select','update') and private.platform_admin_has_permission('flags.manage');
     when 'announcements' then
-      return private.platform_admin_has_permission('announcements.manage');
+      return p_action in ('select','insert','update') and private.platform_admin_has_permission('announcements.manage');
     when 'audit_logs' then
       return p_action='select' and private.platform_admin_has_permission('audit.read');
     when 'roadmap_items','roadmap_votes','reserved_usernames' then
