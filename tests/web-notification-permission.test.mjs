@@ -37,3 +37,14 @@ test("desktop notification destinations cannot navigate to another origin", () =
   assert.match(worker, /new URL\(candidate, self\.location\.origin\)/);
   assert.match(worker, /parsed\.origin === self\.location\.origin/);
 });
+
+
+test("web desktop alerts carry attendance and announcement source links into the inbox", () => {
+  assert.match(app, /attendanceRecordId=/);
+  assert.match(app, /announcementId=/);
+  assert.match(pages, /params\.get\("attendanceRecordId"\)/);
+  assert.match(pages, /params\.get\("announcementId"\)/);
+  assert.match(pages, /query\.eq\("attendance_record_id",attendanceId\)/);
+  assert.match(pages, /query\.eq\("announcement_id",announcementId\)/);
+  assert.match(pages, /await openNotification\(data\)/);
+});
