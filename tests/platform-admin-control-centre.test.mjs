@@ -190,7 +190,7 @@ test("platform overview only returns metrics within the caller's permission scop
 
 test("Support and Finance workspaces enforce scoped read/write boundaries", () => {
   assert.match(sql, /revoke update on public\.support_tickets, public\.feedback_items from public, anon, authenticated/i);
-  assert.match(sql, /grant update \(status,priority,assigned_to,updated_at\) on public\.support_tickets to authenticated/i);
+  assert.match(sql, /grant update \(status,priority,assigned_to\) on public\.support_tickets to authenticated/i);
   assert.match(sql, /create trigger support_tickets_admin_audit/i);
   assert.match(sql, /create trigger support_tickets_touch_updated_at/i);
   assert.match(sql, /create trigger feedback_items_touch_updated_at/i);
