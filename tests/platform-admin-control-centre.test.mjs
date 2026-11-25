@@ -119,25 +119,25 @@ test("overview metrics are filtered by each administrator's permission scope", (
   const start = sql.indexOf("create or replace function public.get_platform_admin_overview");
   const end = sql.indexOf("$function$;", start);
   const fn = sql.slice(start, end);
-  assert.match(fn, /'active_subscriptions',[\\s\\S]*?has_permission\\('billing\\.read'\\)/);
-  assert.match(fn, /'open_support_tickets',[\\s\\S]*?has_permission\\('support\\.read'\\)/);
-  assert.match(fn, /'pending_student_verifications',[\\s\\S]*?has_permission\\('verification\\.read'\\)/);
-  assert.match(fn, /'users',[\\s\\S]*?has_permission\\('platform\\.read'\\)/);
+  assert.ok(fn.includes("'active_subscriptions', case when private.platform_admin_has_permission('billing.read')"));
+  assert.ok(fn.includes("'open_support_tickets', case when private.platform_admin_has_permission('support.read')"));
+  assert.ok(fn.includes("'pending_student_verifications', case when private.platform_admin_has_permission('verification.read')"));
+  assert.ok(fn.includes("'users', case when private.platform_admin_has_permission('platform.read')"));
 });
 
 test("Support Admin actions are audited and Finance Admin data is read-only", () => {
-  assert.match(sql, /create or replace function private\\.audit_platform_support_change/i);
-  assert.match(sql, /create trigger platform_support_ticket_audit/i);
-  assert.match(sql, /create trigger platform_feedback_audit/i);
-  assert.match(webExtensions, /support_tickets/);
-  assert.match(webExtensions, /feedback_items/);
-  assert.match(webExtensions, /canManageSupport/);
-  assert.match(webExtensions, /payment_events/);
-  assert.match(webExtensions, /canReadFinance/);
-  assert.match(mobileOperations, /support_tickets/);
-  assert.match(mobileOperations, /feedback_items/);
-  assert.match(mobileOperations, /payment_events/);
-  assert.match(webExtensions, /cannot change plan entitlements, mark a payment successful, issue refunds/i);
+  assert.ok(sql.includes("create or replace function private.audit_platform_support_change"));
+  assert.ok(sql.includes("create trigger platform_support_ticket_audit"));
+  assert.ok(sql.includes("create trigger platform_feedback_audit"));
+  assert.ok(webExtensions.includes("support_tickets"));
+  assert.ok(webExtensions.includes("feedback_items"));
+  assert.ok(webExtensions.includes("canManageSupport"));
+  assert.ok(webExtensions.includes("payment_events"));
+  assert.ok(webExtensions.includes("canReadFinance"));
+  assert.ok(mobileOperations.includes("support_tickets"));
+  assert.ok(mobileOperations.includes("feedback_items"));
+  assert.ok(mobileOperations.includes("payment_events"));
+  assert.ok(webExtensions.includes("cannot change plan entitlements, mark a payment successful, issue refunds"));
 });
 
 test("web and mobile admin surfaces use database-returned permission scopes", () => {
