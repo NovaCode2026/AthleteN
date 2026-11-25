@@ -21,7 +21,7 @@
 
 ## Database change
 
-Apply `20261125110000_admin_verification_center_audit.sql` only after the repository's existing Supabase migration-history drift has been reconciled and the ordered migration chain has been validated on a disposable local database. The migration adds:
+Apply `20261125090000_admin_verification_center_audit.sql` only after the repository's existing Supabase migration-history drift has been reconciled and the ordered migration chain has been validated on a disposable local database. The migration adds:
 
 - `public.admin_review_student_verification(uuid,text,text)`
 - A SELECT-only Storage policy for `verification-proofs` granted to platform admins.

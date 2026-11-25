@@ -15,7 +15,7 @@ test("web Student verification review uses the audited RPC, not direct table upd
 });
 
 test("database review RPC enforces platform admin, pending-only decisions and audit logging", () => {
-  const sql = read("../supabase/migrations/20261125110000_admin_verification_center_audit.sql");
+  const sql = read("../supabase/migrations/20261125090000_admin_verification_center_audit.sql");
   assert.match(sql, /security definer/i);
   assert.match(sql, /private\.is_platform_admin\(\)/i);
   assert.match(sql, /for update/i);
