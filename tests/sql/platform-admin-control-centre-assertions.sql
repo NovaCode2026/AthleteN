@@ -212,6 +212,21 @@ BEGIN
   IF v_rows <> 0 THEN RAISE EXCEPTION 'Operations Admin must not delete announcements'; END IF;
 END;
 $test$;
+DO $test$
+BEGIN
+  BEGIN
+    PERFORM public.admin_set_platform_account_access(
+      '00000000-0000-0000-0000-000000000006',
+      'suspended',
+      'Invalid past-expiry test must be rejected.',
+      now() - interval '1 day'
+    );
+    RAISE EXCEPTION 'Past account restriction expiry was accepted';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM = 'Past account restriction expiry was accepted' THEN RAISE; END IF;
+  END;
+END;
+$test$;
 SELECT public.admin_set_platform_account_access(
   '00000000-0000-0000-0000-000000000006',
   'restricted',
