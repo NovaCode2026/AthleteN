@@ -31,7 +31,9 @@ test("platform admin scopes are least-privilege and RLS-enforced", () => {
   assert.match(sql, /as restrictive for delete to authenticated/i);
   assert.ok(sql.includes("case when t in ('profiles','notifications','support_tickets','feedback_items') then ' or user_id=(select auth.uid())' else '' end"));
   assert.ok(resourceFn.includes("if p_table='student_verifications' then"));
+  assert.ok(resourceFn.includes("if p_table='student_verifications' then\\n    return false;"));
   assert.ok(resourceFn.includes("elsif p_table='age_verifications' then"));
+  assert.ok(resourceFn.includes("elsif p_table='age_verifications' then\\n    return false;"));
   assert.ok(resourceFn.includes("elsif p_table in ('subscriptions','subscription_usage','account_entitlements','payment_orders','payment_events')"));
   assert.ok(resourceFn.includes("elsif p_table in ('support_tickets','feedback_items')"));
   assert.ok(resourceFn.includes("when 'feature_flags' then"));
@@ -226,7 +228,8 @@ test("Support and Finance workspaces enforce scoped read/write boundaries", () =
 
 test("age-verification guardian approval remains separate and generic admin data stays minimised", () => {
   assert.match(webAdmin, /ageVerificationReadOnly = selected === "ageVerifications"/);
-  assert.match(webAdmin, /select\("id,user_id,status,approved_at,rejected_at,created_at,updated_at"\)/);
+  assert.match(webAdmin, /get_age_verification_admin_queue/);
+  assert.match(sql, /create or replace function public\.get_age_verification_admin_queue/);
   assert.doesNotMatch(webAdmin, /select\("id,user_id,date_of_birth,parent_email/);
   assert.match(webAdmin, /Age-verification records are view-only here/);
   assert.match(sql, /REVOKE ALL ON FUNCTION public\.get_my_platform_admin_permissions\(\) FROM public, anon/i);
