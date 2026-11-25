@@ -68,12 +68,16 @@ export default function NotificationsScreen() {
   const load = useCallback(async () => {
     if (!session) { setRows([]); setLoading(false); return; }
     setLoading(true);
-    let { data, error: queryError } = await supabase
+    let data: NotificationRow[] | null = null;
+    let queryError: { message: string } | null = null;
+    const primaryQuery = await supabase
       .from('notifications')
       .select('id,title,body,notification_type,action_route,message_id,announcement_id,attendance_record_id,created_at,read_at')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50);
+    data = (primaryQuery.data || null) as NotificationRow[] | null;
+    queryError = primaryQuery.error;
     // Older staging environments may not have the source-link migration yet.
     if (queryError && String(queryError.message || '').toLowerCase().includes('attendance_record_id')) {
       const fallback = await supabase
