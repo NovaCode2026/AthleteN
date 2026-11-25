@@ -129,6 +129,7 @@ export default function PlatformAdminExtensions({ role }: { userId: string; role
   }
 
   async function review(row: VerificationRequest, status: "approved" | "rejected") {
+    if (!supabase) { setError("Admin service is unavailable."); return; }
     const reason = (reviewReasons[row.id] || "").trim();
     if (reason.length < 5 || reason.length > 500) {
       setError("Enter a verification decision reason between 5 and 500 characters.");
@@ -149,6 +150,7 @@ export default function PlatformAdminExtensions({ role }: { userId: string; role
   }
 
   async function searchAccounts() {
+    if (!supabase) { setError("Admin service is unavailable."); return; }
     if (accountQuery.trim().length < 2) { setError("Enter at least two characters to search accounts."); return; }
     setBusyKey("search"); setError("");
     try {
@@ -163,10 +165,18 @@ export default function PlatformAdminExtensions({ role }: { userId: string; role
     if (!supabase || !selectedAccount) { setError("Select an account first."); return; }
     const reason = accessReason.trim();
     if (reason.length < 5 || reason.length > 500) { setError("Enter an account-access reason between 5 and 500 characters."); return; }
-    const expiresAt = accessStatus === "restricted" || (accessStatus === "suspended" && accessExpiry)
-      ? new Date(accessExpiry).toISOString() : null;
-    if (accessStatus === "restricted" && (!accessExpiry || Number.isNaN(Date.parse(accessExpiry)) || Date.parse(accessExpiry) <= Date.now())) {
-      setError("A temporary restriction needs a future expiry date and time."); return;
+    let expiresAt: string | null = null;
+    if (accessExpiry.trim()) {
+      const parsedExpiry = Date.parse(accessExpiry);
+      if (Number.isNaN(parsedExpiry) || parsedExpiry <= Date.now()) {
+        setError("Expiry must be a valid future date and time.");
+        return;
+      }
+      expiresAt = new Date(parsedExpiry).toISOString();
+    }
+    if (accessStatus === "restricted" && !expiresAt) {
+      setError("A temporary restriction needs a future expiry date and time.");
+      return;
     }
     setBusyKey("access"); setError(""); setNotice("");
     try {
@@ -182,6 +192,7 @@ export default function PlatformAdminExtensions({ role }: { userId: string; role
   }
 
   async function changeAssignment() {
+    if (!supabase) { setError("Admin service is unavailable."); return; }
     if (!assignmentTarget) { setError("Choose an administrator account."); return; }
     setBusyKey("assignment"); setError(""); setNotice("");
     try {
