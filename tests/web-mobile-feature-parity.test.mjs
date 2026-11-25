@@ -73,7 +73,7 @@ test("every dynamically registered native tab screen resolves to a route file", 
 
 test("Journey uses the same Expo Router route ID registered by the native tab bar", () => {
   assert.match(tabs, /\{id:'journey',label:'Journey'/);
-  assert.match(tabs, /'journey'\s*\]/);
+  assert.match(tabs, /const TAB_SCREEN_IDS = new Set\(\[[^\]]*'journey'[^\]]*\]\)/);
   const alias = read("../AthleteN-Mobile/src/app/(tabs)/journey.tsx");
   assert.match(alias, /export \{ default \} from '\.\/athlete-journey'/);
 });
@@ -90,7 +90,7 @@ test("web and mobile retain shared feature contracts for messaging, notification
   assert.ok(webMessages.includes("conversations") && mobileMessages.includes("conversations"));
   assert.ok(webMessages.includes("messages") && mobileMessages.includes("messages"));
   assert.ok(webNotifications.includes("notifications") && mobileNotifications.includes("notifications"));
-  assert.ok(webRewards.includes("get_reward_wallet_summary") && mobileRewards.includes("get_reward_wallet_summary"));
+  assert.ok(webRewards.includes("/.netlify/functions/reward-wallet") && mobileRewards.includes("/.netlify/functions/reward-wallet"));
   for (const table of ["athlete_seasons","competition_journals","fight_iq_entries","technique_progress","athlete_challenges","personal_records","athlete_milestones","athlete_timeline_events"]) {
     assert.ok(mobileJourney.includes(table), `mobile Athlete Journey is missing ${table}`);
   }
