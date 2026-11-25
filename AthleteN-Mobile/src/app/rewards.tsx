@@ -27,7 +27,7 @@ type Wallet = {
   nextCursor: string | null;
 };
 
-function isAdultDateOfBirth(value: unknown): boolean {
+function isRewardAgeEligibleDateOfBirth(value: unknown): boolean {
   if (typeof value !== 'string' || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value)) return false;
   const [year, month, day] = value.split('-').map(Number);
   const birthDate = new Date(Date.UTC(year, month - 1, day));
@@ -35,7 +35,7 @@ function isAdultDateOfBirth(value: unknown): boolean {
   const now = new Date();
   let age = now.getUTCFullYear() - year;
   if (now.getUTCMonth() < month - 1 || (now.getUTCMonth() === month - 1 && now.getUTCDate() < day)) age -= 1;
-  return age >= 18;
+  return age >= 13;
 }
 
 export default function RewardsScreen() {
@@ -50,7 +50,7 @@ export default function RewardsScreen() {
   const [adNotice, setAdNotice] = useState('');
   const [privacyNotice, setPrivacyNotice] = useState('');
   const adsFeatureEnabled = __DEV__ || process.env.EXPO_PUBLIC_ATHLETEN_REWARDED_ADS_ENABLED === 'true';
-  const adultAccount = isAdultDateOfBirth(profile?.date_of_birth);
+  const ageEligibleAccount = isRewardAgeEligibleDateOfBirth(profile?.date_of_birth);
 
   const load = useCallback(async () => {
     if (!session?.access_token) {
@@ -212,15 +212,15 @@ export default function RewardsScreen() {
           <View style={s.noticeIcon}><Icon name="shield" size={18} color={c.accentBright} /></View>
           <View style={{ flex: 1 }}>
             <Text style={s.noticeTitle}>Rewarded ads are not live yet</Text>
-            <Text style={s.noticeText}>Ads are optional and require server-verified adult eligibility, consent and release approval. No ad will play until those checks pass. Your existing AthleteN access is not affected.</Text>
+            <Text style={s.noticeText}>Ads are optional and require adult eligibility or parent/guardian-approved teen eligibility (13–17), age-appropriate ad treatment, consent and release approval. Accounts under 13 are not eligible. No ad will play until those checks pass. Your existing AthleteN access is not affected.</Text>
           </View>
         </View>
 
-        {adsFeatureEnabled && adultAccount ? (
+        {adsFeatureEnabled && ageEligibleAccount ? (
           <View style={s.adCard}>
             <Text style={s.section}>OPTIONAL REWARDED AD</Text>
             <Text style={s.adTitle}>Watch voluntarily · Earn 2 AI messages</Text>
-            <Text style={s.meta}>You must finish the rewarded ad to qualify. Closing or skipping before Google marks it earned gives 0 credits. Credits are added only after Google verifies completion on AthleteN’s server. Daily and monthly limits apply.</Text>
+            <Text style={s.meta}>Eligible adults and parent/guardian-approved teens (13–17) may participate using teen-safe ad treatment. Accounts under 13 are not eligible. You must finish the rewarded ad to qualify. Closing or skipping before Google marks it earned gives 0 credits. Credits are added only after Google verifies completion on AthleteN’s server. Daily and monthly limits apply.</Text>
             <Pressable
               onPress={() => void watchRewardedAd()}
               disabled={adBusy || !session?.access_token}
