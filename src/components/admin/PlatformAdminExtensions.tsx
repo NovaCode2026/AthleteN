@@ -29,6 +29,8 @@ type AccessControl = {
   user_id: string; full_name: string | null; username: string | null; status: string;
   reason: string; expires_at: string | null; changed_by: string | null; updated_at: string;
 };
+type FeatureFlag = { id:string; flag_key:string; description:string|null; enabled:boolean; audience:string };
+type PlatformAnnouncement = { id:string; title:string; body:string; audience:string; published_at:string|null; created_at:string };
 type AuditEntry = {
   id: string; actor_user_id: string | null; target_user_id: string | null;
   action: string; reason: string | null; metadata: Record<string, unknown>; created_at: string;
@@ -37,9 +39,12 @@ type AuditEntry = {
 const text = (value: unknown) => value == null ? "" : String(value);
 const localDateTime = (value: string | null) => value ? new Date(value).toLocaleString() : "No expiry";
 
-export default function PlatformAdminExtensions({ role }: { userId: string; role: string }) {
+export default function PlatformAdminExtensions({ userId, role }: { userId: string; role: string }) {
   const [permission, setPermission] = useState<PermissionPayload | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([]);
+  const [announcements, setAnnouncements] = useState<PlatformAnnouncement[]>([]);
+  const [announcementDraft, setAnnouncementDraft] = useState({ title:"", body:"", audience:"all" });
   const [verificationQueue, setVerificationQueue] = useState<VerificationRequest[]>([]);
   const [athleteReviews, setAthleteReviews] = useState<AthleteVerificationReview[]>([]);
   const [athleteQuery, setAthleteQuery] = useState("");
@@ -67,6 +72,8 @@ export default function PlatformAdminExtensions({ role }: { userId: string; role
   const canVerify = has("verification.read");
   const canManageAthleteVerification = has("verification.athlete.manage");
   const canManageAccounts = has("account.manage");
+  const canManageFlags = has("flags.manage");
+  const canManageAnnouncements = has("announcements.manage");
   const canReadAudit = has("audit.read");
   const canReadOverview = ["platform.read","analytics.read","billing.read","verification.read","support.read"].some(has);
 
@@ -95,6 +102,20 @@ export default function PlatformAdminExtensions({ role }: { userId: string; role
           setVerificationQueue((r.data || []) as VerificationRequest[]);
         })());
       } else setVerificationQueue([]);
+      if (allowed("flags.manage")) {
+        jobs.push((async () => {
+          const r = await supabase.from("feature_flags").select("id,flag_key,description,enabled,audience").order("flag_key");
+          if (r.error) throw r.error;
+          setFeatureFlags((r.data || []) as FeatureFlag[]);
+        })());
+      } else setFeatureFlags([]);
+      if (allowed("announcements.manage")) {
+        jobs.push((async () => {
+          const r = await supabase.from("announcements").select("id,title,body,audience,published_at,created_at").order("created_at",{ascending:false}).limit(30);
+          if (r.error) throw r.error;
+          setAnnouncements((r.data || []) as PlatformAnnouncement[]);
+        })());
+      } else setAnnouncements([]);
       if (allowed("platform.roles.manage")) {
         jobs.push((async () => {
           const r = await supabase.rpc("get_platform_admin_assignments");
@@ -155,6 +176,49 @@ export default function PlatformAdminExtensions({ role }: { userId: string; role
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Verification review failed.");
     } finally { setBusyKey(""); }
+  }
+
+  async function toggleFeatureFlag(flag: FeatureFlag) {
+    if (!supabase || !canManageFlags) return;
+    setBusyKey("flag:" + flag.id); setError(""); setNotice("");
+    try {
+      const { error: updateError } = await supabase.from("feature_flags")
+        .update({ enabled: !flag.enabled, updated_at: new Date().toISOString() })
+        .eq("id", flag.id);
+      if (updateError) throw updateError;
+      setNotice("Feature flag updated. The database audit trigger recorded this change.");
+      const { data, error: refreshError } = await supabase.from("feature_flags")
+        .select("id,flag_key,description,enabled,audience").order("flag_key");
+      if (refreshError) throw refreshError;
+      setFeatureFlags((data || []) as FeatureFlag[]);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Feature flag could not be updated."); }
+    finally { setBusyKey(""); }
+  }
+
+  async function publishAnnouncement() {
+    if (!supabase || !canManageAnnouncements) return;
+    const title = announcementDraft.title.trim();
+    const body = announcementDraft.body.trim();
+    if (title.length < 3 || title.length > 120 || body.length < 5 || body.length > 4000) {
+      setError("Announcement title must be 3–120 characters and body 5–4,000 characters.");
+      return;
+    }
+    setBusyKey("announcement"); setError(""); setNotice("");
+    try {
+      const { error: publishError } = await supabase.from("announcements").insert({
+        title, body, audience: announcementDraft.audience,
+        published_at: new Date().toISOString(), created_by: userId
+      });
+      if (publishError) throw publishError;
+      setAnnouncementDraft({ title:"", body:"", audience:"all" });
+      setNotice("Announcement published and added to the platform audit log.");
+      const { data, error: refreshError } = await supabase.from("announcements")
+        .select("id,title,body,audience,published_at,created_at")
+        .order("created_at",{ascending:false}).limit(30);
+      if (refreshError) throw refreshError;
+      setAnnouncements((data || []) as PlatformAnnouncement[]);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Announcement could not be published."); }
+    finally { setBusyKey(""); }
   }
 
   async function searchAthleteReviews() {
@@ -302,6 +366,30 @@ export default function PlatformAdminExtensions({ role }: { userId: string; role
         <label>Decision reason<textarea rows={2} maxLength={500} value={reviewReasons[row.id] || ""} onChange={(event)=>setReviewReasons((values)=>({...values,[row.id]:event.target.value}))} placeholder="Record the evidence-based reason for this decision (5–500 characters)."/></label>
         <div className="inline-actions"><button className="btn primary" type="button" disabled={busyKey==="review:"+row.id} onClick={()=>void review(row,"approved")}>Approve</button><button className="btn danger" type="button" disabled={busyKey==="review:"+row.id} onClick={()=>void review(row,"rejected")}>Reject</button></div>
       </article>):<div className="platform-admin-empty">No Student proof requests are waiting for review.</div>}
+    </div>}
+
+    {(canManageFlags || canManageAnnouncements) && <div className="platform-admin-panel">
+      <div className="platform-admin-panel-head"><div><span className="admin-section-label">Platform configuration</span><h4>Feature Flags & Announcements</h4>
+        <p>Operations-scoped controls. Feature flag toggles and published announcements are recorded by database audit triggers.</p></div><ShieldCheck size={20}/></div>
+      {canManageFlags && <div className="platform-admin-config-grid">
+        <div><b>Feature flags</b><p>Toggle a flag only after checking the impact of the feature it controls.</p></div>
+        {featureFlags.map((flag)=><div className="platform-admin-flag" key={flag.id}>
+          <div><b>{flag.flag_key}</b><small>{flag.description || "No description"} · audience: {flag.audience}</small></div>
+          <button className={flag.enabled?"btn danger":"btn primary"} type="button" disabled={busyKey==="flag:"+flag.id} onClick={()=>void toggleFeatureFlag(flag)}>{flag.enabled?"Disable":"Enable"}</button>
+        </div>)}
+      </div>}
+      {canManageAnnouncements && <div className="platform-admin-announcement-compose">
+        <b>Publish announcement</b>
+        <label>Title<input value={announcementDraft.title} maxLength={120} onChange={(event)=>setAnnouncementDraft(v=>({...v,title:event.target.value}))} placeholder="Announcement title"/></label>
+        <label>Audience<select value={announcementDraft.audience} onChange={(event)=>setAnnouncementDraft(v=>({...v,audience:event.target.value}))}>
+          <option value="all">Everyone</option><option value="athletes">Athletes</option><option value="coaches">Coaches</option><option value="academies">Academies</option><option value="admins">Administrators</option>
+        </select></label>
+        <label>Message<textarea rows={3} maxLength={4000} value={announcementDraft.body} onChange={(event)=>setAnnouncementDraft(v=>({...v,body:event.target.value}))} placeholder="Write a clear platform announcement."/></label>
+        <button className="btn primary" type="button" disabled={busyKey==="announcement"} onClick={()=>void publishAnnouncement()}>Publish announcement</button>
+        {announcements.slice(0,8).map((item)=><article className="platform-admin-announcement" key={item.id}>
+          <div><b>{item.title}</b><small>{item.audience} · {item.published_at ? new Date(item.published_at).toLocaleString() : "Draft"}</small></div><p>{item.body}</p>
+        </article>)}
+      </div>}
     </div>}
 
     {canAssign && <div className="platform-admin-panel">
