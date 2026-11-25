@@ -83,7 +83,10 @@ test("Student verification decisions require a reason and use an audited server 
   assert.match(mobileOperations, /search_athlete_verification_reviews/);
   assert.match(mobileOperations, /admin_set_athlete_verified/);
 
-  assert.match(sql, /bucket_id='verification-proofs'[\s\S]*?platform_admin_has_permission\('verification\.review'\)/);
+  assert.match(sql, /create or replace function private\.platform_admin_can_read_pending_verification_proof/i);
+  assert.match(sql, /sv\.status='pending'/);
+  assert.match(sql, /bucket_id='verification-proofs'[\s\S]*?platform_admin_can_read_pending_verification_proof\(name\)/);
+
   assert.match(webExtensions, /admin_review_student_verification/);
   assert.match(webExtensions, /createSignedUrl\(row\.file_path, 120\)/);
   assert.match(mobileOperations, /admin_review_student_verification/);
