@@ -37,7 +37,7 @@ const productPlans = {
 } as const;
 
 export default function PlansScreen() {
-  const { profile, session } = useAuth();
+  const { profile, session, syncVersion } = useAuth();
   const router = useRouter();
   const scrollRef = useNavigationScrollToTop();
   const [billing, setBilling] = useState<BillingCycle>('yearly');
@@ -65,7 +65,7 @@ export default function PlansScreen() {
       setLoading(false);
     })();
     return () => { alive = false; };
-  }, [session]);
+  }, [session, syncVersion]);
 
   async function startCheckout(planId: string) {
     if (!PAID_CHECKOUT_ENABLED) { setMessage('Paid checkout and the seven-day no-charge trial are not enabled yet. The Free plan remains available.'); return; }
