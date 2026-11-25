@@ -539,8 +539,11 @@ begin
   if p_expires_at is not null and p_expires_at<=pg_catalog.now() then
     raise exception 'An account-access expiry must be in the future';
   end if;
-  if p_status='restricted' and (p_expires_at is null or p_expires_at<=pg_catalog.now()) then
-    raise exception 'A temporary restriction must have a future expiry';
+  if p_status='restricted' and p_expires_at is null then
+    raise exception 'A temporary restriction must have an expiry';
+  end if;
+  if p_status<>'active' and p_expires_at is not null and p_expires_at<=pg_catalog.now() then
+    raise exception 'An account restriction expiry must be in the future';
   end if;
 
   select p.role into v_target_role from public.profiles p where p.user_id=p_user_id for update;
