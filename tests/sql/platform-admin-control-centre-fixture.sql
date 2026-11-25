@@ -62,6 +62,7 @@ CREATE TABLE public.athlete_badges (
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
   UNIQUE(user_id,badge_key)
 );
+CREATE SCHEMA IF NOT EXISTS storage;
 CREATE TABLE IF NOT EXISTS storage.objects (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   bucket_id text NOT NULL,
