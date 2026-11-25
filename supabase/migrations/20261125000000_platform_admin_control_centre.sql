@@ -779,6 +779,12 @@ begin
 end;
 $policies$;
 
+drop policy if exists platform_account_access_gate on storage.objects;
+create policy platform_account_access_gate on storage.objects
+as restrictive for all to authenticated
+using ((select private.platform_account_is_active()) or (select private.is_super_admin()))
+with check ((select private.platform_account_is_active()) or (select private.is_super_admin()));
+
 create or replace function private.platform_admin_can_read_pending_verification_proof(p_path text)
 returns boolean
 language sql
