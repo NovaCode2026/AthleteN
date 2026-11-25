@@ -26,6 +26,38 @@ END;
 $test$;
 RESET ROLE;
 
+-- Super Admin role changes pass through the protected entitlement projection and
+-- the system-managed Administrator badge follows the current role.
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+SET LOCAL ROLE authenticated;
+SELECT public.admin_set_user_role('00000000-0000-0000-0000-000000000006','admin');
+DO $test$
+DECLARE v_role text; v_badges integer;
+BEGIN
+  SELECT role INTO v_role FROM public.profiles
+  WHERE user_id='00000000-0000-0000-0000-000000000006';
+  SELECT count(*) INTO v_badges FROM public.athlete_badges
+  WHERE user_id='00000000-0000-0000-0000-000000000006' AND badge_key='administrator';
+  IF v_role <> 'admin' OR v_badges <> 1 THEN
+    RAISE EXCEPTION 'Super Admin role promotion or Administrator badge failed';
+  END IF;
+END;
+$test$;
+SELECT public.admin_set_user_role('00000000-0000-0000-0000-000000000006','athlete');
+DO $test$
+DECLARE v_role text; v_badges integer;
+BEGIN
+  SELECT role INTO v_role FROM public.profiles
+  WHERE user_id='00000000-0000-0000-0000-000000000006';
+  SELECT count(*) INTO v_badges FROM public.athlete_badges
+  WHERE user_id='00000000-0000-0000-0000-000000000006' AND badge_key='administrator';
+  IF v_role <> 'athlete' OR v_badges <> 0 THEN
+    RAISE EXCEPTION 'Super Admin role demotion or Administrator badge cleanup failed';
+  END IF;
+END;
+$test$;
+RESET ROLE;
+
 -- Super Admin assigns scoped roles to existing administrator accounts.
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
 SET LOCAL ROLE authenticated;
