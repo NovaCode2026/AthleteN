@@ -208,16 +208,16 @@ SELECT public.admin_set_athlete_verified(
 );
 
 SELECT public.admin_review_student_verification(
-  (SELECT id FROM public.student_verifications WHERE document_type='school_id'),
+  (SELECT id FROM public.student_verifications WHERE document_type='bonafide'),
   'approved',
-  'School document reviewed; name and current academic year are legible.'
+  'Bonafide school document reviewed; athlete name and current academic year are legible.'
 );
 DO $test$
 DECLARE v_status text; v_notes text; v_audit integer;
 BEGIN
   SELECT status,reviewer_notes INTO v_status,v_notes
-  FROM public.student_verifications WHERE document_type='school_id';
-  IF v_status <> 'approved' OR v_notes NOT LIKE 'School document reviewed%' THEN
+  FROM public.student_verifications WHERE document_type='bonafide';
+  IF v_status <> 'approved' OR v_notes NOT LIKE 'Bonafide school document reviewed%' THEN
     RAISE EXCEPTION 'Verification decision and reason were not persisted';
   END IF;
   SELECT count(*) INTO v_audit FROM public.get_platform_admin_audit(100)
