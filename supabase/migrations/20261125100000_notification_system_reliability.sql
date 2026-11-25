@@ -30,7 +30,7 @@ CREATE INDEX IF NOT EXISTS notifications_attendance_record_id_idx
 ALTER TABLE public.notifications
   ADD COLUMN IF NOT EXISTS training_group_session_id uuid;
 
-DO $
+DO $training_group_session_fk$
 BEGIN
   IF NOT EXISTS (
     SELECT 1
@@ -45,7 +45,7 @@ BEGIN
       ON DELETE SET NULL;
   END IF;
 END;
-$;
+$training_group_session_fk$;
 
 CREATE INDEX IF NOT EXISTS notifications_training_group_session_id_idx
   ON public.notifications(training_group_session_id)
