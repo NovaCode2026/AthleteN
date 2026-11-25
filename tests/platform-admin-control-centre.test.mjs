@@ -63,6 +63,21 @@ test("Super Admin alone can change core platform roles and every change is audit
   assert.match(sql, /revoke all on function public\.admin_set_user_role\(uuid,text,text\) from public, anon/i);
 });
 
+test("Administrator scope changes require a documented Super Admin reason", () => {
+  const start = sql.indexOf("create or replace function public.admin_assign_platform_role");
+  const end = sql.indexOf("$function$;", start);
+  const fn = sql.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.ok(fn.includes("platform.roles.manage"));
+  assert.ok(fn.includes("p_reason is null"));
+  assert.ok(fn.includes("char_length(btrim(p_reason)) not between 5 and 500"));
+  assert.match(sql, /revoke all on function public\.admin_assign_platform_role\(uuid,text,text\) from public, anon/i);
+  assert.ok(webExtensions.includes("admin_assign_platform_role"));
+  assert.ok(webExtensions.includes("p_reason: reason"));
+  assert.ok(mobileOperations.includes("admin_assign_platform_role"));
+  assert.ok(mobileOperations.includes("p_reason: reason"));
+});
+
 test("Student verification decisions require a reason and use an audited server RPC", () => {
   const start = sql.indexOf("create or replace function public.admin_review_student_verification");
   const end = sql.indexOf("$function$;", start);
