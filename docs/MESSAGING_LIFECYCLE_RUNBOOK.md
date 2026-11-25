@@ -11,7 +11,8 @@ Status: deployment instructions for the candidate workflows in PR #76. No produc
    - `20261124170000_expo_push_ticket_and_receipt_tracking.sql`
    - `20261124180000_private_saved_messages.sql`
    - `20261124190000_group_conversation_push_notifications.sql`
-3. Run the messaging rich-media, lifecycle and push-delivery SQL integration workflows.
+   - `20261125100000_notification_system_reliability.sql`
+3. Run the messaging rich-media, lifecycle, push-delivery and notification-system SQL integration workflows.
 4. Run Supabase security and performance advisors. Review every result before proposing production rollout.
 5. Only after staging acceptance and adult/product approval should a migration owner prepare a separately reviewed production rollout plan.
 
@@ -28,16 +29,56 @@ The caller must keep this secret in its server-side scheduler only. It must neve
 
 Until the function is deployed, its secret is configured, and a trusted schedule is enabled, the database will hide expired messages at their expiry time but queued Storage objects will not be physically removed.
 
-## Expo push ticket and receipt processing
+## Expo push ticket, retry and receipt processing
 
-Deploy the `process-push-delivery-receipts` Edge Function after the push tracking migration is approved for the target environment.
+The reliability migration installs the primary worker as a one-minute `pg_cron` job named `athleten-push-delivery-cycle` when the managed database exposes `pg_cron`. The database cycle:
+- reconciles asynchronous `pg_net` send responses into Expo tickets;
+- retries transient enqueue/network/rate-limit/server failures with bounded exponential backoff (maximum five send attempts);
+- polls receipts once they are at least 15 minutes old;
+- retires device tokens when Expo reports `DeviceNotRegistered`.
 
-Required Edge Function secret:
-- `PUSH_DELIVERY_WORKER_SECRET`: a random server-only value used in the `x-worker-secret` header.
+After staging replay, verify the job exists and is active:
 
-Invoke this function at a trusted cadence (for example every 15 minutes) using POST. It records completed pg_net responses as Expo push tickets, then checks receipts that are at least 15 minutes old. It marks a successful receipt as `handed_off`, meaning Expo reports that FCM/APNs accepted the notification; it does not prove that a person saw the notification. A `DeviceNotRegistered` ticket or receipt retires that stored device token. Missing receipts remain retryable and eventually become `receipt_unavailable` after the Expo retention window.
+```sql
+select jobid, jobname, schedule, active, command
+from cron.job
+where jobname = 'athleten-push-delivery-cycle';
+```
 
-Do not expose the service-role key or either worker secret to clients. The worker returns aggregate counts only; it does not return device tokens, message content, or recipient identities.
+Inspect the latest job runs and private delivery states:
+
+```sql
+select jobid, status, start_time, end_time, return_message
+from cron.job_run_details
+where jobid = (
+  select jobid from cron.job
+  where jobname = 'athleten-push-delivery-cycle'
+)
+order by start_time desc
+limit 20;
+
+select delivery_status, count(*)
+from public.push_delivery_attempts
+group by delivery_status
+order by delivery_status;
+```
+
+A successful Expo ticket means Expo accepted the send request. A receipt state of `handed_off` means Expo reports that FCM/APNs accepted the notification; it does not prove that the phone displayed it or that a person saw it. Missing receipts are checked again and eventually become `receipt_unavailable` after the provider retention window. A permanent `DeviceNotRegistered` response removes the obsolete token.
+
+The repository also contains `process-push-delivery-receipts` as an alternative externally scheduled worker. It is not required when the database cron job is active. Do not enable both schedules without a deliberate operational decision. If an external worker is chosen instead, use a server-only `PUSH_DELIVERY_WORKER_SECRET` and never place it or the service-role key in web/mobile configuration.
+
+Do not expose the service-role key or worker secrets to clients. Delivery-ledger rows and polling requests remain private to `service_role`.
+
+
+## Notification event coverage
+
+The reliability migration adds durable in-app notification events for server-assigned badge awards, student verification decisions, Coach–athlete link activation, Academy invitations/membership activation and subscription state changes. Attendance alerts link to their exact attendance row. Group-training cancellation chat announcements no longer generate a second message-category alert in addition to the direct training alert. The existing central preference guard remains authoritative for every producer.
+
+All notification producers create an in-app row first. Push delivery is a separate, asynchronous channel and must never be treated as the durable inbox record. Message previews remain disabled by default.
+
+## Current production device gate
+
+A read-only production audit before this candidate migration found zero registered rows in `device_push_tokens`. The app must be installed on a physical device, notification permission granted and Expo project ID configured before that account can receive native push. A successful registration state means the token was saved; it is not evidence that Expo delivered a push. Complete at least one two-account Android acceptance run after staging replay and before release certification.
 
 ## End-to-end encryption and encrypted backups
 
