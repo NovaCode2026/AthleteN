@@ -5,8 +5,8 @@ The Android error `Default FirebaseApp is not initialized` means this APK was bu
 ## Required configuration
 
 1. In Firebase Console, create/select the Firebase project used by AthleteN.
-2. Add an Android app with package name **`com.novacode.athleten**.
-3. Download that app's **`google-services.json** file.
+2. Add an Android app with package name **`com.novacode.athleten`**.
+3. Download that app's **`google-services.json`** file.
 4. Store it securely in EAS as a **file-type environment variable**, named `GOOGLE_SERVICES_FILE`. For local builds, place the file in `AthleteN-Mobile/` and set `GOOGLE_SERVICES_FILE=./google-services.json`.
 5. The Expo app config reads this variable and adds it to `android.googleServicesFile` at build time. The JSON file is intentionally not committed to Git.
 6. In the Expo/EAS project, configure Android FCM v1 credentials for the same Firebase project so Expo's push service can deliver messages.
