@@ -9,7 +9,7 @@ const fields = [['training', 'Training'], ['competitions', 'Competitions'], ['me
 type Preference = Record<(typeof fields)[number][0], boolean>;
 const defaults: Preference = { training: true, competitions: true, messages: true, coach_academy: true, achievements: true, system: true };
 
-type PushStatus = 'checking' | 'registered' | 'permission-denied' | 'physical-device-required' | 'expo-project-id-missing' | 'registration-cancelled' | 'error' | 'idle';
+type PushStatus = 'checking' | 'registered' | 'permission-denied' | 'physical-device-required' | 'expo-project-id-missing' | 'firebase-config-missing' | 'registration-cancelled' | 'error' | 'idle';
 
 export default function NotificationSettingsScreen() {
   const { session } = useAuth();
@@ -61,17 +61,21 @@ export default function NotificationSettingsScreen() {
     'permission-denied': 'Android notification permission is not granted to AthleteN.',
     'physical-device-required': 'Push notifications require a physical Android or iOS device.',
     'expo-project-id-missing': 'The Expo project ID is missing from this app build.',
+    'firebase-config-missing': 'Android push setup is missing from this build. The app needs its Firebase google-services.json and a new Android build before push registration can work.',
     'registration-cancelled': 'Registration was interrupted. Retry to complete it.',
     error: 'AthleteN could not register this device.',
     idle: 'Sign in to register this device.'
   };
 
+  const isPushSetupError = pushStatus === 'firebase-config-missing' || pushStatus === 'expo-project-id-missing';
+
   return <Screen>
     <Header back eyebrow="ATHLETEN SETTINGS" title="Notifications" subtitle="Manage notification preferences and verify this phone is connected to push delivery." />
     <Card>
       <Text style={{ color: c.text, fontSize: 13, fontWeight: '900' }}>DEVICE PUSH STATUS</Text>
-      <Text accessibilityLiveRegion="polite" style={{ color: pushStatus === 'registered' ? c.success : pushStatus === 'error' || pushStatus === 'permission-denied' || pushStatus === 'expo-project-id-missing' ? c.danger : c.muted, fontSize: 11, lineHeight: 17, marginTop: 7 }}>{statusCopy[pushStatus]}</Text>
-      {pushError ? <Text selectable style={{ color: c.danger, fontSize: 10, lineHeight: 16, marginTop: 6 }}>{pushError}</Text> : null}
+      <Text accessibilityLiveRegion="polite" style={{ color: pushStatus === 'registered' ? c.success : pushStatus === 'error' || pushStatus === 'permission-denied' || isPushSetupError ? c.danger : c.muted, fontSize: 11, lineHeight: 17, marginTop: 7 }}>{statusCopy[pushStatus]}</Text>
+      {pushError && pushStatus !== 'firebase-config-missing' ? <Text selectable style={{ color: c.danger, fontSize: 10, lineHeight: 16, marginTop: 6 }}>{pushError}</Text> : null}
+      {pushStatus === 'firebase-config-missing' ? <Text style={{ color: c.muted, fontSize: 10, lineHeight: 16, marginTop: 7 }}>This is a build configuration issue, not a phone permission issue. Retrying on this APK will not fix it.</Text> : null}
       <Pressable accessibilityRole="button" accessibilityLabel="Retry push notification registration" disabled={retrying || !session} onPress={() => void checkPushRegistration()} style={{ backgroundColor: c.accent, borderRadius: 11, padding: 12, alignItems: 'center', marginTop: 12, opacity: retrying || !session ? 0.65 : 1 }}>
         {retrying ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 0.7 }}>RETRY DEVICE REGISTRATION</Text>}
       </Pressable>
