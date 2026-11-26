@@ -17,6 +17,11 @@ function getExpoProjectId() {
     process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
 }
 
+function isFirebaseConfigurationError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return /FirebaseApp is not initialized|Unable to get Firebase Messaging instance|googleServicesFile|Default FirebaseApp/i.test(message);
+}
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
@@ -59,7 +64,16 @@ export async function registerForPushNotifications(
   const projectId = getExpoProjectId();
   if (!projectId) return { token: null, reason: 'expo-project-id-missing' as const };
 
-  const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  let token: string;
+  try {
+    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  } catch (error) {
+    if (Platform.OS === 'android' && isFirebaseConfigurationError(error)) {
+      return { token: null, reason: 'firebase-config-missing' as const };
+    }
+    throw error;
+  }
+
   if (generation !== pushRegistrationGeneration) {
     return { token: null, reason: 'registration-cancelled' as const };
   }
@@ -107,7 +121,13 @@ export async function unregisterPushNotifications(userId: string) {
     const permission = await Notifications.getPermissionsAsync();
     const projectId = getExpoProjectId();
     if (permission.status === 'granted' && projectId) {
-      token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+      try {
+        token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+      } catch {
+        // If native FCM isn't configured, no token can have been registered
+        // by this build. Sign-out should still complete successfully.
+        token = null;
+      }
     }
   }
 
