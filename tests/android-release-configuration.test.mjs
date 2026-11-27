@@ -30,8 +30,10 @@ test("release workflow is manual and requires the Expo token", () => {
 
 test("CI APK artifact is explicitly labelled debug-signed", () => {
   const workflow = read("../.github/workflows/android-apk.yml");
-  assert.match(workflow, /AthleteN Android CI APK \(debug-signed\)/);
+  assert.match(workflow, /AthleteN Android CI APK \\(debug-signed\\)/);
   assert.match(workflow, /AthleteN-ci-debug-signed-apk/);
+  assert.match(workflow, /assembleRelease --no-daemon/);
+  assert.match(workflow, /assets\\/index\\.android\\.bundle/);
 });
 
 test("release documentation distinguishes CI artifacts from store builds", () => {

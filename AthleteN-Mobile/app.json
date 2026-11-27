@@ -99,10 +99,10 @@
       "policy": "fingerprint"
     },
     "updates": {
-      "enabled": false,
+      "enabled": true,
       "url": "https://u.expo.dev/7f308f88-5459-4f51-bb76-981f381eee3c",
-      "checkAutomatically": "NEVER",
-      "fallbackToCacheTimeout": 0
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 3000
     }
   }
 }

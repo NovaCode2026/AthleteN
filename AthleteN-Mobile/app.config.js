@@ -35,12 +35,21 @@ const IOS_APP_ID = appId(process.env.ADMOB_IOS_APP_ID, TEST_IOS_APP_ID, 'IOS');
 validateRewardedAdUnitId(process.env.EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID, ANDROID_APP_ID);
 
 module.exports = ({ config }) => {
+  const bootDiagnostic = process.env.ATHLETEN_BOOT_DIAGNOSTIC === '1';
   const googleServicesFile =
     process.env.GOOGLE_SERVICES_FILE ||
     process.env.GOOGLE_SERVICES_JSON_FILE;
 
   return {
     ...config,
+    ...(bootDiagnostic ? {
+      updates: {
+        ...config.updates,
+        enabled: false,
+        checkAutomatically: 'NEVER',
+        fallbackToCacheTimeout: 0,
+      },
+    } : {}),
     android: {
       ...config.android,
       ...(googleServicesFile ? { googleServicesFile } : {}),

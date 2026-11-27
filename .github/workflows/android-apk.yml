@@ -1,4 +1,4 @@
-name: AthleteN Android CI APK (embedded JS diagnostic)
+name: AthleteN Android CI APK (debug-signed)
 
 on:
   push:
@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: athleten-android-apk-${{ github.ref }}
+  group: athleten-android-apk-with-embedded-js-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -40,6 +40,8 @@ jobs:
     needs: scanner-regression
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      ATHLETEN_BOOT_DIAGNOSTIC: '1'
     defaults:
       run:
         working-directory: AthleteN-Mobile
@@ -123,7 +125,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AthleteN-native-boot-isolation-apk
+          name: AthleteN-ci-debug-signed-apk
           path: AthleteN-Mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
