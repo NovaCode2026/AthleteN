@@ -1,4 +1,5 @@
 import React from 'react';
+import * as SplashScreen from 'expo-splash-screen';
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import { Pressable, Text, View, useColorScheme } from 'react-native';
 import AthleteNLogo from '@/components/athleten-logo';
@@ -73,7 +74,18 @@ function AuthRouteGuard() {
   return null;
 }
 
+// Keep the native splash until React has mounted, but never leave users trapped
+// on the native splash if app bootstrap/rendering is delayed.
+void SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
 export default function RootLayout() {
+  React.useEffect(() => {
+    const hide = () => { void SplashScreen.hideAsync().catch(() => undefined); };
+    hide();
+    const failsafe = setTimeout(hide, 12000);
+    return () => clearTimeout(failsafe);
+  }, []);
+
   const colorScheme = useColorScheme();
   const router = useRouter();
 
