@@ -61,6 +61,7 @@ function parseRelease(data: unknown): Release | null {
 }
 
 export default function AppUpdateGate() {
+  const { isUpdatePending } = Updates.useUpdates();
   const [release, setRelease] = useState<Release | null>(null);
   const [apkVisible, setApkVisible] = useState(false);
   const [otaReady, setOtaReady] = useState(false);
@@ -87,7 +88,7 @@ export default function AppUpdateGate() {
       // A previously downloaded update is ready to apply. Expo's native
       // error-recovery logic retains the last working launch if the new bundle
       // fails before the app has rendered content.
-      if (Updates.isUpdatePending) {
+      if (isUpdatePending) {
         setOtaReady(true);
         return;
       }
@@ -104,7 +105,7 @@ export default function AppUpdateGate() {
       otaCheckInFlight.current = false;
       setCheckingOta(false);
     }
-  }, []);
+  }, [isUpdatePending]);
 
   const checkForApkUpdate = useCallback(async (force = false) => {
     if (Platform.OS !== 'android' || apkCheckInFlight.current) return;
@@ -168,7 +169,7 @@ export default function AppUpdateGate() {
 
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void checkForOtaUpdate(true);
+        void checkForOtaUpdate();
         void checkForApkUpdate();
       }
     });
