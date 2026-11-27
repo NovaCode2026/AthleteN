@@ -1,4 +1,4 @@
-name: AthleteN Android CI APK (debug-signed)
+name: AthleteN Android CI APK (embedded JS diagnostic)
 
 on:
   push:
@@ -109,14 +109,24 @@ jobs:
       - name: Generate Android project
         run: CI=1 npx expo prebuild --platform android --no-install
 
-      - name: Build standalone debug-signed APK
+      - name: Build standalone release-variant APK with embedded JavaScript
         working-directory: AthleteN-Mobile/android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Verify APK contains the embedded JavaScript bundle
+        working-directory: AthleteN-Mobile
+        run: |
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          unzip -Z1 "$APK" | grep -Eq '^assets/index\\.android\\.bundle
+          if-no-files-found: error
+          retention-days: 14
+
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AthleteN-ci-debug-signed-apk
-          path: AthleteN-Mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          name: AthleteN-native-boot-isolation-apk
+          path: AthleteN-Mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
