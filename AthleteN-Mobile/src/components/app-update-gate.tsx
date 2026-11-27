@@ -18,7 +18,7 @@ const installedCode = Number(Constants.nativeBuildVersion || Constants.expoConfi
 const APK_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const RETRY_INTERVAL_MS = 5 * 60 * 1000;
 const OTA_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
-const VERSION_PATTERN = /^\\d+\\.\\d+\\.\\d+(?:[+-][0-9A-Za-z.-]+)?$/;
+const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[+-][0-9A-Za-z.-]+)?$/;
 
 function parseRelease(data: unknown): Release | null {
   if (!data || typeof data !== 'object') return null;
