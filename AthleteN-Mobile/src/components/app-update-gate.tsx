@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Constants from 'expo-constants';
+import * as Updates from 'expo-updates';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 
@@ -14,9 +15,10 @@ type Release = {
 
 const c = Colors.dark;
 const installedCode = Number(Constants.nativeBuildVersion || Constants.expoConfig?.android?.versionCode || 1);
-const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
-const CHECK_RETRY_INTERVAL_MS = 5 * 60 * 1000;
-const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[+-][0-9A-Za-z.-]+)?$/;
+const APK_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const RETRY_INTERVAL_MS = 5 * 60 * 1000;
+const OTA_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
+const VERSION_PATTERN = /^\\d+\\.\\d+\\.\\d+(?:[+-][0-9A-Za-z.-]+)?$/;
 
 function parseRelease(data: unknown): Release | null {
   if (!data || typeof data !== 'object') return null;
@@ -60,24 +62,60 @@ function parseRelease(data: unknown): Release | null {
 
 export default function AppUpdateGate() {
   const [release, setRelease] = useState<Release | null>(null);
-  const [visible, setVisible] = useState(false);
+  const [apkVisible, setApkVisible] = useState(false);
+  const [otaReady, setOtaReady] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [checking, setChecking] = useState(false);
+  const [checkingApk, setCheckingApk] = useState(false);
+  const [checkingOta, setCheckingOta] = useState(false);
   const [message, setMessage] = useState('');
-  const lastCheckedAt = useRef(0);
-  const lastCheckSucceeded = useRef(false);
-  const checkInFlight = useRef(false);
+  const lastApkCheckAt = useRef(0);
+  const lastApkCheckSucceeded = useRef(false);
+  const apkCheckInFlight = useRef(false);
+  const lastOtaCheckAt = useRef(0);
+  const otaCheckInFlight = useRef(false);
 
-  const checkForUpdate = useCallback(async (force = false) => {
-    if (Platform.OS !== 'android' || checkInFlight.current) return;
+  const checkForOtaUpdate = useCallback(async (force = false) => {
+    if (Platform.OS !== 'android' || __DEV__ || !Updates.isEnabled || otaCheckInFlight.current) return;
 
     const now = Date.now();
-    const interval = lastCheckSucceeded.current ? CHECK_INTERVAL_MS : CHECK_RETRY_INTERVAL_MS;
-    if (!force && now - lastCheckedAt.current < interval) return;
+    if (!force && now - lastOtaCheckAt.current < OTA_CHECK_INTERVAL_MS) return;
 
-    checkInFlight.current = true;
-    lastCheckedAt.current = now;
-    setChecking(true);
+    otaCheckInFlight.current = true;
+    lastOtaCheckAt.current = now;
+    setCheckingOta(true);
+    try {
+      // A previously downloaded update is ready to apply. Expo's native
+      // error-recovery logic retains the last working launch if the new bundle
+      // fails before the app has rendered content.
+      if (Updates.isUpdatePending) {
+        setOtaReady(true);
+        return;
+      }
+
+      const check = await Updates.checkForUpdateAsync();
+      if (!check.isAvailable) return;
+
+      const downloaded = await Updates.fetchUpdateAsync();
+      if (downloaded.isNew) setOtaReady(true);
+    } catch {
+      // OTA failure must never block app startup or the native APK fallback.
+      lastOtaCheckAt.current = 0;
+    } finally {
+      otaCheckInFlight.current = false;
+      setCheckingOta(false);
+    }
+  }, []);
+
+  const checkForApkUpdate = useCallback(async (force = false) => {
+    if (Platform.OS !== 'android' || apkCheckInFlight.current) return;
+
+    const now = Date.now();
+    const interval = lastApkCheckSucceeded.current ? APK_CHECK_INTERVAL_MS : RETRY_INTERVAL_MS;
+    if (!force && now - lastApkCheckAt.current < interval) return;
+
+    apkCheckInFlight.current = true;
+    lastApkCheckAt.current = now;
+    setCheckingApk(true);
     try {
       const { data, error } = await supabase
         .from('mobile_app_releases')
@@ -87,70 +125,73 @@ export default function AppUpdateGate() {
         .maybeSingle();
 
       if (error) {
-        lastCheckSucceeded.current = false;
-        setMessage('The update service could not be reached. AthleteN will retry automatically; use Check Again to retry now.');
+        lastApkCheckSucceeded.current = false;
+        setMessage('The APK update service could not be reached. AthleteN will retry automatically.');
         return;
       }
 
-      lastCheckSucceeded.current = true;
-
+      lastApkCheckSucceeded.current = true;
       if (!data) {
         setRelease(null);
-        setVisible(false);
-        setMessage('');
+        setApkVisible(false);
         return;
       }
 
       const next = parseRelease(data);
       if (!next) {
-        // Never leave an old update prompt visible when the published feed is invalid.
         setRelease(null);
-        setVisible(false);
-        setMessage('');
+        setApkVisible(false);
         return;
       }
 
-      const versionCode = next.version_code;
-      const minimumCode = next.minimum_version_code;
-      if (versionCode > installedCode || minimumCode > installedCode) {
+      if (next.version_code > installedCode || next.minimum_version_code > installedCode) {
         setRelease(next);
-        setVisible(true);
+        setApkVisible(true);
         setMessage('');
       } else {
         setRelease(null);
-        setVisible(false);
+        setApkVisible(false);
         setMessage('');
       }
     } catch {
-      lastCheckSucceeded.current = false;
-      setMessage('The update service could not be reached. AthleteN will retry automatically; use Check Again to retry now.');
+      lastApkCheckSucceeded.current = false;
+      setMessage('The APK update service could not be reached. AthleteN will retry automatically.');
     } finally {
-      checkInFlight.current = false;
-      setChecking(false);
+      apkCheckInFlight.current = false;
+      setCheckingApk(false);
     }
   }, []);
 
   useEffect(() => {
-    void checkForUpdate(true);
+    void checkForOtaUpdate(true);
+    void checkForApkUpdate(true);
+
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void checkForUpdate();
+      if (state === 'active') {
+        void checkForOtaUpdate(true);
+        void checkForApkUpdate();
+      }
     });
-    const timer = setInterval(() => void checkForUpdate(), CHECK_RETRY_INTERVAL_MS);
+    const timer = setInterval(() => {
+      void checkForOtaUpdate();
+      void checkForApkUpdate();
+    }, RETRY_INTERVAL_MS);
+
     return () => {
       subscription.remove();
       clearInterval(timer);
     };
-  }, [checkForUpdate]);
+  }, [checkForOtaUpdate, checkForApkUpdate]);
 
-  const required = Boolean(release && release.minimum_version_code > installedCode);
+  const requiredApk = Boolean(release && release.minimum_version_code > installedCode);
 
-  async function downloadUpdate() {
+  async function downloadApkUpdate() {
     if (!release || busy) return;
     setBusy(true);
     setMessage('');
     try {
       await Linking.openURL(release.download_url);
-      setMessage('The APK download link has opened. After the file downloads, open it and approve the system installer. AthleteN stays installed until Android confirms the update.');
+      setMessage('The APK download link has opened. After it downloads, open it and approve Android’s installer. Native APK updates require your approval.');
     } catch {
       setMessage('The APK link could not be opened. Check your connection or contact AthleteN support.');
     } finally {
@@ -158,31 +199,91 @@ export default function AppUpdateGate() {
     }
   }
 
-  function retryCheck() {
-    lastCheckedAt.current = 0;
+  async function restartForOtaUpdate() {
+    if (busy || !otaReady || !Updates.isEnabled) return;
+    setBusy(true);
     setMessage('');
-    void checkForUpdate(true);
+    try {
+      await Updates.reloadAsync();
+    } catch {
+      setBusy(false);
+      setMessage('The update is downloaded, but AthleteN could not restart automatically. Close and reopen the app to apply it.');
+    }
   }
 
-  if (!visible || !release) return null;
+  function retryAllChecks() {
+    lastApkCheckAt.current = 0;
+    lastOtaCheckAt.current = 0;
+    setMessage('');
+    void checkForOtaUpdate(true);
+    void checkForApkUpdate(true);
+  }
+
+  // A mandatory native build takes precedence over OTA. A JS update cannot
+  // supply native code, permissions, SDK changes, icons or splash assets.
+  if (requiredApk && apkVisible && release) {
+    return (
+      <Modal visible transparent animationType="fade" onRequestClose={() => undefined}>
+        <View style={s.scrim}>
+          <View style={s.card}>
+            <Text style={s.kicker}>ATHLETEN NATIVE RELEASE</Text>
+            <Text style={s.title}>Required Android update</Text>
+            <Text style={s.version}>Version {release.version} · Build {release.version_code}</Text>
+            <Text style={s.body}>This release contains native app changes that OTA cannot install. Install the updated APK to continue.</Text>
+            {release.release_notes ? <ScrollView style={s.notesScroll} nestedScrollEnabled><Text style={s.notes}>{release.release_notes}</Text></ScrollView> : null}
+            <Pressable disabled={busy || checkingApk} onPress={() => void downloadApkUpdate()} style={[s.primary, (busy || checkingApk) && s.disabled]}>
+              <Text style={s.primaryText}>{busy ? 'OPENING APK…' : 'DOWNLOAD ANDROID UPDATE'}</Text>
+            </Pressable>
+            <Pressable disabled={checkingApk || checkingOta} onPress={retryAllChecks} style={s.secondary}>
+              <Text style={s.secondaryText}>{checkingApk || checkingOta ? 'CHECKING…' : 'CHECK AGAIN'}</Text>
+            </Pressable>
+            {message ? <Text accessibilityLiveRegion="polite" style={s.message}>{message}</Text> : null}
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  if (otaReady) {
+    return (
+      <Modal visible transparent animationType="fade" onRequestClose={() => setOtaReady(false)}>
+        <View style={s.scrim}>
+          <View style={s.card}>
+            <Text style={s.kicker}>ATHLETEN SOFTWARE UPDATE</Text>
+            <Text style={s.title}>Update downloaded</Text>
+            <Text style={s.body}>A compatible AthleteN update is ready. Restart now to apply it, or continue using the current version and it will be applied the next time AthleteN starts.</Text>
+            <Pressable disabled={busy} onPress={() => void restartForOtaUpdate()} style={[s.primary, busy && s.disabled]}>
+              <Text style={s.primaryText}>{busy ? 'RESTARTING…' : 'RESTART AND UPDATE'}</Text>
+            </Pressable>
+            <Pressable onPress={() => setOtaReady(false)} style={s.secondary}>
+              <Text style={s.secondaryText}>LATER</Text>
+            </Pressable>
+            <Text style={s.hint}>Compatible code updates download automatically. Native Android changes still require a new APK.</Text>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  if (!apkVisible || !release) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => { if (!required) setVisible(false); }}>
+    <Modal visible transparent animationType="fade" onRequestClose={() => { if (!requiredApk) setApkVisible(false); }}>
       <View style={s.scrim}>
         <View style={s.card}>
-          <Text style={s.kicker}>ATHLETEN RELEASE CONTROL</Text>
-          <Text style={s.title}>Update available</Text>
+          <Text style={s.kicker}>ATHLETEN NATIVE RELEASE</Text>
+          <Text style={s.title}>Android update available</Text>
           <Text style={s.version}>Version {release.version} · Build {release.version_code}</Text>
-          <Text style={s.body}>{required ? 'This release is required to keep using the supported AthleteN version. Install it to continue.' : 'A newer AthleteN Android release is ready.'}</Text>
+          <Text style={s.body}>{requiredApk ? 'This release is required to keep using the supported AthleteN version.' : 'A newer native AthleteN build is ready.'}</Text>
           {release.release_notes ? <ScrollView style={s.notesScroll} nestedScrollEnabled><Text style={s.notes}>{release.release_notes}</Text></ScrollView> : null}
-          <Pressable disabled={busy || checking} onPress={() => void downloadUpdate()} style={[s.primary, (busy || checking) && s.disabled]}>
-            <Text style={s.primaryText}>{busy ? 'OPENING APK…' : 'DOWNLOAD UPDATE'}</Text>
+          <Pressable disabled={busy || checkingApk} onPress={() => void downloadApkUpdate()} style={[s.primary, (busy || checkingApk) && s.disabled]}>
+            <Text style={s.primaryText}>{busy ? 'OPENING APK…' : 'DOWNLOAD ANDROID UPDATE'}</Text>
           </Pressable>
-          <Pressable disabled={checking} onPress={retryCheck} style={s.secondary}>
-            <Text style={s.secondaryText}>{checking ? 'CHECKING…' : 'CHECK AGAIN'}</Text>
+          <Pressable disabled={checkingApk || checkingOta} onPress={retryAllChecks} style={s.secondary}>
+            <Text style={s.secondaryText}>{checkingApk || checkingOta ? 'CHECKING…' : 'CHECK AGAIN'}</Text>
           </Pressable>
-          <Text style={s.hint}>AthleteN checks on launch and when reopened. Successful checks are cached for six hours; temporary failures are retried after five minutes. Android requires your approval to install the downloaded APK; ordinary apps cannot silently replace themselves.</Text>
-          {!required ? <Pressable onPress={() => setVisible(false)} style={s.secondary}><Text style={s.secondaryText}>NOT NOW</Text></Pressable> : null}
+          <Text style={s.hint}>APK updates are checked at launch and on return to AthleteN. Android requires your approval to install a native APK.</Text>
+          {!requiredApk ? <Pressable onPress={() => setApkVisible(false)} style={s.secondary}><Text style={s.secondaryText}>NOT NOW</Text></Pressable> : null}
           {message ? <Text accessibilityLiveRegion="polite" style={s.message}>{message}</Text> : null}
         </View>
       </View>
