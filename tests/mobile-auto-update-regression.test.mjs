@@ -192,6 +192,17 @@ test("manual OTA publishing workflow runs mobile quality gates and publishes onl
   assert.match(workflow, /--channel/);
   assert.match(workflow, /--platform android/);
   assert.match(workflow, /--non-interactive/);
+  assert.match(workflow, /Production OTA updates may only be published from main/);
+  assert.match(workflow, /Preview OTA updates must run from main or the reviewed PR #76 branch/);
+  assert.match(workflow, /athleten-production-ota/);
+});
+
+test("OTA workflow blocks production publishing from PR branches and validates before publishing", () => {
+  const workflow = read("../.github/workflows/android-ota-update.yml");
+  assert.match(workflow, /if \[ "\\$\\{OTA_CHANNEL\\}" = "production" \]/);
+  assert.match(workflow, /GITHUB_REF_NAME.*main/);
+  assert.match(workflow, /npm test[\\s\\S]*npx tsc --noEmit[\\s\\S]*npm run lint[\\s\\S]*expo-doctor/);
+  assert.match(workflow, /runtimeVersion\\?\\.policy!==['"]fingerprint['"]/);
 });
 
 test("Expo Updates dependency lock is generated and validated before mobile releases", () => {
