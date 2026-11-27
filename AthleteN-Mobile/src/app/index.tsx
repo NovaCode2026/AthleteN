@@ -11,11 +11,17 @@ import { supabase } from '@/lib/supabase';
 const c = Colors.dark;
 
 function Loading() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), 12000);
+    return () => clearTimeout(timer);
+  }, []);
   return (
-    <View style={{ flex: 1, backgroundColor: c.background, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-      <ActivityIndicator size="large" color={c.accent} />
-      <Text style={{ color: c.text, fontSize: 21, fontWeight: '900', letterSpacing: 1.2, textAlign: 'center' }}>WELCOME TO THE FUTURE</Text>
-      <Text style={{ color: c.muted, fontSize: 12 }}>Connecting to AthleteN…</Text>
+    <View style={{ flex: 1, backgroundColor: c.background, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
+      {!slow && <ActivityIndicator size="large" color={c.accent} />}
+      <Text style={{ color: c.text, fontSize: 21, fontWeight: '900', letterSpacing: 1.2, textAlign: 'center' }}>{slow ? 'STARTUP IS TAKING TOO LONG' : 'WELCOME TO THE FUTURE'}</Text>
+      <Text style={{ color: c.muted, fontSize: 12, textAlign: 'center' }}>{slow ? 'AthleteN is waiting on startup/authentication. Tap retry to reconnect.' : 'Connecting to AthleteN…'}</Text>
+      {slow && <Pressable onPress={() => { setSlow(false); }} style={{ backgroundColor: c.accent, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}><Text style={{ color: '#fff', fontWeight: '900' }}>RETRY</Text></Pressable>}
     </View>
   );
 }
