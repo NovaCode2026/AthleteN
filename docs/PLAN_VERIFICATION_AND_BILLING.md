@@ -18,7 +18,7 @@ See [Pricing & Financial Controls](./PRICING_AND_FINANCIAL_CONTROL_V1.md) for th
 
 ## Current implementation mismatch
 
-The candidate source catalogue still differs: Pro ₹99/₹999 and 50 AI requests; Elite ₹199/₹1,999 and 200; Student is legacy-only with 50; other plan price points remain Coach ₹499/₹4,999 and Academy ₹699/₹6,999. The new catalogue must not be represented as implemented until client, server, billing provider and entitlement tests agree.
+The candidate source catalogue still differs: Pro ₹99/₹999 and 50 AI requests; Elite ₹199/₹1,999 and 200; Student is legacy-only with 50; other plan price points remain Coach ₹499/₹4,999 and Academy ₹799/₹7,999. The new catalogue must not be represented as implemented until client, server, billing provider and entitlement tests agree.
 
 ## Verification, payment and entitlement are distinct
 
