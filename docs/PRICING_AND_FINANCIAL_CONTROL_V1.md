@@ -12,7 +12,7 @@
 | Pro | ₹199 | ₹1,999 | 200 |
 | Elite | ₹399 | ₹3,999 | 500 |
 | Coach | ₹499 | ₹4,999 | 750 |
-| Academy | ₹799 | ₹7,999 | 1,000 shared |
+| Academy | ₹699 | ₹6,999 | 1,000 shared |
 
 These are product-planning/customer-facing totals intended to be inclusive of applicable GST. The tax classification, registration, rate, place-of-supply, invoice and cross-border treatment must be reviewed by a qualified Indian tax adviser before checkout is enabled. Do not add GST on top of these displayed amounts without an approved pricing/tax decision.
 

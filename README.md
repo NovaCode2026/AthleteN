@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./public/athleten-logo.webp" alt="AthleteN logo" width="190">
+<img src="https://raw.githubusercontent.com/NovaCode2026/AthleteN/main/public/athleten-logo.webp" alt="AthleteN logo" width="160">
 
 # AthleteN
 
@@ -8,9 +8,9 @@
 
 **Train Smarter. Compete Stronger.**
 
-<img src="https://img.shields.io/badge-SPORT-TAEKWONDO-00AEEF?style=for-the-badge" alt="Taekwondo">
-<img src="https://img.shields.io/badge-PLATFORMS-WEB%20%2B%20ANDROID-6C5CE7?style=for-the-badge" alt="Web and Android">
-<img src="https://img.shields.io/badge-STATUS-ACTIVE%20DEVELOPMENT-E09B32?style=for-the-badge" alt="Active development">
+![Taekwondo](https://img.shields.io/badge/SPORT-TAEKWONDO-00AEEF?style=for-the-badge)
+![Web and Android](https://img.shields.io/badge/PLATFORMS-WEB%20%2B%20ANDROID-6C5CE7?style=for-the-badge)
+![Active development](https://img.shields.io/badge/STATUS-ACTIVE%20DEVELOPMENT-E09B32?style=for-the-badge)
 
 **Built by Nova Code**
 
@@ -81,7 +81,7 @@ This is the pricing catalogue discussed for AthleteN product planning. **It is n
 | Pro | ₹199 | ₹1,999 | 200 |
 | Elite | ₹399 | ₹3,999 | 500 |
 | Coach | ₹499 | ₹4,999 | 750 |
-| Academy | ₹799 | ₹7,999 | 1,000 shared |
+| Academy | ₹699 | ₹6,999 | 1,000 shared |
 
 Prices are proposed customer-facing totals, intended to be inclusive of applicable GST; tax treatment and invoices require qualified review before billing. Checkout, recurring billing and the seven-day trial are not enabled.
 
