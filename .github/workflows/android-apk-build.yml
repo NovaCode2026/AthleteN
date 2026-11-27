@@ -2,6 +2,11 @@ name: AthleteN Android Standalone APK Build
 
 on:
   workflow_dispatch:
+  push:
+    branches: [feat/rewarded-ads-rewards-centre-20261124]
+    paths:
+      - "AthleteN-Mobile/**"
+      - ".github/workflows/android-apk-build.yml"
   pull_request:
     branches: [main]
     paths:
