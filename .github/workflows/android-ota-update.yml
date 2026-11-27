@@ -33,13 +33,25 @@ jobs:
       run:
         working-directory: AthleteN-Mobile
     steps:
-      - name: Require the release branch
+      - name: Enforce channel and branch safety
         working-directory: .
+        env:
+          OTA_CHANNEL: ${{ inputs.channel }}
         run: |
-          case "${GITHUB_REF_NAME}" in
-            main|feat/rewarded-ads-rewards-centre-20261124) ;;
-            *) echo "::error::OTA releases must run from main or the reviewed PR #76 branch."; exit 1 ;;
-          esac
+          if [ "${OTA_CHANNEL}" = "production" ]; then
+            if [ "${GITHUB_REF_NAME}" != "main" ]; then
+              echo "::error::Production OTA updates may only be published from main."
+              exit 1
+            fi
+          elif [ "${OTA_CHANNEL}" = "preview" ]; then
+            case "${GITHUB_REF_NAME}" in
+              main|feat/rewarded-ads-rewards-centre-20261124) ;;
+              *) echo "::error::Preview OTA updates must run from main or the reviewed PR #76 branch."; exit 1 ;;
+            esac
+          else
+            echo "::error::Unsupported OTA channel."
+            exit 1
+          fi
 
       - name: Checkout
         uses: actions/checkout@v7
