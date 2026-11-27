@@ -146,7 +146,7 @@ test("OTA updates are enabled with a fingerprint runtime and the AthleteN EAS pr
   assert.deepEqual(app.expo.runtimeVersion, { policy: "fingerprint" });
   assert.equal(app.expo.updates.enabled, true);
   assert.equal(app.expo.updates.url, "https://u.expo.dev/7f308f88-5459-4f51-bb76-981f381eee3c");
-  assert.equal(app.expo.updates.checkAutomatically, "ON_LOAD");
+  assert.equal(app.expo.updates.checkAutomatically, "NEVER");
   assert.equal(app.expo.updates.fallbackToCacheTimeout, 3000);
   assert.equal(pkg.dependencies["expo-updates"], "~57.0.29");
   assert.equal(eas.build.development.channel, "development");
