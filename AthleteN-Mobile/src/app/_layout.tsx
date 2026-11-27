@@ -7,8 +7,6 @@ import { useRouter, usePathname, useSegments } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
-import AnnouncementOverlay from '@/components/announcement-overlay';
-import AppUpdateGate from '@/components/app-update-gate';
 
 type ErrorBoundaryState = { error: Error | null };
 
@@ -92,10 +90,7 @@ export default function RootLayout() {
   return (
     <AppErrorBoundary>
       <AuthProvider>
-        <AuthRouteGuard />
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <AnnouncementOverlay />
-          <AppUpdateGate />
           <Stack
             screenOptions={{
               headerShown: true,
