@@ -33,8 +33,8 @@ jobs:
         run: npm install --no-package-lock --ignore-scripts
       - name: Check scanner JavaScript syntax
         run: node --check netlify/functions/tournament-scan.mjs && node --check netlify/functions/instagram-tournament-scan.mjs
-      - name: Run scanner regression tests
-        run: node --test tests/athleten-mobile-scanner-regression.test.mjs
+      - name: Run scanner and startup regression tests
+        run: node --test tests/athleten-mobile-scanner-regression.test.mjs tests/mobile-startup-regression.test.mjs
 
   build-apk:
     needs: scanner-regression
@@ -151,6 +151,27 @@ jobs:
                       file.write_text(updated)
               print(f"Converted {old} -> {new}")
           PY
+
+      - name: Install temporary Native Boot Isolation entry (CI workspace only)
+        run: |
+          cat > index.ts <<'EOF'
+          import React from 'react';
+          import { registerRootComponent } from 'expo';
+          import { StatusBar, Text, View } from 'react-native';
+
+          function NativeBootIsolation() {
+            return React.createElement(
+              View,
+              { style: { flex: 1, backgroundColor: '#050812', alignItems: 'center', justifyContent: 'center', padding: 28 } },
+              React.createElement(StatusBar, { barStyle: 'light-content', backgroundColor: '#050812' }),
+              React.createElement(Text, { style: { color: '#fff', fontSize: 30, fontWeight: '900' } }, 'ATHLETEN'),
+              React.createElement(Text, { style: { color: '#37B8FF', fontSize: 13, fontWeight: '700', marginTop: 8 } }, 'NATIVE BOOT ISOLATION'),
+              React.createElement(Text, { style: { color: '#7FE0A4', marginTop: 28, fontSize: 16, textAlign: 'center' } }, 'Direct React Native AppRegistry root mounted.'),
+              React.createElement(Text, { style: { color: '#AAB4C7', marginTop: 12, textAlign: 'center' } }, 'No Expo Router, OTA, splash module, AuthProvider, ads, notifications or widgets are used in this diagnostic.'),
+            );
+          }
+          registerRootComponent(NativeBootIsolation);
+          EOF
 
       - name: Generate Android project
         run: CI=1 npx expo prebuild --platform android --no-install
