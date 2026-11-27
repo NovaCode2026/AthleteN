@@ -29,33 +29,28 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: AthleteN-Mobile/package-lock.json
 
-      - name: Require EAS token
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          if [ -z "$EXPO_TOKEN" ]; then
-            echo "EXPO_TOKEN repository secret is required for EAS cloud builds."
-            exit 1
-          fi
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
 
-      - name: Install dependencies and reconcile lockfile in CI workspace
+      - name: Install dependencies
         run: npm install
 
-      - name: Build preview APK with EAS
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx --yes eas-cli@latest build --platform android --profile preview --non-interactive --wait
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Download APK from EAS
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx --yes eas-cli@latest build:download --platform android --latest --path ./AthleteN-preview.apk
+      - name: Build installable debug APK
+        run: cd android && ./gradlew assembleDebug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AthleteN-preview-apk
-          path: AthleteN-Mobile/AthleteN-preview.apk
+          name: AthleteN-debug-apk
+          path: AthleteN-Mobile/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
