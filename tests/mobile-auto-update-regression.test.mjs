@@ -199,8 +199,8 @@ test("manual OTA publishing workflow runs mobile quality gates and publishes onl
 
 test("OTA workflow blocks production publishing from PR branches and validates before publishing", () => {
   const workflow = read("../.github/workflows/android-ota-update.yml");
-  assert.match(workflow, /if \[ "\\$\\{OTA_CHANNEL\\}" = "production" \]/);
-  assert.match(workflow, /GITHUB_REF_NAME.*main/);
+  assert.ok(workflow.includes('if [ "${OTA_CHANNEL}" = "production" ]'));
+  assert.ok(workflow.includes('if [ "${GITHUB_REF_NAME}" != "main" ]'));
   assert.match(workflow, /npm test[\\s\\S]*npx tsc --noEmit[\\s\\S]*npm run lint[\\s\\S]*expo-doctor/);
   assert.match(workflow, /runtimeVersion\\?\\.policy!==['"]fingerprint['"]/);
 });
