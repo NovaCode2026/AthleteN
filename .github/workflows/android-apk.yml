@@ -111,7 +111,7 @@ jobs:
             ...(pkg.expo.autolinking.android.exclude || []),
             ...excluded
           ])];
-          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\\n');
+          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
           console.log('Diagnostic Android autolinking exclusions:', pkg.expo.autolinking.android.exclude.join(', '));
           NODE
 
