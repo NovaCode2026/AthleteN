@@ -4,155 +4,108 @@
 
 # AthleteN Mobile
 
-**The AthleteN experience for Android.**
+**The AthleteN Android experience**
 
 <img src="https://img.shields.io/badge-MOBILE-ANDROID-0B1F3A?style=for-the-badge" alt="Android">
 <img src="https://img.shields.io/badge-EXPO-SDK%2057-6C5CE7?style=for-the-badge" alt="Expo SDK 57">
-<img src="https://img.shields.io/badge-STATUS-RELEASE%20CANDIDATE-E09B32?style=for-the-badge" alt="Release candidate">
+<img src="https://img.shields.io/badge-STATUS-CANDIDATE-E09B32?style=for-the-badge" alt="Candidate">
 
-[Main README](../README.md) · [Platform Guide](../docs/ATHLETEN_PLATFORM_GUIDE.md) · [Documentation Hub](../docs/README.md)
+[Main README](../README.md) · [Documentation Hub](../docs/README.md) · [Release Status](../docs/RELEASE_STATUS_2026-11-27.md)
 
 </div>
 
 ---
 
-> [!WARNING]
-> The Android client is part of the open release candidate, not a signed public release. A successful TypeScript check or CI APK does not replace signed AAB creation, installation testing and physical-device acceptance. See the [release-readiness report](../docs/RELEASE_READINESS_2026-11-12.md).
+> **Android release status:** candidate only. Recent diagnostic builds have reportedly shown a black screen after the splash/logo. Root cause is unknown and the startup issue remains open. Bundle export/CI is not proof of a signed APK or physical-device acceptance.
 
-## What the mobile app does
+## Product
 
-AthleteN Mobile is built with **React Native, Expo SDK 57 and Expo Router**. It uses the AthleteN Supabase project and shared identity, role, subscription and record model.
+AthleteN Mobile is built with React Native, Expo SDK 57 and Expo Router. It shares account identity, role, entitlement and records with the Web client through the backend.
 
-Mobile is designed for quick daily actions: checking the athlete dashboard, recording training, preparing for competitions, reviewing messages and using supported Coach or Academy tools. The Web client remains the more detailed workspace for deep analytics, long histories and complex administration.
+### Athlete
+- Profile, goals, medals, Athlete Journey
+- Training history
+- Taekwondo → Kyorugi or Poomsae workflows
+- Competition and calendar
+- Documents and notifications
 
-### Athlete workspace
+### Coach and Academy
+- Coach roster, training and attendance
+- Academy workspace and operational tools
+- Competition and achievement views
+- Messaging and notifications
+- AI reports when role, plan, usage and data-scope checks permit
 
-- Athlete profile, journey, goals and medals
-- Training sessions and training history
-- Taekwondo selector followed by Kyorugi or Poomsae
-- Kyorugi bout records and Poomsae practice/performance records
-- Competitions, calendar and attendance
-- Documents, notifications and coach/academy connections
+### Other feature areas
+Messaging, Rewards Centre, leaderboard, AI Coach, Admin and account/verification workflows are present in the candidate source with varying implementation and acceptance status. Use the [Feature Inventory](../docs/FEATURES.md), not screen presence alone, as the status reference.
 
-### Coach and Academy workspaces
+## Pricing discussion
 
-- Coach profile, linked roster, training and attendance tools
-- Academy workspace, member relationships and operational views
-- Competition and medal overviews
-- Messages and notifications
-- AI reports where plan, role, usage and data-scope checks allow access
-
-A route or button is not proof that the underlying operation is complete. Validate saving, refreshing, permissions and error states against the acceptance checklist.
-
-## Taekwondo discipline selection
-
-Athletes select **Taekwondo** first and then explicitly choose **Kyorugi** or **Poomsae**. AthleteN must not silently assign a discipline when a profile is incomplete. Historical records must retain their original discipline when the profile selection changes.
-
-See the [Taekwondo Disciplines Guide](../docs/TAEKWONDO_DISCIPLINES.md) for the full workflow and acceptance checklist.
-
-## Plans shown in the app
-
-| Plan | Monthly | Annual | AI requests / month |
+| Plan | Monthly | Annual | Base AI messages/month |
 |---|---:|---:|---:|
 | Free | ₹0 | ₹0 | 0 |
-| Pro | ₹99 | ₹999 | 50 |
-| Elite | ₹199 | ₹1,999 | 200 |
+| Student | ₹49 | ₹499 | 40 |
+| Pro | ₹199 | ₹1,999 | 200 |
+| Elite | ₹399 | ₹3,999 | 500 |
 | Coach | ₹499 | ₹4,999 | 750 |
 | Academy | ₹799 | ₹7,999 | 1,000 shared |
 
-**Student is a legacy plan** for existing subscribers only; it is not available for new purchases. Displayed prices are intended as totals inclusive of applicable GST. Do not add GST on top of the displayed price. The exact tax treatment and invoice requirements must be reviewed before billing is enabled.
+**Source mismatch:** current candidate code still uses the older catalogue (Pro ₹99/₹999, Elite ₹199/₹1,999, Student legacy 50 messages). These prices and allowances are documentation of the product-owner discussion, not active checkout. Billing is disabled.
 
-**Paid checkout and recurring billing are currently disabled.** Plan information in the app is catalogue information, not an active purchase flow.
+## Rewarded ads
 
-## Purchase and permission rules
+The discussed reward rule is 2 bonus messages per successfully verified ad, up to 3 ads/day and 30 bonus messages/month. Credits expire at month-end. Ads are optional.
 
-- A plan selection never changes the user's account role.
-- Coach access requires the existing verified Coach role and confirmed account email.
-- Academy access requires the Academy Admin role, an active owned workspace, completed setup and verified contact email.
-- Student verification is retained for legacy account handling; it is not open for new sales.
-- Verification, provider payment confirmation and active subscription are separate states.
-- The server and database must re-check role, relationship, entitlement and subscription rules. Hiding a button is not an authorization boundary.
+Rewarded ads are **not live**. Native SDK lifecycle, consent and age-appropriate ad configuration, publisher approval, environment gates and physical-device tests are required first.
 
-## Develop locally
+## Develop
 
-From the repository root:
+From this directory:
 
 ```bash
-cd AthleteN-Mobile
 npm ci
 npx expo start --clear
 ```
 
-Start directly on an Android emulator/device:
+Start Android:
 
 ```bash
 npx expo start --android
 ```
 
-Build and run the native Android project locally:
+Native local build:
 
 ```bash
 npx expo run:android
 ```
 
-## Validate before sign-off
-
-Run from `AthleteN-Mobile`:
+## Checks
 
 ```bash
-npm ci
+npm test
 npx tsc --noEmit
 npx eslint .
 npx expo-doctor
 ```
 
-Then test on a physical Android device using separate test accounts where applicable:
+## Physical-device acceptance
 
-- Sign up, email confirmation, Google login, password recovery, logout and session restore
-- Athlete, Coach and Academy routing and role boundaries
-- Training, competition, medal and attendance save/read/refresh
-- Private document upload and authorized file access
-- Scanner/camera permissions and recovery from denial
-- Messaging persistence, retries, delivery/ read receipts and refresh
-- Push-token registration and actual push delivery
-- Report entitlement, usage limits and authorized data scope
-- Network interruption, empty states, loading and error feedback
+- [ ] Clean install and upgrade install
+- [ ] Cold/warm startup and splash transition
+- [ ] Authentication, session restore, logout and account switching
+- [ ] Athlete/Coach/Academy/Admin role routes
+- [ ] Save/read/refresh shared records
+- [ ] Messaging persistence, attachments, receipts and group access
+- [ ] Push permission, token registration and real delivery
+- [ ] Notification tap and deep-link routing
+- [ ] Camera/scanner permission and recovery
+- [ ] Network interruption, loading/error/empty states
+- [ ] Accessibility, touch targets and layout on supported screen sizes
 
 ## Configuration and secrets
 
-Copy the supported public configuration from `.env.example`. Only the Supabase project URL and public/anon client key belong in the Android app.
+Only public Supabase URL and anon/public key belong in the app. Server secrets—including service-role keys, OpenAI keys, payment secrets and webhook signing keys—must remain server-side.
 
-Never put any of the following in mobile environment variables or the app bundle:
+For Firebase push, the required Android Firebase configuration and EAS FCM credentials must be configured by the project owner; they are not committed to the repository. See PR #80 and current release status.
 
-- Supabase service-role key
-- OpenAI API key
-- Payment-provider secret or webhook-signing secret
-- Any other server credential
-
-OAuth and password-reset redirects use the configured `athleten://auth/callback` app scheme. Keep the Supabase Site URL and mobile redirect allowlist correctly configured; do not replace the Site URL with a mobile deep link.
-
-
-### Rewarded-ad configuration (Android only)
-
-Development builds use Google's sample AdMob App IDs and the SDK's rewarded test unit. The native SDK does not run in Expo Go; use a development build for device testing.
-
-A production rewarded-ad unit ID is a public placement identifier, not a server secret, but it must not be copied into tracked source files. The responsible adult who owns the approved publisher account must configure the same unit ID in both places:
-
-- EAS build environment: EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID
-- Netlify server environment: ADMOB_REWARDED_AD_UNIT_ID
-
-The Android App ID must be supplied separately as ADMOB_ANDROID_APP_ID. The config plugin checks that its publisher number matches the rewarded ad unit's publisher number and delays app measurement until the UMP consent flow. A mismatch fails configuration rather than sending a request under the wrong app identity.
-
-Server-side flags ATHLETEN_REWARDED_ADS_ENABLED, ATHLETEN_REWARDED_ADS_LIVE_APPROVED, and ATHLETEN_REWARDED_ADS_MINOR_SAFETY_APPROVED must remain disabled until the adult publisher owner and the required policy/privacy reviewers approve the release. This release only permits server-verified adult accounts; every account under 18 is denied an ad session. The production ad unit ID supplied during setup is not a substitute for publisher ownership or approval.
-
-**Age-assurance limitation:** the current server checks the account's first-saved DOB record and rejects records below 18, but that DOB is supplied by the account holder; it is not independent identity proof. This code must not be treated as a complete age-assurance system. Keep all live-ad approval flags off until the responsible adult and policy/privacy reviewers approve the age-assurance method required for the intended audience and that method is implemented and tested. Users under 18 must continue to use AthleteN without rewarded ads.
-
-
-## Related guides
-
-- [Main README](../README.md)
-- [Web + Mobile Experience Model](../docs/WEB_MOBILE_EXPERIENCE_MODEL.md)
-- [Plans, Verification & Billing](../docs/PLAN_VERIFICATION_AND_BILLING.md)
-- [API Guide](../docs/API.md)
-- [Deployment Guide](../docs/Deployment.md)
-- [Release Readiness](../docs/RELEASE_READINESS_2026-11-12.md)
+Rewarded-ad identifiers are configuration, not permission to activate ads. Do not enable ads until consent, age-appropriate request settings, provider approval, server verification and testing are complete.
