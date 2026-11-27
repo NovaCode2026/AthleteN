@@ -49,7 +49,7 @@ test("Android app checks published releases on launch, foreground and the schedu
   assert.match(gate, /\.eq\('published', true\)/);
   assert.match(gate, /CHECK_INTERVAL_MS = 6 \* 60 \* 60 \* 1000/);
   assert.match(gate, /state === 'active'/);
-  assert.match(gate, /void checkForOtaUpdate\(true\)/);
+  assert.match(gate, /next\.version_code > installedCode \|\| next\.minimum_version_code > installedCode/);
   assert.match(gate, /versionCode > installedCode \|\| minimumCode > installedCode/);
   assert.match(gate, /function retryAllChecks\(\)/);
   assert.match(gate, /Linking\.openURL\(release\.download_url\)/);
@@ -60,8 +60,8 @@ test("Android app checks published releases on launch, foreground and the schedu
 test("required Android updates cannot be dismissed and the device installer remains user-approved", () => {
   const gate = read("../AthleteN-Mobile/src/components/app-update-gate.tsx");
 
-  assert.match(gate, /onRequestClose=\{\(\) => \{ if \(!required\) setVisible\(false\); \}\}/);
-  assert.match(gate, /!required \? <Pressable/);
+  assert.match(gate, /onRequestClose=\{\(\) => undefined\}/);
+  assert.match(gate, /!requiredApk \? <Pressable/);
   assert.match(gate, /Android’s installer/);
   assert.match(gate, /Native APK updates require your approval/);
 });
@@ -99,7 +99,7 @@ test("EAS release profile builds an APK and increments the remote Android versio
   assert.match(eas, /"environment": "production"/);
   assert.match(eas, /"autoIncrement": true/);
   assert.match(eas, /"buildType": "apk"/);
-  assert.match(app, /"version": "1\.0\.4"/);
+  assert.match(app, /"version": "1\.0\.5"/);
   assert.match(app, /"versionCode": 6/);
 });
 
@@ -121,10 +121,10 @@ test("Android update checks validate release metadata, clear stale prompts and t
   assert.match(gate, /parsedUrl\.protocol !== 'https:'/);
   assert.match(gate, /!parsedUrl\.pathname\.toLowerCase\(\)\.endsWith\('\.apk'\)/);
   assert.match(gate, /CHECK_RETRY_INTERVAL_MS = 5 \* 60 \* 1000/);
-  assert.match(gate, /lastCheckSucceeded\.current \? CHECK_INTERVAL_MS : CHECK_RETRY_INTERVAL_MS/);
-  assert.match(gate, /lastCheckedAt\.current = now/);
-  assert.match(gate, /lastCheckSucceeded\.current = false/);
-  assert.match(gate, /setRelease\(null\);\s*setVisible\(false\);\s*setMessage\(''\);/);
+  assert.match(gate, /lastApkCheckSucceeded\.current \? APK_CHECK_INTERVAL_MS : RETRY_INTERVAL_MS/);
+  assert.match(gate, /lastApkCheckAt\.current = now/);
+  assert.match(gate, /lastApkCheckSucceeded\.current = false/);
+  assert.match(gate, /setRelease\(null\);\\s*setApkVisible\(false\);/);
 });
 
 
