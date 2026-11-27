@@ -164,23 +164,36 @@ export default function AppUpdateGate() {
   }, []);
 
   useEffect(() => {
-    void checkForOtaUpdate(true);
+    // Native APK release checks are lightweight and do not alter the running JS.
     void checkForApkUpdate(true);
+
+    // Do not perform OTA check/download during the fragile initial boot handoff.
+    // Wait until the app has had time to render and settle; OTA errors must
+    // never compete with the first screen becoming visible.
+    let initialOtaCheckStarted = false;
+    const initialOtaTimer = setTimeout(() => {
+      initialOtaCheckStarted = true;
+      void checkForOtaUpdate(true);
+    }, 20000);
 
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void checkForOtaUpdate();
         void checkForApkUpdate();
+        if (initialOtaCheckStarted) void checkForOtaUpdate();
       }
     });
-    const timer = setInterval(() => {
-      void checkForOtaUpdate();
+    const apkTimer = setInterval(() => {
       void checkForApkUpdate();
     }, RETRY_INTERVAL_MS);
+    const otaTimer = setInterval(() => {
+      void checkForOtaUpdate();
+    }, OTA_CHECK_INTERVAL_MS);
 
     return () => {
+      clearTimeout(initialOtaTimer);
       subscription.remove();
-      clearInterval(timer);
+      clearInterval(apkTimer);
+      clearInterval(otaTimer);
     };
   }, [checkForOtaUpdate, checkForApkUpdate]);
 
