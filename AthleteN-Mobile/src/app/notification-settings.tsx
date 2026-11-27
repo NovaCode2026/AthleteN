@@ -60,13 +60,16 @@ export default function NotificationSettingsScreen() {
     registered: 'This device is registered for push notifications.',
     'permission-denied': 'Android notification permission is not granted to AthleteN.',
     'physical-device-required': 'Push notifications require a physical Android or iOS device.',
-    'expo-project-id-missing': 'The Expo project ID is missing from this app build.',\n    'firebase-config-missing': 'Android push setup is missing from this build. Firebase google-services.json is required, then Android must be rebuilt.',
+    'expo-project-id-missing': 'The Expo project ID is missing from this app build.',
+    'firebase-config-missing': 'Android push setup is missing from this build. Firebase google-services.json is required, then Android must be rebuilt.',
     'registration-cancelled': 'Registration was interrupted. Retry to complete it.',
     error: 'AthleteN could not register this device.',
     idle: 'Sign in to register this device.'
   };
 
-  const isPushSetupError = pushStatus === 'firebase-config-missing' || pushStatus === 'expo-project-id-missing';\n\n  return <Screen>
+  const isPushSetupError = pushStatus === 'firebase-config-missing' || pushStatus === 'expo-project-id-missing';
+
+  return <Screen>
     <Header back eyebrow="ATHLETEN SETTINGS" title="Notifications" subtitle="Manage notification preferences and verify this phone is connected to push delivery." />
     <Card>
       <Text style={{ color: c.text, fontSize: 13, fontWeight: '900' }}>DEVICE PUSH STATUS</Text>
