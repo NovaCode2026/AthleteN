@@ -12,13 +12,13 @@
 | Pro | ₹199 | ₹1,999 | 200 | Athletes |
 | Elite | ₹399 | ₹3,999 | 500 | Competitive athletes |
 | Coach | ₹499 | ₹4,999 | 750 | Verified coaches |
-| Academy | ₹799 | ₹7,999 | 1,000 shared | Verified Academy Admins |
+| Academy | ₹699 | ₹6,999 | 1,000 shared | Verified Academy Admins |
 
 See [Pricing & Financial Controls](./PRICING_AND_FINANCIAL_CONTROL_V1.md) for the code/source mismatch and rewards rules.
 
 ## Current implementation mismatch
 
-The candidate source catalogue still differs: Pro ₹99/₹999 and 50 AI requests; Elite ₹199/₹1,999 and 200; Student is legacy-only with 50; other plan price points remain Coach ₹499/₹4,999 and Academy ₹799/₹7,999. The new catalogue must not be represented as implemented until client, server, billing provider and entitlement tests agree.
+The candidate source catalogue still differs: Pro ₹99/₹999 and 50 AI requests; Elite ₹199/₹1,999 and 200; Student is legacy-only with 50; other plan price points remain Coach ₹499/₹4,999 and Academy ₹699/₹6,999. The new catalogue must not be represented as implemented until client, server, billing provider and entitlement tests agree.
 
 ## Verification, payment and entitlement are distinct
 
