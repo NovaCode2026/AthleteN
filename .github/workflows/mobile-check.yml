@@ -58,7 +58,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import subprocess
-          root = Path("AthleteN-Mobile")
+          root = Path(".")
           converted = []
           for asset in root.rglob("*"):
               if not asset.is_file() or asset.suffix.lower() not in {".webp", ".png", ".jpg", ".jpeg"}:
