@@ -40,9 +40,11 @@ The GitHub Actions workflow is manual-only and does not publish a release record
 
 ## OTA updates and scope
 
-Expo Updates is **not configured in the current mobile binary**: the current app configuration does not include the `expo-updates` native module, an Updates URL or a runtime version policy. The present system therefore delivers native Android APK updates; it does not silently patch JavaScript bundles in place.
+The current PR branch has Expo Updates configured in `AthleteN-Mobile/app.json`, the `expo-updates` dependency installed, the AthleteN EAS Updates URL, fingerprint runtime compatibility, and automatic ON_LOAD checks. EAS build profiles use named `development`, `preview` and `production` channels. A native APK that was built before this configuration/module was included cannot receive OTA updates; the first OTA-capable APK must be built, installed and verified before OTA publishing is enabled for users.
 
-A separate EAS Update rollout can later deliver compatible JavaScript and asset changes without replacing the APK. That requires installing/configuring `expo-updates`, setting the EAS project Updates URL and a deliberate runtime-version policy, adding release channels to EAS build profiles, producing a new native build with that module, and testing update compatibility and recovery behavior. Changes to native dependencies, permissions, config plugins or the Expo SDK still require a new native binary. Do not publish an OTA update until those prerequisites and rollback/recovery behavior are tested.
+The app update gate checks for a compatible OTA bundle on launch and when the app returns to foreground, then downloads it in the background. It offers a safe restart prompt to apply the bundle immediately; otherwise the downloaded bundle is applied on the next launch. Expo's native error-recovery behavior is relied on for rollback when an update fails before the app can render. OTA updates cannot replace native code, Android permissions, config-plugin output, icons/splash assets or Expo SDK changes; those require a new APK and Android's installer approval.
+
+The manual GitHub workflow validates tests, TypeScript, lint, Expo Doctor and the resolved public Expo config before publishing. **Preview** may be published only from `main` or the reviewed PR #76 branch. **Production** OTA publishing is restricted to `main` and uses the `athleten-production-ota` GitHub environment, which should have required reviewers configured. Keep production OTA publishing disabled until the OTA-capable APK has passed physical-device update/recovery testing.
 
 ## Official Expo references
 
