@@ -1,6 +1,5 @@
-// Google’s published sample app IDs keep development builds on test inventory.
-// The publisher’s real App IDs must be supplied through the adult-managed EAS
-// build environment after provider and privacy approval.
+// Dynamic Expo config is kept in one file so AdMob and Firebase native
+// configuration are always composed with the static app.json configuration.
 const TEST_ANDROID_APP_ID = 'ca-app-pub-3940256099942544~3347511713';
 const TEST_IOS_APP_ID = 'ca-app-pub-3940256099942544~1458002511';
 
@@ -16,12 +15,11 @@ function appId(value, fallback, platform) {
   return candidate;
 }
 
-
 function validateRewardedAdUnitId(value, androidAppId) {
   const candidate = String(value || '').trim();
   if (!candidate) return;
 
-  const match = candidate.match(/^ca-app-pub-(\d+)\/(\d+)$/);
+  const match = candidate.match(/^ca-app-pub-(\\d+)\\/(\\d+)$/);
   if (!match) {
     throw new Error('EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID must be a valid AdMob ad unit ID.');
   }
@@ -36,18 +34,28 @@ const ANDROID_APP_ID = appId(process.env.ADMOB_ANDROID_APP_ID, TEST_ANDROID_APP_
 const IOS_APP_ID = appId(process.env.ADMOB_IOS_APP_ID, TEST_IOS_APP_ID, 'IOS');
 validateRewardedAdUnitId(process.env.EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID, ANDROID_APP_ID);
 
-module.exports = ({ config }) => ({
-  ...config,
-  plugins: [
-    ...(config.plugins || []),
-    [
-      'react-native-google-mobile-ads',
-      {
-        androidAppId: ANDROID_APP_ID,
-        iosAppId: IOS_APP_ID,
-        // Prevent app measurement before the UMP consent flow is completed.
-        delayAppMeasurementInit: true,
-      },
+module.exports = ({ config }) => {
+  const googleServicesFile =
+    process.env.GOOGLE_SERVICES_FILE ||
+    process.env.GOOGLE_SERVICES_JSON_FILE;
+
+  return {
+    ...config,
+    android: {
+      ...config.android,
+      ...(googleServicesFile ? { googleServicesFile } : {}),
+    },
+    plugins: [
+      ...(config.plugins || []),
+      [
+        'react-native-google-mobile-ads',
+        {
+          androidAppId: ANDROID_APP_ID,
+          iosAppId: IOS_APP_ID,
+          // Prevent app measurement before the UMP consent flow is completed.
+          delayAppMeasurementInit: true,
+        },
+      ],
     ],
-  ],
-});
+  };
+};
