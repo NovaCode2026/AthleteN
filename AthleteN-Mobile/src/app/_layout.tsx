@@ -1,9 +1,8 @@
 import React from 'react';
 import * as SplashScreen from 'expo-splash-screen';
-import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, ThemeProvider, Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { Pressable, Text, View, useColorScheme } from 'react-native';
 import AthleteNLogo from '@/components/athleten-logo';
-import { useRouter, usePathname, useSegments } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
@@ -12,7 +11,7 @@ import AppUpdateGate from '@/components/app-update-gate';
 
 type ErrorBoundaryState = { error: Error | null };
 
-class AppErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBoundaryState> {
+class AppErrorBoundary extends React.Component<React.PropsWithChildren<{ title?: string }>, ErrorBoundaryState> {
   state: ErrorBoundaryState = { error: null };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
@@ -21,6 +20,7 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBou
 
   componentDidCatch(error: Error) {
     console.error('[AthleteN] render error', error);
+    void SplashScreen.hideAsync().catch(() => undefined);
   }
 
   render() {
@@ -28,9 +28,9 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBou
 
     return (
       <View style={{ flex: 1, backgroundColor: Colors.dark.background, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 14 }}>
-        <Text style={{ color: Colors.dark.text, fontSize: 21, fontWeight: '900', textAlign: 'center' }}>AthleteN hit a screen error</Text>
+        <Text style={{ color: Colors.dark.text, fontSize: 21, fontWeight: '900', textAlign: 'center' }}>{this.props.title || 'AthleteN hit a screen error'}</Text>
         <Text style={{ color: Colors.dark.muted, fontSize: 11, lineHeight: 17, textAlign: 'center' }}>
-          The app caught the error safely. The details below can help diagnose this screen.
+          Startup was interrupted, but the app caught the error instead of leaving a blank screen.
         </Text>
         <Text selectable style={{ color: Colors.dark.warning || '#F6B94A', fontSize: 10, lineHeight: 15, textAlign: 'center' }}>
           {String(this.state.error.message || this.state.error).slice(0, 700)}
@@ -39,20 +39,14 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBou
           onPress={() => this.setState({ error: null })}
           style={{ backgroundColor: Colors.dark.accent, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
         >
-          <Text style={{ color: '#fff', fontWeight: '900' }}>RETRY</Text>
+          <Text style={{ color: '#fff', fontWeight: '900' }}>RETRY SCREEN</Text>
         </Pressable>
       </View>
     );
   }
 }
 
-const PUBLIC_AUTH_PATHS = new Set([
-  '/',
-  '/auth/callback',
-  '/reset-request',
-  '/reset-password',
-  '/policies',
-]);
+const PUBLIC_AUTH_PATHS = new Set(['/', '/auth/callback', '/reset-request', '/reset-password', '/policies']);
 
 function AuthRouteGuard() {
   const { session, loading } = useAuth();
@@ -69,27 +63,41 @@ function AuthRouteGuard() {
   return null;
 }
 
-// Keep the native splash visible until the router has produced a committed route.
-// The delay gives the first React frame time to paint before the native splash is removed.
+// Hide the native splash as soon as a route is committed, with a short failsafe.
+// Do not let a slow auth/network request keep the native splash indefinitely.
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 function SplashHandoff() {
   const pathname = usePathname();
   React.useEffect(() => {
     if (!pathname) return;
-    const timer = setTimeout(() => {
-      void SplashScreen.hideAsync().catch(() => undefined);
-    }, 350);
+    const timer = setTimeout(() => void SplashScreen.hideAsync().catch(() => undefined), 180);
     return () => clearTimeout(timer);
   }, [pathname]);
   React.useEffect(() => {
-    // Safety fallback if route resolution is delayed or fails.
-    const failsafe = setTimeout(() => {
-      void SplashScreen.hideAsync().catch(() => undefined);
-    }, 8000);
+    const failsafe = setTimeout(() => void SplashScreen.hideAsync().catch(() => undefined), 3500);
     return () => clearTimeout(failsafe);
   }, []);
   return null;
+}
+
+// Optional overlays and update networking start only after the initial route has
+// had time to paint. A failure in either optional feature cannot blank the app.
+function DeferredStartupFeatures() {
+  const pathname = usePathname();
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    if (!pathname) return;
+    const timer = setTimeout(() => setReady(true), 12000);
+    return () => clearTimeout(timer);
+  }, [pathname]);
+  if (!ready) return null;
+  return (
+    <>
+      <AppErrorBoundary title="Announcement service unavailable"><AnnouncementOverlay /></AppErrorBoundary>
+      <AppErrorBoundary title="Update service unavailable"><AppUpdateGate /></AppErrorBoundary>
+    </>
+  );
 }
 
 export default function RootLayout() {
@@ -102,27 +110,17 @@ export default function RootLayout() {
         <SplashHandoff />
         <AuthRouteGuard />
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <AnnouncementOverlay />
-          <AppUpdateGate />
           <Stack
             screenOptions={{
               headerShown: true,
-              headerTitle: () => (
-                <AthleteNLogo width={54} height={54} />
-              ),
+              headerTitle: () => <AthleteNLogo width={54} height={54} />,
               headerTitleStyle: { color: Colors.dark.text, fontSize: 15, fontWeight: '900' },
               headerStyle: { backgroundColor: Colors.dark.background },
               headerTintColor: Colors.dark.accentBright,
               headerBackTitle: 'Back',
               headerShadowVisible: false,
               headerLeft: ({ canGoBack }) => canGoBack ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Go back"
-                  hitSlop={12}
-                  onPress={() => router.back()}
-                  style={{ paddingRight: 18, paddingVertical: 8 }}
-                >
+                <Pressable accessibilityRole="button" accessibilityLabel="Go back" hitSlop={12} onPress={() => router.back()} style={{ paddingRight: 18, paddingVertical: 8 }}>
                   <MaterialCommunityIcons name="arrow-left" size={23} color={Colors.dark.accentBright} />
                 </Pressable>
               ) : null,
@@ -140,6 +138,7 @@ export default function RootLayout() {
             <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
             <Stack.Screen name="policies" options={{ headerShown: false }} />
           </Stack>
+          <DeferredStartupFeatures />
         </ThemeProvider>
       </AuthProvider>
     </AppErrorBoundary>
