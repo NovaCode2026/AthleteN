@@ -28,10 +28,11 @@ test("release workflow is manual and requires the Expo token", () => {
   assert.doesNotMatch(workflow, /eas submit/);
 });
 
-test("CI APK artifact is explicitly labelled debug-signed", () => {
+test("boot-isolation APK excludes optional native modules and embeds its JavaScript bundle", () => {
   const workflow = read("../.github/workflows/android-apk.yml");
-  assert.ok(workflow.includes("AthleteN Android CI APK (debug-signed)"));
-  assert.ok(workflow.includes("AthleteN-ci-debug-signed-apk"));
+  assert.ok(workflow.includes("AthleteN Android Native Boot Isolation"));
+  assert.ok(workflow.includes("AthleteN-native-boot-isolation-apk"));
+  assert.ok(workflow.includes("expo.autolinking.android.exclude"));
   assert.ok(workflow.includes("assembleRelease --no-daemon"));
   assert.ok(workflow.includes("assets/index.android.bundle"));
 });
