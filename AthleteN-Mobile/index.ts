@@ -1,5 +1,6 @@
 import React from 'react';
-import { AppRegistry, StatusBar, Text, View } from 'react-native';
+import { StatusBar, Text, View } from 'react-native';
+import { registerRootComponent } from 'expo';
 
 function NativeBootIsolation() {
   return React.createElement(
@@ -21,5 +22,5 @@ function NativeBootIsolation() {
   );
 }
 
-// Expo's Android MainActivity registers the default component under "main".
-AppRegistry.registerComponent('main', () => NativeBootIsolation);
+// Use Expo's supported custom-entry registration so the native AppKey and Expo runtime setup match.
+registerRootComponent(NativeBootIsolation);
