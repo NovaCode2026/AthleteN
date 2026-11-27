@@ -1,63 +1,69 @@
-# AthleteN Pricing and Financial Control — V1
+# AthleteN Pricing and Financial Control
 
-**Status:** approved launch price points and tax-inclusive display policy; paid billing remains disabled pending billing, tax-invoice and release gates. India / INR. Prices below are customer-facing totals, inclusive of applicable GST; customers must not be charged GST on top of these displayed amounts.
+**Updated:** 27 November 2026  
+**Status:** Product-owner pricing discussion recorded; implementation reconciliation required. Paid billing is disabled.
 
-| Plan | Monthly | Annual | AI requests/month |
+## Product catalogue discussed and confirmed
+
+| Plan | Monthly | Annual | Base AI messages/month |
 |---|---:|---:|---:|
 | Free | ₹0 | ₹0 | 0 |
+| Student | ₹49 | ₹499 | **40** |
+| Pro | ₹199 | ₹1,999 | 200 |
+| Elite | ₹399 | ₹3,999 | 500 |
+| Coach | ₹499 | ₹4,999 | 750 |
+| Academy | ₹799 | ₹7,999 | 1,000 shared |
+
+These are product-planning/customer-facing totals intended to be inclusive of applicable GST. The tax classification, registration, rate, place-of-supply, invoice and cross-border treatment must be reviewed by a qualified Indian tax adviser before checkout is enabled. Do not add GST on top of these displayed amounts without an approved pricing/tax decision.
+
+## Source-code mismatch — must be resolved before launch
+
+The candidate repository currently defines a different catalogue in `src/config/plans.ts` and `netlify/payment-common.mjs`:
+
+| Source plan | Current source monthly | Current source annual | Current source AI allowance |
+|---|---:|---:|---:|
+| Free | ₹0 | ₹0 | 0 |
+| Student (legacy) | Not for sale | Not for sale | 50 |
 | Pro | ₹99 | ₹999 | 50 |
 | Elite | ₹199 | ₹1,999 | 200 |
 | Coach | ₹499 | ₹4,999 | 750 |
 | Academy | ₹799 | ₹7,999 | 1,000 shared |
 
-Free includes core athlete records, medals, goals, calendar and Athlete Journey. Academy is fixed-price with two included coach seats, already enforced in the current academy workflow.
+This documentation-only change does **not** change client catalogue code, server checkout prices, provider plan IDs, subscriptions, entitlements or database records. Before launch, reconcile the product-owner catalogue across:
+- Web plan configuration
+- Android plan screen
+- Server-side paise/checkout mapping
+- Provider recurring plan IDs
+- AI entitlement and quota enforcement
+- Subscription/billing tests
+- Terms, privacy and billing copy
 
-## Approved launch pricing and GST policy (2026-11-13)
+Do not advertise or charge the new catalogue until this reconciliation is implemented and tested.
 
-The launch catalogue is locked at the monthly and annual amounts in the table above. Launch pricing choice: **same prices from launch**; there is no separate introductory-price phase or automatic post-launch increase. Annual amounts are billed once per year when recurring annual billing is implemented. The annual savings are compared with twelve monthly payments: Pro ₹189, Elite ₹389, Coach ₹989 and Academy ₹1,589.
+## Rewarded-ad credit policy discussed
 
-**GST presentation:** all displayed plan amounts are GST-inclusive where GST is legally applicable. The displayed amount is the total customer price; do not add GST on top at checkout. When GST is chargeable, calculate the taxable value and GST component backwards from the inclusive amount using the legally applicable rate and correct place-of-supply/tax treatment, and show the required tax details on the invoice. Do not hard-code an assumed GST rate in the client. A qualified Indian tax adviser must confirm AthleteN's registration status, supply classification, rate, place-of-supply rules, invoicing and any cross-border treatment before paid checkout is enabled. If GST is not legally chargeable, do not represent a GST amount as collected. No price increase or separate tax surcharge is authorised by this decision.
+- Each successfully verified rewarded ad grants **2 bonus AI messages**.
+- Maximum **3 successful ads per day**.
+- Maximum **30 ad-earned AI messages per month**.
+- Bonus credits are separate from plan allowances and expire at month-end.
+- Ads are optional; declining must not restrict existing access.
+- Rewards apply only when provider verification succeeds. Duplicate callbacks must not issue duplicate credits.
 
-This is a product-pricing decision, not a determination of AthleteN's GST liability. Checkout stays disabled until the tax treatment and provider implementation are reviewed and tested.
+**Operational status:** not live. Native Android rewarded-ad lifecycle, UMP/consent integration, age-appropriate ad configuration, publisher approval, server gates, environment configuration and physical-device acceptance remain outstanding.
 
-Student remains a legacy plan for existing subscribers only. Do not rewrite or reprice existing subscriptions. The seven-day no-charge trial is planned but not implemented; the legacy ₹9 trial endpoint remains server-gated.
+## Billing status
 
-## Initial operating envelope
-Monthly ceiling for the first 100 active users: ₹500, pending actual provider bills.
-| Category | Initial allocation |
-|---|---:|
-| AI | ₹150 |
-| Storage and notifications | ₹75 |
-| Monitoring and other services | ₹50 |
-| Maintenance reserve | ₹125 |
-| Contingency | ₹100 |
-| **Total** | **₹500** |
+Paid checkout, recurring billing, trials, renewal/cancellation/refund lifecycle and live payment activation remain disabled until provider, webhook, tax, invoice, security and acceptance gates are complete.
 
-## AI server variables
-- `OPENAI_MODEL`: optional exact model identifier; defaults to `gpt-6-luna`.
-- `ATHLETEN_AI_PRICING_MODEL`: required only when overriding the built-in pricing; must exactly match `OPENAI_MODEL`.
-- `ATHLETEN_AI_INPUT_PRICE_PER_1M_TOKENS_PAISE` and `ATHLETEN_AI_OUTPUT_PRICE_PER_1M_TOKENS_PAISE`: both required together for any pricing override.
-- The pinned `gpt-6-luna` default has conservative, versioned rates in source (₹11 input / ₹55 output per 1M tokens). Unsupported alternate models fail closed without an exact model-and-price override.
-- `ATHLETEN_AI_MONTHLY_BUDGET_PAISE`: defaults to 15000 paise / ₹150.
-- `ATHLETEN_AI_MAX_OUTPUT_TOKENS`: defaults to 600, bounded by server validation.
+## Financial controls
 
-### Reviewed AI model and INR pricing basis (2026-11-13)
-Use `gpt-6-luna` as the default text model. OpenAI describes it as an efficient model for focused, high-volume tasks, and it supports the Responses API used by AthleteN. The published standard text rates are USD $0.10 / 1M input tokens and USD $0.50 / 1M output tokens.
+- Server chooses plan price; client-supplied amounts are never trusted.
+- Keep provider credentials and webhook secrets server-side.
+- AI usage must reserve estimated cost before provider calls and settle against actual provider usage.
+- Pause/fail closed when budget controls or provider configuration are unavailable.
+- Reconcile actual provider invoices; estimates are not authoritative.
+- Verify storage, email, push, hosting and payment costs against the operating budget.
 
-For launch budgeting, use a conservative planning conversion of ₹100 per USD plus a 10% buffer:
-- Input: 1,100 paise per 1M tokens (₹11 / 1M).
-- Output: 5,500 paise per 1M tokens (₹55 / 1M).
-- Monthly platform AI ceiling: 15,000 paise (₹150).
-- Maximum output: 600 tokens per response.
+## Historical decisions
 
-The ₹100/USD planning conversion is deliberately above the 13 November 2026 mid-market rate; provider invoices remain authoritative. Recheck rates before changing model IDs or pricing. These values are estimates for budget enforcement, not a substitute for reconciling actual API usage and billing.
-
-Model documentation: https://developers.openai.com/api/docs/models/gpt-6-luna
-Official API pricing: https://developers.openai.com/api/docs/pricing
-
-AI reserves an estimated maximum cost before provider calls and settles against provider-reported usage. Timeouts consume the reservation conservatively. Token estimation is not a mathematical upper bound; validate model tokenizer/pricing and retain a safety margin. AI stays paused until the budget migration is safely applied and the production API key has been verified with the selected model. Alternate models remain paused until exact model-matched prices are configured.
-
-## Payments and controls
-Paid checkout remains disabled until recurring monthly/annual provider billing, signed webhook reconciliation, idempotency, renewals, cancellation, refunds, tax and legal requirements pass. The planned free seven-day trial is not active. Cashfree is not enabled for subscriptions because the existing path creates one-time orders.
-
-Do not unlock paid features from client flags or return URLs. Verify all Supabase, Netlify, storage, email, push and payment costs from provider billing dashboards. Keep spending within cash received; alert at 50/70/80/90% of budget; preserve authentication, security and data access when AI spending is paused. Retain one month of operating costs before calling the service self-sustaining.
+Older documents and code may contain earlier price points or Student legacy entitlements. Treat them as historical until source and billing are reconciled; do not silently reprice existing subscriptions.
