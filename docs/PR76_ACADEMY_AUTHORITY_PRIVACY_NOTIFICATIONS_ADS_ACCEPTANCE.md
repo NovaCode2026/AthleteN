@@ -24,3 +24,14 @@ The current code intentionally fails closed behind adult/provider/privacy approv
 
 ## Release and implementation status
 This document records the requested scope and acceptance criteria; it is not evidence that every item has been implemented or production-deployed. Candidate database changes require migration-history reconciliation and isolated staging replay. PR #76 remains draft until exact-head checks and required acceptance gates pass.
+
+
+## Athlete → Academy applications and approval
+
+- Athletes submit an application to an active Academy; it remains pending until an Academy Admin explicitly accepts or rejects it.
+- Academy Admin review is tenant-scoped. Coaches and other Academies cannot decide on the request.
+- Acceptance activates the athlete membership and links the athlete profile to that Academy. Rejection does not grant membership or access.
+- Athletes can withdraw pending applications. Duplicate pending applications to the same Academy are blocked.
+- Application messages and review notes are bounded. RLS permits the applicant and that Academy's approved Admin to read the request; client writes are RPC-only.
+- Candidate migration: `20261127010000_academy_application_approval_workflow.sql`; static regression test: `tests/academy-application-approval-regression.test.mjs`.
+- The SQL workflow is committed, but Academy application UI, Coach/Academy notification fan-out, isolated PostgreSQL replay and exact-head CI are still pending. Do not call the feature fully live until those checks and UI integration are complete.
