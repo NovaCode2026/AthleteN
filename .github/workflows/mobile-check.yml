@@ -36,8 +36,8 @@ jobs:
           cache: npm
           cache-dependency-path: AthleteN-Mobile/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (repair stale lockfile in CI workspace)
+        run: npm install
 
       - name: Mobile contract tests
         run: npm test
