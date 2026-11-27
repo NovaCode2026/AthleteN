@@ -137,7 +137,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void refreshAthleteWidgets();
+    void refreshAthleteWidgets().catch((error) => {
+      console.warn('[AthleteN] widget refresh skipped:', error instanceof Error ? error.message : error);
+    });
   }, [syncVersion, session?.user.id]);
 
   useEffect(() => {
@@ -153,14 +155,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     };
 
-    // Ask once during authenticated setup. When the app resumes, only check
-    // whether permission is now enabled in system settings.
-    syncPushToken(true);
+    // Defer permission prompts/token registration until after the first route
+    // has had time to render. Native notification failures remain non-fatal.
+    const initialPushTimer = setTimeout(() => syncPushToken(true), 12000);
     const appStateSubscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') syncPushToken(false);
     });
 
-    const removeNotificationListeners = attachNotificationListeners();
+    let removeNotificationListeners: (() => void) | undefined;
+    try {
+      removeNotificationListeners = attachNotificationListeners();
+    } catch (error) {
+      console.warn('[AthleteN] notification listeners skipped:', error instanceof Error ? error.message : error);
+    }
 
     const channel = supabase.channel(`mobile-account-sync-${userId}`);
     const ownedTables = [
@@ -190,9 +197,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       );
     }
-    channel.subscribe();
+    try {
+      channel.subscribe();
+    } catch (error) {
+      console.warn('[AthleteN] account realtime sync unavailable:', error instanceof Error ? error.message : error);
+    }
 
     return () => {
+      clearTimeout(initialPushTimer);
       appStateSubscription.remove();
       void supabase.removeChannel(channel);
       removeNotificationListeners?.();
