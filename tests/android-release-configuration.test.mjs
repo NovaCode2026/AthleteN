@@ -37,6 +37,16 @@ test("boot-isolation APK excludes optional native modules and embeds its JavaScr
   assert.ok(workflow.includes("assets/index.android.bundle"));
 });
 
+
+test("pull-request APK is standalone and verifies the embedded React Native bundle", () => {
+  const workflow = read("../.github/workflows/android-apk-build.yml");
+  assert.ok(workflow.includes("AthleteN Android Standalone APK Build"));
+  assert.ok(workflow.includes("assembleRelease --no-daemon"));
+  assert.ok(workflow.includes("assets/index.android.bundle"));
+  assert.ok(workflow.includes("AthleteN-standalone-apk"));
+  assert.doesNotMatch(workflow, /assembleDebug/);
+});
+
 test("release documentation distinguishes CI artifacts from store builds", () => {
   const doc = read("../docs/ANDROID_RELEASE_SIGNING_2026-11-12.md");
   assert.match(doc, /debug certificate, not a production upload key/i);
