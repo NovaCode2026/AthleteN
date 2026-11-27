@@ -42,7 +42,9 @@ test('Rewards Centre obtains a server-issued session before presenting an ad', (
 test('Rewards Centre hides the ad entry unless feature flag and age eligibility pass', () => {
   const source = read('src/app/rewards.tsx');
   assert.ok(source.includes('EXPO_PUBLIC_ATHLETEN_REWARDED_ADS_ENABLED'));
-  assert.ok(source.includes('isRewardAgeEligibleDateOfBirth(profile?.date_of_birth)'));\n  assert.ok(source.includes('return age >= 13;'), 'teen 13+ can enter the Rewards Centre');\n  assert.ok(source.includes('parent/guardian-approved teen eligibility (13–17)'));
+  assert.ok(source.includes('isRewardAgeEligibleDateOfBirth(profile?.date_of_birth)'));
+  assert.ok(source.includes('return age >= 13;'), 'teen 13+ can enter the Rewards Centre');
+  assert.ok(source.includes('parent/guardian-approved teen eligibility (13–17)'));
 });
 
 test('web platform does not import or attempt to load the native ads SDK', () => {
