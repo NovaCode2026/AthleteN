@@ -30,10 +30,10 @@ test("release workflow is manual and requires the Expo token", () => {
 
 test("CI APK artifact is explicitly labelled debug-signed", () => {
   const workflow = read("../.github/workflows/android-apk.yml");
-  assert.match(workflow, /AthleteN Android CI APK \\(debug-signed\\)/);
-  assert.match(workflow, /AthleteN-ci-debug-signed-apk/);
-  assert.match(workflow, /assembleRelease --no-daemon/);
-  assert.match(workflow, /assets\\/index\\.android\\.bundle/);
+  assert.ok(workflow.includes("AthleteN Android CI APK (debug-signed)"));
+  assert.ok(workflow.includes("AthleteN-ci-debug-signed-apk"));
+  assert.ok(workflow.includes("assembleRelease --no-daemon"));
+  assert.ok(workflow.includes("assets/index.android.bundle"));
 });
 
 test("release documentation distinguishes CI artifacts from store builds", () => {
@@ -41,4 +41,15 @@ test("release documentation distinguishes CI artifacts from store builds", () =>
   assert.match(doc, /debug certificate, not a production upload key/i);
   assert.match(doc, /manual-only GitHub Actions workflow/i);
   assert.match(doc, /No production EAS AAB has been built or cryptographically verified/i);
+});
+
+test("diagnostic-only native build disables OTA without changing production app defaults", () => {
+  const app = JSON.parse(read("../AthleteN-Mobile/app.json"));
+  const config = read("../AthleteN-Mobile/app.config.js");
+
+  assert.equal(app.expo.updates.enabled, true);
+  assert.equal(app.expo.updates.checkAutomatically, "ON_LOAD");
+  assert.match(config, /ATHLETEN_BOOT_DIAGNOSTIC === '1'/);
+  assert.match(config, /enabled: false/);
+  assert.match(config, /checkAutomatically: 'NEVER'/);
 });

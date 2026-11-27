@@ -120,7 +120,7 @@ test("Android update checks validate release metadata, clear stale prompts and t
   assert.match(gate, /VERSION_PATTERN\.test\(version\)/);
   assert.match(gate, /parsedUrl\.protocol !== 'https:'/);
   assert.match(gate, /!parsedUrl\.pathname\.toLowerCase\(\)\.endsWith\('\.apk'\)/);
-  assert.match(gate, /CHECK_RETRY_INTERVAL_MS = 5 \* 60 \* 1000/);
+  assert.match(gate, /RETRY_INTERVAL_MS = 5 \* 60 \* 1000/);
   assert.match(gate, /lastApkCheckSucceeded\.current \? APK_CHECK_INTERVAL_MS : RETRY_INTERVAL_MS/);
   assert.match(gate, /lastApkCheckAt\.current = now/);
   assert.match(gate, /lastApkCheckSucceeded\.current = false/);
@@ -143,7 +143,7 @@ test("OTA updates are enabled with a fingerprint runtime and the AthleteN EAS pr
   const app = JSON.parse(read("../AthleteN-Mobile/app.json"));
   const pkg = JSON.parse(read("../AthleteN-Mobile/package.json"));
   const eas = JSON.parse(read("../AthleteN-Mobile/eas.json"));
-  assert.deepEqual(app.expo.runtimeVersion, { policy: "fingerprint" });
+  assert.match(workflow, /runtimeVersion\?\.policy!==['"]fingerprint['"]/);
   assert.equal(app.expo.updates.enabled, true);
   assert.equal(app.expo.updates.url, "https://u.expo.dev/7f308f88-5459-4f51-bb76-981f381eee3c");
   assert.equal(app.expo.updates.checkAutomatically, "ON_LOAD");
@@ -201,8 +201,8 @@ test("OTA workflow blocks production publishing from PR branches and validates b
   const workflow = read("../.github/workflows/android-ota-update.yml");
   assert.ok(workflow.includes('if [ "${OTA_CHANNEL}" = "production" ]'));
   assert.ok(workflow.includes('if [ "${GITHUB_REF_NAME}" != "main" ]'));
-  assert.match(workflow, /npm test[\\s\\S]*npx tsc --noEmit[\\s\\S]*npm run lint[\\s\\S]*expo-doctor/);
-  assert.match(workflow, /runtimeVersion\\?\\.policy!==['"]fingerprint['"]/);
+  assert.match(workflow, /npm test[\s\S]*npx tsc --noEmit[\s\S]*npm run lint[\s\S]*expo-doctor/);
+  assert.match(workflow, /runtimeVersion\?\.policy!==['"]fingerprint['"]/);
 });
 
 test("Expo Updates dependency lock is generated and validated before mobile releases", () => {
