@@ -69,19 +69,37 @@ jobs:
       - name: ESLint validation
         run: npm run lint
 
-      - name: Normalize mislabeled WebP assets before Expo prebuild
+      - name: Convert WebP assets to PNG for Expo Android tooling
         run: |
-          sudo apt-get update
-          sudo apt-get install -y imagemagick
-          find assets -type f -iname '*.png' -print0 | while IFS= read -r -d '' asset; do
-            mime="$(file --brief --mime-type "$asset")"
-            if [ "$mime" = "image/webp" ]; then
-              echo "Converting WebP content mislabeled as PNG: $asset"
-              temp_file="${asset}.normalized.png"
-              magick "$asset" "png:$temp_file"
-              mv "$temp_file" "$asset"
-            fi
-          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          root = Path(".")
+          converted = []
+          for asset in root.rglob("*"):
+              if not asset.is_file() or asset.suffix.lower() not in {".webp", ".png", ".jpg", ".jpeg"}:
+                  continue
+              result = subprocess.run(["file", "--brief", "--mime-type", str(asset)], capture_output=True, text=True)
+              if result.stdout.strip() != "image/webp":
+                  continue
+              target = asset.with_suffix(".png")
+              subprocess.run(["magick", str(asset), f"png:{target}"], check=True)
+              converted.append((asset.relative_to(root).as_posix(), target.relative_to(root).as_posix()))
+              if asset != target:
+                  asset.unlink()
+          for old, new in converted:
+              for file in root.rglob("*"):
+                  if not file.is_file() or file.suffix.lower() not in {".json", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".xml", ".md"}:
+                      continue
+                  try:
+                      text = file.read_text()
+                  except (UnicodeDecodeError, OSError):
+                      continue
+                  updated = text.replace(old, new)
+                  if updated != text:
+                      file.write_text(updated)
+              print(f"Converted {old} -> {new}")
+          PY
 
       - name: Generate Android project
         run: CI=1 npx expo prebuild --platform android --no-install
