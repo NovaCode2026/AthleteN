@@ -40,6 +40,31 @@ module.exports = ({ config }) => {
     process.env.GOOGLE_SERVICES_FILE ||
     process.env.GOOGLE_SERVICES_JSON_FILE;
 
+  const diagnosticOnlyPlugins = new Set([
+    'expo-router',
+    'expo-web-browser',
+    'expo-splash-screen',
+    'expo-notifications',
+    'expo-secure-store',
+    'react-native-android-widget',
+    'react-native-google-mobile-ads',
+  ]);
+  const basePlugins = config.plugins || [];
+  const plugins = bootDiagnostic
+    ? basePlugins.filter((plugin) => !diagnosticOnlyPlugins.has(Array.isArray(plugin) ? plugin[0] : plugin))
+    : [
+        ...basePlugins,
+        [
+          'react-native-google-mobile-ads',
+          {
+            androidAppId: ANDROID_APP_ID,
+            iosAppId: IOS_APP_ID,
+            // Prevent app measurement before the UMP consent flow is completed.
+            delayAppMeasurementInit: true,
+          },
+        ],
+      ];
+
   return {
     ...config,
     ...(bootDiagnostic ? {
@@ -54,17 +79,6 @@ module.exports = ({ config }) => {
       ...config.android,
       ...(googleServicesFile ? { googleServicesFile } : {}),
     },
-    plugins: [
-      ...(config.plugins || []),
-      [
-        'react-native-google-mobile-ads',
-        {
-          androidAppId: ANDROID_APP_ID,
-          iosAppId: IOS_APP_ID,
-          // Prevent app measurement before the UMP consent flow is completed.
-          delayAppMeasurementInit: true,
-        },
-      ],
-    ],
+    plugins,
   };
 };
