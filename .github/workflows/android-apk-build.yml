@@ -1,0 +1,61 @@
+name: AthleteN Android APK Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "AthleteN-Mobile/**"
+      - ".github/workflows/android-apk-build.yml"
+      - ".github/workflows/mobile-check.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: athleten-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: AthleteN-Mobile
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Require EAS token
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "EXPO_TOKEN repository secret is required for EAS cloud builds."
+            exit 1
+          fi
+
+      - name: Install dependencies and reconcile lockfile in CI workspace
+        run: npm install
+
+      - name: Build preview APK with EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx --yes eas-cli@latest build --platform android --profile preview --non-interactive --wait
+
+      - name: Download APK from EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx --yes eas-cli@latest build:download --platform android --latest --path ./AthleteN-preview.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AthleteN-preview-apk
+          path: AthleteN-Mobile/AthleteN-preview.apk
+          if-no-files-found: error
+          retention-days: 14
