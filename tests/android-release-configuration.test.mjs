@@ -54,12 +54,12 @@ test("release documentation distinguishes CI artifacts from store builds", () =>
   assert.match(doc, /No production EAS AAB has been built or cryptographically verified/i);
 });
 
-test("diagnostic-only native build disables OTA without changing production app defaults", () => {
+test("diagnostic-only native build disables OTA and production startup defers automatic OTA checks", () => {
   const app = JSON.parse(read("../AthleteN-Mobile/app.json"));
   const config = read("../AthleteN-Mobile/app.config.js");
 
   assert.equal(app.expo.updates.enabled, true);
-  assert.equal(app.expo.updates.checkAutomatically, "ON_LOAD");
+  assert.equal(app.expo.updates.checkAutomatically, "NEVER");
   assert.match(config, /ATHLETEN_BOOT_DIAGNOSTIC === '1'/);
   assert.match(config, /enabled: false/);
   assert.match(config, /checkAutomatically: 'NEVER'/);
