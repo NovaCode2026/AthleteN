@@ -1,0 +1,56 @@
+name: Messaging Lifecycle SQL Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/migrations/20261124160000_messaging_lifecycle_and_disappearing_messages.sql"
+      - "supabase/migrations/20261124180000_private_saved_messages.sql"
+      - "tests/sql/messaging-lifecycle-integration.sql"
+      - "tests/sql/messaging-lifecycle-assertions.sql"
+      - ".github/workflows/messaging-lifecycle-sql-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  messaging-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: athleten_messaging_lifecycle_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d athleten_messaging_lifecycle_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Create isolated messaging fixture
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_messaging_lifecycle_test -v ON_ERROR_STOP=1 -f tests/sql/messaging-lifecycle-integration.sql
+      - name: Apply candidate messaging lifecycle migration
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_messaging_lifecycle_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124160000_messaging_lifecycle_and_disappearing_messages.sql
+      - name: Apply private saved-message migration
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_messaging_lifecycle_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124180000_private_saved_messages.sql
+      - name: Verify expiry, cleanup, attachment deletion, group permissions and saved-message privacy
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_messaging_lifecycle_test -v ON_ERROR_STOP=1 -f tests/sql/messaging-lifecycle-assertions.sql

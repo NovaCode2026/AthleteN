@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, Text, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Screen, Header, Card, Empty, c, Icon } from '@/components/mobile-ui';
@@ -14,34 +14,97 @@ type NotificationRow = {
   action_route?: string | null;
   message_id?: string | null;
   announcement_id?: string | null;
+  attendance_record_id?: string | null;
+  training_group_session_id?: string | null;
   created_at: string;
   read_at: string | null;
+  conversation_id?: string;
+  notification_ids?: string[];
+  message_count?: number;
+  unread_message_count?: number;
 };
+function notificationCategory(type:string|null|undefined){
+  const value=String(type||'').toLowerCase();
+  if(value==='message')return 'MESSAGES';
+  if(value==='training')return 'TRAINING';
+  if(['competition','competitions','tournament','tournament_update'].includes(value))return 'COMPETITIONS';
+  if(['coach','academy','coach_academy','connection','connection_request','academy_invitation','coach_invitation'].includes(value))return 'COACH & ACADEMY';
+  if(['achievement','badge','milestone'].includes(value))return 'ACHIEVEMENTS';
+  return 'SYSTEM';
+}
+function groupMessageNotifications(rows:NotificationRow[]){
+  const groups=new Map<string,NotificationRow[]>();
+  const output:NotificationRow[]=[];
+  for(const row of rows){
+    if(row.notification_type==='message'&&row.conversation_id){
+      const key=String(row.conversation_id);
+      const group=groups.get(key)||[];
+      group.push(row);
+      groups.set(key,group);
+    }else output.push({...row,notification_ids:[row.id],message_count:1,unread_message_count:row.read_at?0:1});
+  }
+  for(const [conversationId,group] of groups){
+    group.sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
+    const latest=group[0];
+    const unread=group.filter(row=>!row.read_at).length;
+    output.push({...latest,id:'message-group:'+conversationId,notification_ids:group.map(row=>row.id),message_count:group.length,unread_message_count:unread,read_at:unread?null:latest.read_at,title:group.length>1?'New messages':latest.title,body:group.length>1?group.length+' message notifications · '+unread+' unread':latest.body});
+  }
+  return output.sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
+}
 type AnnouncementSource = { title: string; body: string; published_at: string | null };
+type AttendanceSource = { title: string; date: string; status: string; attended_at: string | null; notes: string | null };
+type TrainingSource = { title: string; group: string; date: string; start_time: string | null; status: string; venue: string | null; notes: string | null };
 
 export default function NotificationsScreen() {
   const { session } = useAuth();
   const router = useRouter();
+  const routeParams = useLocalSearchParams<{ attendanceRecordId?: string; announcementId?: string; trainingGroupSessionId?: string }>();
+  const handledSourceParam = useRef<string | null>(null);
   const [rows, setRows] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [announcement, setAnnouncement] = useState<AnnouncementSource | null>(null);
+  const [attendance, setAttendance] = useState<AttendanceSource | null>(null);
+  const [trainingSource, setTrainingSource] = useState<TrainingSource | null>(null);
 
   const load = useCallback(async () => {
     if (!session) { setRows([]); setLoading(false); return; }
     setLoading(true);
-    const { data, error: queryError } = await supabase
+    let data: NotificationRow[] | null = null;
+    let queryError: { message: string } | null = null;
+    const primaryQuery = await supabase
       .from('notifications')
-      .select('id,title,body,notification_type,action_route,message_id,announcement_id,created_at,read_at')
+      .select('id,title,body,notification_type,action_route,message_id,announcement_id,attendance_record_id,training_group_session_id,created_at,read_at')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50);
+    data = (primaryQuery.data || null) as NotificationRow[] | null;
+    queryError = primaryQuery.error;
+    // Older staging environments may not have the source-link migration yet.
+    if (queryError && ['attendance_record_id', 'training_group_session_id'].some((field) => String(queryError?.message || '').toLowerCase().includes(field))) {
+      const fallback = await supabase
+        .from('notifications')
+        .select('id,title,body,notification_type,action_route,message_id,announcement_id,created_at,read_at')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      data = (fallback.data || null) as NotificationRow[] | null;
+      queryError = fallback.error;
+    }
     if (queryError) {
       setError(queryError.message);
       console.warn('[AthleteN] could not load notifications', queryError.message);
     } else {
-      const next = (data || []) as NotificationRow[];
+      let next = (data || []) as NotificationRow[];
+      const messageIds = next.filter((row) => row.notification_type === 'message' && row.message_id).map((row) => row.message_id!);
+      if (messageIds.length) {
+        const { data: messageRows, error: messageLookupError } = await supabase.from('messages').select('id,conversation_id').in('id', messageIds);
+        if (!messageLookupError) {
+          const conversationByMessage = new Map((messageRows || []).map((row: any) => [String(row.id), String(row.conversation_id)]));
+          next = next.map((row) => ({ ...row, conversation_id: row.message_id ? conversationByMessage.get(String(row.message_id)) : undefined }));
+        }
+      }
       setRows(next);
       setError('');
       const unread = next.filter((row) => !row.read_at).length;
@@ -69,15 +132,124 @@ export default function NotificationsScreen() {
     return () => { void supabase.removeChannel(channel); };
   }, [load, session]);
 
+  useEffect(() => {
+    if (!session) return;
+    const attendanceId = typeof routeParams.attendanceRecordId === 'string' ? routeParams.attendanceRecordId : '';
+    const announcementId = typeof routeParams.announcementId === 'string' ? routeParams.announcementId : '';
+    const trainingSessionId = typeof routeParams.trainingGroupSessionId === 'string' ? routeParams.trainingGroupSessionId : '';
+    const sourceKey = attendanceId ? 'attendance:' + attendanceId : announcementId ? 'announcement:' + announcementId : trainingSessionId ? 'training:' + trainingSessionId : '';
+    if (!sourceKey || handledSourceParam.current === sourceKey) return;
+    handledSourceParam.current = sourceKey;
+
+    void (async () => {
+      try {
+        if (attendanceId) {
+          const { data: attendanceRow, error: attendanceError } = await supabase
+            .from('attendance_records')
+            .select('id,training_session_id,attended_at,status,notes')
+            .eq('id', attendanceId)
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+          if (attendanceError) throw attendanceError;
+          if (!attendanceRow) {
+            setError('The original attendance record is no longer available.');
+            return;
+          }
+          let sessionTitle = 'Training session';
+          let sessionDate = '';
+          if (attendanceRow.training_session_id) {
+            const { data: trainingSession, error: sessionError } = await supabase
+              .from('training_sessions')
+              .select('title,session_date')
+              .eq('id', attendanceRow.training_session_id)
+              .eq('user_id', session.user.id)
+              .maybeSingle();
+            if (sessionError) throw sessionError;
+            if (trainingSession) {
+              sessionTitle = String(trainingSession.title || sessionTitle);
+              sessionDate = String(trainingSession.session_date || '');
+            }
+          }
+          setAttendance({
+            title: sessionTitle,
+            date: sessionDate,
+            status: String(attendanceRow.status || 'updated'),
+            attended_at: attendanceRow.attended_at || null,
+            notes: attendanceRow.notes || null,
+          });
+          await supabase.from('notifications')
+            .update({ read_at: new Date().toISOString() })
+            .eq('user_id', session.user.id)
+            .eq('attendance_record_id', attendanceId)
+            .is('read_at', null);
+        } else if (announcementId) {
+          const { data, error: sourceError } = await supabase
+            .from('announcements')
+            .select('id,title,body,published_at')
+            .eq('id', announcementId)
+            .maybeSingle();
+          if (sourceError) throw sourceError;
+          if (!data) setError('The original announcement is no longer available.');
+          else setAnnouncement({
+            title: String(data.title || 'Announcement'),
+            body: String(data.body || ''),
+            published_at: data.published_at || null,
+          });
+          await supabase.from('notifications')
+            .update({ read_at: new Date().toISOString() })
+            .eq('user_id', session.user.id)
+            .eq('announcement_id', announcementId)
+            .is('read_at', null);
+        } else if (trainingSessionId) {
+          const { data: trainingRow, error: trainingError } = await supabase
+            .from('training_group_sessions')
+            .select('id,group_id,session_date,start_time,title,status,venue,notes')
+            .eq('id', trainingSessionId)
+            .maybeSingle();
+          if (trainingError) throw trainingError;
+          if (!trainingRow) {
+            setError('The original training session is no longer available.');
+          } else {
+            const { data: groupRow, error: groupError } = await supabase
+              .from('training_groups')
+              .select('name')
+              .eq('id', trainingRow.group_id)
+              .maybeSingle();
+            if (groupError) throw groupError;
+            setTrainingSource({
+              title: String(trainingRow.title || 'Training session'),
+              group: String(groupRow?.name || 'Training group'),
+              date: String(trainingRow.session_date || ''),
+              start_time: trainingRow.start_time || null,
+              status: String(trainingRow.status || 'scheduled'),
+              venue: trainingRow.venue || null,
+              notes: trainingRow.notes || null,
+            });
+          }
+          await supabase.from('notifications')
+            .update({ read_at: new Date().toISOString() })
+            .eq('user_id', session.user.id)
+            .eq('training_group_session_id', trainingSessionId)
+            .is('read_at', null);
+        }
+        await load();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Notification source could not be opened.');
+      }
+    })();
+  }, [load, routeParams.announcementId, routeParams.attendanceRecordId, routeParams.trainingGroupSessionId, session]);
+
   async function markRead(row: NotificationRow) {
     if (!session || row.read_at) return;
+    const ids = row.notification_ids?.length ? row.notification_ids : [row.id];
+    const readAt = new Date().toISOString();
     const { error: updateError } = await supabase
       .from('notifications')
-      .update({ read_at: new Date().toISOString() })
-      .eq('id', row.id)
+      .update({ read_at: readAt })
+      .in('id', ids)
       .eq('user_id', session.user.id);
     if (updateError) throw updateError;
-    setRows((current) => current.map((item) => item.id === row.id ? { ...item, read_at: new Date().toISOString() } : item));
+    setRows((current) => current.map((item) => ids.includes(item.id) ? { ...item, read_at: readAt } : item));
   }
 
   async function openNotification(row: NotificationRow) {
@@ -114,6 +286,72 @@ export default function NotificationsScreen() {
         await load();
         return;
       }
+      if (row.training_group_session_id) {
+        const { data: trainingRow, error: trainingError } = await supabase
+          .from('training_group_sessions')
+          .select('id,group_id,session_date,start_time,title,status,venue,notes')
+          .eq('id', row.training_group_session_id)
+          .maybeSingle();
+        if (trainingError) throw trainingError;
+        if (!trainingRow) {
+          setError('The original training session is no longer available.');
+        } else {
+          const { data: groupRow, error: groupError } = await supabase
+            .from('training_groups')
+            .select('name')
+            .eq('id', trainingRow.group_id)
+            .maybeSingle();
+          if (groupError) throw groupError;
+          setTrainingSource({
+            title: String(trainingRow.title || 'Training session'),
+            group: String(groupRow?.name || 'Training group'),
+            date: String(trainingRow.session_date || ''),
+            start_time: trainingRow.start_time || null,
+            status: String(trainingRow.status || 'scheduled'),
+            venue: trainingRow.venue || null,
+            notes: trainingRow.notes || null,
+          });
+        }
+        await load();
+        return;
+      }
+      if (row.attendance_record_id) {
+        const { data: attendanceRow, error: attendanceError } = await supabase
+          .from('attendance_records')
+          .select('id,training_session_id,attended_at,status,notes')
+          .eq('id', row.attendance_record_id)
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        if (attendanceError) throw attendanceError;
+        if (!attendanceRow) {
+          setError('The original attendance record is no longer available.');
+        } else {
+          let sessionTitle = 'Training session';
+          let sessionDate = '';
+          if (attendanceRow.training_session_id) {
+            const { data: trainingSession, error: sessionError } = await supabase
+              .from('training_sessions')
+              .select('title,session_date')
+              .eq('id', attendanceRow.training_session_id)
+              .eq('user_id', session.user.id)
+              .maybeSingle();
+            if (sessionError) throw sessionError;
+            if (trainingSession) {
+              sessionTitle = String(trainingSession.title || sessionTitle);
+              sessionDate = String(trainingSession.session_date || '');
+            }
+          }
+          setAttendance({
+            title: sessionTitle,
+            date: sessionDate,
+            status: String(attendanceRow.status || 'updated'),
+            attended_at: attendanceRow.attended_at || null,
+            notes: attendanceRow.notes || null,
+          });
+        }
+        await load();
+        return;
+      }
       const route = String(row.action_route || '');
       if (route.startsWith('/') && !route.startsWith('//') && !route.startsWith('/notifications')) {
         await load();
@@ -139,9 +377,10 @@ export default function NotificationsScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => { void (async () => {
         setBusy(true);
-        const { error: deleteError } = await supabase.from('notifications').delete().eq('id', row.id).eq('user_id', session.user.id);
+        const ids = row.notification_ids?.length ? row.notification_ids : [row.id];
+        const { error: deleteError } = await supabase.from('notifications').delete().in('id', ids).eq('user_id', session.user.id);
         if (deleteError) setError(deleteError.message);
-        else setRows((current) => current.filter((item) => item.id !== row.id));
+        else setRows((current) => current.filter((item) => !ids.includes(item.id)));
         setBusy(false);
         await load();
       })(); } },
@@ -174,6 +413,7 @@ export default function NotificationsScreen() {
     ]);
   }
 
+  const displayRows = groupMessageNotifications(rows);
   const unread = rows.filter((row) => !row.read_at).length;
 
   return (
@@ -188,10 +428,11 @@ export default function NotificationsScreen() {
         </Pressable>
       </View>
       {error ? <Card><Text accessibilityRole="alert" style={{ color: c.warning, fontSize: 11, lineHeight: 17 }}>{error}</Text></Card> : null}
-      {loading ? <Card><ActivityIndicator color={c.accentBright}/></Card> : rows.length ? rows.map((row) => (
+      {loading ? <Card><ActivityIndicator color={c.accentBright}/></Card> : displayRows.length ? displayRows.map((row) => (
         <Card key={row.id} style={{ gap: 9, borderColor: row.read_at ? c.border : c.accent }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 9 }}>
             <Pressable accessibilityRole="button" accessibilityLabel={'Open notification: ' + (row.title || 'AthleteN notification')} onPress={() => void openNotification(row)} disabled={busy} style={{ flex: 1, gap: 6 }}>
+              <Text style={{ color: c.accentBright, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 }}>{notificationCategory(row.notification_type)}{(row.message_count||0)>1?' · '+row.message_count+' MESSAGES':''}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <Text style={{ color: row.read_at ? c.muted : c.text, fontSize: 14, fontWeight: '900', flex: 1 }}>{row.title || 'AthleteN notification'}</Text>
                 <View style={{ backgroundColor: row.read_at ? c.background : c.accentSoft, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 4 }}>
@@ -216,6 +457,36 @@ export default function NotificationsScreen() {
             <Text style={{ color: c.muted, fontSize: 12, lineHeight: 19 }}>{announcement?.body}</Text>
             {announcement?.published_at ? <Text style={{ color: c.muted, fontSize: 9 }}>{new Date(announcement.published_at).toLocaleString()}</Text> : null}
             <Pressable onPress={() => setAnnouncement(null)} style={{ backgroundColor: c.accent, borderRadius: 11, padding: 13, alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900' }}>CLOSE</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={!!trainingSource} transparent animationType="fade" onRequestClose={() => setTrainingSource(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.78)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: c.surface, borderWidth: 1, borderColor: c.accent, borderRadius: 20, padding: 18, gap: 12 }}>
+            <Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1.3 }}>ORIGINAL TRAINING SESSION</Text>
+            <Text style={{ color: c.text, fontSize: 21, fontWeight: '900' }}>{trainingSource?.title || 'Training session'}</Text>
+            <Text style={{ color: c.muted, fontSize: 10 }}>{trainingSource?.group} · {trainingSource?.date}{trainingSource?.start_time ? ' · ' + trainingSource.start_time.slice(0, 5) : ''}</Text>
+            <Text style={{ color: c.text, fontSize: 12, fontWeight: '800' }}>Status: {trainingSource?.status}</Text>
+            {trainingSource?.venue ? <Text style={{ color: c.muted, fontSize: 11 }}>Venue: {trainingSource.venue}</Text> : null}
+            <Text style={{ color: c.muted, fontSize: 12, lineHeight: 19 }}>{trainingSource?.notes || 'No additional session notes were recorded.'}</Text>
+            <Pressable onPress={() => setTrainingSource(null)} style={{ backgroundColor: c.accent, borderRadius: 11, padding: 13, alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900' }}>CLOSE</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={!!attendance} transparent animationType="fade" onRequestClose={() => setAttendance(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.78)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: c.surface, borderWidth: 1, borderColor: c.accent, borderRadius: 20, padding: 18, gap: 12 }}>
+            <Text style={{ color: c.accentBright, fontSize: 9, fontWeight: '900', letterSpacing: 1.3 }}>ORIGINAL ATTENDANCE RECORD</Text>
+            <Text style={{ color: c.text, fontSize: 21, fontWeight: '900' }}>{attendance?.title || 'Training session'}</Text>
+            {attendance?.date ? <Text style={{ color: c.muted, fontSize: 10 }}>Session date: {attendance.date}</Text> : null}
+            <Text style={{ color: c.text, fontSize: 12, fontWeight: '800' }}>Attendance: {attendance?.status}</Text>
+            {attendance?.attended_at ? <Text style={{ color: c.muted, fontSize: 9 }}>Recorded: {new Date(attendance.attended_at).toLocaleString()}</Text> : null}
+            <Text style={{ color: c.muted, fontSize: 12, lineHeight: 19 }}>{attendance?.notes || 'No additional attendance notes were recorded.'}</Text>
+            <Pressable onPress={() => setAttendance(null)} style={{ backgroundColor: c.accent, borderRadius: 11, padding: 13, alignItems: 'center' }}>
               <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900' }}>CLOSE</Text>
             </Pressable>
           </View>

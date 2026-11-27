@@ -1,4 +1,5 @@
 import React from 'react';
+import * as SplashScreen from 'expo-splash-screen';
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import { Pressable, Text, View, useColorScheme } from 'react-native';
 import AthleteNLogo from '@/components/athleten-logo';
@@ -45,7 +46,6 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBou
   }
 }
 
-
 const PUBLIC_AUTH_PATHS = new Set([
   '/',
   '/auth/callback',
@@ -63,13 +63,32 @@ function AuthRouteGuard() {
 
   React.useEffect(() => {
     if (loading || session) return;
-    // Expo Router omits route-group names from usePathname(). As a result, the
-    // protected tab home can also report "/" and be mistaken for the public
-    // login entry route. Route segments disambiguate the two cases after logout.
-    // Supabase email confirmation and recovery links remain public.
     const isPublicEntryRoute = PUBLIC_AUTH_PATHS.has(pathname) && !isProtectedTabRoute;
     if (!isPublicEntryRoute) router.replace('/');
   }, [loading, session?.user.id, pathname, isProtectedTabRoute, router]);
+  return null;
+}
+
+// Keep the native splash visible until the router has produced a committed route.
+// The delay gives the first React frame time to paint before the native splash is removed.
+void SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+function SplashHandoff() {
+  const pathname = usePathname();
+  React.useEffect(() => {
+    if (!pathname) return;
+    const timer = setTimeout(() => {
+      void SplashScreen.hideAsync().catch(() => undefined);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [pathname]);
+  React.useEffect(() => {
+    // Safety fallback if route resolution is delayed or fails.
+    const failsafe = setTimeout(() => {
+      void SplashScreen.hideAsync().catch(() => undefined);
+    }, 8000);
+    return () => clearTimeout(failsafe);
+  }, []);
   return null;
 }
 
@@ -80,6 +99,7 @@ export default function RootLayout() {
   return (
     <AppErrorBoundary>
       <AuthProvider>
+        <SplashHandoff />
         <AuthRouteGuard />
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <AnnouncementOverlay />
@@ -110,6 +130,8 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="rewards" options={{ headerShown: false }} />
+            <Stack.Screen name="leaderboard" options={{ headerShown: false }} />
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="academy-setup" options={{ headerShown: false }} />
             <Stack.Screen name="change-password" options={{ headerShown: false }} />

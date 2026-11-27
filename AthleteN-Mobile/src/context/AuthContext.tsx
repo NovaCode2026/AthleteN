@@ -168,7 +168,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       'weight_logs', 'goals', 'calendar_events', 'documents', 'notifications',
       'competition_checklists', 'attendance_records', 'certificates', 'injuries',
       'tournament_scans', 'athlete_badges', 'subscriptions',
-      'account_entitlements'
+      'account_entitlements', 'student_verifications', 'subscription_usage',
+      'taekwondo_training_logs', 'taekwondo_kyorugi_bouts',
+      'taekwondo_poomsae_performances', 'athlete_seasons',
+      'competition_journals', 'fight_iq_entries', 'technique_progress',
+      'athlete_challenges', 'personal_records', 'athlete_milestones',
+      'athlete_timeline_events'
     ];
     channel.on(
       'postgres_changes',

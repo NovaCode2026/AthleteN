@@ -1,0 +1,77 @@
+name: AthleteN Mobile Dependency Lock Sync
+
+on:
+  push:
+    branches:
+      - main
+      - feat/rewarded-ads-rewards-centre-20261124
+    paths:
+      - "AthleteN-Mobile/package.json"
+      - ".github/workflows/mobile-lockfile-sync.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: athleten-mobile-lockfile-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: AthleteN-Mobile
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Regenerate the npm lockfile from the SDK 57 manifest
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Install exactly from the regenerated lockfile
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate resolved Expo config
+        run: |
+          npx expo config --type public --json > /tmp/athleten-expo-config.json
+          node -e "const c=require('/tmp/athleten-expo-config.json'); if(c.runtimeVersion?.policy!=='fingerprint'||c.updates?.enabled!==true||!c.updates?.url) process.exit(1); if(c.icon!=='./assets/logo.webp') process.exit(1); console.log('Expo OTA, runtime and official-logo config are valid.');"
+
+      - name: Run mobile regression tests
+        run: npm test
+
+      - name: TypeScript and lint
+        run: |
+          npx tsc --noEmit --pretty false
+          npm run lint
+
+      - name: Expo Doctor
+        run: npx --yes expo-doctor@1.20.5
+
+      - name: Verify Android native prebuild
+        run: CI=1 npx expo prebuild --platform android --no-install
+
+      - name: Commit generated lockfile
+        working-directory: .
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add AthleteN-Mobile/package-lock.json
+          if git diff --cached --quiet; then
+            echo "The package lock is already synchronized."
+            exit 0
+          fi
+          git commit -m "chore(mobile): lock Expo Updates SDK 57 dependency"
+          git push origin "HEAD:${BRANCH_NAME}"

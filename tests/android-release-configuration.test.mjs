@@ -28,10 +28,23 @@ test("release workflow is manual and requires the Expo token", () => {
   assert.doesNotMatch(workflow, /eas submit/);
 });
 
-test("CI APK artifact is explicitly labelled debug-signed", () => {
+test("boot-isolation APK excludes optional native modules and embeds its JavaScript bundle", () => {
   const workflow = read("../.github/workflows/android-apk.yml");
-  assert.match(workflow, /AthleteN Android CI APK \(debug-signed\)/);
-  assert.match(workflow, /AthleteN-ci-debug-signed-apk/);
+  assert.ok(workflow.includes("AthleteN Android Native Boot Isolation"));
+  assert.ok(workflow.includes("AthleteN-native-boot-isolation-apk"));
+  assert.ok(workflow.includes("expo.autolinking.android.exclude"));
+  assert.ok(workflow.includes("assembleRelease --no-daemon"));
+  assert.ok(workflow.includes("assets/index.android.bundle"));
+});
+
+
+test("pull-request APK is standalone and verifies the embedded React Native bundle", () => {
+  const workflow = read("../.github/workflows/android-apk-build.yml");
+  assert.ok(workflow.includes("AthleteN Android Standalone APK Build"));
+  assert.ok(workflow.includes("assembleRelease --no-daemon"));
+  assert.ok(workflow.includes("assets/index.android.bundle"));
+  assert.ok(workflow.includes("AthleteN-standalone-apk"));
+  assert.doesNotMatch(workflow, /assembleDebug/);
 });
 
 test("release documentation distinguishes CI artifacts from store builds", () => {
@@ -39,4 +52,15 @@ test("release documentation distinguishes CI artifacts from store builds", () =>
   assert.match(doc, /debug certificate, not a production upload key/i);
   assert.match(doc, /manual-only GitHub Actions workflow/i);
   assert.match(doc, /No production EAS AAB has been built or cryptographically verified/i);
+});
+
+test("diagnostic-only native build disables OTA and production startup defers automatic OTA checks", () => {
+  const app = JSON.parse(read("../AthleteN-Mobile/app.json"));
+  const config = read("../AthleteN-Mobile/app.config.js");
+
+  assert.equal(app.expo.updates.enabled, true);
+  assert.equal(app.expo.updates.checkAutomatically, "NEVER");
+  assert.match(config, /ATHLETEN_BOOT_DIAGNOSTIC === '1'/);
+  assert.match(config, /enabled: false/);
+  assert.match(config, /checkAutomatically: 'NEVER'/);
 });

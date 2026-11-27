@@ -20,9 +20,14 @@ export default function ExploreScreen(){
    <FeatureRow title="Customize Navigation" text="Choose and reorder five shortcuts. More stays pinned as the sixth item." onPress={()=>router.push({pathname:'/navigation-settings'})}/>
   </Section>
   <Section title="ACCOUNT & SUBSCRIPTION">
+   <FeatureRow title="Rewards Centre" text="View bonus AI credits, reward limits and reward history" icon="gift" onPress={()=>router.push('/rewards')}/>
    <FeatureRow title="Plans & Usage" text="Review your plan, feature access and AI usage" icon="credit-card" onPress={()=>router.push('/plans')}/>
    <FeatureRow title="Notifications & Settings" text="Manage account preferences and notifications" icon="settings" onPress={()=>router.push('/settings')}/>
+   <FeatureRow title="Notification Preferences" text="Control training, competition, messages, team and system alerts" icon="bell" onPress={()=>router.push('/notification-settings')}/>
    <FeatureRow title="Support & Safety" text="Get help, review policies, or report a safety concern" icon="shield" onPress={()=>router.push('/support')}/>
+  </Section>
+  <Section title="TRAVEL & COMPETITION">
+   <FeatureRow title="Away Mode" text="Plan competition travel, packing tasks and your personal itinerary." icon="calendar" onPress={()=>router.push('/away-mode')}/>
   </Section>
   <Section title="TAEKWONDO">
    <FeatureRow title="Taekwondo Hub" text={profile?.discipline?profile.discipline+' performance, bouts and training':'Kyorugi & Poomsae performance'} onPress={()=>router.push({pathname:'/taekwondo'})}/>
@@ -36,15 +41,34 @@ export default function ExploreScreen(){
    <FeatureRow title="Documents" text="Private athlete documents" badge={String(counts.docs)} onPress={()=>router.push({pathname:'/documents'})}/>
    <FeatureRow title="Verification" text="Athlete/student verification status" onPress={()=>router.push({pathname:'/verification'})}/>
   </Section>
+  <Section title="ATHLETEN COMMUNITY">
+   <FeatureRow title="Daily Leaderboard" text="Compare today's verified athlete activity; rankings reset at midnight IST." icon="trophy" onPress={()=>router.push('/leaderboard')}/>
+  </Section>
   <Section title="ATHLETE OPERATING SYSTEM">
    <FeatureRow title="Today's Command Center" text="See the next useful action across training, competition and missions." icon="dashboard" onPress={()=>router.push('/athlete-command')}/>
    <FeatureRow title="Training Session Mode" text="Run a timed session and save it to the same training history." icon="training" onPress={()=>router.push('/training-session')}/>
    <FeatureRow title="Competition Mode" text="Preparation, checklist, intelligence and post-event review." icon="event" onPress={()=>router.push('/competition-mode')}/>
    <FeatureRow title="Athlete Passport" text="A compact share-ready identity and achievement record." icon="shield" onPress={()=>router.push('/athlete-passport')}/>
-   <FeatureRow title="Mission Center" text="Create and complete healthy performance missions." icon="check" onPress={()=>router.push('/missions')}/>
+   <FeatureRow title="AthleteN Quest & Missions" text="Complete optional daily, weekly and monthly check-ins, and manage personal missions." icon="check" onPress={()=>router.push('/missions')}/>
    <FeatureRow title="Athlete Journey" text="Seasons, Fight IQ, techniques, challenges, records and milestones." icon="chart" onPress={()=>router.push('/athlete-journey')}/>
   </Section>
-  {['admin','super_admin','support_admin'].includes(String(profile?.role||''))?<Section title="ADMINISTRATION"><FeatureRow title="Admin Control Center" text="Users, roles, plans, feature flags, badges and audit activity." icon="shield" onPress={()=>router.push('/admin-panel')}/></Section>:null}
+  {profile?.role==='coach'?<Section title="COACH WORKSPACE">
+   <FeatureRow title="Coach Dashboard" text="Roster, athlete activity, attendance and coaching overview" icon="people" onPress={()=>router.push('/coach')}/>
+   <FeatureRow title="Coach Notifications" text="Connection requests, competition alerts and coaching activity" icon="bell" onPress={()=>router.push('/coach-notifications')}/>
+   <FeatureRow title="Coach More" text="Competition center, reports, profile and tools" icon="dashboard" onPress={()=>router.push('/coach-more')}/>
+  </Section>:null}
+  {profile?.role==='academy_admin'?<Section title="ACADEMY WORKSPACE">
+   <FeatureRow title="Academy Management" text="Athletes, staff, attendance, fees, announcements and operations" icon="school-outline" onPress={()=>router.push('/academy')}/>
+   <FeatureRow title="Academy Settings" text="Academy profile, navigation, plan and account controls" icon="settings" onPress={()=>router.push('/academy-settings')}/>
+   <FeatureRow title="Academy Setup" text="Complete or review academy onboarding" icon="check" onPress={()=>router.push('/academy-setup')}/>
+  </Section>:null}
+  {['admin','super_admin','support_admin'].includes(String(profile?.role||''))?<Section title="ADMINISTRATION">
+   <FeatureRow title="Admin Control Center" text="Users, roles, plans, feature flags, badges and audit activity." icon="shield" onPress={()=>router.push('/admin-panel')}/>
+   <FeatureRow title="Admin Operations & Verification" text="Verification queues, platform operations and scoped controls" icon="check" onPress={()=>router.push('/admin-operations')}/>
+   <FeatureRow title="Admin Support" text="Review tickets, assign, respond and resolve" icon="message" onPress={()=>router.push('/admin-support')}/>
+   <FeatureRow title="Badge Management" text="Review badge definitions and award verified badges" icon="trophy" onPress={()=>router.push('/admin-badges')}/>
+   {profile?.role==='super_admin'?<FeatureRow title="Mobile Release Management" text="Upload and publish approved Android releases" icon="download" onPress={()=>router.push('/admin-releases')}/>:null}
+  </Section>:null}
   <Section title="TEAM"><FeatureRow title="My Team" text="Connect or change your Coach and Academy" onPress={()=>router.push({pathname:'/team'})}/></Section>
   <Section title="PERFORMANCE & INTELLIGENCE">
    <FeatureRow title="Performance Analytics" text="Training load, weight history, medals and goals" icon="chart" onPress={()=>router.push('/analytics')}/>

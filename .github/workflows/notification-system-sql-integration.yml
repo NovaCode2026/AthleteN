@@ -1,0 +1,61 @@
+name: Notification System SQL Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/migrations/20261124170000_expo_push_ticket_and_receipt_tracking.sql"
+      - "supabase/migrations/20261124190000_group_conversation_push_notifications.sql"
+      - "supabase/migrations/20261125100000_notification_system_reliability.sql"
+      - "tests/sql/notification-system-integration.sql"
+      - "tests/sql/notification-system-assertions.sql"
+      - ".github/workflows/notification-system-sql-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notification-system:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: athleten_notifications_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d athleten_notifications_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Create isolated notification fixture
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_notifications_test -v ON_ERROR_STOP=1 -f tests/sql/notification-system-integration.sql
+      - name: Apply push ticket and receipt ledger migration
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_notifications_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124170000_expo_push_ticket_and_receipt_tracking.sql
+      - name: Apply conversation push grouping migration
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_notifications_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124190000_group_conversation_push_notifications.sql
+      - name: Apply notification event and worker reliability migration
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_notifications_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261125100000_notification_system_reliability.sql
+      - name: Assert event coverage, privacy-safe push, retries and receipt handoff
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_notifications_test -v ON_ERROR_STOP=1 -f tests/sql/notification-system-assertions.sql

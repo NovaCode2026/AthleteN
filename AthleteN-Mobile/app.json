@@ -2,19 +2,19 @@
   "expo": {
     "name": "AthleteN",
     "slug": "AthleteN-Mobile",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "default",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/logo.webp",
     "scheme": "athleten",
     "userInterfaceStyle": "dark",
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#05070B",
-        "foregroundImage": "./assets/images/android-icon-foreground.png"
+        "foregroundImage": "./assets/logo.webp"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.novacode.athleten",
-      "versionCode": 5
+      "versionCode": 6
     },
     "web": {
       "output": "static",
@@ -32,8 +32,9 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#05070B",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "image": "./assets/logo.webp",
+          "imageWidth": 240,
+          "resizeMode": "contain"
         }
       ],
       "expo-notifications",
@@ -93,6 +94,15 @@
     },
     "ios": {
       "bundleIdentifier": "com.novacode.athleten"
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/7f308f88-5459-4f51-bb76-981f381eee3c",
+      "checkAutomatically": "NEVER",
+      "fallbackToCacheTimeout": 3000
     }
   }
 }

@@ -1,4 +1,4 @@
-name: AI Budget Ledger SQL Integration
+name: AI Budget and Reward Ledger SQL Integration
 
 on:
   pull_request:
@@ -7,6 +7,7 @@ on:
       - "supabase/migrations/**"
       - "netlify/ai-budget.mjs"
       - "tests/sql/ai-budget-ledger-integration.sql"
+      - "tests/sql/rewarded-ad-ledger-integration.sql"
       - ".github/workflows/ai-budget-sql-integration.yml"
   workflow_dispatch:
 
@@ -41,3 +42,7 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h 127.0.0.1 -U postgres -d athleten_ai_budget_test -v ON_ERROR_STOP=1 -f tests/sql/ai-budget-ledger-integration.sql
+      - name: Exercise rewarded-ad and bonus AI credit ledgers
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_ai_budget_test -v ON_ERROR_STOP=1 -f tests/sql/rewarded-ad-ledger-integration.sql

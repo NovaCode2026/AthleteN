@@ -7,14 +7,14 @@ import { supabase } from '@/lib/supabase';
 import { Screen,Header,Section,Card,FeatureRow,c,RefreshButton } from '@/components/mobile-ui';
 
 export default function AthletePassport(){
- const {session,profile}=useAuth();const router=useRouter();const [d,setD]=useState<any>({medals:[],events:[],badges:[],milestones:[],sessions:0});const [busy,setBusy]=useState(false);
+ const {session,profile,syncVersion}=useAuth();const router=useRouter();const [d,setD]=useState<any>({medals:[],events:[],badges:[],milestones:[],sessions:0});const [busy,setBusy]=useState(false);
  const load=useCallback(async()=>{if(!session)return;setBusy(true);const uid=session.user.id;const [m,e,b,ms,s]=await Promise.all([
   supabase.from('medals').select('id,event_name,medal_type,category,awarded_at,verification_status').eq('user_id',uid).order('awarded_at',{ascending:false}).limit(6),
   supabase.from('tournaments').select('id,name,starts_at,result,verification_status').eq('user_id',uid).not('result','is',null).order('starts_at',{ascending:false}).limit(6),
   supabase.from('athlete_badges').select('id,badge_key,awarded_at').eq('user_id',uid).order('awarded_at',{ascending:false}).limit(6),
   supabase.from('athlete_milestones').select('id,title,achieved_at,verification_status').eq('user_id',uid).order('achieved_at',{ascending:false}).limit(6),
   supabase.from('training_sessions').select('id',{count:'exact',head:true}).eq('user_id',uid)
- ]);setD({medals:m.data||[],events:e.data||[],badges:b.data||[],milestones:ms.data||[],sessions:s.count||0});setBusy(false)},[session]);
+ ]);setD({medals:m.data||[],events:e.data||[],badges:b.data||[],milestones:ms.data||[],sessions:s.count||0});setBusy(false)},[session,syncVersion]);
  useEffect(()=>{void load()},[load]);
  return <Screen><Header back eyebrow="ATHLETEN IDENTITY" title="Athlete Passport" subtitle="A compact record of who you are, what you have achieved and what AthleteN can verify." right={<RefreshButton onPress={()=>void load()} busy={busy}/>}/>
  <Card accent><Text style={{color:c.accentBright,fontSize:9,fontWeight:'900'}}>ATHLETEN PASSPORT</Text><Text style={{color:c.text,fontSize:25,fontWeight:'900',marginTop:4}}>{profile?.full_name||'Athlete'}</Text><Text style={{color:c.muted,fontSize:11}}>{profile?.sport||'Taekwondo'} • {profile?.discipline||'—'} • {profile?.belt||'Belt not set'}</Text><Text style={{color:c.muted,fontSize:10,marginTop:5}}>{profile?.academy||'Independent athlete'}{profile?.coach?' • '+profile.coach:''}</Text></Card>

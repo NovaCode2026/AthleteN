@@ -5,7 +5,12 @@ on:
     branches: [main]
     paths:
       - "supabase/security/**"
+      - "supabase/migrations/20261124235000_academy_management_suite.sql"
+      - "supabase/migrations/20261125000000_platform_admin_control_centre.sql"
+      - "tests/platform-admin-control-centre.test.mjs"
+      - "tests/sql/platform-admin-control-centre-*.sql"
       - "tests/sql/**"
+      - "tests/academy-management-suite.test.mjs"
       - "docs/MIGRATION_HISTORY_DRIFT_2026-11-13.md"
       - "docs/PRODUCTION_READINESS_GATE_2026-11-12.md"
       - ".github/workflows/security-sql-integration.yml"
@@ -62,3 +67,74 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h 127.0.0.1 -U postgres -d athleten_security_test -v ON_ERROR_STOP=1 -f tests/sql/security-authorization-integration.sql
+      - name: Create isolated messaging reactions database
+        env:
+          PGPASSWORD: postgres
+        run: createdb -h 127.0.0.1 -U postgres athleten_message_reactions_test
+      - name: Create messaging fixture and apply reaction migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d athleten_message_reactions_test -v ON_ERROR_STOP=1 -f tests/sql/message-reactions-integration.sql
+          psql -h 127.0.0.1 -U postgres -d athleten_message_reactions_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124140000_message_reactions.sql
+      - name: Verify reaction conversation membership, ownership and allowed values
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_message_reactions_test -v ON_ERROR_STOP=1 -f tests/sql/message-reactions-assertions.sql
+      - name: Create isolated athlete Quest and Away Mode database
+        env:
+          PGPASSWORD: postgres
+        run: createdb -h 127.0.0.1 -U postgres athleten_quest_away_test
+      - name: Apply Quest and Away Mode migration and verify owner isolation
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_quest_away_test -v ON_ERROR_STOP=1 -f tests/sql/athlete-quest-away-mode-integration.sql
+      - name: Create isolated Coach and Academy management database
+        env:
+          PGPASSWORD: postgres
+        run: createdb -h 127.0.0.1 -U postgres athleten_academy_management_test
+      - name: Create Coach and Academy fixture and apply hardening migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d athleten_academy_management_test -v ON_ERROR_STOP=1 -f tests/sql/academy-management-fixture.sql
+          psql -h 127.0.0.1 -U postgres -d athleten_academy_management_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124233000_harden_academy_workspace_management.sql
+      - name: Verify Coach consent, Academy Admin role and membership permissions
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_academy_management_test -v ON_ERROR_STOP=1 -f tests/sql/academy-management-assertions.sql
+
+      - name: Create isolated Academy Management Suite database
+        env:
+          PGPASSWORD: postgres
+        run: createdb -h 127.0.0.1 -U postgres athleten_academy_suite_test
+      - name: Create Academy Management Suite base fixture and apply workspace hardening
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d athleten_academy_suite_test -v ON_ERROR_STOP=1 -f tests/sql/academy-management-fixture.sql
+          psql -h 127.0.0.1 -U postgres -d athleten_academy_suite_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124233000_harden_academy_workspace_management.sql
+          psql -h 127.0.0.1 -U postgres -d athleten_academy_suite_test -v ON_ERROR_STOP=1 -f tests/sql/academy-management-suite-fixture.sql
+      - name: Apply Academy Management Suite candidate migration
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_academy_suite_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124235000_academy_management_suite.sql
+      - name: Verify Academy fees, Coach ops, transfer consent, guardian scope, seats and audit
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_academy_suite_test -v ON_ERROR_STOP=1 -f tests/sql/academy-management-suite-assertions.sql
+
+      - name: Create isolated Platform Admin Control Centre database
+        env:
+          PGPASSWORD: postgres
+        run: createdb -h 127.0.0.1 -U postgres athleten_platform_admin_test
+      - name: Create Platform Admin fixture and apply candidate migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d athleten_platform_admin_test -v ON_ERROR_STOP=1 -f tests/sql/platform-admin-control-centre-fixture.sql
+          psql -h 127.0.0.1 -U postgres -d athleten_platform_admin_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261125000000_platform_admin_control_centre.sql
+      - name: Verify scoped admin access, Student proof reviews, payment safety and account restrictions
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_platform_admin_test -v ON_ERROR_STOP=1 -f tests/sql/platform-admin-control-centre-assertions.sql

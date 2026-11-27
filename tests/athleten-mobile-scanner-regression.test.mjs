@@ -79,7 +79,11 @@ test("mobile refreshes shared athlete records after realtime changes from web or
   assert.match(auth, /const ownedTables = \[/);
   assert.match(auth, /setSyncVersion\(\(version\) => version \+ 1\)/);
   assert.match(auth, /filter: `user_id=eq\.\$\{userId\}`/);
-  for (const table of ["training_sessions", "tournaments", "medals", "weight_logs", "goals", "calendar_events", "documents", "competition_checklists"]) {
+  for (const table of [
+    "training_sessions", "tournaments", "medals", "weight_logs", "goals",
+    "calendar_events", "documents", "competition_checklists",
+    "taekwondo_training_logs", "taekwondo_kyorugi_bouts", "taekwondo_poomsae_performances"
+  ]) {
     assert.match(auth, new RegExp("'" + table + "'"));
   }
   for (const screenPath of [
@@ -173,4 +177,108 @@ test("web tournament scanner checks the caller's age approval before scanning pu
   assert.match(scanner, /get_age_verification_status/);
   assert.match(scanner, /Account approval is required before using Tournament Scanner/);
   assert.match(scanner, /\["approved",\s*"not_required",\s*"qa_verified"\]/);
+});
+
+
+test("web-mobile parity exposes essential and role-specific workflows from mobile More", () => {
+  const more = read("AthleteN-Mobile/src/app/explore.tsx");
+  const routeFiles = [
+    "AthleteN-Mobile/src/app/notification-settings.tsx",
+    "AthleteN-Mobile/src/app/navigation-settings.tsx",
+    "AthleteN-Mobile/src/app/coach-more.tsx",
+    "AthleteN-Mobile/src/app/coach-notifications.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/coach.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/academy.tsx",
+    "AthleteN-Mobile/src/app/academy-settings.tsx",
+    "AthleteN-Mobile/src/app/academy-setup.tsx",
+    "AthleteN-Mobile/src/app/admin-panel.tsx",
+    "AthleteN-Mobile/src/app/admin-operations.tsx",
+    "AthleteN-Mobile/src/app/admin-support.tsx",
+    "AthleteN-Mobile/src/app/admin-badges.tsx",
+    "AthleteN-Mobile/src/app/admin-releases.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/analytics.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/reports.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/messages.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/calendar.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/attendance.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/documents.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/medals.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/badges.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/athlete-journey.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/weight.tsx",
+    "AthleteN-Mobile/src/app/checklist.tsx",
+    "AthleteN-Mobile/src/app/away-mode.tsx",
+    "AthleteN-Mobile/src/app/nutrition.tsx",
+    "AthleteN-Mobile/src/app/missions.tsx",
+    "AthleteN-Mobile/src/app/athlete-passport.tsx",
+    "AthleteN-Mobile/src/app/support.tsx",
+    "AthleteN-Mobile/src/app/team.tsx",
+    "AthleteN-Mobile/src/app/training-session.tsx",
+    "AthleteN-Mobile/src/app/competition-mode.tsx",
+    "AthleteN-Mobile/src/app/ai-coach.tsx",
+    "AthleteN-Mobile/src/app/plans.tsx",
+    "AthleteN-Mobile/src/app/rewards.tsx",
+    "AthleteN-Mobile/src/app/leaderboard.tsx",
+    "AthleteN-Mobile/src/app/scanner.tsx",
+    "AthleteN-Mobile/src/app/taekwondo.tsx",
+  ];
+  for (const file of routeFiles) assert.ok(fs.existsSync(path.join(root, file)), file);
+  for (const label of [
+    "Notification Preferences",
+    "Coach Dashboard",
+    "Coach Notifications",
+    "Coach More",
+    "Academy Management",
+    "Academy Settings",
+    "Academy Setup",
+    "Admin Control Center",
+    "Admin Operations & Verification",
+    "Admin Support",
+    "Badge Management",
+    "Mobile Release Management",
+  ]) assert.ok(more.includes(label), label);
+  assert.match(more, /profile\?\.role==='coach'/);
+  assert.match(more, /profile\?\.role==='academy_admin'/);
+  assert.match(more, /profile\?\.role==='super_admin'/);
+});
+
+
+test("Taekwondo domain tables participate in Realtime for Web-Mobile synchronization", () => {
+  const auth = read("AthleteN-Mobile/src/context/AuthContext.tsx");
+  const migration = read("supabase/migrations/20261125090000_enable_taekwondo_realtime_sync.sql");
+  const tables = [
+    "taekwondo_training_logs",
+    "taekwondo_kyorugi_bouts",
+    "taekwondo_poomsae_performances",
+    "student_verifications",
+    "subscription_usage",
+    "athlete_seasons",
+    "competition_journals",
+    "fight_iq_entries",
+    "technique_progress",
+    "athlete_challenges",
+    "personal_records",
+    "athlete_milestones",
+    "athlete_timeline_events",
+  ];
+  for (const table of tables) {
+    assert.ok(auth.includes("'" + table + "'"), "mobile account sync subscribes to " + table);
+    assert.ok(migration.includes("'" + table + "'"), "Realtime publication includes " + table);
+    assert.match(migration, /alter publication supabase_realtime add table/);
+  }
+  const taekwondo = read("AthleteN-Mobile/src/app/taekwondo.tsx");
+  assert.match(taekwondo, /\[session,discipline,syncVersion\]/);
+});
+
+
+test("screens backed by Realtime-owned records reload when shared records change", () => {
+  for (const file of [
+    "AthleteN-Mobile/src/app/taekwondo.tsx",
+    "AthleteN-Mobile/src/app/badges.tsx",
+    "AthleteN-Mobile/src/app/athlete-passport.tsx",
+    "AthleteN-Mobile/src/app/(tabs)/athlete-journey.tsx",
+    "AthleteN-Mobile/src/app/plans.tsx",
+  ]) {
+    assert.match(read(file), /syncVersion/, file + " must refresh from the shared account sync version");
+  }
 });

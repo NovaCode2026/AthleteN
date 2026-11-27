@@ -85,11 +85,11 @@ export default function OnboardingScreen({ userId, onComplete }: { userId: strin
 }
 
 const styles=StyleSheet.create({
- screen:{flex:1,backgroundColor:Colors.dark.background},content:{padding:24,gap:12,paddingBottom:40},
+ screen:{flex:1,backgroundColor:Colors.dark.background},content:{paddingHorizontal:24,paddingTop:22,paddingBottom:52,gap:14,width:'100%',maxWidth:620,alignSelf:'center'},
  logo:{width:190,height:105,marginTop:10,marginBottom:2,alignSelf:'flex-start'},
- title:{color:Colors.dark.text,fontSize:28,fontWeight:'800',marginTop:4},subtitle:{color:Colors.dark.muted,fontSize:14,lineHeight:21,marginBottom:8},
+ title:{color:Colors.dark.text,fontSize:30,fontWeight:'900',letterSpacing:-.6,marginTop:4},subtitle:{color:Colors.dark.muted,fontSize:14,lineHeight:21,marginBottom:8},
  field:{gap:6},label:{color:Colors.dark.text,fontSize:12,fontWeight:'700'},hint:{color:Colors.dark.muted,fontSize:12,lineHeight:18},
- input:{backgroundColor:Colors.dark.surface,borderWidth:1,borderColor:Colors.dark.border,borderRadius:13,color:Colors.dark.text,padding:14,fontSize:14},
+ input:{backgroundColor:Colors.dark.surface,borderWidth:1,borderColor:Colors.dark.borderStrong,borderRadius:14,color:Colors.dark.text,padding:15,fontSize:14},
  row:{flexDirection:'row',gap:10},choice:{flex:1,borderWidth:1,borderColor:Colors.dark.border,borderRadius:13,padding:14,alignItems:'center'},choiceActive:{backgroundColor:Colors.dark.accentDeep,borderColor:Colors.dark.accent},choiceText:{color:Colors.dark.text,fontWeight:'700'},
- primary:{backgroundColor:Colors.dark.accent,borderRadius:14,padding:15,alignItems:'center',marginTop:8},primaryText:{color:'#fff',fontWeight:'900',letterSpacing:1,fontSize:12},error:{color:'#B6D0FF',fontSize:12},
+ primary:{backgroundColor:Colors.dark.accent,borderRadius:15,padding:16,alignItems:'center',marginTop:9,shadowColor:Colors.dark.accent,shadowOpacity:.18,shadowRadius:10,elevation:2},primaryText:{color:'#fff',fontWeight:'900',letterSpacing:1,fontSize:12},error:{color:'#B6D0FF',fontSize:12},
 });

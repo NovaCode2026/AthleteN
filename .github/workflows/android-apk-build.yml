@@ -1,0 +1,96 @@
+name: AthleteN Android Standalone APK Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "AthleteN-Mobile/**"
+      - ".github/workflows/android-apk-build.yml"
+      - ".github/workflows/mobile-check.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: athleten-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: AthleteN-Mobile
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: AthleteN-Mobile/package-lock.json
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Normalize WebP assets before Expo prebuild
+        run: |
+          python3 -m pip install --quiet Pillow
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          root = Path(".")
+          converted = []
+          for source in root.rglob("*.webp"):
+              target = source.with_suffix(".png")
+              with Image.open(source) as image:
+                  image.convert("RGBA").save(target, format="PNG")
+              converted.append((source.relative_to(root).as_posix(), target.relative_to(root).as_posix()))
+              source.unlink()
+          text_exts = {".json", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"}
+          for file in root.rglob("*"):
+              if not file.is_file() or file.suffix.lower() not in text_exts:
+                  continue
+              try:
+                  text = file.read_text()
+              except (UnicodeDecodeError, OSError):
+                  continue
+              updated = text
+              for old, new in converted:
+                  updated = updated.replace(old, new)
+                  updated = updated.replace(old.split("/")[-1], new.split("/")[-1])
+              if updated != text:
+                  file.write_text(updated)
+          print(f"Converted {len(converted)} WebP assets to PNG")
+          PY
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Build standalone release-variant APK with embedded JavaScript
+        run: cd android && ./gradlew assembleRelease --no-daemon
+
+      - name: Verify standalone APK contains the embedded JavaScript bundle
+        run: |
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          unzip -Z1 "$APK" | grep -Fqx 'assets/index.android.bundle'
+          BUNDLE_BYTES=$(unzip -p "$APK" assets/index.android.bundle | wc -c)
+          test "$BUNDLE_BYTES" -gt 0
+          echo "Embedded JavaScript bundle: $BUNDLE_BYTES bytes"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AthleteN-standalone-apk
+          path: AthleteN-Mobile/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 14

@@ -21,7 +21,8 @@ test("authenticated clients cannot insert or modify AI usage ledger rows", () =>
 
 test("AI Coach reserves, cancels and meters usage through the server client", () => {
   assert.match(endpoint, /budgetAdmin\.rpc\("reserve_ai_usage"/);
-  assert.match(endpoint, /cancelReservation\(budgetAdmin, reservationId, userId\)/);
+  assert.match(endpoint, /cancelSelectedReservation\(budgetAdmin, reservationId, userId, reservationKind\)/);
+  assert.match(endpoint, /cancelRewardReservation/);
   assert.match(endpoint, /budgetAdmin\.from\("ai_usage_events"\)\.update/);
   assert.doesNotMatch(endpoint, /supabase\.rpc\("reserve_ai_usage"/);
   assert.doesNotMatch(endpoint, /supabase\.from\("ai_usage_events"\)\.update/);

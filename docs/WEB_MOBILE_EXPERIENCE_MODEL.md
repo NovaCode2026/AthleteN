@@ -129,6 +129,8 @@ A row is not complete merely because a button or route exists. Verify the underl
 - [ ] Create a training session on Mobile; confirm it appears in Web with the same date, minutes and discipline.
 - [ ] Create a Kyorugi bout on either client; verify the same bout and result on the other client.
 - [ ] Create a Poomsae practice log and official result on either client; verify forms, category, repetitions, score, placing and notes on the other client.
+- [ ] Create or edit Taekwondo training logs, Kyorugi bouts and Poomsae performances on Web; verify Mobile refreshes the same records through Realtime, and repeat in the opposite direction.
+- [ ] Verify athlete journey, badge, student verification and subscription-usage changes refresh their corresponding Mobile screens.
 - [ ] Verify changing the selected discipline never relabels or mixes historical records.
 - [ ] Verify athlete, coach and academy summaries use only records visible to their permitted role and relationships.
 - [ ] Compare shared KPIs using the same date range and definition on both clients.
@@ -140,3 +142,33 @@ A row is not complete merely because a button or route exists. Verify the underl
 ---
 
 **Design principle:** Web explains the whole picture. Mobile helps the user take the next action. The data, permissions and product capabilities remain AthleteN.
+
+
+## 9. Parity implementation audit — 25 November 2026
+
+### Mobile access coverage strengthened
+
+The Mobile More hub now exposes role-specific entry points instead of relying only on tab customization or users finding a link inside another screen:
+
+- **Coach:** Coach Dashboard, Coach Notifications and Coach More.
+- **Academy Admin:** Academy Management, Academy Settings and Academy Setup.
+- **Platform Admin:** Admin Control Center, Admin Operations & Verification, Admin Support and Badge Management.
+- **Super Admin only:** Mobile Release Management.
+- **All signed-in roles:** Notification Preferences are directly reachable from More, in addition to the Settings screen.
+
+The target route files already exist; this change adds discoverable entry points. Screens continue to enforce their own authorization, and the mobile hub uses the current role to show the relevant workspace links.
+
+### Automated navigation contract
+
+A regression test now verifies the existence of the essential athlete workflows and role-specific route files and checks that the More hub exposes the corresponding role links. This guards against a future feature being implemented as a route but accidentally becoming unreachable from the mobile interface.
+
+### Parity is not release-certified yet
+
+This is **navigation/entry-point parity**, not proof that every underlying workflow behaves identically. The remaining acceptance evidence is cross-client record create/read/edit/refresh testing, KPI comparison using identical date ranges, role/relationship isolation, empty/error/offline states, accessibility and physical-device layout testing. Web may retain advanced review/configuration views while Mobile provides focused workflows, but neither may silently diverge in records, permissions or calculations.
+
+
+### Realtime parity correction — 25 November 2026
+
+A code audit found that Mobile's shared account-sync channel did not subscribe to the three Taekwondo domain tables, although the Taekwondo screen reloads when the shared sync version changes and the Web dashboard already listens for those tables. This left cross-client updates dependent on a manual refresh.
+
+The correction adds Taekwondo domain records, student verification, subscription usage and Athlete Journey tables to Mobile's account-scoped Realtime subscriptions. The corresponding focused screens now reload from the shared sync version. A guarded migration adds those tables to `supabase_realtime`, and regression tests guard subscription coverage, publication entries and screen refresh dependencies. The migration is a candidate until staging replay and migration-history reconciliation are complete.

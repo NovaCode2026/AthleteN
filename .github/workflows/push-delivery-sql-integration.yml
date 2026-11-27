@@ -1,0 +1,51 @@
+name: Push Delivery SQL Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/migrations/20261124170000_expo_push_ticket_and_receipt_tracking.sql"
+      - "tests/sql/push-delivery-integration.sql"
+      - "tests/sql/push-delivery-assertions.sql"
+      - ".github/workflows/push-delivery-sql-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  push-delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: athleten_push_delivery_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d athleten_push_delivery_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Create isolated push-delivery fixture
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_push_delivery_test -v ON_ERROR_STOP=1 -f tests/sql/push-delivery-integration.sql
+      - name: Apply candidate push-delivery migration
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_push_delivery_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261124170000_expo_push_ticket_and_receipt_tracking.sql
+      - name: Verify tickets, receipts, preview privacy and invalid token cleanup
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d athleten_push_delivery_test -v ON_ERROR_STOP=1 -f tests/sql/push-delivery-assertions.sql

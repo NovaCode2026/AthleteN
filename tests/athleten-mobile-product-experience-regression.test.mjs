@@ -57,8 +57,10 @@ test("Coach and Academy role onboarding is admin-reviewed and Academy setup enfo
   assert.match(roleDraft, /REVIEW DRAFT ONLY — NOT A DEPLOYABLE MIGRATION/);
   assert.match(roleDraft, /revoke all on function public\.switch_my_product_role\(text\) from public, anon, authenticated/i);
   const academyInsertPolicy = policies.match(/create policy "academies owner insert"[\s\S]*?;/)?.[0] || "";
-  assert.match(academyInsertPolicy, /with check \(\(select auth\.uid\(\)\) = owner_user_id\)/i);
-  assert.doesNotMatch(academyInsertPolicy, /profiles[\s\S]*role[\s\S]*academy_admin/i);
+  assert.equal(academyInsertPolicy, "", "Academy workspaces must not be created by direct client inserts");
+  assert.match(policies, /revoke insert on public\.academies from public, anon, authenticated/i);
+  assert.match(policies, /user_is_approved_academy_admin/i);
+  assert.match(policies, /create policy "academies owner update"[\s\S]*?user_is_approved_academy_admin/i);
 });
 
 test("Account deletion help links to the published request route and does not claim instant deletion", () => {

@@ -35,6 +35,25 @@ export default function AcademySetupScreen() {
       let id = String(profile?.academy_id || '') || null;
 
       if (!id) {
+        const { data: adminMembership, error: membershipError } = await supabase
+          .from('academy_memberships')
+          .select('academy_id')
+          .eq('user_id', session.user.id)
+          .eq('role', 'academy_admin')
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle();
+        if (membershipError) {
+          if (alive) { setMessage(membershipError.message); setLoading(false); }
+          return;
+        }
+        if (adminMembership?.academy_id) {
+          id = String(adminMembership.academy_id);
+          if (alive) setAcademyId(id);
+        }
+      }
+
+      if (!id) {
         const { data, error } = await supabase
           .from('academies')
           .select('id')
@@ -49,31 +68,32 @@ export default function AcademySetupScreen() {
 
         if (data?.id) {
           id = data.id;
-          await supabase.from('profiles').update({ academy_id: id }).eq('user_id', session.user.id);
+          const { error: linkError } = await supabase.rpc('link_owned_academy_workspace', { p_academy_id: id });
+          if (linkError) {
+            if (alive) { setMessage(linkError.message); setLoading(false); }
+            return;
+          }
           if (alive) setAcademyId(id);
         }
       }
 
       if (!id) {
-        const created = await supabase
-          .from('academies')
-          .insert({
-            owner_user_id: session.user.id,
-            name: 'New AthleteN Academy',
-            country: 'India',
-            status: 'active',
-            setup_completed: false,
-          })
-          .select('id,name,city,state,country,contact_email,contact_phone,contact_email_verified_at,setup_completed')
-          .single();
+        const created = await supabase.rpc('create_academy_workspace', {
+          p_name: 'New AthleteN Academy',
+          p_city: null,
+          p_state: null,
+          p_country: 'India',
+        });
 
-        if (created.error) {
-          if (alive) { setMessage(created.error.message); setLoading(false); }
+        if (created.error || !created.data) {
+          if (alive) {
+            setMessage(created.error?.message || 'The Academy workspace could not be created.');
+            setLoading(false);
+          }
           return;
         }
 
-        id = created.data.id;
-        await supabase.from('profiles').update({ academy_id: id }).eq('user_id', session.user.id);
+        id = String(created.data);
         if (alive) setAcademyId(id);
       }
 
@@ -109,9 +129,13 @@ export default function AcademySetupScreen() {
     const nextEmail = email.trim().toLowerCase();
     if (!nextEmail || !nextEmail.includes('@')) { setMessage('Enter a valid academy email address.'); return; }
     if (nextEmail === String(session.user.email || '').toLowerCase() && session.user.email_confirmed_at) {
+      if (!academyId) { setMessage('Your Academy workspace is not ready yet. Please refresh and try again.'); return; }
+      setBusy(true);
+      const { error } = await supabase.rpc('sync_verified_academy_contact_email', { p_academy_id: academyId });
+      setBusy(false);
+      if (error) { setEmailVerified(false); setMessage(error.message); return; }
       setEmailVerified(true);
-      if (academyId) await supabase.from('academies').update({ contact_email: nextEmail, contact_email_verified_at: new Date().toISOString() }).eq('id', academyId).eq('owner_user_id', session.user.id);
-      setMessage('Your email is already verified.');
+      setMessage('Your verified AthleteN account email is saved as the Academy contact email.');
       return;
     }
     if (nextEmail === String(session.user.email || '').toLowerCase()) { setMessage('Please verify your AthleteN account email first.'); return; }
@@ -128,11 +152,19 @@ export default function AcademySetupScreen() {
     const { data, error } = await supabase.auth.getUser();
     if (error) { setBusy(false); setMessage(error.message); return; }
     const verified = String(data.user?.email || '').toLowerCase() === email.trim().toLowerCase() && Boolean(data.user?.email_confirmed_at);
-    setEmailVerified(verified);
     if (verified && academyId) {
-      await supabase.from('academies').update({ contact_email: email.trim().toLowerCase(), contact_email_verified_at: new Date().toISOString() }).eq('id', academyId).eq('owner_user_id', session?.user.id || '');
-      setMessage('Email verified and account email updated successfully.');
-    } else if (!verified) setMessage('The new email is not verified yet. Open the verification email, then try again.');
+      const { error: syncError } = await supabase.rpc('sync_verified_academy_contact_email', { p_academy_id: academyId });
+      if (syncError) {
+        setEmailVerified(false);
+        setMessage(syncError.message);
+      } else {
+        setEmailVerified(true);
+        setMessage('Email verified and saved as the Academy contact email.');
+      }
+    } else {
+      setEmailVerified(false);
+      setMessage(!verified ? 'The new email is not verified yet. Open the verification email, then try again.' : 'Your Academy workspace is not ready yet. Please refresh and try again.');
+    }
     setBusy(false);
   }
 
@@ -161,21 +193,14 @@ export default function AcademySetupScreen() {
     }
 
     setBusy(true);
-    const { error } = await supabase
-      .from('academies')
-      .update({
-        name: name.trim(),
-        city: city.trim(),
-        state: state.trim(),
-        country: country.trim(),
-        contact_email: email.trim(),
-        contact_phone: phone.trim(),
-        contact_email_verified_at: new Date().toISOString(),
-        setup_completed: true,
-        setup_completed_at: new Date().toISOString(),
-      })
-      .eq('id', academyId)
-      .eq('owner_user_id', session.user.id);
+    const { error } = await supabase.rpc('complete_academy_setup', {
+      p_academy_id: academyId,
+      p_name: name.trim(),
+      p_city: city.trim(),
+      p_state: state.trim(),
+      p_country: country.trim(),
+      p_contact_phone: phone.trim(),
+    });
 
     if (error) {
       setBusy(false);

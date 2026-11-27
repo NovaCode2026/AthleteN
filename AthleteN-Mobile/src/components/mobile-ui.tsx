@@ -43,45 +43,46 @@ export function RefreshButton({onPress,busy=false}:{onPress:()=>void;busy?:boole
 export function Header({eyebrow,title,subtitle,right,back=false,onRefresh,refreshing=false}:{eyebrow:string;title:string;subtitle?:string;right?:React.ReactNode;back?:boolean;onRefresh?:()=>void;refreshing?:boolean}){const router=useRouter();return <View style={s.header}>{back?<Pressable onPress={()=>router.back()} style={s.back}><View style={s.backText}><Icon name="back" size={14} color={c.accentBright}/><Text style={{color:c.accentBright,fontSize:10,fontWeight:'900',letterSpacing:.7,marginLeft:5}}>BACK</Text></View></Pressable>:null}<View style={s.headerRow}><View style={s.headerIdentity}><AthleteNLogo width={104} height={58} style={s.headerLogo}/><View style={{flex:1,gap:4}}><Text style={s.eyebrow}>{eyebrow}</Text><Text style={s.title}>{title}</Text>{subtitle?<Text style={s.subtitle}>{subtitle}</Text>:null}</View></View><View style={{flexDirection:'row',alignItems:'center',gap:8}}>{onRefresh?<RefreshButton onPress={onRefresh} busy={refreshing}/>:null}{right}</View></View></View>}
 export function Section({title,action,children}:{title:string;action?:React.ReactNode;children:React.ReactNode}){return <View style={s.sectionWrap}><View style={s.sectionHead}><Text style={s.section}>{title}</Text>{action}</View>{children}</View>}
 export function Card({children,accent=false,style}:{children:React.ReactNode;accent?:boolean;style?:any}){return <View style={[s.card,accent&&s.accentCard,style]}>{children}</View>}
-export function Button({title,onPress,busy=false,secondary=false,icon}:{title:string;onPress:()=>void;busy?:boolean;secondary?:boolean;icon?:string}){return <Pressable onPress={onPress} disabled={busy} style={[s.button,secondary&&s.secondary]}>{busy?<ActivityIndicator color={secondary?c.accentBright:'#fff'}/>:<View style={{flexDirection:'row',alignItems:'center',gap:8}}>{icon?<Icon name={icon} size={15} color={secondary?c.accentBright:'#fff'}/>:null}<Text style={[s.buttonText,secondary&&s.secondaryText]}>{title}</Text></View>}</Pressable>}
+export function Button({title,onPress,busy=false,secondary=false,icon}:{title:string;onPress:()=>void;busy?:boolean;secondary?:boolean;icon?:string}){return <Pressable onPress={onPress} disabled={busy} style={({pressed})=>[s.button,secondary&&s.secondary,pressed&&s.pressed]}>{busy?<ActivityIndicator color={secondary?c.accentBright:'#fff'}/>:<View style={{flexDirection:'row',alignItems:'center',gap:8}}>{icon?<Icon name={icon} size={15} color={secondary?c.accentBright:'#fff'}/>:null}<Text style={[s.buttonText,secondary&&s.secondaryText]}>{title}</Text></View>}</Pressable>}
 export function Field({label,value,onChangeText,placeholder,keyboardType,autoCapitalize,autoCorrect,maxLength}:{label:string;value:string;onChangeText:(v:string)=>void;placeholder:string;keyboardType?:any;autoCapitalize?:any;autoCorrect?:boolean;maxLength?:number}){return <View style={s.field}><Text style={s.label}>{label}</Text><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={c.muted} keyboardType={keyboardType} autoCapitalize={autoCapitalize} autoCorrect={autoCorrect} maxLength={maxLength} style={s.input}/></View>}
 export function FeatureRow({title,text,onPress,badge,icon='arrow'}:{title:string;text?:string;onPress:()=>void;badge?:string;icon?:string}){return <Pressable onPress={onPress} style={({pressed})=>[s.row,pressed&&{opacity:.72}]}><View style={s.rowIcon}><Icon name={icon} size={18}/></View><View style={s.rowCopy}><Text style={s.rowTitle}>{title}</Text>{text?<Text style={s.rowText}>{text}</Text>:null}</View>{badge?<Text style={s.badge}>{badge}</Text>:<Icon name="arrow" size={16} color={c.muted}/>}</Pressable>}
 export function Empty({text,icon='empty'}:{text:string;icon?:string}){return <Card><View style={{width:42,height:42,borderRadius:13,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'}}><Icon name={icon} size={20}/></View><Text style={s.emptyTitle}>{text}</Text><Text style={s.muted}>Start adding data and AthleteN will build this view automatically.</Text></Card>}
 const s=StyleSheet.create({
  screen:{flex:1,backgroundColor:c.background},
- content:{padding:18,paddingBottom:70},
+ content:{paddingHorizontal:18,paddingTop:18,paddingBottom:78,width:'100%',maxWidth:900,alignSelf:'center'},
  wrap:{gap:14},
- header:{gap:8,paddingTop:5},
- headerRow:{flexDirection:'row',alignItems:'center',gap:12},
- headerIdentity:{flex:1,flexDirection:'row',alignItems:'center',gap:11},
+ header:{gap:10,paddingTop:8,paddingBottom:4},
+ headerRow:{flexDirection:'row',alignItems:'center',gap:14},
+ headerIdentity:{flex:1,flexDirection:'row',alignItems:'center',gap:13,minWidth:0},
  headerLogo:{width:104,height:58},
  back:{alignSelf:'flex-start',paddingVertical:3,paddingHorizontal:2},
  backText:{color:c.accentBright,fontSize:10,fontWeight:'900',letterSpacing:.7,flexDirection:'row',alignItems:'center'},
- eyebrow:{color:c.accentBright,fontSize:8,fontWeight:'900',letterSpacing:1.6},
- title:{color:c.text,fontSize:30,fontWeight:'900',marginTop:2},
+ eyebrow:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:1.45},
+ title:{color:c.text,fontSize:32,fontWeight:'900',letterSpacing:-.8,marginTop:2},
  subtitle:{color:c.muted,fontSize:12,lineHeight:18},
- sectionWrap:{gap:7},
+ sectionWrap:{gap:10},
  sectionHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
- section:{color:c.muted,fontSize:9,fontWeight:'900',letterSpacing:1.5},
- card:{backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:20,padding:15,gap:10},
- accentCard:{backgroundColor:c.accentSoft,borderColor:c.accentDeep},
- button:{backgroundColor:c.accent,borderRadius:13,minHeight:45,alignItems:'center',justifyContent:'center',paddingHorizontal:16},
- secondary:{backgroundColor:'transparent',borderWidth:1,borderColor:c.borderStrong},
- buttonText:{color:'#fff',fontSize:10,fontWeight:'900',letterSpacing:1},
+ section:{color:c.muted,fontSize:10,fontWeight:'900',letterSpacing:1.35},
+ card:{backgroundColor:c.surface,borderWidth:1,borderColor:c.borderStrong,borderRadius:21,padding:16,gap:11,shadowColor:'#000',shadowOpacity:.16,shadowRadius:16,shadowOffset:{width:0,height:8},elevation:3},
+ accentCard:{backgroundColor:c.accentSoft,borderColor:c.accentDeep,shadowColor:c.glow,shadowOpacity:.24,shadowRadius:18,elevation:4},
+ button:{backgroundColor:c.accent,borderRadius:14,minHeight:48,alignItems:'center',justifyContent:'center',paddingHorizontal:17,shadowColor:c.accent,shadowOpacity:.22,shadowRadius:12,shadowOffset:{width:0,height:5},elevation:3},
+ secondary:{backgroundColor:c.surfaceRaised,borderWidth:1,borderColor:c.borderStrong,shadowOpacity:0,elevation:0},
+ buttonText:{color:'#fff',fontSize:11,fontWeight:'900',letterSpacing:.75},
  secondaryText:{color:c.accentBright},
  field:{gap:5},
  label:{color:c.textSecondary,fontSize:8,fontWeight:'900',letterSpacing:.8},
- input:{backgroundColor:c.background,borderWidth:1,borderColor:c.border,borderRadius:12,color:c.text,paddingHorizontal:12,paddingVertical:11,fontSize:13},
- row:{minHeight:68,flexDirection:'row',alignItems:'center',gap:11,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:17,padding:12},
- rowIcon:{width:40,height:40,borderRadius:13,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'},
+ input:{backgroundColor:c.background,borderWidth:1,borderColor:c.borderStrong,borderRadius:13,color:c.text,paddingHorizontal:13,paddingVertical:13,fontSize:14},
+ row:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,backgroundColor:c.surface,borderWidth:1,borderColor:c.border,borderRadius:18,padding:13},
+ rowIcon:{width:42,height:42,borderRadius:14,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'},
  rowIconText:{color:c.accentBright,fontSize:12,fontWeight:'900'},
  rowCopy:{flex:1},
- rowTitle:{color:c.text,fontSize:13,fontWeight:'900'},
- rowText:{color:c.muted,fontSize:10,lineHeight:15,marginTop:2},
- badge:{color:c.accentBright,fontSize:8,fontWeight:'900'},
+ rowTitle:{color:c.text,fontSize:13,fontWeight:'900',letterSpacing:-.15},
+ rowText:{color:c.muted,fontSize:11,lineHeight:16,marginTop:3},
+ badge:{color:c.accentBright,fontSize:9,fontWeight:'900',letterSpacing:.45},
  arrow:{color:c.muted,fontSize:25},
  emptyTitle:{color:c.text,fontSize:14,fontWeight:'800'},
- muted:{color:c.muted,fontSize:10,lineHeight:16}
+ muted:{color:c.muted,fontSize:11,lineHeight:17},
+ pressed:{opacity:.78,transform:[{scale:.985}]}
 });
 
 export const ui=s;

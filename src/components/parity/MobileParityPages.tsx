@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, RefreshCw, Share2 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
+import AthleteQuestPanel from "../quests/AthleteQuestPanel";
+import AcademyGuardianTransferPortal from "./AcademyGuardianTransferPortal";
 type Toast = (toast: { type: "success" | "error" | "warning"; message: string }) => void;
 function Page({title,subtitle,actions,children}:{title:string;subtitle:string;actions?:React.ReactNode;children:React.ReactNode}){return <><div className="page-head"><div><p className="eyebrow">AthleteN</p><h2>{title}</h2><p className="messaging-help">{subtitle}</p></div><div className="inline-actions">{actions}</div></div>{children}</>}
 function Stat({label,value,note}:{label:string;value:string|number;note:string}){return <article className="metric card"><div><p>{label}</p><strong>{value}</strong><small>{note}</small></div></article>}
@@ -67,7 +69,7 @@ export function MissionsPage({setToast}:{setToast:Toast}){
  useEffect(()=>{void load()},[load]);
  async function create(){if(!uid||!title.trim()||!Number.isFinite(Number(target))||Number(target)<=0){setToast({type:"error",message:"Enter a mission title and positive target."});return;}setBusy(true);const {error}=await supabase.from("athlete_challenges").insert({user_id:uid,title:title.trim(),target_value:Number(target),current_value:0,unit:unit.trim()||"sessions",status:"active",created_by:uid});setBusy(false);if(error)setToast({type:"error",message:error.message});else{setTitle("");setToast({type:"success",message:"Mission created."});await load();}}
  async function complete(id:string){setBusy(true);const {error}=await supabase.from("athlete_challenges").update({status:"completed"}).eq("id",id).eq("user_id",uid);setBusy(false);if(error)setToast({type:"error",message:error.message});else await load();}
- return <Page title="Mission Center" subtitle="Create healthy, performance-focused goals and mark them complete."><section className="card panel"><h3>Create mission</h3><div className="form-grid"><label className="field"><span>Mission</span><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Complete five training sessions"/></label><label className="field"><span>Target</span><input type="number" min="1" value={target} onChange={e=>setTarget(e.target.value)}/></label><label className="field"><span>Unit</span><input value={unit} onChange={e=>setUnit(e.target.value)} placeholder="sessions"/></label></div><button className="btn primary" disabled={busy} onClick={()=>void create()}>{busy?"Saving…":"Create mission"}</button></section><section className="card panel"><h3>Active missions</h3>{rows.filter(x=>x.status==="active").length?rows.filter(x=>x.status==="active").map(x=><div key={x.id} className="parity-row"><div><strong>{x.title}</strong><p>{x.current_value||0} / {x.target_value} {x.unit||""}</p></div><button className="btn" disabled={busy} onClick={()=>void complete(x.id)}>Mark complete</button></div>):<p className="empty-copy">No active missions.</p>}</section><section className="card panel"><h3>Completed</h3>{rows.filter(x=>x.status==="completed").map(x=><p key={x.id}>{x.title} · Completed</p>)}</section></Page>
+ return <Page title="AthleteN Quest & Missions" subtitle="Optional recurring check-ins plus personal goals you define for yourself."><AthleteQuestPanel setToast={setToast}/><section className="card panel"><h3>Create personal mission</h3><div className="form-grid"><label className="field"><span>Mission</span><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Complete five training sessions"/></label><label className="field"><span>Target</span><input type="number" min="1" value={target} onChange={e=>setTarget(e.target.value)}/></label><label className="field"><span>Unit</span><input value={unit} onChange={e=>setUnit(e.target.value)} placeholder="sessions"/></label></div><button className="btn primary" disabled={busy} onClick={()=>void create()}>{busy?"Saving…":"Create mission"}</button></section><section className="card panel"><h3>Active missions</h3>{rows.filter(x=>x.status==="active").length?rows.filter(x=>x.status==="active").map(x=><div key={x.id} className="parity-row"><div><strong>{x.title}</strong><p>{x.current_value||0} / {x.target_value} {x.unit||""}</p></div><button className="btn" disabled={busy} onClick={()=>void complete(x.id)}>Mark complete</button></div>):<p className="empty-copy">No active missions.</p>}</section><section className="card panel"><h3>Completed</h3>{rows.filter(x=>x.status==="completed").map(x=><p key={x.id}>{x.title} · Completed</p>)}</section></Page>
 }
 
 export function AthletePassportPage({setToast}:{setToast:Toast}){
@@ -150,6 +152,7 @@ export function TeamConnectionPage({setToast}:{setToast:Toast}){
    <p>Once connected, use Messages to coordinate training and competition plans.</p>
    <a className="btn" href="/messages">Open messages</a>
   </section>
+  <AcademyGuardianTransferPortal setToast={setToast}/>
  </Page>;
 }
 

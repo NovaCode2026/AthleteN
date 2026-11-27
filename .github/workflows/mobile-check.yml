@@ -36,8 +36,8 @@ jobs:
           cache: npm
           cache-dependency-path: AthleteN-Mobile/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (repair stale lockfile in CI workspace)
+        run: npm install
 
       - name: Mobile contract tests
         run: npm test
@@ -47,6 +47,43 @@ jobs:
 
       - name: ESLint check
         run: npm run lint
+
+      - name: Install ImageMagick for Expo config asset validation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+
+      - name: Normalize WebP assets for Expo validation (CI workspace only)
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          root = Path(".")
+          converted = []
+          for asset in root.rglob("*"):
+              if not asset.is_file() or asset.suffix.lower() not in {".webp", ".png", ".jpg", ".jpeg"}:
+                  continue
+              result = subprocess.run(["file", "--brief", "--mime-type", str(asset)], capture_output=True, text=True)
+              if result.stdout.strip() != "image/webp":
+                  continue
+              target = asset.with_suffix(".png")
+              subprocess.run(["magick", str(asset), f"png:{target}"], check=True)
+              converted.append((asset.relative_to(root).as_posix(), target.relative_to(root).as_posix()))
+              if asset != target:
+                  asset.unlink()
+          for old, new in converted:
+              for file in root.rglob("*"):
+                  if not file.is_file() or file.suffix.lower() not in {".json", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".xml", ".md"}:
+                      continue
+                  try:
+                      text = file.read_text()
+                  except (UnicodeDecodeError, OSError):
+                      continue
+                  updated = text.replace(old, new)
+                  if updated != text:
+                      file.write_text(updated)
+              print(f"Converted {old} -> {new}")
+          PY
 
       - name: Android bundle check
         run: npx expo export --platform android --output-dir .expo/ci-export

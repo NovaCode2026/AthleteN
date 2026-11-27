@@ -68,6 +68,15 @@ async function cancelReservation(admin, reservationId, userId) {
   const { error } = await admin.rpc("cancel_ai_usage", { p_usage_id: reservationId, p_user_id: userId });
   if (error) console.error("AI usage reservation cancellation failed:", error);
 }
+async function cancelRewardReservation(admin, reservationId, userId) {
+  if (!reservationId) return;
+  const { error } = await admin.rpc("cancel_reward_ai_usage", { p_usage_id: reservationId, p_user_id: userId });
+  if (error) console.error("Reward AI usage reservation cancellation failed:", error);
+}
+async function cancelSelectedReservation(admin, reservationId, userId, kind) {
+  if (kind === "reward") return cancelRewardReservation(admin, reservationId, userId);
+  return cancelReservation(admin, reservationId, userId);
+}
 async function settlePlatformBudget(admin, id, actualCostPaise) {
   if (!id) return { error: new Error("AI budget reservation is missing.") };
   const result = await admin.rpc("settle_athleten_ai_budget", { p_reservation_id:id, p_actual_cost_paise:actualCostPaise });
@@ -208,13 +217,17 @@ export default async function handler(request) {
     .limit(1)
     .maybeSingle();
   if (subscriptionError) return json("Unable to verify your subscription.", 503);
-  if (!activeSubscription) return json("An active subscription for this plan is required to use AthleteN AI.", 403);
-  if (activeSubscription.current_period_end && new Date(activeSubscription.current_period_end).getTime() <= Date.now()) {
-    return json("Your subscription has expired. Renew your plan to use AthleteN AI.", 403);
+  if (planId !== "free" && !activeSubscription) {
+    return json("An active subscription for this plan is required to use its AI allowance.", 403);
+  }
+  if (activeSubscription?.current_period_end && new Date(activeSubscription.current_period_end).getTime() <= Date.now()) {
+    return json("Your subscription has expired. Renew your plan to use its subscription AI allowance.", 403);
   }
 
+  // Free accounts have no subscription allowance. They may still use an
+  // unexpired, server-issued reward credit after the same platform budget check.
   const monthlyLimit = planLimits[planId] ?? 0;
-  if (monthlyLimit <= 0) return json("AI Coach is not available on the Free plan.", 403);
+  if (!Object.hasOwn(planLimits, planId)) return json("Your AthleteN plan could not be verified.", 403);
 
   const pricingModel = env("OPENAI_MODEL") || "gpt-6-luna";
   const costConfig = readAiBudgetConfig({
@@ -241,14 +254,42 @@ export default async function handler(request) {
   if (budgetReservationError) { console.error("AI budget reservation failed:", budgetReservationError); return json("AI Coach is paused because the protected monthly budget ledger is not ready.", 503); }
   if (!budgetReservationId) return json("The monthly AthleteN AI operating budget has been reached.", 429);
 
-  const { data: reservationId, error: reservationError } = await budgetAdmin.rpc("reserve_ai_usage", {
-    p_user_id: userId,
-    p_plan_id: planId,
-    p_topic: topic,
-    p_monthly_limit: monthlyLimit
-  });
-  if (reservationError) { await releasePlatformBudget(budgetAdmin, budgetReservationId); return json("Unable to reserve your monthly AI usage. Please try again.", 503); }
-  if (!reservationId) { await releasePlatformBudget(budgetAdmin, budgetReservationId); return json("Monthly AI limit reached for your current plan.", 429); }
+  let reservationId = null;
+  let reservationKind = "subscription";
+  if (monthlyLimit > 0) {
+    const { data, error } = await budgetAdmin.rpc("reserve_ai_usage", {
+      p_user_id: userId,
+      p_plan_id: planId,
+      p_topic: topic,
+      p_monthly_limit: monthlyLimit
+    });
+    if (error) {
+      await releasePlatformBudget(budgetAdmin, budgetReservationId);
+      return json("Unable to reserve your monthly AI usage. Please try again.", 503);
+    }
+    reservationId = data;
+  }
+
+  if (!reservationId) {
+    reservationKind = "reward";
+    const { data, error } = await budgetAdmin.rpc("reserve_reward_ai_usage", {
+      p_user_id: userId,
+      p_topic: topic
+    });
+    if (error) {
+      console.error("Reward AI usage reservation failed:", error);
+      await releasePlatformBudget(budgetAdmin, budgetReservationId);
+      return json("Bonus AI credits are temporarily unavailable. Please try again later.", 503);
+    }
+    reservationId = data;
+  }
+
+  if (!reservationId) {
+    await releasePlatformBudget(budgetAdmin, budgetReservationId);
+    return json(monthlyLimit > 0
+      ? "Your monthly AI allowance is used and no valid bonus AI credits are available."
+      : "AI Coach is available on the Free plan only when you have valid bonus AI credits.", 429);
+  }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
@@ -271,7 +312,7 @@ export default async function handler(request) {
   } catch (error) {
     const settled = await settlePlatformBudget(budgetAdmin, budgetReservationId, reservedCostPaise);
     if (settled.error) console.error("AI timeout budget settlement failed:", settled.error);
-    await cancelReservation(budgetAdmin, reservationId, userId);
+    await cancelSelectedReservation(budgetAdmin, reservationId, userId, reservationKind);
     if (error?.name === "AbortError") {
       return json("AI Coach timed out. Please try again.", 504);
     }
@@ -284,14 +325,14 @@ export default async function handler(request) {
   if (!response.ok) {
     const settled = await settlePlatformBudget(budgetAdmin, budgetReservationId, reservedCostPaise);
     if (settled.error) console.error("AI error-response budget settlement failed:", settled.error);
-    await cancelReservation(budgetAdmin, reservationId, userId);
+    await cancelSelectedReservation(budgetAdmin, reservationId, userId, reservationKind);
     return json("AI Coach request failed. Please try again later.", 502);
   }
   const answer = extractResponseText(payload);
   if (!answer) {
     const settled = await settlePlatformBudget(budgetAdmin, budgetReservationId, reservedCostPaise);
     if (settled.error) console.error("AI unreadable-response budget settlement failed:", settled.error);
-    await cancelReservation(budgetAdmin, reservationId, userId);
+    await cancelSelectedReservation(budgetAdmin, reservationId, userId, reservationKind);
     return json("AI Coach returned an unreadable response. Please try again.", 502);
   }
   const usage = payload?.usage || {};

@@ -52,7 +52,7 @@ test("announcement and attendance notifications display the original source reco
 });
 
 test("notification deletion is scoped to the signed-in user and never deletes source records", () => {
-  assert.match(notifications, /from\("notifications"\)\.delete\(\)\.eq\("id",id\)\.eq\("user_id",uid\)/);
+  assert.match(notifications, /from\("notifications"\)\.delete\(\)\.in\("id",ids\)\.eq\("user_id",uid\)/);
   assert.match(notifications, /from\("notifications"\)\.delete\(\)\.eq\("user_id",uid\)/);
   assert.match(notifications, /Messages, announcements, attendance and other original content will not be deleted/);
 });
@@ -104,7 +104,7 @@ test("Android notifications open source messages and announcements, and support 
   assert.match(mobile, /select\('conversation_id'\)/);
   assert.match(mobile, /params: \{ conversationId:/);
   assert.match(mobile, /eq\('id', row\.announcement_id\)/);
-  assert.match(mobile, /from\('notifications'\)\.delete\(\)\.eq\('id', row\.id\)\.eq\('user_id', session\.user\.id\)/);
+  assert.match(mobile, /from\('notifications'\)\.delete\(\)\.in\('id', ids\)\.eq\('user_id', session\.user\.id\)/);
   assert.match(mobile, /from\('notifications'\)\.delete\(\)\.eq\('user_id', session\.user\.id\)/);
   assert.match(mobile, /MARK ALL READ/);
   assert.match(mobile, /CLEAR ALL/);

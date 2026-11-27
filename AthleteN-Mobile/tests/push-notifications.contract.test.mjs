@@ -79,3 +79,52 @@ test('mobile auth session installs notification registration and listener cleanu
   assert.match(authSource, /appStateSubscription\.remove\(\)/);
   assert.match(authSource, /removeNotificationListeners\?\.\(\)/);
 });
+
+test('message push taps resolve and open the exact conversation with a safe inbox fallback', () => {
+  const handler = between(
+    pushSource,
+    'async function handleNotificationResponse',
+    'export function attachNotificationListeners'
+  );
+
+  assert.match(handler, /data\?\.notificationType === 'message'/);
+  assert.match(handler, /typeof data\.messageId === 'string'/);
+  assert.match(handler, /\.from\('messages'\)[\s\S]*?\.select\('conversation_id'\)[\s\S]*?\.eq\('id', data\.messageId\)/);
+  assert.match(handler, /pathname: '\/messages'[\s\S]*?params: \{ conversationId: String\(message\.conversation_id\) \}/);
+  assert.match(handler, /router\.push\('\/notifications' as never\)/);
+  assert.match(handler, /!route\.startsWith\('\/\/'\)/);
+});
+
+
+test('cold-start push taps are recovered and notification rows are marked read safely', () => {
+  assert.match(pushSource, /getLastNotificationResponseAsync\(\)/);
+  assert.match(pushSource, /clearLastNotificationResponseAsync\(\)/);
+  assert.match(pushSource, /handledResponses\.has\(identifier\)/);
+  assert.match(pushSource, /async function markNotificationRead/);
+  assert.match(pushSource, /\.from\('notifications'\)[\s\S]*?\.update\(\{ read_at: new Date\(\)\.toISOString\(\) \}\)/);
+  assert.match(pushSource, /\.eq\('id', notificationId\)[\s\S]*?\.is\('read_at', null\)/);
+});
+
+
+test('push taps deep-link to exact attendance and announcement source records', () => {
+  assert.match(pushSource, /typeof data\?\.attendanceRecordId === 'string'/);
+  assert.match(pushSource, /params: \{ attendanceRecordId: data\.attendanceRecordId \}/);
+  assert.match(pushSource, /typeof data\?\.trainingGroupSessionId === 'string'/);
+  assert.match(pushSource, /params: \{ trainingGroupSessionId: data\.trainingGroupSessionId \}/);
+  assert.match(pushSource, /typeof data\?\.announcementId === 'string'/);
+  assert.match(pushSource, /params: \{ announcementId: data\.announcementId \}/);
+  const inbox = readFileSync(new URL('../src/app/notifications.tsx', import.meta.url), 'utf8');
+  assert.match(inbox, /useLocalSearchParams/);
+  assert.match(inbox, /routeParams\.attendanceRecordId/);
+  assert.match(inbox, /routeParams\.announcementId/);
+  assert.match(inbox, /attendance_record_id/);
+});
+
+
+test('mobile notification settings check quietly on load and explicitly request permission from the user action', () => {
+  const settings = readFileSync(new URL('../src/app/notification-settings.tsx', import.meta.url), 'utf8');
+  assert.match(settings, /useEffect\(\(\) => \{ void checkPushRegistration\(false\); \}/);
+  assert.match(settings, /onPress=\{\(\) => void checkPushRegistration\(true\)\}/);
+  assert.match(settings, /ENABLE OR RETRY PUSH NOTIFICATIONS/);
+  assert.match(settings, /permission-denied/);
+});

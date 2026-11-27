@@ -1,17 +1,22 @@
-name: AthleteN Android CI APK (debug-signed)
+name: AthleteN Android Native Boot Isolation
 
 on:
   push:
-    branches: [main, qa/fix-nov-20-findings]
+    branches: [feat/rewarded-ads-rewards-centre-20261124]
     paths:
       - 'AthleteN-Mobile/**'
       - 'netlify/functions/**'
       - 'tests/**'
       - '.github/workflows/android-apk.yml'
+      - '.github/workflows/android-apk-build.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: athleten-android-apk-with-embedded-js-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   scanner-regression:
@@ -34,11 +39,12 @@ jobs:
   build-apk:
     needs: scanner-regression
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
+    env:
+      ATHLETEN_BOOT_DIAGNOSTIC: '1'
     defaults:
       run:
         working-directory: AthleteN-Mobile
-
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -51,13 +57,13 @@ jobs:
           cache-dependency-path: AthleteN-Mobile/package-lock.json
 
       - name: Setup Java
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: TypeScript validation
         run: npx tsc --noEmit --pretty false
@@ -65,17 +71,108 @@ jobs:
       - name: ESLint validation
         run: npm run lint
 
-      - name: Generate Android project
-        run: npx expo prebuild --platform android --no-install --non-interactive
+      - name: Exclude optional Android native modules for boot isolation
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'package.json';
+          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const excluded = [
+            'expo-router',
+            'expo-web-browser',
+            'expo-splash-screen',
+            'expo-notifications',
+            'expo-secure-store',
+            'expo-updates',
+            'expo-image',
+            'expo-image-picker',
+            'expo-document-picker',
+            'expo-linking',
+            'expo-device',
+            'expo-font',
+            'expo-symbols',
+            'expo-system-ui',
+            'expo-glass-effect',
+            'expo-status-bar',
+            'react-native-android-widget',
+            'react-native-google-mobile-ads',
+            'react-native-gesture-handler',
+            'react-native-reanimated',
+            'react-native-worklets',
+            'react-native-safe-area-context',
+            'react-native-screens',
+            '@react-native-async-storage/async-storage',
+            '@expo/ui'
+          ];
+          pkg.expo = pkg.expo || {};
+          pkg.expo.autolinking = pkg.expo.autolinking || {};
+          pkg.expo.autolinking.android = pkg.expo.autolinking.android || {};
+          pkg.expo.autolinking.android.exclude = [...new Set([
+            ...(pkg.expo.autolinking.android.exclude || []),
+            ...excluded
+          ])];
+          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
+          console.log('Diagnostic Android autolinking exclusions:', pkg.expo.autolinking.android.exclude.join(', '));
+          NODE
 
-      - name: Build standalone release APK
+      - name: Install ImageMagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+
+      - name: Convert WebP assets to PNG for Expo Android tooling
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          root = Path(".")
+          converted = []
+          for asset in root.rglob("*"):
+              if not asset.is_file() or asset.suffix.lower() not in {".webp", ".png", ".jpg", ".jpeg"}:
+                  continue
+              result = subprocess.run(["file", "--brief", "--mime-type", str(asset)], capture_output=True, text=True)
+              if result.stdout.strip() != "image/webp":
+                  continue
+              target = asset.with_suffix(".png")
+              subprocess.run(["magick", str(asset), f"png:{target}"], check=True)
+              converted.append((asset.relative_to(root).as_posix(), target.relative_to(root).as_posix()))
+              if asset != target:
+                  asset.unlink()
+          for old, new in converted:
+              for file in root.rglob("*"):
+                  if not file.is_file() or file.suffix.lower() not in {".json", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".xml", ".md"}:
+                      continue
+                  try:
+                      text = file.read_text()
+                  except (UnicodeDecodeError, OSError):
+                      continue
+                  updated = text.replace(old, new)
+                  if updated != text:
+                      file.write_text(updated)
+              print(f"Converted {old} -> {new}")
+          PY
+
+      - name: Generate Android project
+        run: CI=1 npx expo prebuild --platform android --no-install
+
+      - name: Build standalone release-variant APK with embedded JavaScript
         working-directory: AthleteN-Mobile/android
         run: ./gradlew assembleRelease --no-daemon
 
+      - name: Verify APK contains the embedded JavaScript bundle
+        working-directory: AthleteN-Mobile
+        run: |
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          unzip -Z1 "$APK" | grep -Fqx 'assets/index.android.bundle'
+          BUNDLE_BYTES=$(unzip -p "$APK" assets/index.android.bundle | wc -c)
+          test "$BUNDLE_BYTES" -gt 0
+          echo "Embedded JavaScript bundle: $BUNDLE_BYTES bytes"
+
       - name: Upload APK
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
-          name: AthleteN-ci-debug-signed-apk
+          name: AthleteN-native-boot-isolation-apk
           path: AthleteN-Mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14

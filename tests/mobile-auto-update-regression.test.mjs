@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
@@ -49,9 +49,9 @@ test("Android app checks published releases on launch, foreground and the schedu
   assert.match(gate, /\.eq\('published', true\)/);
   assert.match(gate, /CHECK_INTERVAL_MS = 6 \* 60 \* 60 \* 1000/);
   assert.match(gate, /state === 'active'/);
-  assert.match(gate, /void checkForUpdate\(true\)/);
-  assert.match(gate, /versionCode > installedCode \|\| minimumCode > installedCode/);
-  assert.match(gate, /function retryCheck\(\)/);
+  assert.match(gate, /void checkForOtaUpdate\(true\)/);
+  assert.match(gate, /next\.version_code > installedCode \|\| next\.minimum_version_code > installedCode/);
+  assert.match(gate, /function retryAllChecks\(\)/);
   assert.match(gate, /Linking\.openURL\(release\.download_url\)/);
   assert.match(layout, /import AppUpdateGate from '@\/components\/app-update-gate';/);
   assert.match(layout, /<AppUpdateGate \/>/);
@@ -60,10 +60,10 @@ test("Android app checks published releases on launch, foreground and the schedu
 test("required Android updates cannot be dismissed and the device installer remains user-approved", () => {
   const gate = read("../AthleteN-Mobile/src/components/app-update-gate.tsx");
 
-  assert.match(gate, /onRequestClose=\{\(\) => \{ if \(!required\) setVisible\(false\); \}\}/);
-  assert.match(gate, /!required \? <Pressable/);
-  assert.match(gate, /approve the system installer/);
-  assert.match(gate, /ordinary apps cannot silently replace themselves/);
+  assert.match(gate, /onRequestClose=\{\(\) => undefined\}/);
+  assert.match(gate, /!requiredApk \? <Pressable/);
+  assert.match(gate, /Android’s installer/);
+  assert.match(gate, /Native APK updates require your approval/);
 });
 
 test("mobile Super Admin release screen publishes only and cannot overwrite the active release with a draft", () => {
@@ -99,8 +99,8 @@ test("EAS release profile builds an APK and increments the remote Android versio
   assert.match(eas, /"environment": "production"/);
   assert.match(eas, /"autoIncrement": true/);
   assert.match(eas, /"buildType": "apk"/);
-  assert.match(app, /"version": "1\.0\.4"/);
-  assert.match(app, /"versionCode": 5/);
+  assert.match(app, /"version": "1\.0\.5"/);
+  assert.match(app, /"versionCode": 6/);
 });
 
 test("manual GitHub Actions workflow builds the release APK through the production EAS profile", () => {
@@ -120,9 +120,96 @@ test("Android update checks validate release metadata, clear stale prompts and t
   assert.match(gate, /VERSION_PATTERN\.test\(version\)/);
   assert.match(gate, /parsedUrl\.protocol !== 'https:'/);
   assert.match(gate, /!parsedUrl\.pathname\.toLowerCase\(\)\.endsWith\('\.apk'\)/);
-  assert.match(gate, /CHECK_RETRY_INTERVAL_MS = 5 \* 60 \* 1000/);
-  assert.match(gate, /lastCheckSucceeded\.current \? CHECK_INTERVAL_MS : CHECK_RETRY_INTERVAL_MS/);
-  assert.match(gate, /lastCheckedAt\.current = now/);
-  assert.match(gate, /lastCheckSucceeded\.current = false/);
-  assert.match(gate, /setRelease\(null\);\s*setVisible\(false\);\s*setMessage\(''\);/);
+  assert.match(gate, /RETRY_INTERVAL_MS = 5 \* 60 \* 1000/);
+  assert.match(gate, /lastApkCheckSucceeded\.current \? APK_CHECK_INTERVAL_MS : RETRY_INTERVAL_MS/);
+  assert.match(gate, /lastApkCheckAt\.current = now/);
+  assert.match(gate, /lastApkCheckSucceeded\.current = false/);
+  assert.match(gate, /setRelease\(null\);\s*setApkVisible\(false\);/);
+});
+
+
+test("the exact master AthleteN logo is used for the installed launcher, adaptive icon and splash", () => {
+  const app = JSON.parse(read("../AthleteN-Mobile/app.json"));
+  const logoComponent = read("../AthleteN-Mobile/src/components/athleten-logo.tsx");
+  assert.equal(app.expo.icon, "./assets/logo.webp");
+  assert.equal(app.expo.android.adaptiveIcon.foregroundImage, "./assets/logo.webp");
+  const splash = app.expo.plugins.find((plugin) => Array.isArray(plugin) && plugin[0] === "expo-splash-screen");
+  assert.equal(splash[1].image, "./assets/logo.webp");
+  assert.match(logoComponent, /require\(['"]@\/assets\/logo\.webp['"]\)/);
+  assert.ok(existsSync(new URL("../AthleteN-Mobile/assets/logo.webp", import.meta.url)));
+});
+
+test("OTA updates are enabled with a fingerprint runtime and the AthleteN EAS project URL", () => {
+  const app = JSON.parse(read("../AthleteN-Mobile/app.json"));
+  const pkg = JSON.parse(read("../AthleteN-Mobile/package.json"));
+  const eas = JSON.parse(read("../AthleteN-Mobile/eas.json"));
+  assert.deepEqual(app.expo.runtimeVersion, { policy: "fingerprint" });
+  assert.equal(app.expo.updates.enabled, true);
+  assert.equal(app.expo.updates.url, "https://u.expo.dev/7f308f88-5459-4f51-bb76-981f381eee3c");
+  assert.equal(app.expo.updates.checkAutomatically, "NEVER");
+  assert.equal(app.expo.updates.fallbackToCacheTimeout, 3000);
+  assert.equal(pkg.dependencies["expo-updates"], "~57.0.29");
+  assert.equal(eas.build.development.channel, "development");
+  assert.equal(eas.build.preview.channel, "preview");
+  assert.equal(eas.build["release-apk"].channel, "production");
+  assert.equal(eas.build.production.channel, "production");
+});
+
+test("OTA update lifecycle downloads compatible updates, lets the user choose a safe restart, and retains APK fallback", () => {
+  const gate = read("../AthleteN-Mobile/src/components/app-update-gate.tsx");
+  assert.match(gate, /import \* as Updates from 'expo-updates'/);
+  assert.match(gate, /Updates\.useUpdates\(\)/);
+  assert.match(gate, /!Updates\.isEnabled/);
+  assert.match(gate, /Platform\.OS !== 'android' \|\| __DEV__/);
+  assert.match(gate, /Updates\.checkForUpdateAsync\(\)/);
+  assert.match(gate, /Updates\.fetchUpdateAsync\(\)/);
+  assert.match(gate, /Updates\.reloadAsync\(\)/);
+  assert.match(gate, /setOtaReady\(true\)/);
+  assert.match(gate, /RESTART AND UPDATE/);
+  assert.match(gate, /the next time AthleteN starts/);
+  assert.match(gate, /from\('mobile_app_releases'\)/);
+  assert.match(gate, /Linking\.openURL\(release\.download_url\)/);
+  assert.match(gate, /requiredApk/);
+  assert.match(gate, /Native APK updates require your approval/);
+});
+
+test("Firebase and AdMob native config are composed in one Expo config file", () => {
+  const config = read("../AthleteN-Mobile/app.config.js");
+  assert.match(config, /GOOGLE_SERVICES_FILE/);
+  assert.match(config, /googleServicesFile/);
+  assert.match(config, /react-native-google-mobile-ads/);
+  assert.equal(existsSync(new URL("../AthleteN-Mobile/app.config.ts", import.meta.url)), false);
+});
+
+test("manual OTA publishing workflow runs mobile quality gates and publishes only to a named EAS channel", () => {
+  const workflow = read("../.github/workflows/android-ota-update.yml");
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /secrets\.EXPO_TOKEN/);
+  assert.match(workflow, /npm ci/);
+  assert.match(workflow, /npm test/);
+  assert.match(workflow, /npx tsc --noEmit/);
+  assert.match(workflow, /eas-cli@latest update/);
+  assert.match(workflow, /--channel/);
+  assert.match(workflow, /--platform android/);
+  assert.match(workflow, /--non-interactive/);
+  assert.match(workflow, /Production OTA updates may only be published from main/);
+  assert.match(workflow, /Preview OTA updates must run from main or the reviewed PR #76 branch/);
+  assert.match(workflow, /athleten-production-ota/);
+});
+
+test("OTA workflow blocks production publishing from PR branches and validates before publishing", () => {
+  const workflow = read("../.github/workflows/android-ota-update.yml");
+  assert.ok(workflow.includes('if [ "${OTA_CHANNEL}" = "production" ]'));
+  assert.ok(workflow.includes('if [ "${GITHUB_REF_NAME}" != "main" ]'));
+  assert.match(workflow, /npm test[\s\S]*npx tsc --noEmit[\s\S]*npm run lint[\s\S]*expo-doctor/);
+  assert.match(workflow, /runtimeVersion\?\.policy!==['"]fingerprint['"]/);
+});
+
+test("Expo Updates dependency lock is generated and validated before mobile releases", () => {
+  const workflow = read("../.github/workflows/mobile-lockfile-sync.yml");
+  assert.match(workflow, /npm install --package-lock-only/);
+  assert.match(workflow, /npm ci/);
+  assert.match(workflow, /package-lock\.json/);
+  assert.match(workflow, /contents: write/);
+  assert.match(workflow, /git push/);
 });
