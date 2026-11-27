@@ -34,6 +34,9 @@ DECLARE v_user uuid := (SELECT auth.uid()); v_id uuid;
 BEGIN
   IF v_user IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF p_message IS NOT NULL AND length(p_message)>2000 THEN RAISE EXCEPTION 'Application message too long'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id=v_user AND p.role='athlete') THEN
+    RAISE EXCEPTION 'Only Athlete accounts may apply to an Academy';
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM public.academies a WHERE a.id=p_academy_id AND a.status='active') THEN
     RAISE EXCEPTION 'Academy is not accepting applications';
   END IF;
