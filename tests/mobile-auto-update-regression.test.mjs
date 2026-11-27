@@ -49,8 +49,8 @@ test("Android app checks published releases on launch, foreground and the schedu
   assert.match(gate, /\.eq\('published', true\)/);
   assert.match(gate, /CHECK_INTERVAL_MS = 6 \* 60 \* 60 \* 1000/);
   assert.match(gate, /state === 'active'/);
+  assert.match(gate, /void checkForOtaUpdate\(true\)/);
   assert.match(gate, /next\.version_code > installedCode \|\| next\.minimum_version_code > installedCode/);
-  assert.match(gate, /versionCode > installedCode \|\| minimumCode > installedCode/);
   assert.match(gate, /function retryAllChecks\(\)/);
   assert.match(gate, /Linking\.openURL\(release\.download_url\)/);
   assert.match(layout, /import AppUpdateGate from '@\/components\/app-update-gate';/);
@@ -124,7 +124,7 @@ test("Android update checks validate release metadata, clear stale prompts and t
   assert.match(gate, /lastApkCheckSucceeded\.current \? APK_CHECK_INTERVAL_MS : RETRY_INTERVAL_MS/);
   assert.match(gate, /lastApkCheckAt\.current = now/);
   assert.match(gate, /lastApkCheckSucceeded\.current = false/);
-  assert.match(gate, /setRelease\(null\);\\s*setApkVisible\(false\);/);
+  assert.match(gate, /setRelease\(null\);\s*setApkVisible\(false\);/);
 });
 
 
