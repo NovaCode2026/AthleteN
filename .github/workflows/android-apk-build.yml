@@ -1,4 +1,4 @@
-name: AthleteN Android APK Build
+name: AthleteN Android Standalone APK Build
 
 on:
   workflow_dispatch:
@@ -75,13 +75,19 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Build installable debug APK
-        run: cd android && ./gradlew assembleDebug
+      - name: Build standalone release-variant APK with embedded JavaScript
+        run: cd android && ./gradlew assembleRelease --no-daemon
+
+      - name: Verify standalone APK contains the embedded JavaScript bundle
+        run: |
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          unzip -Z1 "$APK" | grep -Fqx 'assets/index.android.bundle'
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AthleteN-debug-apk
-          path: AthleteN-Mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          name: AthleteN-standalone-apk
+          path: AthleteN-Mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
