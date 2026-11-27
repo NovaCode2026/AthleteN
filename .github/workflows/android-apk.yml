@@ -69,6 +69,11 @@ jobs:
       - name: ESLint validation
         run: npm run lint
 
+      - name: Install ImageMagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+
       - name: Convert WebP assets to PNG for Expo Android tooling
         run: |
           python3 - <<'PY'
