@@ -19,7 +19,7 @@ function validateRewardedAdUnitId(value, androidAppId) {
   const candidate = String(value || '').trim();
   if (!candidate) return;
 
-  const match = candidate.match(/^ca-app-pub-(\\d+)\\/(\\d+)$/);
+  const match = candidate.match(/^ca-app-pub-(\d+)\/(\d+)$/);
   if (!match) {
     throw new Error('EXPO_PUBLIC_ADMOB_REWARDED_AD_UNIT_ID must be a valid AdMob ad unit ID.');
   }
