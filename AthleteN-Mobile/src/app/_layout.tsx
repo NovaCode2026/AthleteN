@@ -46,7 +46,6 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBou
   }
 }
 
-
 const PUBLIC_AUTH_PATHS = new Set([
   '/',
   '/auth/callback',
@@ -64,34 +63,43 @@ function AuthRouteGuard() {
 
   React.useEffect(() => {
     if (loading || session) return;
-    // Expo Router omits route-group names from usePathname(). As a result, the
-    // protected tab home can also report "/" and be mistaken for the public
-    // login entry route. Route segments disambiguate the two cases after logout.
-    // Supabase email confirmation and recovery links remain public.
     const isPublicEntryRoute = PUBLIC_AUTH_PATHS.has(pathname) && !isProtectedTabRoute;
     if (!isPublicEntryRoute) router.replace('/');
   }, [loading, session?.user.id, pathname, isProtectedTabRoute, router]);
   return null;
 }
 
-// Keep the native splash until React has mounted, but never leave users trapped
-// on the native splash if app bootstrap/rendering is delayed.
+// Keep the native splash visible until the router has produced a committed route.
+// The delay gives the first React frame time to paint before the native splash is removed.
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
-export default function RootLayout() {
+function SplashHandoff() {
+  const pathname = usePathname();
   React.useEffect(() => {
-    const hide = () => { void SplashScreen.hideAsync().catch(() => undefined); };
-    hide();
-    const failsafe = setTimeout(hide, 12000);
+    if (!pathname) return;
+    const timer = setTimeout(() => {
+      void SplashScreen.hideAsync().catch(() => undefined);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [pathname]);
+  React.useEffect(() => {
+    // Safety fallback if route resolution is delayed or fails.
+    const failsafe = setTimeout(() => {
+      void SplashScreen.hideAsync().catch(() => undefined);
+    }, 8000);
     return () => clearTimeout(failsafe);
   }, []);
+  return null;
+}
 
+export default function RootLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
 
   return (
     <AppErrorBoundary>
       <AuthProvider>
+        <SplashHandoff />
         <AuthRouteGuard />
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <AnnouncementOverlay />
