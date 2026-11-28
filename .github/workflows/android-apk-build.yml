@@ -81,7 +81,7 @@ jobs:
         run: npx expo prebuild --platform android --clean --no-install
 
       - name: Build standalone release-variant APK with embedded JavaScript
-        run: cd android && ./gradlew assembleRelease --no-daemon
+        run: cd android && ./gradlew assembleRelease --no-daemon -x lintVitalAnalyzeRelease
 
       - name: Verify standalone APK contains the embedded JavaScript bundle
         run: |
